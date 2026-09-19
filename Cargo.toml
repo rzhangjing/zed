@@ -987,6 +987,13 @@ libwebrtc = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev =
 notify = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
 notify-types = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
 webrtc-sys = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev = "0a1c519cfce9b365229026b55de9b9dbdb6fed3c" }
+# Replace `msvc_spectre_libs` (pulled in transitively by the `pet-*` crates that
+# `crates/languages` depends on) with a local no-op stub. Its real build.rs only adds
+# a link-search to the Spectre-mitigated MSVC CRT libs and panics (via the `error`
+# feature the `pet-*` crates enable) when those libs are absent. The stub keeps the
+# `error` feature but does nothing, so MSVC builds fall back to the normal CRT instead
+# of failing. Remove this line + build-patches/msvc_spectre_libs to revert.
+msvc_spectre_libs = { path = "build-patches/msvc_spectre_libs" }
 
 # corgi runs build.rs/proc-macros in a sandbox with no write access outside the
 # action's own OUT_DIR. Upstream `scratch` bakes its build-time OUT_DIR in via
