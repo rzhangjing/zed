@@ -14,6 +14,10 @@ rustflags = [
     "windows_slim_errors",        # This cfg will reduce the size of `windows::core::Error` from 16 bytes to 4 bytes
     "-C",
     "target-feature=+crt-static", # This fixes the linking issue when compiling livekit on Windows
+    "--cfg",
+    "no_webrtc",                  # Force audio/livekit_client to use the fake/mock implementations, so libwebrtc/livekit/webrtc-sys are not linked (avoids the prebuilt WebRTC download)
+    "--check-cfg",
+    "cfg(no_webrtc)",             # Declare the custom cfg to silence the unexpected_cfgs lint
 ]
 
 # We need lld to link libwebrtc.a successfully on aarch64-linux
