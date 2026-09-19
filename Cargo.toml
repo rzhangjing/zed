@@ -265,6 +265,8 @@ members = [
 ]
 default-members = ["crates/zed"]
 
+exclude = ["vendor/octocrab"]
+
 [workspace.package]
 publish = false
 edition = "2024"
