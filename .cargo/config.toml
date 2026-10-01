@@ -1,6 +1,7 @@
 [build]
 # v0 mangling scheme provides more detailed backtraces around closures
-rustflags = ["-C", "symbol-mangling-version=v0", "--cfg", "tokio_unstable"]
+rustflags = ["-C", "symbol-mangling-version=v0", "--cfg", "tokio_unstable", "--cfg", "no_webrtc", "--check-cfg", "cfg(no_webrtc)"]
+jobs = 4
 
 [alias]
 xtask = "run --package xtask --"

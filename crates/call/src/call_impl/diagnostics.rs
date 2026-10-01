@@ -310,7 +310,7 @@ fn compute_network_stats(stats: &livekit_client::SessionStats) -> ComputedNetwor
         test,
         feature = "test-support",
         all(target_os = "windows", target_env = "gnu"),
-        target_os = "freebsd",
+        target_os = "linux",
         no_webrtc
     )
 ))]
@@ -331,7 +331,7 @@ fn compute_remote_audio_stats(
         test,
         feature = "test-support",
         all(target_os = "windows", target_env = "gnu"),
-        target_os = "freebsd",
+        target_os = "linux",
         no_webrtc
     ))
 ))]
@@ -465,7 +465,7 @@ fn compute_remote_audio_stats(
         test,
         feature = "test-support",
         all(target_os = "windows", target_env = "gnu"),
-        target_os = "freebsd",
+        target_os = "linux",
         no_webrtc
     )
 ))]
@@ -484,7 +484,7 @@ fn extract_metrics(
         test,
         feature = "test-support",
         all(target_os = "windows", target_env = "gnu"),
-        target_os = "freebsd",
+        target_os = "linux",
         no_webrtc
     ))
 ))]
