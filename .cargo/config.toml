@@ -1,7 +1,7 @@
 [build]
 # v0 mangling scheme provides more detailed backtraces around closures
-rustflags = ["-C", "symbol-mangling-version=v0", "--cfg", "tokio_unstable", "--cfg", "no_webrtc", "--check-cfg", "cfg(no_webrtc)"]
-jobs = 4
+rustflags = ["-C", "symbol-mangling-version=v0", "--cfg", "tokio_unstable"]
+jobs = 10
 
 [alias]
 xtask = "run --package xtask --"
@@ -27,6 +27,16 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 [env]
 MACOSX_DEPLOYMENT_TARGET = "10.15.7"
+
+# MSVC D8050 修复：把 TMP/TEMP 指到一个干净、可写的目录。
+# 当临时目录缺失 / 不可写 / 文件过多 / 所在磁盘写满时，cl.exe（以及 lib.exe、
+# link.exe、rc.exe）会失败：
+#   cl : Command line error D8050 : cannot execute '...\c1xx.dll':
+#        failed to get command line into debug records
+# 目录由 target/cl-tmp/README.txt 占位创建；本机根因（多半是 C 盘临时目录满/不可写）
+# 修好后，删掉这段和 target/cl-tmp 即可。注意：手动删 target/ 会连它一起删掉。
+TMP = { value = "D:\\Rust\\zed\\target\\cl-tmp", force = true }
+TEMP = { value = "D:\\Rust\\zed\\target\\cl-tmp", force = true }
 
 [source.crates-io]
 replace-with = "vendored-sources"

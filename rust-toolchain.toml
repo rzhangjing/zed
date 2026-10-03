@@ -1,7 +1,5 @@
 [toolchain]
-channel = "1.98.1"
+channel = "stable"
+targets = ["x86_64-pc-windows-msvc"]
 profile = "minimal"
 components = [ "rustfmt", "clippy", "rust-analyzer", "rust-src" ]
-targets = [
-    "x86_64-pc-windows-gnu",
-]
