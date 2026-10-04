@@ -62,3 +62,6 @@ crates/docs_preprocessor/actions.json
 
 .local*
 .cache
+.cargo/cl-wrapper.cmd
+setup.bat
+ZED_FORK_TRIM_PLAN.md
