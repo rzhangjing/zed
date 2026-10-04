@@ -2272,16 +2272,6 @@ impl RemoteServerProjects {
                         return;
                     }
                 };
-            cx.update(|_, cx| {
-                ExtensionStore::global(cx).update(cx, |this, cx| {
-                    for extension in &dev_container_connection.extension_ids {
-                        log::info!("Installing extension {extension} from devcontainer");
-                        this.install_latest_extension(Arc::from(extension.clone()), cx);
-                    }
-                })
-            })
-            .log_err();
-
             entity
                 .update(cx, |this, cx| {
                     this.allow_dismissal = true;

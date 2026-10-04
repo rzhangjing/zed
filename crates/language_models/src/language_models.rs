@@ -8,11 +8,8 @@ use gpui::{App, Context, Entity};
 use language_model::{LanguageModelProviderId, LanguageModelRegistry};
 use provider::deepseek::DeepSeekLanguageModelProvider;
 
-pub mod extension;
 pub mod provider;
 mod settings;
-
-pub use crate::extension::init_proxy as init_extension_proxy;
 
 use crate::provider::anthropic::AnthropicLanguageModelProvider;
 use crate::provider::anthropic_compatible::AnthropicCompatibleLanguageModelProvider;

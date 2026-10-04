@@ -1524,16 +1524,6 @@ impl AgentPanel {
             )
         });
 
-        // Subscribe to extension events to sync agent servers when extensions change
-        let extension_subscription = ExtensionStore::try_global(cx).map(|store| {
-            cx.subscribe(&store, |this, _source, event, cx| match event {
-                extension_host::Event::ExtensionUninstalled(id) => {
-                    this.migrate_agent_server_from_extensions(id.clone(), cx);
-                }
-                _ => {}
-            })
-        });
-
         let connection_store = cx.new(|cx| AgentConnectionStore::new(project.clone(), cx));
         let _project_subscription =
             cx.subscribe(&project, |this, _project, event, cx| match event {
@@ -1584,7 +1574,7 @@ impl AgentPanel {
             new_thread_menu_handle: PopoverMenuHandle::default(),
             agent_panel_menu_handle: PopoverMenuHandle::default(),
 
-            _extension_subscription: extension_subscription,
+            _extension_subscription: None,
             _project_subscription,
             zoomed: false,
             pending_serialization: None,

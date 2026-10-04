@@ -250,21 +250,8 @@ fn map_server_status(status: &ContextServerStatus) -> AiSettingItemStatus {
     }
 }
 
-fn resolve_extension_display_name(id: &ContextServerId, cx: &App) -> Option<SharedString> {
-    ExtensionStore::global(cx)
-        .read(cx)
-        .installed_extensions()
-        .iter()
-        .find(|(_, entry)| entry.manifest.context_servers.contains_key(&id.0))
-        .map(|(_, entry)| {
-            let name = entry.manifest.name.as_str();
-            let stripped = name
-                .strip_suffix(" MCP Server")
-                .or_else(|| name.strip_suffix(" MCP"))
-                .or_else(|| name.strip_suffix(" Context Server"))
-                .unwrap_or(name);
-            SharedString::from(stripped.to_string())
-        })
+fn resolve_extension_display_name(_id: &ContextServerId, _cx: &App) -> Option<SharedString> {
+    None
 }
 
 fn render_configure_button(
@@ -626,21 +613,9 @@ pub(crate) fn render_add_server_popover(
 
 fn uninstall_server(
     context_server_id: &ContextServerId,
-    provided_by_extension: bool,
+    _provided_by_extension: bool,
     cx: &mut App,
 ) {
-    if provided_by_extension {
-        if let Some((ext_id, manifest)) =
-            resolve_extension_for_context_server(context_server_id, cx)
-        {
-            if extension_only_provides_context_server(&manifest) {
-                ExtensionStore::global(cx)
-                    .update(cx, |store, cx| store.uninstall_extension(ext_id, cx))
-                    .detach_and_log_err(cx);
-            }
-        }
-    }
-
     let fs = <dyn fs::Fs>::global(cx);
     let context_server_id = context_server_id.clone();
     settings::update_settings_file(fs, cx, move |settings, _| {
@@ -651,29 +626,6 @@ fn uninstall_server(
     });
 }
 
-fn resolve_extension_for_context_server(
-    id: &ContextServerId,
-    cx: &App,
-) -> Option<(Arc<str>, Arc<extension::ExtensionManifest>)> {
-    ExtensionStore::global(cx)
-        .read(cx)
-        .installed_extensions()
-        .iter()
-        .find(|(_, entry)| entry.manifest.context_servers.contains_key(&id.0))
-        .map(|(id, entry)| (id.clone(), entry.manifest.clone()))
-}
-
-fn extension_only_provides_context_server(manifest: &extension::ExtensionManifest) -> bool {
-    manifest.context_servers.len() == 1
-        && manifest.themes.is_empty()
-        && manifest.icon_themes.is_empty()
-        && manifest.languages.is_empty()
-        && manifest.grammars.is_empty()
-        && manifest.language_servers.is_empty()
-        && manifest.slash_commands.is_empty()
-        && manifest.snippets.is_none()
-        && manifest.debug_locators.is_empty()
-}
 
 // === Custom (Stdio/HTTP) MCP server add/edit form ===
 

@@ -2771,7 +2771,6 @@ fn open_settings_file(
 /// This fast path exists to load these themes as soon as possible so the user
 /// doesn't see the default themes while waiting on extensions to load.
 pub(crate) fn eager_load_active_theme_and_icon_theme(fs: Arc<dyn Fs>, cx: &mut App) {
-    let extension_store = ExtensionStore::global(cx);
     let theme_registry = ThemeRegistry::global(cx);
     let theme_settings = ThemeSettings::get_global(cx);
     let appearance = SystemAppearance::global(cx).0;
@@ -2783,28 +2782,7 @@ pub(crate) fn eager_load_active_theme_and_icon_theme(fs: Arc<dyn Fs>, cx: &mut A
 
     let theme_name = theme_settings.theme.name(appearance);
     let icon_theme_name = theme_settings.icon_theme.name(appearance);
-    let themes_to_load = [
-        theme_registry
-            .get(&theme_name.0)
-            .is_err()
-            .then(|| {
-                extension_store
-                    .read(cx)
-                    .path_to_extension_theme(&theme_name.0)
-            })
-            .flatten()
-            .map(LoadTarget::Theme),
-        theme_registry
-            .get_icon_theme(&icon_theme_name.0)
-            .is_err()
-            .then(|| {
-                extension_store
-                    .read(cx)
-                    .path_to_extension_icon_theme(&icon_theme_name.0)
-            })
-            .flatten()
-            .map(LoadTarget::IconTheme),
-    ];
+    let themes_to_load: [Option<LoadTarget>; 2] = [None, None];
 
     enum ReloadTarget {
         Theme,
@@ -2868,7 +2846,6 @@ mod tests {
     use editor::{
         DisplayPoint, Editor, MultiBufferOffset, SelectionEffects, display_map::DisplayRow,
     };
-    use extension::ExtensionHostProxy;
     use fs::FakeFs;
     use gpui::{
         Action, AnyWindowHandle, App, AssetSource, BorrowAppContext, Modifiers, OwnedMenuItem,
@@ -3073,7 +3050,6 @@ mod tests {
         let http_client = Arc::new(BlockedHttpClient);
         let node_runtime = NodeRuntime::unavailable();
         let languages = Arc::new(LanguageRegistry::new(server_cx.executor()));
-        let extension_host_proxy = Arc::new(ExtensionHostProxy::new());
         let _headless = server_cx.new(|cx| {
             HeadlessProject::new(
                 HeadlessAppState {

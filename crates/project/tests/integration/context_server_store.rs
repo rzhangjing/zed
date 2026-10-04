@@ -1899,7 +1899,7 @@ impl ContextServerDescriptor for FakeContextServerDescriptor {
         &self,
         _worktree_store: Entity<WorktreeStore>,
         _cx: &AsyncApp,
-    ) -> Task<Result<Option<::extension::ContextServerConfiguration>>> {
+    ) -> Task<Result<Option<project::context_server_store::ContextServerConfiguration>>> {
         Task::ready(Ok(None))
     }
 }

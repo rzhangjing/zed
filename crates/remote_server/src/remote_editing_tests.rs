@@ -18,7 +18,6 @@ use editor::{
     actions::{ConfirmCodeAction, ToggleCodeActions},
     code_context_menus::CodeContextMenu,
 };
-use extension::ExtensionHostProxy;
 use fs::{FakeFs, Fs};
 use git::{
     Oid,
@@ -222,7 +221,6 @@ async fn test_remote_telemetry_event_forwarding(
     let http_client = Arc::new(BlockedHttpClient);
     let node_runtime = NodeRuntime::unavailable();
     let languages = Arc::new(LanguageRegistry::new(cx.executor()));
-    let proxy = Arc::new(ExtensionHostProxy::new());
     server_cx.update(HeadlessProject::init);
     let headless = server_cx.new(|cx| {
         HeadlessProject::new(
@@ -232,7 +230,6 @@ async fn test_remote_telemetry_event_forwarding(
                 http_client,
                 node_runtime,
                 languages,
-                extension_host_proxy: proxy,
                 startup_time: std::time::Instant::now(),
             },
             false,
@@ -4782,7 +4779,6 @@ pub async fn init_test(
     let http_client = Arc::new(BlockedHttpClient);
     let node_runtime = NodeRuntime::unavailable();
     let languages = Arc::new(LanguageRegistry::new(cx.executor()));
-    let proxy = Arc::new(ExtensionHostProxy::new());
     server_cx.update(HeadlessProject::init);
     let headless = server_cx.new(|cx| {
         HeadlessProject::new(
@@ -4792,7 +4788,6 @@ pub async fn init_test(
                 http_client,
                 node_runtime,
                 languages,
-                extension_host_proxy: proxy,
                 startup_time: std::time::Instant::now(),
             },
             false,

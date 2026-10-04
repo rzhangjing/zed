@@ -1,4 +1,3 @@
-pub mod extension;
 pub mod registry;
 
 use std::path::Path;
@@ -35,8 +34,7 @@ use crate::{
 /// Prevents extremely large timeout values from tying up resources indefinitely.
 const MAX_TIMEOUT_SECS: u64 = 600; // 10 minutes
 
-pub fn init(cx: &mut App) {
-    extension::init(cx);
+pub fn init(_cx: &mut App) {
 }
 
 actions!(

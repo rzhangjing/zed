@@ -45,7 +45,7 @@ enum ConfigurationTarget {
     Extension {
         id: ContextServerId,
         repository_url: Option<SharedString>,
-        installation: Option<extension::ContextServerConfiguration>,
+        installation: Option<project::context_server_store::ContextServerConfiguration>,
     },
 }
 
@@ -126,33 +126,14 @@ impl ConfigurationSource {
             ConfigurationTarget::Extension {
                 id,
                 repository_url,
-                installation,
-            } => {
-                let settings_validator = installation.as_ref().and_then(|installation| {
-                    jsonschema::validator_for(&installation.settings_schema)
-                        .context("Failed to load JSON schema for context server settings")
-                        .log_err()
-                });
-                let installation_instructions = installation.as_ref().map(|installation| {
-                    cx.new(|cx| {
-                        Markdown::new(
-                            installation.installation_instructions.clone().into(),
-                            Some(language_registry.clone()),
-                            None,
-                            cx,
-                        )
-                    })
-                });
-                ConfigurationSource::Extension {
-                    id,
-                    repository_url,
-                    installation_instructions,
-                    settings_validator,
-                    editor: installation.map(|installation| {
-                        create_editor(installation.default_settings, jsonc_language, window, cx)
-                    }),
-                }
-            }
+                installation: _,
+            } => ConfigurationSource::Extension {
+                id,
+                repository_url,
+                installation_instructions: None,
+                settings_validator: None,
+                editor: None,
+            },
         }
     }
 
@@ -377,12 +358,6 @@ fn resolve_context_server_extension(
         return Task::ready(None);
     };
 
-    let extension = ExtensionStore::global(cx)
-        .read(cx)
-        .installed_extensions()
-        .iter()
-        .find(|(_, entry)| entry.manifest.context_servers.contains_key(&id.0))
-        .map(|(id, entry)| (id.clone(), entry.manifest.clone()));
     cx.spawn(async move |cx| {
         let installation = descriptor
             .configuration(worktree_store, cx)
@@ -393,8 +368,7 @@ fn resolve_context_server_extension(
 
         Some(ConfigurationTarget::Extension {
             id,
-            repository_url: extension
-                .and_then(|(_, manifest)| manifest.repository.clone().map(SharedString::from)),
+            repository_url: None,
             installation,
         })
     })

@@ -499,7 +499,6 @@ async fn path_exists(connection: &Arc<dyn RemoteConnection>, path: &Path) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use extension::ExtensionHostProxy;
     use fs::FakeFs;
     use gpui::{AppContext, TestAppContext};
     use http_client::BlockedHttpClient;
@@ -544,7 +543,6 @@ mod tests {
         let http_client = Arc::new(BlockedHttpClient);
         let node_runtime = NodeRuntime::unavailable();
         let languages = Arc::new(language::LanguageRegistry::new(server_cx.executor()));
-        let proxy = Arc::new(ExtensionHostProxy::new());
 
         let _headless = server_cx.new(|cx| {
             HeadlessProject::new(
@@ -554,7 +552,6 @@ mod tests {
                     http_client,
                     node_runtime,
                     languages,
-                    extension_host_proxy: proxy,
                     startup_time: std::time::Instant::now(),
                 },
                 false,
@@ -626,7 +623,6 @@ mod tests {
         let http_client = Arc::new(BlockedHttpClient);
         let node_runtime = NodeRuntime::unavailable();
         let languages = Arc::new(language::LanguageRegistry::new(server_cx.executor()));
-        let proxy = Arc::new(ExtensionHostProxy::new());
 
         let _headless = server_cx.new(|cx| {
             HeadlessProject::new(
@@ -636,7 +632,6 @@ mod tests {
                     http_client,
                     node_runtime,
                     languages,
-                    extension_host_proxy: proxy,
                     startup_time: std::time::Instant::now(),
                 },
                 false,
@@ -753,7 +748,6 @@ mod tests {
         let http_client = Arc::new(BlockedHttpClient);
         let node_runtime = NodeRuntime::unavailable();
         let languages = Arc::new(language::LanguageRegistry::new(server_cx.executor()));
-        let proxy = Arc::new(ExtensionHostProxy::new());
 
         let _headless = server_cx.new(|cx| {
             HeadlessProject::new(
@@ -763,7 +757,6 @@ mod tests {
                     http_client,
                     node_runtime,
                     languages,
-                    extension_host_proxy: proxy,
                     startup_time: std::time::Instant::now(),
                 },
                 false,
@@ -845,7 +838,6 @@ mod tests {
         let http_client = Arc::new(BlockedHttpClient);
         let node_runtime = NodeRuntime::unavailable();
         let languages = Arc::new(language::LanguageRegistry::new(server_cx.executor()));
-        let proxy = Arc::new(ExtensionHostProxy::new());
 
         let _headless = server_cx.new(|cx| {
             HeadlessProject::new(
@@ -855,7 +847,6 @@ mod tests {
                     http_client: http_client.clone(),
                     node_runtime: node_runtime.clone(),
                     languages: languages.clone(),
-                    extension_host_proxy: proxy.clone(),
                     startup_time: std::time::Instant::now(),
                 },
                 false,
@@ -916,7 +907,6 @@ mod tests {
                     http_client,
                     node_runtime,
                     languages,
-                    extension_host_proxy: proxy,
                     startup_time: std::time::Instant::now(),
                 },
                 false,

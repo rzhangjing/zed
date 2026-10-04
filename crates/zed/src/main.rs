@@ -24,7 +24,6 @@ use collections::HashMap;
 use crashes::InitCrashHandler;
 use db::kvp::{GlobalKeyValueStore, KeyValueStore};
 use editor::Editor;
-use extension::ExtensionHostProxy;
 use fs::{Fs, RealFs};
 use futures::{FutureExt, StreamExt, channel::oneshot, future};
 use git::GitHostingProviderRegistry;
@@ -517,8 +516,6 @@ fn main() {
 
         OpenListener::set_global(cx, open_listener.clone());
 
-        extension::init(cx);
-        let extension_host_proxy = ExtensionHostProxy::global(cx);
 
         let client = Client::production(cx);
         cx.set_http_client(client.http_client());
@@ -554,7 +551,6 @@ fn main() {
 
         let node_runtime = NodeRuntime::new(client.http_client(), Some(shell_env_loaded_rx), rx);
 
-        //debug_adapter_extension::init(extension_host_proxy.clone(), cx);
         languages::init(languages.clone(), fs.clone(), node_runtime.clone(), cx);
         let user_store = cx.new(|cx| UserStore::new(client.clone(), cx));
         let workspace_store = cx.new(|cx| WorkspaceStore::new(client.clone(), cx));
@@ -638,11 +634,7 @@ fn main() {
 
         theme_settings::init(theme::LoadThemes::All(Box::new(Assets)), cx);
         eager_load_active_theme_and_icon_theme(fs.clone(), cx);
-        theme_extension::init(
-            extension_host_proxy,
-            ThemeRegistry::global(cx),
-            cx.background_executor().clone(),
-        );
+
         command_palette::init(cx);
         let copilot_chat_configuration = copilot_chat::CopilotChatConfiguration {
             enterprise_uri: language::language_settings::all_language_settings(None, cx)
