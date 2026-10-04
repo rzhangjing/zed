@@ -74,12 +74,12 @@ agent_settings = ["src/prompts/**"]
 json_schema_store = ["src/schemas/**"]
 prettier = ["src/prettier_server.js"]
 zed = ["resources/**"]
-zed_extension_api = ["wit/**"]
+#zed_extension_api = ["wit/**"]
 gpui_wgpu = ["src/*.wgsl"]
 # Cross-package reads (and, for gpui_apple, its own metal shader source).
-extension_host = ["../extension_api/wit/**"]
+#extension_host = ["../extension_api/wit/**"]
 gpui_apple = ["../gpui/src/**", "src/shaders.metal"]
-eval_cli = ["../zed/Cargo.toml"]
+#eval_cli = ["../zed/Cargo.toml"]
 prompt_store = ["../git_ui/src/commit_message_prompt.txt"]
 release_channel = ["../zed/RELEASE_CHANNEL"]
 cli = ["../../script/uninstall.sh"]
@@ -87,4 +87,4 @@ remote_server = ["../zed/Cargo.toml"]
 # `../zed/Cargo.toml`: build.rs reads it for ZED_PKG_VERSION. `../grammars/src`
 # and `src/prompts` are embedded in release builds; dev builds read them at
 # runtime via fs_embed.
-edit_prediction_cli = ["../zed/Cargo.toml", "../grammars/src/**", "src/prompts/**"]
+#edit_prediction_cli = ["../zed/Cargo.toml", "../grammars/src/**", "src/prompts/**"]

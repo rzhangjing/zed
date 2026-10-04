@@ -3,7 +3,6 @@ use std::sync::Arc;
 use collections::HashMap;
 use context_server::ContextServerId;
 use editor::Editor;
-use extension_host::ExtensionStore;
 use gpui::{Action as _, Entity, Focusable as _, ScrollHandle, WeakEntity, prelude::*};
 use project::context_server_store::{
     ContextServerConfiguration, ContextServerStatus, ContextServerStore,

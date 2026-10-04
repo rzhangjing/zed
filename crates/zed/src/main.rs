@@ -554,29 +554,10 @@ fn main() {
 
         let node_runtime = NodeRuntime::new(client.http_client(), Some(shell_env_loaded_rx), rx);
 
-        debug_adapter_extension::init(extension_host_proxy.clone(), cx);
+        //debug_adapter_extension::init(extension_host_proxy.clone(), cx);
         languages::init(languages.clone(), fs.clone(), node_runtime.clone(), cx);
         let user_store = cx.new(|cx| UserStore::new(client.clone(), cx));
         let workspace_store = cx.new(|cx| WorkspaceStore::new(client.clone(), cx));
-
-        language_extension::init(
-            language_extension::LspAccess::ViaWorkspaces({
-                let workspace_store = workspace_store.clone();
-                Arc::new(move |cx: &mut App| {
-                    workspace_store.update(cx, |workspace_store, cx| {
-                        Ok(workspace_store
-                            .workspaces()
-                            .filter_map(|weak| weak.upgrade())
-                            .map(|workspace: gpui::Entity<workspace::Workspace>| {
-                                workspace.read(cx).project().read(cx).lsp_store()
-                            })
-                            .collect())
-                    })
-                })
-            }),
-            extension_host_proxy.clone(),
-            languages.clone(),
-        );
 
         Client::set_global(client.clone(), cx);
 
@@ -654,13 +635,6 @@ fn main() {
         dap_adapters::init(cx);
         auto_update_ui::init(cx);
         reliability::init(client.clone(), app_state.workspace_store.clone(), cx);
-        extension_host::init(
-            extension_host_proxy.clone(),
-            app_state.fs.clone(),
-            app_state.client.clone(),
-            app_state.node_runtime.clone(),
-            cx,
-        );
 
         theme_settings::init(theme::LoadThemes::All(Box::new(Assets)), cx);
         eager_load_active_theme_and_icon_theme(fs.clone(), cx);
@@ -777,7 +751,6 @@ fn main() {
         onboarding::init(cx);
         settings_ui::init(cx);
         keymap_editor::init(cx);
-        extensions_ui::init(cx);
         edit_prediction::init(cx);
         inspector_ui::init(app_state.clone(), cx);
         json_schema_store::init(cx);

@@ -1,5 +1,4 @@
 use client::telemetry;
-use extension_host::ExtensionStore;
 use gpui::{App, ClipboardItem, PromptLevel, actions};
 use system_specs::{CopySystemSpecsIntoClipboard, SystemSpecs};
 use util::ResultExt;

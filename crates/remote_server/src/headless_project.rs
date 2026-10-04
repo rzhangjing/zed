@@ -7,7 +7,6 @@ use language::File;
 use lsp::LanguageServerId;
 
 use extension::ExtensionHostProxy;
-use extension_host::headless_host::HeadlessExtensionStore;
 use fs::Fs;
 use gpui::{App, AppContext as _, AsyncApp, Context, Entity, PromptLevel, TaskExt};
 use http_client::HttpClient;

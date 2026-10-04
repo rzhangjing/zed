@@ -68,7 +68,6 @@ use client::UserStore;
 use cloud_api_types::Plan;
 use collections::HashMap;
 use editor::{Editor, MultiBuffer};
-use extension_host::ExtensionStore;
 use feature_flags::{CreateThreadToolFeatureFlag, FeatureFlagAppExt as _};
 
 use fs::Fs;

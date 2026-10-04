@@ -48,7 +48,7 @@ members = [
     "crates/dap",
     "crates/dap_adapters",
     "crates/db",
-    "crates/debug_adapter_extension",
+    #"crates/debug_adapter_extension",
     "crates/debugger_tools",
     "crates/debugger_ui",
     "crates/deepseek",
@@ -68,12 +68,12 @@ members = [
     "crates/etw_tracing",
     #"crates/eval_cli",
     "crates/eval_utils",
-    "crates/explorer_command_injector",
-    "crates/extension",
-    "crates/extension_api",
+    #"crates/explorer_command_injector",
+    #"crates/extension",
+    #"crates/extension_api",
     #"crates/extension_cli",
-    "crates/extension_host",
-    "crates/extensions_ui",
+    #"crates/extension_host",
+    #"crates/extensions_ui",
     "crates/feature_flags",
     "crates/feature_flags_macros",
     "crates/feedback",
@@ -117,7 +117,7 @@ members = [
     "crates/language",
     "crates/language_core",
     "crates/language_detection",
-    "crates/language_extension",
+    #"crates/language_extension",
     "crates/language_model",
     "crates/language_model_core",
     "crates/language_models",
@@ -212,7 +212,7 @@ members = [
     "crates/terminal_view",
     "crates/text",
     "crates/theme",
-    "crates/theme_extension",
+    #"crates/theme_extension",
     "crates/theme_importer",
     "crates/theme_selector",
     "crates/theme_settings",
@@ -250,10 +250,10 @@ members = [
     # Extensions
     #
 
-    "extensions/glsl",
-    "extensions/html",
-    "extensions/proto",
-    "extensions/test-extension",
+    #"extensions/glsl",
+    #"extensions/html",
+    #"extensions/proto",
+    #"extensions/test-extension",
 
     #
     # Tooling
@@ -307,7 +307,7 @@ cloud_api_client = { path = "crates/cloud_api_client" }
 cloud_api_types = { path = "crates/cloud_api_types" }
 cloud_llm_client = { path = "crates/cloud_llm_client" }
 codestral = { path = "crates/codestral" }
-collab = { path = "crates/collab" }
+#collab = { path = "crates/collab" }
 collab_ui = { path = "crates/collab_ui" }
 collections = { path = "crates/collections", version = "0.1.0" }
 command_palette = { path = "crates/command_palette" }
@@ -324,7 +324,7 @@ credentials_provider = { path = "crates/credentials_provider" }
 dap = { path = "crates/dap" }
 dap_adapters = { path = "crates/dap_adapters" }
 db = { path = "crates/db" }
-debug_adapter_extension = { path = "crates/debug_adapter_extension" }
+#debug_adapter_extension = { path = "crates/debug_adapter_extension" }
 debugger_tools = { path = "crates/debugger_tools" }
 debugger_ui = { path = "crates/debugger_ui" }
 deepseek = { path = "crates/deepseek" }
@@ -341,9 +341,9 @@ encoding_selector = { path = "crates/encoding_selector" }
 env_var = { path = "crates/env_var" }
 etw_tracing = { path = "crates/etw_tracing" }
 eval_utils = { path = "crates/eval_utils" }
-extension = { path = "crates/extension" }
-extension_host = { path = "crates/extension_host" }
-extensions_ui = { path = "crates/extensions_ui" }
+#extension = { path = "crates/extension" }
+#extension_host = { path = "crates/extension_host" }
+#extensions_ui = { path = "crates/extensions_ui" }
 feature_flags = { path = "crates/feature_flags" }
 feature_flags_macros = { path = "crates/feature_flags_macros" }
 feedback = { path = "crates/feedback" }
@@ -386,7 +386,7 @@ keymap_editor = { path = "crates/keymap_editor" }
 language = { path = "crates/language" }
 language_core = { path = "crates/language_core" }
 language_detection = { path = "crates/language_detection" }
-language_extension = { path = "crates/language_extension" }
+#language_extension = { path = "crates/language_extension" }
 language_model = { path = "crates/language_model" }
 language_model_core = { path = "crates/language_model_core" }
 language_models = { path = "crates/language_models" }
@@ -480,7 +480,7 @@ terminal = { path = "crates/terminal" }
 terminal_view = { path = "crates/terminal_view" }
 text = { path = "crates/text" }
 theme = { path = "crates/theme" }
-theme_extension = { path = "crates/theme_extension" }
+#theme_extension = { path = "crates/theme_extension" }
 theme_selector = { path = "crates/theme_selector" }
 theme_settings = { path = "crates/theme_settings" }
 time_format = { path = "crates/time_format" }

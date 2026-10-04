@@ -3,7 +3,6 @@ use collections::HashMap;
 use context_server::{ContextServerCommand, ContextServerId};
 use editor::{Editor, EditorElement, EditorStyle};
 
-use extension_host::ExtensionStore;
 use gpui::{
     AsyncWindowContext, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, ScrollHandle,
     Subscription, Task, TextStyle, TextStyleRefinement, UnderlineStyle, WeakEntity, prelude::*,

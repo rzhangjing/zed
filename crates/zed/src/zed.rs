@@ -26,7 +26,6 @@ use client::zed_urls;
 use collections::VecDeque;
 use debugger_ui::debugger_panel::DebugPanel;
 use editor::{Editor, MultiBuffer};
-use extension_host::ExtensionStore;
 use feature_flags::{FeatureFlagAppExt as _, PanicFeatureFlag};
 use fs::Fs;
 use futures::FutureExt as _;
