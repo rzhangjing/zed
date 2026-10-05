@@ -62,7 +62,6 @@ profiles = ["release"]
 [extra-inputs]
 # Own non-.rs files read at build time (protobufs, bindgen headers, doc/data).
 proto = ["proto/**"]
-livekit_api = ["vendored/protocol/**"]
 media = ["src/bindings.h"]
 gpui = ["README.md"]
 git = ["src/checkpoint.gitignore"]
