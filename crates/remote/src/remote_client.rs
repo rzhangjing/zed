@@ -1137,14 +1137,14 @@ impl RemoteClient {
     ///
     /// This is the recommended way to create mock remote connections for tests.
     /// It returns the `MockConnectionOptions` (which can be passed to create a
-    /// `HeadlessProject`), an `AnyProtoClient` for the server side and a
+    /// remote project), an `AnyProtoClient` for the server side and a
     /// `ConnectGuard` for the client side which blocks the connection from
     /// being established until dropped.
     ///
     /// # Example
     /// ```ignore
     /// let (opts, server_session, connect_guard) = RemoteClient::fake_server(cx, server_cx);
-    /// // Set up HeadlessProject with server_session...
+    /// // Spawn the server-side entity that owns `server_session`...
     /// drop(connect_guard);
     /// let client = RemoteClient::fake_client(opts, cx).await;
     /// ```
@@ -1178,8 +1178,8 @@ impl RemoteClient {
 
     /// Creates a `RemoteClient` connected to a mock server.
     ///
-    /// Call `fake_server` first to get the connection options, set up the
-    /// `HeadlessProject` with the server session, then call this method
+    /// Call `fake_server` first to get the connection options, spawn the
+    /// server-side entity that owns the server session, then call this method
     /// to create the client.
     #[cfg(any(test, feature = "test-support"))]
     pub async fn connect_mock(

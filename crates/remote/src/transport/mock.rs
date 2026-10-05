@@ -11,17 +11,10 @@
 //!
 //! #[gpui::test]
 //! async fn test_remote_editing(cx: &mut TestAppContext, server_cx: &mut TestAppContext) {
-//!     let (opts, server_session) = MockConnection::new(cx, server_cx);
+//!     let (opts, server_session, _connect_guard) = MockConnection::new(cx, server_cx);
 //!
-//!     // Create the headless project (server side)
-//!     server_cx.update(HeadlessProject::init);
-//!     let _headless = server_cx.new(|cx| {
-//!         HeadlessProject::new(
-//!             HeadlessAppState { session: server_session, /* ... */ },
-//!             false,
-//!             cx,
-//!         )
-//!     });
+//!     // The server side is yours to drive: spawn whatever entity should answer
+//!     // the client's `Envelope` requests, using `server_session` as its session.
 //!
 //!     // Create the client using the helper
 //!     let (client, server_client) = RemoteClient::new_mock(cx, server_cx).await;
@@ -133,7 +126,7 @@ impl MockConnection {
     ///
     /// Returns:
     /// - `MockConnectionOptions` to pass to `remote::connect()` or `RemoteClient` creation
-    /// - `AnyProtoClient` to pass to `HeadlessProject::new()` as the session
+    /// - `AnyProtoClient` to pass to the server-side entity (the session it should own)
     ///
     /// # Arguments
     /// - `client_cx`: The test context for the client side
