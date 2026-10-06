@@ -33,7 +33,7 @@ graph TB
 `Platform` trait 要求实现的能力（见 [GPUI-Internals.md](GPUI-Internals.md)）：`run`（进入本地事件循环）、创建/管理 window、剪贴板、光标、键盘映射、屏幕/缩放、绘制回调调度等。
 
 - **Linux** 用内部 `enum`-like 的 `inner`（`WaylandClient`/`X11Client`/`HeadlessClient`）经 `gpui::guess_compositor()`（linux.rs:40）在运行时择一。
-- **Windows** 的 `DirectX` 渲染与 `windows_resources`（图标/manifest）配合；`no_webrtc` 等构建开关影响其依赖（见 [Building-on-Windows.md](Building-on-Windows.md)）。
+- **Windows** 的 `DirectX` 渲染与 `windows_resources`（图标/manifest）配合；本 fork 的 Windows 构建只保留 spectre stub 一项本地裁剪（历史上还曾有 `no_webrtc`，已移除，见 [Building-on-Windows.md](Building-on-Windows.md)）。
 - **macOS** 强依赖 `MainThreadMarker`（保证主线程）+ `metal_renderer`。
 
 ## 3. 渲染器（`GpuRenderer` 的另一维）

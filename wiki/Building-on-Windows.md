@@ -1,6 +1,6 @@
-# Building on Windows（MSVC 工具链 / webrtc 与 spectre 裁剪）
+# Building on Windows（MSVC 工具链 / spectre 裁剪）
 
-本页记录 **在本仓库内把桌面编辑器在 Windows MSVC 下编译起来** 所需的配置与本地改动，是对官方 [docs/src/development/windows.md](../docs/src/development/windows.md) 的补充。核心两块裁剪：**`no_webrtc`（绕开 libwebrtc/LiveKit）** 与 **`msvc_spectre_libs` patch（绕开 Spectre CRT）**。
+本页记录 **在本仓库内把桌面编辑器在 Windows MSVC 下编译起来** 所需的配置与本地改动，是对官方 [docs/src/development/windows.md](../docs/src/development/windows.md) 的补充。当前唯一生效的本地裁剪是 **`msvc_spectre_libs` patch（绕开 Spectre CRT）**；曾经的 **`no_webrtc`（绕开 libwebrtc/LiveKit）** 已随 webrtc 依赖链一并移除，本页只在第 3 节保留其历史记录。
 
 ## 1. 官方前置工具链（MSVC）
 
@@ -17,29 +17,25 @@
 
 ```mermaid
 graph TB
-    CFG[.cargo/config.toml windows target] --> A[--cfg no_webrtc]
-    CFG --> B[--check-cfg cfg no_webrtc]
-    CFG --> C[-C target-feature=+crt-static]
-    A --> LK["livekit_client 走 mock_client（已移除）"]
-    A --> AU[audio 走 fake EchoCanceller]
+    CFG[.cargo/config.toml windows target] --> C[-C target-feature=+crt-static]
+    CFG --> D[windows_slim_errors]
+    CFG --> X[曾注入 --cfg no_webrtc（已移除）]
     PATCH[Cargo.toml patch.crates-io] --> SP[msvc_spectre_libs 空 stub]
     SP --> NOERR[不再 panic 找 Spectre CRT]
 ```
 
-三处关键文件：
-- [`.cargo/config.toml`](../.cargo/config.toml)（L12-22）：注入 `--cfg no_webrtc` 与 `--check-cfg`、强制 `crt-static`。
-- [`Cargo.toml`](../Cargo.toml)（`[patch.crates-io]`，L976-996）：`msvc_spectre_libs` path stub。
+关键文件：
+- [`.cargo/config.toml`](../.cargo/config.toml)（Windows target 段）：`windows_slim_errors` 与强制 `crt-static`（`--cfg no_webrtc`/`--check-cfg` 已删除）。
+- [`Cargo.toml`](../Cargo.toml)（`[patch.crates-io]` 段）：`msvc_spectre_libs` path stub。
 - [`build-patches/msvc_spectre_libs/`](../build-patches/msvc_spectre_libs)：no-op 替身 crate。
 
 > **切勿用环境变量 `RUSTFLAGS`**：它会整体覆盖 `.cargo/config.toml` 里的 `rustflags`（含上面这些必需项），导致链接失败或难诊断的错误（官方文档“Setting RUSTFLAGS breaks builds”一节）。要加自定义 flag，请在 config.toml 的对应 `target`/`build` 段追加。
 
-## 3. webrtc 裁剪：`no_webrtc`
+## 3. webrtc 裁剪（已移除 · 历史）
 
-**动机**：`libwebrtc`/`webrtc-sys` 需要下载预编译 WebRTC 二进制，且 `webrtc-sys` 的构建脚本按 **仅 Linux** 供给，MSVC 下无法完成。
+> ⚠️ 历史：本 fork 曾用自定义 `--cfg no_webrtc` 绕过 `libwebrtc`/`webrtc-sys`：二者需要下载预编译 WebRTC 二进制，且 `webrtc-sys` 的构建脚本按 **仅 Linux** 供给，MSVC 下无法完成。该裁剪**已完全移除**——`.cargo/config.toml` 不再注入 `--cfg no_webrtc` 或 `--check-cfg cfg(no_webrtc)`，`livekit_client` / `call` / `collab_ui` / `livekit_api` 已删除，`audio` 也不再有 `libwebrtc` 依赖：回声消除（AEC）连同 fake `EchoCanceller`（原 `crates/audio/src/audio_pipeline/echo_canceller.rs`）一并删除。本 fork 现在没有 webrtc cfg、没有 libwebrtc 依赖、也没有替身 AEC。
 
-> ⚠️ 历史：`livekit_client` / `call` 已从本 fork 移除（提交 `移除call和remote`），下面关于二者的门控/补偿点描述仅作参考。`--cfg no_webrtc` 仍然生效，但现仅作用于 `audio`（仍依赖 `libwebrtc`）。
-
-**做法**：`--cfg no_webrtc` 复用 Zed 内建替身机制。原 `livekit_client` 的门控条件（`crates/livekit_client/src/lib.rs:13-68`）：
+原替身判定条件（`livekit_client`，已移除）：
 
 ```
 any(test, feature = "test-support",
@@ -48,11 +44,7 @@ any(test, feature = "test-support",
     no_webrtc)
 ```
 
-命中即编译 `mock_client` + `pub mod test`，不链接真实 livekit（该 crate 已移除）。当前仍然生效的是 `audio` 侧：改用 fake `EchoCanceller`（`crates/audio/src/audio_pipeline/echo_canceller.rs`）。这样整条 webrtc/LiveKit 原生依赖被裁掉。
-
-**补偿点（易漏，历史）**：任何直接引用真实 `RtcStats::*` 变体的代码，必须用同一判定切到替身版，否则报 E0599。原 `call/src/call_impl/diagnostics.rs`（已移除）：`compute_remote_audio_stats`、`extract_metrics` 各有替身/真实两版门控，均已补 `no_webrtc`。替身符号见 `livekit_client/src/test.rs`（已移除；`RtcStats` 空枚举 L50、`SessionStats` L44）。详见 [Collaboration-and-Call.md](Collaboration-and-Call.md) 第 5 节。
-
-`--check-cfg cfg(no_webrtc)` 用于声明该自定义 cfg，避免 `unexpected_cfgs` lint 报错。
+命中即编译 `mock_client` + `pub mod test`，不链接真实 livekit；同时任何直接引用真实 `RtcStats::*` 变体的诊断代码（原 `call/src/call_impl/diagnostics.rs` 的 `compute_remote_audio_stats`、`extract_metrics`）也必须做同样门控，否则报 E0599。这些补偿点都随 `call`/`livekit_client` 一起消失，仅作历史参考；详见 [Collaboration-and-Call.md](Collaboration-and-Call.md) 第 5 节。
 
 ## 4. spectre 裁剪：`msvc_spectre_libs` 空 stub（方案 A）
 
@@ -65,12 +57,12 @@ any(test, feature = "test-support",
    - `Cargo.toml`：`version = "0.1.3"`（匹配 Cargo.lock，满足 `pet-*` 的 `^0.1.1`）、保留 `error = []` 空特性（否则依赖解析失败）。
    - `build.rs`：`fn main() {}`——不加 link-search、不 panic。
    - `src/lib.rs`：空。
-2. [`Cargo.toml`](../Cargo.toml) `[patch.crates-io]` 追加（L996）：
+2. [`Cargo.toml`](../Cargo.toml) `[patch.crates-io]` 段追加：
    ```toml
    msvc_spectre_libs = { path = "build-patches/msvc_spectre_libs" }
    ```
 
-**为何用 `[patch.crates-io]` 而非直接改 vendor/**：本仓 `.cargo/config.toml` 用 `replace-with = "vendored-sources"`（L31-32、L198-199），手改 `vendor/` 会触发 `.cargo-checksum.json` 校验失败。path patch 是官方支持且已在同环境验证的做法——同段已有 `scratch = { path = "corgi-patches/scratch" }`（L1008）先例，无需 `[workspace]`/`exclude` 也能生效。
+**为何用 `[patch.crates-io]` 而非直接改 vendor/**：本仓 `.cargo/config.toml` 用 `replace-with = "vendored-sources"`（`[source.crates-io]` → `[source.vendored-sources]`，指向 `vendor/`），手改 `vendor/` 会触发 `.cargo-checksum.json` 校验失败。path patch 是官方支持且已在同环境验证的做法——上面第 2 条的 `msvc_spectre_libs = { path = "build-patches/msvc_spectre_libs" }` 即 `[patch.crates-io]` 段内的 path patch 先例，无需 `[workspace]`/`exclude` 也能生效。
 
 > 首次 `cargo build` 后，Cargo.lock 会自动把 `msvc_spectre_libs` 的 source 从 registry 改为该 path（预期内）。回退：删除该 patch 行与 `build-patches/msvc_spectre_libs/` 即可恢复要求 Spectre 库的原状。
 
@@ -82,7 +74,7 @@ any(test, feature = "test-support",
 - 官方 CI 的 Windows 产物是 MSVC 构建的 `Zed-x86_64.exe` / `Zed-aarch64.exe`（本 fork 的打包清单 `EXPECTED_ASSETS` 里已无 `zed-remote-server-*`），并不产出用 GNU 构建的桌面。
 - 即便 `rust-toolchain.toml` 目前仍列 `targets = ["x86_64-pc-windows-gnu"]`，也不改变上述阻塞——真正可编译桌面的是 **MSVC**。
 
-因此路线确定为：**MSVC + `no_webrtc` + spectre stub**，而非切换 GNU。
+因此路线确定为：**MSVC + spectre stub**，而非切换 GNU。
 
 ## 6. 构建与常见坑
 
@@ -95,7 +87,7 @@ cargo build --release         # release（gpui_windows 会调 fxc.exe 编译着�
 | 现象 | 处理 |
 |---|---|
 | `No spectre-mitigated libs were found` | 已由第 4 节 patch 消除；若仍出现，确认 `[patch.crates-io]` 生效 |
-| 找不到 `RtcStats::InboundRtp` 等（E0599，历史） | webrtc 门控漏补 `no_webrtc`，见第 3 节补偿点（`call`/`livekit_client` 已移除） |
+| 找不到 `RtcStats::InboundRtp` 等（E0599，历史，已不可能） | webrtc 门控漏补 `no_webrtc`；`call`/`livekit_client` 与整个 webrtc 轴已移除 |
 | `STATUS_ACCESS_VIOLATION`（rust-lld） | 换链接器 / 调整 `.cargo/config.toml` 层级 |
 | `Invalid RC path selected` | 设 `ZED_RC_TOOLKIT_PATH` 到 `Windows Kits\10\bin\<ver>\x64` |
 | `path too long`（`pet`） | `git config --system core.longpaths true` + 启用 Windows `LongPathsEnabled` |
@@ -105,16 +97,16 @@ cargo build --release         # release（gpui_windows 会调 fxc.exe 编译着�
 
 | 项 | 位置 | 作用 |
 |---|---|---|
-| windows rustflags | `.cargo/config.toml:12-22` | 注入 `no_webrtc`、`--check-cfg`、`crt-static` |
+| windows rustflags | `.cargo/config.toml`（Windows target 段） | `windows_slim_errors`、`crt-static`（`no_webrtc` 注入已删除） |
 | `livekit_client` 门控（已移除） | `crates/livekit_client/src/lib.rs:13-68` | 真实 ↔ mock 二选一 |
 | diagnostics 补偿（已移除） | `crates/call/src/call_impl/diagnostics.rs` | `compute_remote_audio_stats`/`extract_metrics` 双版本 |
 | `RtcStats`/`SessionStats` 替身（已移除） | `crates/livekit_client/src/test.rs:50`/`44` | 空枚举/精简结构 |
-| `audio` fake `EchoCanceller`（仍生效） | `crates/audio/src/audio_pipeline/echo_canceller.rs` | `no_webrtc` 下不链接 `libwebrtc` 的实现 |
-| spectre patch 行 | `Cargo.toml:996` | path 替换 `msvc_spectre_libs` |
+| `audio` AEC（已移除） | 原 `crates/audio/src/audio_pipeline/echo_canceller.rs` | 曾以 fake `EchoCanceller` 避开 `libwebrtc`；AEC 实现已随 webrtc 删除 |
+| spectre patch 行 | `Cargo.toml`（`[patch.crates-io]` 段） | path 替换 `msvc_spectre_libs` |
 | spectre stub | `build-patches/msvc_spectre_libs/{Cargo.toml,build.rs}` | 0.1.3 + 空 `error` 特性 + no-op build.rs |
 | 官方 Windows 指南 | `docs/src/development/windows.md` | 工具链与故障排查 |
 
 ## 8. 与其他页面的关系
-- webrtc 替身的完整 API 面：[Collaboration-and-Call.md](Collaboration-and-Call.md)。
+- webrtc 替身（已移除）的历史记录：[Collaboration-and-Call.md](Collaboration-and-Call.md)。
 - `pet-*` 因何被引入（Python 探测）：[Language-and-Project.md](Language-and-Project.md) 第 4 节。
 - 平台相关 crate（`gpui_windows`/`gpui_wgpu`）在整体架构中的位置：[Architecture.md](Architecture.md)。

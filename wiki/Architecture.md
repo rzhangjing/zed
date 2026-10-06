@@ -109,4 +109,4 @@ graph TB
 
 1. **单线程 UI + 后台执行器**：所有 `Entity`/视图状态变更只能在 GPUI 主线程通过 `Context` 完成；耗时工作走 `cx.background_executor()` / `cx.spawn()`。
 2. **依赖注入靠 Global**：大量子系统以 `::set_global(...)` / `::global(cx)`（`UpdateGlobal`/`Global` trait）挂载到 `App`，启动时统一注册（见 [Startup-Flow](Startup-Flow.md)）。
-3. **平台差异用 `cfg` 收敛**：渲染、平台后端、以及音频/RTC 的替身实现都通过 `#[cfg(...)]` 切换；Windows 上的 webrtc/spectre 裁剪即是一例（见 [Building-on-Windows](Building-on-Windows.md)）。
+3. **平台差异用 `cfg` 收敛**：渲染、平台后端、以及音频/RTC 的替身实现都通过 `#[cfg(...)]` 切换；Windows 上的 spectre CRT 裁剪即是一例（历史上的 webrtc/`no_webrtc` 裁剪已随依赖链移除，见 [Building-on-Windows](Building-on-Windows.md)）。

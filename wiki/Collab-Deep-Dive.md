@@ -2,7 +2,7 @@
 
 > ⚠️ 历史文档：本页描述的 `crates/call` / `crates/collab` / `crates/collab_ui` 与 `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。`crates/client` 与 `crates/channel` 仍在本 fork 中。
 
-> 参考手册级：多人协作由五 crate 分层——`crates/client`（**连 collab 服务器的客户端 + `UserStore`**）、`crates/call`（**本地房间状态机 `Room`**）、`crates/collab`（**云端服务器**）、`crates/channel`（**频道/共享 markdown**）、`crates/collab_ui`（**协作面板/聊天**）。音视频走 `livekit_client`/`livekit_api`（WebRTC）。CRDT 同步底座为 [text::Buffer](Text-Buffer-Deep-Dive.md) + `clock::Lamport`。
+> 参考手册级：多人协作由五 crate 分层——`crates/client`（**连 collab 服务器的客户端 + `UserStore`**）、`crates/call`（**本地房间状态机 `Room`**）、`crates/collab`（**云端服务器**）、`crates/channel`（**频道/共享 markdown**）、`crates/collab_ui`（**协作面板/聊天**）。音视频曾走 `livekit_client`/`livekit_api`（WebRTC），该轴连同 `no_webrtc` 替身机制已一并移除。CRDT 同步底座为 [text::Buffer](Text-Buffer-Deep-Dive.md) + `clock::Lamport`。
 
 ## 1. `crates/client`：客户端连接与身份 [`client.rs`](../crates/client/src/client.rs)(86KB)
 | 类型 | 位置 | 角色 |
@@ -28,7 +28,7 @@
 | `mod.rs` | `crates/call/src/call_impl/mod.rs`(28KB) | `init`（注册全局 `Room` store、订阅服务器 `RoomUpdated`/`CallUpdated`）、请求封装 |
 | `participant.rs` | `crates/call/src/call_impl/participant.rs` | 参与者（`ParticipantLayout`） |
 | `diagnostics.rs` | `crates/call/src/call_impl/diagnostics.rs` | 通话诊断（媒体/网络） |
-职责：维护"**谁在共享哪个项目、谁跟随谁、capability**"，把 `Workspace` 的 [leader/follower](Workspace-Deep-Dive.md) 语义与服务器 `Room` 对齐；调用 `livekit_client` 建音频房间。→ `crates/livekit_client`/`livekit_api`（已移除；WebRTC；Windows MSVC 下为 mock 路径，见构建笔记）。
+职责：维护"**谁在共享哪个项目、谁跟随谁、capability**"，把 `Workspace` 的 [leader/follower](Workspace-Deep-Dive.md) 语义与服务器 `Room` 对齐；调用 `livekit_client` 建音频房间（属已移除的历史实现）。→ `crates/livekit_client`/`livekit_api`（已移除；WebRTC；历史上 Windows MSVC 下走 mock 路径，该裁剪也已移除，见构建笔记）。
 
 ## 3. `crates/collab`（已移除）：云端服务器（`main.rs` + `rpc.rs` 146KB + Postgres）
 | 部分 | 位置 | 角色 |

@@ -1,6 +1,6 @@
 # Call 与音视频深挖（实时通话 · LiveKit RTC · 音频管线）
 
-> ⚠️ 历史文档：本页描述的 `call` / `collab_ui` / `livekit_client` / `livekit_api` 栈已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。仅 `audio` crate（cpal/rodio 音频管线）仍在本 fork 中。
+> ⚠️ 历史文档：本页描述的 `call` / `collab_ui` / `livekit_client` / `livekit_api` 栈已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。webrtc/LiveKit 轴（含 `no_webrtc` 替身与 AEC）也已整体移除。仅 `audio` crate（cpal/rodio 音频管线）仍在本 fork 中。
 
 > 返回 [Home](Home) · [Module-Index](Module-Index)
 >
@@ -36,7 +36,7 @@ graph TB
 | `struct LocalParticipant` / `RemoteParticipant` | participant.rs:12 / 27 | 本地/远端参与者（`Id`、`call_contract`、音量、说话状态） |
 | `struct CallDiagnostics` / `CallStats` / `CallDiagnosticsSnapshot` / `Report` | diagnostics.rs:67 / 21 / 54 / 62 | 通话质量诊断（`RemoteAudioDiagnostics`、`InboundCounters`、`ComputedNetworkStats`、ICE/连接质量轮询） |
 
-> `diagnostics.rs` 是通话遥测/自检子系统（与 Windows `no_webrtc` 场景的 mock 路径协同，见 [Building-on-Windows.md](Building-on-Windows.md)）。
+> `diagnostics.rs` 是通话遥测/自检子系统（历史上与 Windows `no_webrtc` 场景的 mock 路径协同；该裁剪与 `diagnostics.rs` 均已移除，见 [Building-on-Windows.md](Building-on-Windows.md)）。
 
 ## 3. `livekit_client`（已移除 · RTC 封装 + Mock · `crates/livekit_client/src/`）
 

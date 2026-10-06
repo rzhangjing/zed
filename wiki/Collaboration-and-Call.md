@@ -1,8 +1,8 @@
-# Collaboration & Call（RPC / 协同 / 音视频 / no_webrtc 替身）
+# Collaboration & Call（RPC / 协同 / 音视频；webrtc 轴与 no_webrtc 替身已移除）
 
-> ⚠️ 历史文档：本页描述的 `collab`（协作服务端）/ `call` / `collab_ui` / `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。`proto` / `rpc` / `client` / `channel` / `audio` 仍在本 fork 中，其中 `no_webrtc` 现仅作用于 `audio`。
+> ⚠️ 历史文档：本页描述的 `collab`（协作服务端）/ `call` / `collab_ui` / `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。webrtc/LiveKit 轴及其配套的 `no_webrtc` 替身机制也已**彻底移除**：不再有 `--cfg no_webrtc`、没有任何 `libwebrtc` 依赖，也没有 fake AEC。仍在本 fork 的是 `proto` / `rpc` / `client` / `channel` / `audio`。
 
-Zed 的实时能力原有两条链路：**RPC（数据协同）** 走自研 `rpc`/`client`；**音视频/屏幕共享（Call）** 走 `livekit_client` + `audio`（`livekit_client` 已移除）。`no_webrtc` 用来用替身绕开 webrtc/LiveKit 原生依赖。仍在本 fork 的相关 crate：[`proto`](../crates/proto)、[`rpc`](../crates/rpc)、[`client`](../crates/client)、[`channel`](../crates/channel)、[`audio`](../crates/audio)。
+Zed 的实时能力原有两条链路：**RPC（数据协同）** 走自研 `rpc`/`client`；**音视频/屏幕共享（Call）** 走 `livekit_client` + `audio`。前者仍在本 fork；后者连同用于绕开 webrtc/LiveKit 原生依赖的 `no_webrtc` 替身机制已在本 fork 一并移除。仍在本 fork 的相关 crate：[`proto`](../crates/proto)、[`rpc`](../crates/rpc)、[`client`](../crates/client)、[`channel`](../crates/channel)、[`audio`](../crates/audio)（其中 `audio` 已无 webrtc/AEC 依赖）。
 
 ## 1. 职责划分
 
@@ -53,13 +53,13 @@ graph TB
 
 ## 4. 音频（audio crate）
 
-[`Audio`](../crates/audio/src/audio_pipeline.rs)（L48）基于 rodio/cpal，管理输出混音器与设备；`init()`(L28)、`open_input_stream()`(L117)、`resolve_device`。提示音 `Sound`（[`audio.rs:22`](../crates/audio/src/audio.rs)）枚举加入/离开/静音/屏幕共享/Agent 完成等，统一走 `Audio::play_sound`。采样固定 48kHz、双声道（L6-7）。回声消除（AEC）依赖 webrtc 原生库——见下节替身。
+[`Audio`](../crates/audio/src/audio_pipeline.rs)（L48）基于 rodio/cpal，管理输出混音器与设备；`init()`(L28)、`open_input_stream()`(L117)、`resolve_device`。提示音 `Sound`（[`audio.rs:22`](../crates/audio/src/audio.rs)）枚举加入/离开/静音/屏幕共享/Agent 完成等，统一走 `Audio::play_sound`。采样固定 48kHz、双声道（L6-7）。回声消除（AEC）曾依赖 webrtc 原生库，该实现已随 webrtc 移除（见第 5 节）。
 
-## 5. no_webrtc 替身机制（本项目关键裁剪）
+## 5. no_webrtc 替身机制（已移除 · 历史）
 
-> ⚠️ 历史：`livekit_client` 已从本 fork 移除，以下门控描述仅作参考。`--cfg no_webrtc` 现仅作用于 `audio`（见本节末）。
+> ⚠️ 历史：`livekit_client` 已从本 fork 移除，`--cfg no_webrtc` 及 [`.cargo/config.toml`](../.cargo/config.toml) 中的注入也已一并删除。以下门控描述仅作参考；本 fork 已无 webrtc cfg、无 `libwebrtc` 依赖、无 fake AEC。
 
-`livekit_client` 用**对称门控**在“真实实现”与“mock 实现”间二选一。判定条件统一为：
+`livekit_client` 曾用**对称门控**在“真实实现”与“mock 实现”间二选一。判定条件统一为：
 
 ```
 any(test, feature = "test-support",
@@ -68,13 +68,13 @@ any(test, feature = "test-support",
     no_webrtc)
 ```
 
-见 `crates/livekit_client/src/lib.rs:13-68`（已移除）：命中则编译 `mod mock_client` + `pub mod test`（`pub use mock_client::*`），否则编译 `mod livekit_client`。自定义 `--cfg no_webrtc` 由 [`.cargo/config.toml`](../.cargo/config.toml) 在 Windows target 注入，使 **MSVC 构建也走 mock**，从而不需要 webrtc/LiveKit 原生库。
+见 `crates/livekit_client/src/lib.rs:13-68`（已移除）：命中则编译 `mod mock_client` + `pub mod test`（`pub use mock_client::*`），否则编译 `mod livekit_client`。自定义 `--cfg no_webrtc` 曾由 `.cargo/config.toml` 在 Windows target 注入，使 MSVC 构建也走 mock，从而不需要 webrtc/LiveKit 原生库。
 
 替身符号位于 `crates/livekit_client/src/test.rs`（已移除）：`RtcStats` 是**空枚举**（L50）、`SessionStats { publisher_stats, subscriber_stats }`（L44），`mock_client::{Room, LocalParticipant, ...}` 复刻真实 API 但不做网络。`mock_client/` 下再分 `participant.rs`/`publication.rs`/`track.rs`。
 
-**连带补偿点**：`call` 里凡引用真实 `RtcStats` 变体（`InboundRtp`/`CandidatePair`/`RemoteInboundRtp`）的诊断代码，也必须用同一判定切到“替身版”，否则 MSVC+no_webrtc 下会编译真实版却找不到变体（E0599）。`crates/call/src/call_impl/diagnostics.rs`（已移除）的 `compute_remote_audio_stats`、`extract_metrics` 各有替身/真实两版即属此类——已补 `no_webrtc`。`room.rs` 里 `use livekit::{...}` 的 `livekit` 实为 `livekit_client as livekit` 别名，符号由 mock 覆盖，无需改动。
+**连带补偿点**：`call` 里凡引用真实 `RtcStats` 变体（`InboundRtp`/`CandidatePair`/`RemoteInboundRtp`）的诊断代码，也必须用同一判定切到“替身版”，否则 MSVC+no_webrtc 下会编译真实版却找不到变体（E0599）。`crates/call/src/call_impl/diagnostics.rs`（已移除）的 `compute_remote_audio_stats`、`extract_metrics` 各有替身/真实两版即属此类。
 
-音频侧（本条仍然适用）：webrtc 的 AEC 在 `no_webrtc` 下改用 fake `EchoCanceller`（`crates/audio/src/audio_pipeline/echo_canceller.rs`），避免链接 `webrtc-sys`（仅 Linux 可用）。
+音频侧：webrtc 的 AEC 曾在 `no_webrtc` 下改用 fake `EchoCanceller`（原 `crates/audio/src/audio_pipeline/echo_canceller.rs`），以避免链接 `webrtc-sys`。该文件与整个 AEC 实现已删除，`audio` 现在只保留 cpal/rodio 的播放与设备管理。
 
 > 完整构建步骤与 `msvc_spectre_libs` patch 见 [Building on Windows.md](Building-on-Windows.md)。
 
@@ -89,7 +89,7 @@ any(test, feature = "test-support",
 | `Room::connect`（真实，已移除） | `livekit_client/src/livekit_client.rs:52` | 连 LiveKit 房间 |
 | `spawn_room_connection`（已移除） | `call/src/call_impl/room.rs:1754` | 用 token 建房并接入事件流 |
 | `RoomEvent`（已移除） | `livekit_client/src/lib.rs:138` | 房间事件（参与者/轨道/连接） |
-| `RtcStats`（空枚举，已移除） | `livekit_client/src/test.rs:50` | no_webrtc/test 下的统计替身 |
+| `RtcStats`（空枚举，已移除） | `livekit_client/src/test.rs:50` | 历史上 no_webrtc/test 下的统计替身，随 webrtc 轴一并移除 |
 | `Audio` / `Sound` | `audio/src/audio_pipeline.rs:48` / `audio.rs:22` | 播放/设备 / 提示音 |
 
 ## 7. 与其他页面的关系

@@ -14,16 +14,8 @@ rustflags = [
     "--cfg",
     "windows_slim_errors",        # This cfg will reduce the size of `windows::core::Error` from 16 bytes to 4 bytes
     "-C",
-    "target-feature=+crt-static", # This fixes the linking issue when compiling livekit on Windows
-    "--cfg",
-    "no_webrtc",                  # Force audio/livekit_client to use the fake/mock implementations, so libwebrtc/livekit/webrtc-sys are not linked (avoids the prebuilt WebRTC download)
-    "--check-cfg",
-    "cfg(no_webrtc)",             # Declare the custom cfg to silence the unexpected_cfgs lint
+    "target-feature=+crt-static", # Link the CRT statically so the binary doesn't need the MSVC runtime redistributable
 ]
-
-# We need lld to link libwebrtc.a successfully on aarch64-linux
-[target.aarch64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 [env]
 MACOSX_DEPLOYMENT_TARGET = "10.15.7"
@@ -118,11 +110,6 @@ replace-with = "vendored-sources"
 [source."git+https://github.com/zed-industries/gh-workflow?rev=37f3c0575d379c218a9c455ee67585184e40d43f"]
 git = "https://github.com/zed-industries/gh-workflow"
 rev = "37f3c0575d379c218a9c455ee67585184e40d43f"
-replace-with = "vendored-sources"
-
-[source."git+https://github.com/zed-industries/livekit-rust-sdks?rev=0a1c519cfce9b365229026b55de9b9dbdb6fed3c"]
-git = "https://github.com/zed-industries/livekit-rust-sdks"
-rev = "0a1c519cfce9b365229026b55de9b9dbdb6fed3c"
 replace-with = "vendored-sources"
 
 [source."git+https://github.com/zed-industries/lsp-types?rev=f1783e63a7f4eb4397bf51d4148b4895a1f7ab16"]

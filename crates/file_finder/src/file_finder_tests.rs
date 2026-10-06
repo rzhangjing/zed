@@ -5063,9 +5063,9 @@ async fn test_start_of_word_preferred_over_scattered_match(cx: &mut TestAppConte
             "/src",
             json!({
                 "crates": {
-                    "livekit_client": {
+                    "live_preview": {
                         "src": {
-                            "livekit_client": {
+                            "live_preview": {
                                 "playback.rs": "",
                             }
                         }
@@ -5094,7 +5094,7 @@ async fn test_start_of_word_preferred_over_scattered_match(cx: &mut TestAppConte
         assert!(!matches.is_empty(),);
         assert_eq!(
             matches[0].path.as_unix_str(),
-            "crates/livekit_client/src/livekit_client/playback.rs",
+            "crates/live_preview/src/live_preview/playback.rs",
         );
     });
 }

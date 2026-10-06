@@ -126,7 +126,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Tasks-and-Tooling（任务运行 / REPL / 日志 / 剖析）](Tasks-and-Tooling.md)
 
 ### 构建与平台
-- [Building on Windows（MSVC 构建 / webrtc & spectre 裁剪）](Building-on-Windows.md)
+- [Building on Windows（MSVC 构建 / spectre 裁剪）](Building-on-Windows.md)
 
 ## 4. 快速开始
 
