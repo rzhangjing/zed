@@ -38,7 +38,7 @@
 | 数据库 | `crates/collab/src/db.rs`(24KB) + `crates/collab/src/db/` | sqlx/Postgres：`Project`(L580)、`Room`、`Channel`、`User`、`Buffer` 等持久化 + 内存态 |
 | REST API | `crates/collab/src/api/` | 频道、RPC 版本、stripe/proxy 等外部集成 |
 | lib | `crates/collab/src/lib.rs` | `Server` 组装、`Session` |
-`crates/proto` 定义所有 `Room`/`Project`/`Buffer`/`Channel` 消息；服务器是权威 `Peer`（`ConnectionId` 路由）。Docker 部署见根 `compose.yml`/`Dockerfile-collab`。
+`crates/proto` 定义所有 `Room`/`Project`/`Buffer`/`Channel` 消息；服务器是权威 `Peer`（`ConnectionId` 路由）。服务端连同其部署脚手架（`compose.yml`/`Dockerfile-collab`/`script/deploy-collab`/k8s 清单）均已从本 fork 移除。
 
 ## 4. `crates/channel`：频道与共享 markdown [`channel_store.rs`](../crates/channel/src/channel_store.rs)
 | 类型 | 位置 | 角色 |

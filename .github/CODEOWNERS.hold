@@ -200,7 +200,6 @@
 /.zed/ @zed-industries/platform-team
 /assets/badge/ @zed-industries/platform-team
 /assets/settings/ @zed-industries/platform-team
-/ci/ @zed-industries/platform-team
 /crates/askpass/ @zed-industries/platform-team
 /crates/audio/ @zed-industries/platform-team
 /crates/auto_update/ @zed-industries/platform-team
