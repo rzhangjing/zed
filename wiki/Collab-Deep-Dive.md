@@ -2,7 +2,7 @@
 
 > ⚠️ 历史文档：本页描述的 `crates/call` / `crates/collab` / `crates/collab_ui` 与 `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。`crates/client` 与 `crates/channel` 仍在本 fork 中。
 
-> 参考手册级：多人协作由五 crate 分层——`crates/client`（**连 collab 服务器的客户端 + `UserStore`**）、`crates/call`（**本地房间状态机 `Room`**）、`crates/collab`（**云端服务器**）、`crates/channel`（**频道/共享 markdown**）、`crates/collab_ui`（**协作面板/聊天**）。音视频走 `livekit_client`/`livekit_api`（WebRTC）。CRDT 同步底座为 [text::Buffer](Text-Buffer-Deep-Dive.md) + `clock::Lamport`。协议见 [Remote-Deep-Dive.md](Remote-Deep-Dive.md)（同用 `ProtoClient`/`Peer`/`Envelope`）。
+> 参考手册级：多人协作由五 crate 分层——`crates/client`（**连 collab 服务器的客户端 + `UserStore`**）、`crates/call`（**本地房间状态机 `Room`**）、`crates/collab`（**云端服务器**）、`crates/channel`（**频道/共享 markdown**）、`crates/collab_ui`（**协作面板/聊天**）。音视频走 `livekit_client`/`livekit_api`（WebRTC）。CRDT 同步底座为 [text::Buffer](Text-Buffer-Deep-Dive.md) + `clock::Lamport`。
 
 ## 1. `crates/client`：客户端连接与身份 [`client.rs`](../crates/client/src/client.rs)(86KB)
 | 类型 | 位置 | 角色 |
@@ -38,7 +38,7 @@
 | 数据库 | `crates/collab/src/db.rs`(24KB) + `crates/collab/src/db/` | sqlx/Postgres：`Project`(L580)、`Room`、`Channel`、`User`、`Buffer` 等持久化 + 内存态 |
 | REST API | `crates/collab/src/api/` | 频道、RPC 版本、stripe/proxy 等外部集成 |
 | lib | `crates/collab/src/lib.rs` | `Server` 组装、`Session` |
-`crates/proto` 定义所有 `Room`/`Project`/`Buffer`/`Channel` 消息；服务器是权威 `Peer`（`ConnectionId` 路由，见 [Remote-Deep-Dive.md](Remote-Deep-Dive.md) 的 `Peer`）。Docker 部署见根 `compose.yml`/`Dockerfile-collab`。
+`crates/proto` 定义所有 `Room`/`Project`/`Buffer`/`Channel` 消息；服务器是权威 `Peer`（`ConnectionId` 路由）。Docker 部署见根 `compose.yml`/`Dockerfile-collab`。
 
 ## 4. `crates/channel`：频道与共享 markdown [`channel_store.rs`](../crates/channel/src/channel_store.rs)
 | 类型 | 位置 | 角色 |

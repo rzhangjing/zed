@@ -220,15 +220,11 @@ This creates a temporary file with the stdin content and opens it in Zed.
 
 ## URL Handling
 
-The CLI can open `zed://`, `file://`, and `ssh://` URLs:
+The CLI can open `zed://` and `file://` URLs:
 
 ```sh
 zed zed://settings
 zed file:///Users/whatever/.zshrc
-zed ssh://me@example.com/abs/path
-zed ssh://me@example.com:/abs/path
-zed ssh://me@example.com/~/project
-zed ssh://me@example.com:~/project
 ```
 
 ## Using Zed as Your Default Editor
@@ -251,10 +247,6 @@ zed --stable myfile.txt
 zed --preview myfile.txt
 zed --nightly myfile.txt
 ```
-
-## WSL Integration (Windows)
-
-On Windows, the CLI supports opening paths from WSL distributions. This is handled automatically when launching Zed from within WSL.
 
 ## Exit Codes
 

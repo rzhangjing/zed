@@ -21,7 +21,6 @@
 - [Debugger-Deep-Dive](Debugger-Deep-Dive)
 - [Agent-Deep-Dive](Agent-Deep-Dive)
 - [Markdown-Deep-Dive](Markdown-Deep-Dive)
-- [Remote-Deep-Dive](Remote-Deep-Dive)
 - [Collab-Deep-Dive](Collab-Deep-Dive)
 - [Panels-Deep-Dive](Panels-Deep-Dive)
 - [Search-Deep-Dive](Search-Deep-Dive)
@@ -47,7 +46,6 @@
 - [Language-Tooling-Deep-Dive](Language-Tooling-Deep-Dive)
 - [Edit-Prediction-UI-CLI-Deep-Dive](Edit-Prediction-UI-CLI-Deep-Dive)
 - [Misc-Preview-Items-Deep-Dive](Misc-Preview-Items-Deep-Dive)
-- [Sandbox-Credentials-Remote-Env-Deep-Dive](Sandbox-Credentials-Remote-Env-Deep-Dive)
 - [Keymap-and-Navigation-Deep-Dive](Keymap-and-Navigation-Deep-Dive)
 - [Copilot-Stack-Deep-Dive](Copilot-Stack-Deep-Dive)
 - [CLI-and-Packaging-Deep-Dive](CLI-and-Packaging-Deep-Dive)
@@ -97,7 +95,6 @@
 
 ### 高级特性
 - [Debugger](Debugger)
-- [Remote-Development](Remote-Development)
 - [Tasks-and-Tooling](Tasks-and-Tooling)
 
 ### 构建与平台

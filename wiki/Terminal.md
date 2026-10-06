@@ -17,7 +17,7 @@ Zed 内嵌终端复用 **Alacritty** 的终端仿真引擎，并在 GPUI 上自�
 
 ```mermaid
 graph TB
-    S[Terminal::new 1080 指定 working_directory] --> P[克隆 shell, 建立 PTY 子进程]
+    S[TerminalBuilder::new 1080 指定 working_directory] --> P[克隆 shell, 建立 PTY 子进程]
     P --> R[后台读 PTY 字节流]
     R --> AP[Alacritty 解析 ANSI/VT -> 更新 grid]
     AP --> EV[Terminal 发事件]
@@ -26,7 +26,7 @@ graph TB
     EL --> G[按 cell 网格绘制字形+颜色+光标]
 ```
 
-1. **创建**：`Terminal::new(working_directory, ...)`（L1080）派生 shell 进程、建立伪终端，`terminal_type`（L1502）区分本地/SSH 等。
+1. **创建**：`TerminalBuilder::new(working_directory, ...)`（L1080）派生 shell 进程、建立伪终端，`terminal_type`（L1495）区分 `Pty` 与 `DisplayOnly`（无 PTY 的只读展示终端）。
 2. **读取解析**：后台任务持续从 PTY 读字节，喂给 Alacritty 的 `Term`，更新内部字符网格（`AlacrittyCell` grid）。
 3. **驱动重绘**：状态变化经 `EventEmitter` 通知，`TerminalView` `cx.notify()` → GPUI 调度 `TerminalElement` 重绘。
 

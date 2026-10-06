@@ -645,19 +645,9 @@ impl TerminalPanel {
             return Task::ready(Err(anyhow!("cannot spawn tasks as a guest")));
         }
 
-        let remote_client = project.remote_client();
         let is_windows = project.path_style(cx).is_windows();
-        let remote_shell = remote_client
-            .as_ref()
-            .and_then(|remote_client| remote_client.read(cx).shell());
 
-        let shell = if let Some(remote_shell) = remote_shell
-            && task.shell == Shell::System
-        {
-            Shell::Program(remote_shell)
-        } else {
-            task.shell.clone()
-        };
+        let shell = task.shell.clone();
 
         let task = prepare_task_for_spawn(task, &shell, is_windows);
 

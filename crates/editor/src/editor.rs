@@ -9972,13 +9972,8 @@ impl Editor {
                 cx.emit(SearchEvent::MatchesInvalidated);
 
                 let Some(project) = &self.project else { return };
-                let (telemetry, is_via_ssh) = {
-                    let project = project.read(cx);
-                    let telemetry = project.client().telemetry().clone();
-                    let is_via_ssh = project.is_via_remote_server();
-                    (telemetry, is_via_ssh)
-                };
-                telemetry.log_edit_event("editor", is_via_ssh);
+                let telemetry = project.read(cx).client().telemetry().clone();
+                telemetry.log_edit_event("editor");
             }
             multi_buffer::Event::BufferRangesUpdated {
                 buffer,
@@ -10644,7 +10639,9 @@ impl Editor {
             return;
         }
 
-        let Some(project) = &self.project else { return };
+        if self.project.is_none() {
+            return;
+        }
 
         // If None, we are in a file without an extension
         let file = self
@@ -10671,7 +10668,6 @@ impl Editor {
             .language_settings(cx)
             .show_edit_predictions;
 
-        let project = project.read(cx);
         let event_type = reported_event.event_type();
 
         if let ReportEditorEvent::Saved { auto_saved } = reported_event {
@@ -10683,7 +10679,6 @@ impl Editor {
                 copilot_enabled,
                 copilot_enabled_for_language,
                 edit_predictions_provider,
-                is_via_ssh = project.is_via_remote_server(),
             );
         } else {
             telemetry::event!(
@@ -10693,7 +10688,6 @@ impl Editor {
                 copilot_enabled,
                 copilot_enabled_for_language,
                 edit_predictions_provider,
-                is_via_ssh = project.is_via_remote_server(),
             );
         };
     }

@@ -4,7 +4,7 @@
 
 > 📘 **参考手册（Deep Dive）层**：针对最核心的 crate，已提供"逐类型/逐函数"的参考手册页（公开 API 全量 + 内部流程），与下方按族的概览页互补：
 > [Sum-Tree](Sum-Tree-Deep-Dive.md) · [Rope](Rope-Deep-Dive.md) · [Text](Text-Buffer-Deep-Dive.md) · [Multi-Buffer](Multi-Buffer-Deep-Dive.md) · [Editor](Editor-Deep-Dive.md) · [GPUI](GPUI-Deep-Dive.md) · [Language](Language-Deep-Dive.md) · [Project/Worktree](Project-Deep-Dive.md) · [Workspace](Workspace-Deep-Dive.md)
-> 📗 **第二批**：[Terminal](Terminal-Deep-Dive.md) · [Debugger/DAP](Debugger-Deep-Dive.md) · [Agent](Agent-Deep-Dive.md) · [Markdown](Markdown-Deep-Dive.md) · [Remote/RPC](Remote-Deep-Dive.md) · [Collab](Collab-Deep-Dive.md) · [Panels](Panels-Deep-Dive.md)
+> 📗 **第二批**：[Terminal](Terminal-Deep-Dive.md) · [Debugger/DAP](Debugger-Deep-Dive.md) · [Agent](Agent-Deep-Dive.md) · [Markdown](Markdown-Deep-Dive.md) · [Collab](Collab-Deep-Dive.md) · [Panels](Panels-Deep-Dive.md)
 > 📙 **第三批**：[Search](Search-Deep-Dive.md) · [Git](Git-Deep-Dive.md) · [Extension](Extension-Deep-Dive.md)
 > 📘 **第四批**：[Edit-Prediction](Edit-Prediction-Deep-Dive.md)
 > 🌐 **第五批**：[GPUI-Platform-Backends](GPUI-Platform-Backends-Deep-Dive.md)
@@ -16,7 +16,7 @@
 > 📡 **第十一批**：[Telemetry&Updates](Telemetry-and-Updates-Deep-Dive.md) · [Agent-Skills&Context](Agent-Skills-and-Context-Deep-Dive.md)
 > 🎨 **第十二批**：[UI-Primitives](UI-Primitives-Deep-Dive.md) · [Diff-Engines](Diff-Engines-Deep-Dive.md)
 > 🔤 **第十三批**：[Language-Tooling](Language-Tooling-Deep-Dive.md) · [Edit-Prediction-UI-CLI](Edit-Prediction-UI-CLI-Deep-Dive.md)
-> 🔒 **第十四批**：[Misc-Preview-Items](Misc-Preview-Items-Deep-Dive.md) · [Sandbox-Credentials-Remote-Env](Sandbox-Credentials-Remote-Env-Deep-Dive.md)
+> 🔒 **第十四批**：[Misc-Preview-Items](Misc-Preview-Items-Deep-Dive.md)
 > ⌨️ **第十五批**：[Keymap&Navigation](Keymap-and-Navigation-Deep-Dive.md) · [Copilot-Stack](Copilot-Stack-Deep-Dive.md)
 > 🎨 **第十六批**：[CLI&Packaging](CLI-and-Packaging-Deep-Dive.md) · [Selectors&Themes](Selectors-and-Themes-Misc-Deep-Dive.md)
 > 🧪 **第十七批**：[Tooling&Evals&Benchmarks](Tooling-Evals-Benchmarks-Deep-Dive.md) · [Web&Search](Web-Search-Deep-Dive.md)
@@ -25,14 +25,13 @@
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `zed` | 主二进制入口、`main.rs`/`bin`、启动初始化 | ✅ [Startup-Flow](Startup-Flow.md) |
-| `cli` | `zed` 命令行（打开、远程、安装） | 🔧 [Building-on-Windows](Building-on-Windows.md) / **📘[Deep](CLI-and-Packaging-Deep-Dive.md)** |
+| `cli` | `zed` 命令行（打开、安装） | 🔧 [Building-on-Windows](Building-on-Windows.md) / **📘[Deep](CLI-and-Packaging-Deep-Dive.md)** |
 | `install_cli` | `zed install` 扩展安装 CLI | **📘[Deep](CLI-and-Packaging-Deep-Dive.md)** |
 | `assets` | 内嵌图标/字体/主题资源生成 | 🔧 [Home](Home.md) |
 | `paths` | 配置/数据/临时目录路径解析 | 🔧 [Settings-and-Themes](Settings-and-Themes.md) |
 | `zed_actions` | 全局 Action 定义聚合 | 🔧 [Picker-and-Commands](Picker-and-Commands.md) |
 | `zed_env_vars` | 环境变量常量集中定义 | ⏳ |
-| `dev_container` | VS Code devcontainer 支持（manifest/docker） | **📘[Deep](Sandbox-Credentials-Remote-Env-Deep-Dive.md)** |
-| `sandbox` | OS 级命令沙箱（macOS seatbelt / Linux bwrap / Windows WSL），Agent 命令执行隔离：`Sandbox`(sandbox.rs:485)、`SandboxPolicy`(85)、`SandboxFsPolicy/NetPolicy`(92/110)、`WrappedCommand`(391) | **📘[Deep](Sandbox-Credentials-Remote-Env-Deep-Dive.md)** |
+| `sandbox` | OS 级命令沙箱（macOS seatbelt / Linux bwrap / Windows WSL），Agent 命令执行隔离：`Sandbox`(sandbox.rs:485)、`SandboxPolicy`(85)、`SandboxFsPolicy/NetPolicy`(92/110)、`WrappedCommand`(391) | ⏳ |
 | `crashes` | 崩溃收集与上报（Sentry） | **📘[Deep](Telemetry-and-Updates-Deep-Dive.md)** |
 | `etw_tracing` | Windows ETW 追踪接入 | 🔧 [Building-on-Windows](Building-on-Windows.md) |
 
@@ -191,7 +190,7 @@
 ## 14. 协作 / RPC / 音视频
 | Crate | 职责 | 覆盖 |
 |---|---|---|
-| `rpc` | `Peer`/传输/keepalive | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Remote-Deep-Dive.md)** |
+| `rpc` | `Peer`/传输/keepalive | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) |
 | `client` | `Client`/用户/项目 RPC | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `collab`（已移除） | 协作服务器（独立二进制） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `collab_ui`（已移除） | 协作面板/频道视图/通知 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
@@ -201,18 +200,11 @@
 | `livekit_api` / `livekit_client`（已移除） | 音视频 SFU（含 mock 路径） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
 | `audio` | 音效/音频管线（cpal/rodio） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
 | `notifications` | 系统通知 | 🔧 [Channels-and-Collab-UI](Channels-and-Collab-UI.md) |
-| `askpass` | SSH/凭据口令弹窗（AskPassSession/PasswordProxy/EncryptedPassword） | 🔧 [Remote-Development](Remote-Development.md) / **📘[Deep](Sandbox-Credentials-Remote-Env-Deep-Dive.md)** |
-| `credentials_provider` / `zed_credentials_provider` | 凭据存储抽象与实现 | **📘[Deep](Sandbox-Credentials-Remote-Env-Deep-Dive.md)** |
+| `askpass` | 凭据口令弹窗（AskPassSession/PasswordProxy/EncryptedPassword） | ⏳ |
+| `credentials_provider` / `zed_credentials_provider` | 凭据存储抽象与实现 | ⏳ |
 | `oauth_callback_server` | OAuth 回调本地服务 | ⏳ |
 
-## 15. 远程开发
-| Crate | 职责 | 覆盖 |
-|---|---|---|
-| `remote` | SSH/WSL/Docker 传输（`RemoteClient`） | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
-| `remote_server`（已移除） | 远端 headless 进程 | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
-| `remote_connection` | 连接流程 UI | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
-
-## 16. 调试（DAP）
+## 15. 调试（DAP）
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `dap` | DAP 协议/client/transport | ✅ [Debugger](Debugger.md) / **📘[Deep](Debugger-Deep-Dive.md)** |
@@ -223,7 +215,7 @@
 | `task` | 任务模板/变量/ResolvedTask/VS Code 格式（`TaskTemplate`/`TaskVariables`/`SpawnInTerminal`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) / **📘[Deep](Task-System-Deep-Dive.md)** |
 | `tasks_ui` | 任务模态/生成 UI（`TasksModal`/`spawn_task_or_modal`；`project` 侧 `Inventory`/`TaskStore`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) / **📘[Deep](Task-System-Deep-Dive.md)** |
 
-## 17. 设置 / 主题 / 键位
+## 16. 设置 / 主题 / 键位
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `settings` | 分层设置/`SettingsStore` | ✅ [Settings-and-Themes](Settings-and-Themes.md) **📘[Deep](Settings-and-Onboarding-Deep-Dive.md)** |
@@ -241,7 +233,7 @@
 | `which_key` | which-key 键位提示浮层（`WhichKeyModal`、`PendingKeystrokesIndicator`） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
 | `vim` / `vim_mode_setting` | Vim 模式（`Mode`/`Operator`/`Motion`/文本对象/Helix） | ✅ [Vim-and-Key-Input](Vim-and-Key-Input.md) / **📘[Deep](Vim-Deep-Dive.md)** |
 
-## 18. 扩展系统
+## 17. 扩展系统
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `extension` | `Extension`/`ExtensionHostProxy` trait | ✅ [Extension-System](Extension-System.md) / **📘[Deep](Extension-Deep-Dive.md)** / **🧩[HostDeep](Extension-Host-Deep-Dive.md)** |
@@ -250,7 +242,7 @@
 | `extension_cli` | 扩展打包/发布 CLI | 🔧 [Extension-System](Extension-System.md) |
 | `extensions_ui` | 扩展浏览/管理 UI | ✅ [Extension-System](Extension-System.md) / **📘[Deep](Extension-Deep-Dive.md)** |
 
-## 19. 预览 / 可视化 Item
+## 18. 预览 / 可视化 Item
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `repl` | Jupyter 式内核/会话（`ReplStore`/`KernelSpecification`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) |
@@ -261,7 +253,7 @@
 | `tabular_data_preview` | 表格数据预览（CSV/JSON） | ⏳ |
 | `html_to_markdown` | HTML→Markdown（剪贴板/扩展） | ⏳ |
 
-## 20. 基础设施 / 数据 / 网络
+## 19. 基础设施 / 数据 / 网络
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `db` / `sqlez` / `sqlez_macros` / `migrator` | SQLite 封装与迁移 | **📘[Deep](Persistence-Deep-Dive.md)** |
@@ -277,7 +269,7 @@
 | `http_proxy` / `proxy_handshake` | 代理配置与握手 | **📘[Deep](Network-HTTP-Deep-Dive.md)** |
 | `session` | `Session`/`AppSession`：应用会话标识与窗口栈 | **📘[Deep](Network-HTTP-Deep-Dive.md)** |
 
-## 21. 遥测 / 日志 / 更新
+## 20. 遥测 / 日志 / 更新
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `telemetry` / `telemetry_events` | 事件遥测上报 | **📘[Deep](Telemetry-and-Updates-Deep-Dive.md)** |
@@ -291,13 +283,13 @@
 | `json_schema_store` / `schema_generator` | JSON Schema 存储/生成 | ⏳ |
 | `docs_preprocessor` | 文档预处理（mdbook） | ⏳ |
 
-## 22. 基准与评测工具
+## 21. 基准与评测工具
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `benchmarks` / `editor_benchmarks` / `fs_benchmarks` / `project_benchmarks` / `worktree_benchmarks` | Criterion 性能基准 | **📘[Deep](Tooling-Evals-Benchmarks-Deep-Dive.md)** |
 | `eval_cli` / `eval_utils` | Agent/模型离线评测框架 | **📘[Deep](Tooling-Evals-Benchmarks-Deep-Dive.md)** |
 
-## 23. 深挖批次（已全部完成 ✅）
+## 22. 深挖批次（已全部完成 ✅）
 本索引已**覆盖全部模块的定位**。此前标 `⏳` 的模块族已逐族深挖成页（均先 `grep`/`read` 确证真实符号）：
 
 - ✅ G1 **Vim 与键位输入** → [Vim-and-Key-Input.md](Vim-and-Key-Input.md)

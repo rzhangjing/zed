@@ -4,7 +4,7 @@ use crate::{
     KernelStatus,
     kernels::{
         Kernel, KernelSession, KernelSpecification, NativeRunningKernel, RemoteRunningKernel,
-        SshRunningKernel, WslRunningKernel,
+        WslRunningKernel,
     },
     outputs::{
         ExecutionStatus, ExecutionView, ExecutionViewFinishedEmpty, ExecutionViewFinishedSmall,
@@ -273,7 +273,7 @@ impl Session {
         // which causes .venv/bin/python checks to fail
         let is_remote_execution = matches!(
             self.kernel_specification,
-            crate::KernelSpecification::WslRemote(_) | crate::KernelSpecification::SshRemote(_)
+            crate::KernelSpecification::WslRemote(_)
         );
 
         let working_directory = if is_remote_execution {
@@ -333,24 +333,6 @@ impl Session {
                     window,
                     cx,
                 )
-            }
-            KernelSpecification::SshRemote(spec) => {
-                let project = self
-                    .editor
-                    .upgrade()
-                    .and_then(|editor| editor.read(cx).project().cloned());
-                if let Some(project) = project {
-                    SshRunningKernel::new(
-                        spec,
-                        working_directory,
-                        project,
-                        session_view,
-                        window,
-                        cx,
-                    )
-                } else {
-                    Task::ready(Err(anyhow::anyhow!("No project associated with editor")))
-                }
             }
             KernelSpecification::WslRemote(spec) => WslRunningKernel::new(
                 spec,

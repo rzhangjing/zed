@@ -235,7 +235,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
             server_1_id.0.clone(),
             settings::ContextServerSettingsContent::Extension {
                 enabled: true,
-                remote: false,
                 settings: json!({
                     "somevalue": true
                 }),
@@ -273,7 +272,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                 server_1_id.0.clone(),
                 settings::ContextServerSettingsContent::Extension {
                     enabled: true,
-                    remote: false,
                     settings: json!({
                         "somevalue": false
                     }),
@@ -293,7 +291,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                 server_1_id.0.clone(),
                 settings::ContextServerSettingsContent::Extension {
                     enabled: true,
-                    remote: false,
                     settings: json!({
                         "somevalue": false
                     }),
@@ -321,7 +318,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                     server_1_id.0.clone(),
                     settings::ContextServerSettingsContent::Extension {
                         enabled: true,
-                        remote: false,
                         settings: json!({
                             "somevalue": false
                         }),
@@ -331,7 +327,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                     server_2_id.0.clone(),
                     settings::ContextServerSettingsContent::Stdio {
                         enabled: true,
-                        remote: false,
                         command: ContextServerCommand {
                             path: "somebinary".into(),
                             args: vec!["arg".to_string()],
@@ -364,7 +359,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                     server_1_id.0.clone(),
                     settings::ContextServerSettingsContent::Extension {
                         enabled: true,
-                        remote: false,
                         settings: json!({
                             "somevalue": false
                         }),
@@ -374,7 +368,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                     server_2_id.0.clone(),
                     settings::ContextServerSettingsContent::Stdio {
                         enabled: true,
-                        remote: false,
                         command: ContextServerCommand {
                             path: "somebinary".into(),
                             args: vec!["anotherArg".to_string()],
@@ -402,7 +395,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                 server_1_id.0.clone(),
                 settings::ContextServerSettingsContent::Extension {
                     enabled: true,
-                    remote: false,
                     settings: json!({
                         "somevalue": false
                     }),
@@ -426,7 +418,6 @@ async fn test_context_server_maintain_servers_loop(cx: &mut TestAppContext) {
                 server_1_id.0.clone(),
                 settings::ContextServerSettingsContent::Extension {
                     enabled: true,
-                    remote: false,
                     settings: json!({
                         "somevalue": false
                     }),
@@ -471,7 +462,6 @@ async fn test_context_server_enabled_disabled(cx: &mut TestAppContext) {
             server_1_id.0.clone(),
             settings::ContextServerSettingsContent::Stdio {
                 enabled: true,
-                remote: false,
                 command: ContextServerCommand {
                     path: "somebinary".into(),
                     args: vec!["arg".to_string()],
@@ -508,7 +498,6 @@ async fn test_context_server_enabled_disabled(cx: &mut TestAppContext) {
                 server_1_id.0.clone(),
                 settings::ContextServerSettingsContent::Stdio {
                     enabled: false,
-                    remote: false,
                     command: ContextServerCommand {
                         path: "somebinary".into(),
                         args: vec!["arg".to_string()],
@@ -538,7 +527,6 @@ async fn test_context_server_enabled_disabled(cx: &mut TestAppContext) {
                 server_1_id.0.clone(),
                 settings::ContextServerSettingsContent::Stdio {
                     enabled: true,
-                    remote: false,
                     command: ContextServerCommand {
                         path: "somebinary".into(),
                         args: vec!["arg".to_string()],
@@ -594,7 +582,6 @@ async fn test_context_server_respects_disable_ai(cx: &mut TestAppContext) {
             server_1_id.0.clone(),
             settings::ContextServerSettingsContent::Stdio {
                 enabled: true,
-                remote: false,
                 command: ContextServerCommand {
                     path: "somebinary".into(),
                     args: vec!["arg".to_string()],
@@ -678,7 +665,6 @@ async fn test_context_server_loaded_when_first_worktree_added(cx: &mut TestAppCo
             server_id.0.clone(),
             settings::ContextServerSettingsContent::Stdio {
                 enabled: true,
-                remote: false,
                 command: ContextServerCommand {
                     path: "somebinary".into(),
                     args: vec!["arg".to_string()],
@@ -771,7 +757,6 @@ async fn test_stdio_server_restarts_when_project_root_becomes_available(cx: &mut
                 server_id.0.clone(),
                 settings::ContextServerSettingsContent::Stdio {
                     enabled: true,
-                    remote: false,
                     command: ContextServerCommand {
                         path: "somebinary".into(),
                         args: vec!["arg".to_string()],
@@ -844,7 +829,6 @@ async fn test_server_ids_includes_disabled_servers(cx: &mut TestAppContext) {
                 enabled_server_id.0.clone(),
                 settings::ContextServerSettingsContent::Stdio {
                     enabled: true,
-                    remote: false,
                     command: ContextServerCommand {
                         path: "somebinary".into(),
                         args: vec![],
@@ -857,7 +841,6 @@ async fn test_server_ids_includes_disabled_servers(cx: &mut TestAppContext) {
                 disabled_server_id.0.clone(),
                 settings::ContextServerSettingsContent::Stdio {
                     enabled: false,
-                    remote: false,
                     command: ContextServerCommand {
                         path: "somebinary".into(),
                         args: vec![],
@@ -1541,7 +1524,6 @@ async fn test_context_server_stdio_timeout(cx: &mut TestAppContext) {
                 env: None,
                 timeout: Some(180000),
             },
-            remote: false,
         }),
         &mut async_cx,
     )
@@ -1745,7 +1727,6 @@ async fn test_is_server_enabled(cx: &mut TestAppContext) {
                 SERVER_1_ID.into(),
                 ContextServerSettings::Extension {
                     enabled: true,
-                    remote: false,
                     settings: json!({}),
                 },
             ),
@@ -1753,7 +1734,6 @@ async fn test_is_server_enabled(cx: &mut TestAppContext) {
                 SERVER_2_ID.into(),
                 ContextServerSettings::Extension {
                     enabled: false,
-                    remote: false,
                     settings: json!({}),
                 },
             ),

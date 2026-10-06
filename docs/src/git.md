@@ -13,7 +13,7 @@ For operations that Zed doesn't support natively, you can use the integrated ter
 
 When a project is rooted at a git repository, or at a subdirectory of one, all repositories in it are active immediately.
 
-When a project is not rooted at a repository (a home directory, a folder of projects), repositories directly inside the project root are also active immediately, and deeper ones activate when a file inside them is opened, in local and remote projects alike.
+When a project is not rooted at a repository (a home directory, a folder of projects), repositories directly inside the project root are also active immediately, and deeper ones activate when a file inside them is opened.
 
 Inactive repositories are fully indexed and searchable; only git features (status, diffs, branches) wait for activation.
 

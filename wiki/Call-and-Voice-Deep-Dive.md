@@ -82,6 +82,6 @@ graph TB
 
 - 上层（已移除）：`collab_ui`（通话面板/成员列表）、`voice` 动作；仍在的 `channel`（频道→房间映射）见 [Collab-Deep-Dive.md](Collab-Deep-Dive.md)。
 - 底层：`livekit_api`（已移除，native FFI）、`cpal`/`rodio`；GPUI 纹理视频。
-- 深页：[Collab-Deep-Dive.md](Collab-Deep-Dive.md)、[Remote-Deep-Dive.md](Remote-Deep-Dive.md)、[GPUI-Platform-Backends-Deep-Dive.md](GPUI-Platform-Backends-Deep-Dive.md)
+- 深页：[Collab-Deep-Dive.md](Collab-Deep-Dive.md)、[GPUI-Platform-Backends-Deep-Dive.md](GPUI-Platform-Backends-Deep-Dive.md)
 - 概览：[Collaboration-and-Call.md](Collaboration-and-Call.md) · [Building-on-Windows.md](Building-on-Windows.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

@@ -35,12 +35,6 @@
   - [Channels](./collaboration/channels.md)
   - [Contacts and Private Calls](./collaboration/contacts-and-private-calls.md)
 
-# Remote Development
-
-- [Overview](./remote-development.md)
-- [Environment Variables](./environment.md)
-- [Dev Containers](./dev-containers.md)
-
 # AI
 
 - [Overview](./ai/overview.md)
@@ -219,6 +213,7 @@
 - [All Settings](./reference/all-settings.md)
 - [All Actions](./all-actions.md)
 - [CLI Reference](./reference/cli.md)
+- [Environment Variables](./environment.md)
 
 # Developing Zed
 

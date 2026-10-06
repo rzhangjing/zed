@@ -26,12 +26,6 @@ winget install -e --id ZedIndustries.Zed
 
 Your settings and extensions live in your user profile. When uninstalling, you can choose to keep or remove them.
 
-## Remote Development (SSH)
-
-Zed supports remote development on Windows through both SSH and WSL. You can connect to remote servers via SSH or work with files inside WSL distributions directly from Zed.
-
-For detailed instructions on setting up and using remote development features, including SSH configuration, WSL setup, and troubleshooting, see the [Remote Development documentation](./remote-development.md).
-
 ## Troubleshooting
 
 ### Zed fails to start or shows a blank window
@@ -44,10 +38,6 @@ For detailed instructions on setting up and using remote development features, i
 ### Terminal issues
 
 If activation scripts don’t run, update to the latest version and verify your shell profile files are not exiting early. For Git operations, confirm Git Bash or PowerShell is available and on PATH.
-
-### SSH remoting problems
-
-When prompted for credentials, use the graphical askpass dialog. If it doesn’t appear, check for credential manager conflicts and that GUI prompts aren’t blocked by your terminal.
 
 ### Graphics issues
 

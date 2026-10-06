@@ -1661,9 +1661,7 @@ impl AgentPanel {
             return true;
         };
 
-        // Local settings do not list remote agents, and the remote list may not have loaded yet.
-        self.project.read(cx).is_via_remote_server()
-            || AllAgentServersSettings::get_global(cx).contains_key(id.0.as_ref())
+        AllAgentServersSettings::get_global(cx).contains_key(id.0.as_ref())
     }
 
     fn restorable_agent_selection(&self, cx: &App) -> Agent {
@@ -2418,7 +2416,6 @@ impl AgentPanel {
             custom_title: terminal.custom_title(cx),
             created_at: terminal.created_at,
             worktree_paths: project.worktree_paths(cx),
-            remote_connection: project.remote_connection_options(cx),
             working_directory: terminal.working_directory.clone(),
         })
     }
@@ -7590,7 +7587,6 @@ mod tests {
             custom_title: None,
             created_at: Utc::now(),
             worktree_paths: project.read_with(cx, |project, cx| project.worktree_paths(cx)),
-            remote_connection: None,
             working_directory: None,
         };
         assert_eq!(metadata.working_directory, None);
@@ -7674,7 +7670,6 @@ mod tests {
             worktree_paths: WorktreePaths::from_folder_paths(&PathList::new(&[PathBuf::from(
                 "/project",
             )])),
-            remote_connection: None,
             working_directory: None,
         };
         let terminal_id = metadata.terminal_id;
@@ -7847,7 +7842,6 @@ mod tests {
             worktree_paths: WorktreePaths::from_folder_paths(&PathList::new(&[PathBuf::from(
                 "/project",
             )])),
-            remote_connection: None,
             working_directory: None,
         };
         panel
@@ -8065,7 +8059,6 @@ mod tests {
                         created_at: Some(Utc::now()),
                         interacted_at: None,
                         worktree_paths: WorktreePaths::from_folder_paths(&PathList::default()),
-                        remote_connection: None,
                         archived: false,
                     },
                     cx,
@@ -9810,7 +9803,6 @@ mod tests {
             worktree_paths: WorktreePaths::from_folder_paths(&PathList::new(&[PathBuf::from(
                 "/project",
             )])),
-            remote_connection: None,
             working_directory: None,
         };
 
@@ -9861,7 +9853,6 @@ mod tests {
             worktree_paths: WorktreePaths::from_folder_paths(&PathList::new(&[PathBuf::from(
                 "/project",
             )])),
-            remote_connection: None,
             working_directory: None,
         };
 

@@ -221,7 +221,6 @@ impl VsCodeSettings {
                 "off" => Some(ReduceMotionMode::Off),
                 _ => None,
             }),
-            remote: RemoteSettingsContent::default(),
             repl: None,
             server_url: None,
             session: None,
@@ -743,7 +742,6 @@ impl VsCodeSettings {
                     k.clone().into(),
                     ContextServerSettingsContent::Stdio {
                         enabled: true,
-                        remote: false,
                         command: serde_json::from_value::<VsCodeContextServerCommand>(v.clone())
                             .ok()
                             .map(|cmd| ContextServerCommand {
@@ -1181,8 +1179,8 @@ fn translate_vscode_window_title_format(template: &str) -> String {
         let content_end = content_start + content_end_offset;
         let variable = &template[content_start..content_end];
         match variable {
-            "projectName" | "fileName" | "filePath" | "relativePath" | "fileStem"
-            | "remoteHost" | "appName" | "branch" | "separator" => {
+            "projectName" | "fileName" | "filePath" | "relativePath" | "fileStem" | "appName"
+            | "branch" | "separator" => {
                 translated.push_str(&template[variable_start..=content_end]);
             }
             // Keep VS Code alias support in the importer so native Zed settings
@@ -1192,10 +1190,9 @@ fn translate_vscode_window_title_format(template: &str) -> String {
             "activeEditorMedium" => translated.push_str("${relativePath}"),
             "activeEditorLong" => translated.push_str("${filePath}"),
             "activeRepositoryBranchName" => translated.push_str("${branch}"),
-            // VS Code's `${remoteName}` is a provider label such as `SSH`, while
-            // Zed's `${remoteName}` resolves to the connection's name or host,
-            // so the token is dropped rather than imported with mismatched
-            // semantics.
+            // VS Code's `${remoteName}` is a provider label such as `SSH`, which
+            // has no Zed equivalent, so the token is dropped rather than
+            // imported with mismatched semantics.
             _ => {}
         }
 

@@ -141,14 +141,12 @@ pub async fn fake_worktree_created_at(fs: &dyn fs::Fs, worktree_path: &Path) -> 
 pub async fn record_zed_created_worktree(
     fs: &dyn fs::Fs,
     worktree_path: &Path,
-    remote: Option<&remote::RemoteConnectionOptions>,
     cx: &mut TestAppContext,
 ) {
     let created_at = fake_worktree_created_at(fs, worktree_path).await;
     cx.update(|cx| {
         git_ui_core::created_worktrees::record_created_worktree(
             worktree_path,
-            remote,
             created_at,
             cx,
         )

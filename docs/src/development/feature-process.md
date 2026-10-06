@@ -41,7 +41,6 @@ Walk through this list before you start building. Not everything will apply:
 - **Settings.** Is any behavior configurable? Per-user vs. per-project vs. per-language? Don't forget to add new settings to the Settings UI.
 - **Themes & styling.** Does this need a new semantic token? Does it look right in both light and dark mode?
 - **Vim mode.** Vim users might have different expectations for this feature.
-- **Remote development.** Does your feature work with remote projects? File paths, shell commands, and environment variables all might behave differently.
 - **Persistence across restarts.** Should your feature's state persist across restarts?
 - **Accessibility.** Is it keyboard-navigable? Are focus states clear?
 - **Platform differences.** Does behavior differ on macOS, Linux, or Windows?

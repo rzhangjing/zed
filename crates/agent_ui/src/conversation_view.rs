@@ -2212,9 +2212,7 @@ impl ConversationView {
                         }
                     }
                     _ = exit_status => {
-                        if !previous_attempt
-                            && project.read_with(cx, |project, _| project.is_via_remote_server())
-                            && method.0.as_ref() == GEMINI_TERMINAL_AUTH_METHOD_ID
+                        if !previous_attempt && method.0.as_ref() == GEMINI_TERMINAL_AUTH_METHOD_ID
                         {
                             return cx
                                 .update(|window, cx| {
@@ -4714,7 +4712,6 @@ pub(crate) mod tests {
                         created_at: Some(Utc::now()),
                         interacted_at: None,
                         worktree_paths: WorktreePaths::from_folder_paths(&PathList::default()),
-                        remote_connection: None,
                         archived: false,
                     },
                     cx,

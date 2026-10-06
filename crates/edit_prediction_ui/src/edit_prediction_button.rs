@@ -155,11 +155,8 @@ impl Render for EditPredictionButton {
                         .on_open({
                             let file = file.clone();
                             let language = language;
-                            let project = project.clone();
                             Rc::new(move |_window, cx| {
-                                emit_edit_prediction_menu_opened(
-                                    "copilot", &file, &language, &project, cx,
-                                );
+                                emit_edit_prediction_menu_opened("copilot", &file, &language, cx);
                             })
                         })
                         .menu(move |window, cx| {
@@ -201,7 +198,6 @@ impl Render for EditPredictionButton {
                 let this = cx.weak_entity();
                 let file = self.file.clone();
                 let language = self.language.clone();
-                let project = self.project.clone();
 
                 let tooltip_meta = if has_api_key {
                     "Powered by Codestral"
@@ -214,13 +210,11 @@ impl Render for EditPredictionButton {
                         .on_open({
                             let file = file.clone();
                             let language = language;
-                            let project = project;
                             Rc::new(move |_window, cx| {
                                 emit_edit_prediction_menu_opened(
                                     "codestral",
                                     &file,
                                     &language,
-                                    &project,
                                     cx,
                                 );
                             })
@@ -348,7 +342,6 @@ impl Render for EditPredictionButton {
                 let enabled = self.editor_enabled.unwrap_or(true);
                 let file = self.file.clone();
                 let language = self.language.clone();
-                let project = self.project.clone();
                 let provider_name: &'static str = match provider {
                     EditPredictionProvider::Zed => "zed",
                     _ => "unknown",
@@ -488,13 +481,11 @@ impl Render for EditPredictionButton {
                     .on_open({
                         let file = file.clone();
                         let language = language;
-                        let project = project;
                         Rc::new(move |_window, cx| {
                             emit_edit_prediction_menu_opened(
                                 provider_name,
                                 &file,
                                 &language,
-                                &project,
                                 cx,
                             );
                         })
@@ -1648,7 +1639,6 @@ fn emit_edit_prediction_menu_opened(
     provider: &str,
     file: &Option<Arc<dyn File>>,
     language: &Option<Arc<Language>>,
-    project: &WeakEntity<Project>,
     cx: &App,
 ) {
     let language_name = language.as_ref().map(|l| l.name());
@@ -1662,17 +1652,12 @@ fn emit_edit_prediction_menu_opened(
                 .and_then(|e| e.to_str())
         })
         .map(|s| s.to_string());
-    let is_via_ssh = project
-        .upgrade()
-        .map(|p| p.read(cx).is_via_remote_server())
-        .unwrap_or(false);
     telemetry::event!(
         "Toolbar Menu Opened",
         name = "Edit Predictions",
         provider,
         file_extension,
         edit_predictions_enabled_for_language,
-        is_via_ssh,
     );
 }
 

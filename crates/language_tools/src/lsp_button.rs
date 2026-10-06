@@ -1390,11 +1390,6 @@ impl Render for LspButton {
         }
 
         let state = self.server_state.read(cx);
-        let is_via_ssh = state
-            .workspace
-            .upgrade()
-            .map(|workspace| workspace.read(cx).project().read(cx).is_via_remote_server())
-            .unwrap_or(false);
 
         let mut has_errors = false;
         let mut has_warnings = false;
@@ -1450,7 +1445,6 @@ impl Render for LspButton {
                         "Toolbar Menu Opened",
                         name = "Language Servers",
                         copilot_enabled,
-                        is_via_ssh,
                     );
                 }))
                 .menu(move |_, cx| {

@@ -36,11 +36,10 @@
 - `struct GoToLine`（[`go_to_line.rs:24`](../crates/go_to_line/src/go_to_line.rs)）：`cmd-g` 弹出输入并 `editor.go_to_transaction_anchor`/移动光标。
 - `CursorPosition` / `UserCaretPosition`（[`cursor_position.rs`](../crates/go_to_line/src/cursor_position.rs)）：状态栏行:列指示（订阅 Editor 光标事件）。
 
-### recent_projects（最近项目 / 远程项目入口）
+### recent_projects（最近项目入口）
 [`recent_projects.rs`](../crates/recent_projects/src/recent_projects.rs)
 - `RecentProjects`（[L610](../crates/recent_projects/src/recent_projects.rs)）+ `RecentProjectsDelegate`（[L853](../crates/recent_projects/src/recent_projects.rs)）：`open`（[L689](../crates/recent_projects/src/recent_projects.rs)）/`popover`（[L717](../crates/recent_projects/src/recent_projects.rs)）。
 - `SidebarRecentProjects`（[`sidebar_recent_projects.rs:25`](../crates/recent_projects/src/sidebar_recent_projects.rs)）：侧栏版本。
-- **远程**：`RemoteServerProjects`（[`remote_servers.rs:57`](../crates/recent_projects/src/remote_servers.rs)）、`WslPicker`/`WslDistroSelected`（[`wsl_picker.rs`](../crates/recent_projects/src/wsl_picker.rs)）、`parse_ssh_config_hosts`（[`ssh_config.rs:17`](../crates/recent_projects/src/ssh_config.rs)）、`RemoteSettings::ssh_connections`（[`remote_connections.rs:39`](../crates/recent_projects/src/remote_connections.rs)）——把 SSH/WSL 主机列成"可打开的项目"，接到 [Remote-Development.md](Remote-Development.md)。
 
 ## 3. 状态栏 / 命令选择器（`*_selector` 家族）
 这些是"薄 UI + picker"模式：读当前值 → 弹 `Picker` → 选中后写回设置或 buffer。

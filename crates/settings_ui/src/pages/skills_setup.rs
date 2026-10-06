@@ -31,7 +31,6 @@ pub(crate) fn displayed_skills(settings_window: &SettingsWindow, cx: &App) -> Ve
                 })
                 .unwrap_or_default()
         }
-        _ => Vec::new(),
     }
     .into_iter()
     .filter(|skill| {
@@ -60,7 +59,6 @@ pub(crate) fn render_skills_setup_page(
                 let message = match &settings_window.current_file {
                     SettingsUiFile::User => "No global skills installed.",
                     SettingsUiFile::Project(_) => "No project skills found.",
-                    _ => "No skills available for this context.",
                 };
 
                 this.px_8().items_center().justify_center().child(

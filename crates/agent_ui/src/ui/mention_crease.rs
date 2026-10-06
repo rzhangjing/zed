@@ -216,7 +216,7 @@ fn open_mention_uri(
 
 /// Notify the user that rules became skills and open the skill the rule was
 /// migrated into. Migrated skills live in the local global skills dir, so the
-/// file is always resolved against the local filesystem (local, SSH, or
+/// file is always resolved against the local filesystem (local or
 /// collab). Does nothing else when no matching skill exists.
 pub(crate) fn open_migrated_rule(
     workspace: &mut Workspace,

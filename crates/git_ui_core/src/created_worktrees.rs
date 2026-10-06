@@ -3,8 +3,8 @@
 //! Thread archival deletes a worktree's directory from disk, so it must be
 //! certain the worktree was created by Zed rather than by the user. This
 //! module records each Zed-created worktree in the local database, keyed by
-//! its path (and remote host, for remote projects), along with the creation
-//! time of the worktree's git metadata directory at the time Zed created it.
+//! its path, along with the creation time of the worktree's git metadata
+//! directory at the time Zed created it.
 //!
 //! Before deleting a worktree, callers re-stat that directory and compare
 //! against the recorded time. A mismatch means the worktree was removed and
@@ -13,9 +13,9 @@
 //! leaving the directory untouched.
 //!
 //! Because the registry lives in the local database, worktrees created by a
-//! different Zed install (e.g. another release channel, or another machine
-//! connecting to the same remote host) are treated as manually created and
-//! never archived. That is intentional: when in doubt, don't delete.
+//! different Zed install (e.g. another release channel) are treated as
+//! manually created and never archived. That is intentional: when in doubt,
+//! don't delete.
 
 use std::{
     future::Future,
@@ -27,7 +27,6 @@ use anyhow::{Context as _, Result};
 use db::kvp::KeyValueStore;
 use gpui::{App, AsyncApp, Entity};
 use project::git_store::Repository;
-use remote::{RemoteConnectionOptions, remote_connection_identity};
 use serde::{Deserialize, Serialize};
 use util::ResultExt as _;
 
@@ -39,26 +38,24 @@ struct CreatedWorktreeRecord {
     created_at_subsec_nanos: u32,
 }
 
-fn record_key(worktree_path: &Path, remote: Option<&RemoteConnectionOptions>) -> String {
-    let host = match remote {
-        None => "local".to_string(),
-        Some(options) => remote_connection_identity(options).persistence_key(),
-    };
+fn record_key(worktree_path: &Path) -> String {
+    // Keys written while remote projects were supported were prefixed with the
+    // remote connection identity; local records used this `local` prefix.
+    // Keeping it lets records written by previous versions stay readable.
     // Paths cannot contain newlines in practice, so this separator is
     // unambiguous.
-    format!("{host}\n{}", worktree_path.display())
+    format!("local\n{}", worktree_path.display())
 }
 
 /// Records that Zed created the worktree at `worktree_path`, along with the
 /// creation time of its git metadata directory.
 pub fn record_created_worktree(
     worktree_path: &Path,
-    remote: Option<&RemoteConnectionOptions>,
     created_at: SystemTime,
     cx: &App,
 ) -> impl Future<Output = Result<()>> + use<> {
     let store = KeyValueStore::global(cx);
-    let key = record_key(worktree_path, remote);
+    let key = record_key(worktree_path);
     let value = created_at
         .duration_since(UNIX_EPOCH)
         .context("worktree creation time predates the unix epoch")
@@ -74,15 +71,11 @@ pub fn record_created_worktree(
 
 /// Returns the recorded creation time for a worktree Zed created, or `None`
 /// if Zed has no record of creating it.
-pub fn recorded_created_at(
-    worktree_path: &Path,
-    remote: Option<&RemoteConnectionOptions>,
-    cx: &App,
-) -> Option<SystemTime> {
+pub fn recorded_created_at(worktree_path: &Path, cx: &App) -> Option<SystemTime> {
     let store = KeyValueStore::global(cx);
     let value = store
         .scoped(NAMESPACE)
-        .read(&record_key(worktree_path, remote))
+        .read(&record_key(worktree_path))
         .log_err()??;
     let record: CreatedWorktreeRecord = serde_json::from_str(&value).log_err()?;
     Some(UNIX_EPOCH + Duration::new(record.created_at_seconds, record.created_at_subsec_nanos))
@@ -96,7 +89,6 @@ pub fn recorded_created_at(
 pub async fn record_created_worktree_for_repo(
     repo: &Entity<Repository>,
     worktree_path: &Path,
-    remote: Option<&RemoteConnectionOptions>,
     cx: &mut AsyncApp,
 ) {
     let receiver = repo.update(cx, |repo, _cx| {
@@ -128,7 +120,7 @@ pub async fn record_created_worktree_for_repo(
             return;
         }
     };
-    let record = cx.update(|cx| record_created_worktree(worktree_path, remote, created_at, cx));
+    let record = cx.update(|cx| record_created_worktree(worktree_path, created_at, cx));
     if let Err(error) = record.await {
         log::warn!(
             "Failed to record created worktree {}: {error:#}",
@@ -141,10 +133,9 @@ pub async fn record_created_worktree_for_repo(
 /// because the directory on disk turned out not to be the one Zed created.
 pub fn forget_created_worktree(
     worktree_path: &Path,
-    remote: Option<&RemoteConnectionOptions>,
     cx: &App,
 ) -> impl Future<Output = Result<()>> + use<> {
     let store = KeyValueStore::global(cx);
-    let key = record_key(worktree_path, remote);
+    let key = record_key(worktree_path);
     async move { store.scoped(NAMESPACE).delete(key).await }
 }

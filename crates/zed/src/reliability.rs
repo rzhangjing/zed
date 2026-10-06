@@ -2,10 +2,9 @@ use anyhow::{Context as _, Result};
 use client::{Client, telemetry::MINIDUMP_ENDPOINT};
 use feature_flags::FeatureFlagAppExt;
 use futures::{AsyncReadExt, TryStreamExt};
-use gpui::{App, AppContext, Entity, TaskExt, WeakEntity};
+use gpui::{App, AppContext, Entity, WeakEntity};
 use http_client::{AsyncBody, HttpClient, Request};
 use project::{Project, worktree_store::WorktreeStoreDiagnostics};
-use proto::{CrashReport, GetCrashFilesResponse};
 use reqwest::{
     Method,
     multipart::{Form, Part},
@@ -56,42 +55,8 @@ pub fn init(client: Arc<Client>, workspace_store: Entity<WorkspaceStore>, cx: &m
         .detach()
     }
 
-    cx.observe_new(move |project: &mut Project, _, cx| {
+    cx.observe_new(move |_project: &mut Project, _, cx| {
         projects.borrow_mut().push(cx.weak_entity());
-        let client = client.clone();
-
-        let Some(remote_client) = project.remote_client() else {
-            return;
-        };
-        remote_client.update(cx, |remote_client, cx| {
-            if !client.telemetry().diagnostics_enabled() {
-                return;
-            }
-            let request = remote_client
-                .proto_client()
-                .request(proto::GetCrashFiles {});
-            cx.background_spawn(async move {
-                let GetCrashFilesResponse { crashes } = request.await?;
-
-                let Some(endpoint) = MINIDUMP_ENDPOINT.as_ref() else {
-                    return Ok(());
-                };
-                for CrashReport {
-                    metadata,
-                    minidump_contents,
-                } in crashes
-                {
-                    if let Some(metadata) = serde_json::from_str(&metadata).log_err() {
-                        upload_minidump(client.clone(), endpoint, minidump_contents, &metadata)
-                            .await
-                            .log_err();
-                    }
-                }
-
-                anyhow::Ok(())
-            })
-            .detach_and_log_err(cx);
-        })
     })
     .detach();
 }

@@ -93,6 +93,6 @@ any(test, feature = "test-support",
 | `Audio` / `Sound` | `audio/src/audio_pipeline.rs:48` / `audio.rs:22` | 播放/设备 / 提示音 |
 
 ## 7. 与其他页面的关系
-- RPC 也用于 LSP/远程开发：见 [Language-and-Project.md](Language-and-Project.md)、`remote`/`ssh_remote`。
+- RPC 也用于 LSP：见 [Language-and-Project.md](Language-and-Project.md)。
 - 通话 UI（成员列表、屏幕共享窗口）：`collab_ui` crate（已移除），渲染细节见 [GPUI.md](GPUI.md)。
 - 平台裁剪全貌：[Building-on-Windows.md](Building-on-Windows.md)。

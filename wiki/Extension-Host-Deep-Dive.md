@@ -15,7 +15,7 @@ graph TB
     WIT --> WT["wasmtime::component (Store/Linker/Component)"]
     WT --> GUEST["扩展 .wasm guest 代码"]
     GUEST -->|回调宿主| CAP["CapabilityGranter 能力鉴权"]
-    HEAD["zed --dev / remote_server（已移除） / cli"] --> HL["HeadlessExtensionStore (headless_host.rs)"]
+    HEAD["zed --dev / cli"] --> HL["HeadlessExtensionStore (headless_host.rs)"]
     HL --> HOST
 ```
 
@@ -71,7 +71,7 @@ guest 想执行进程/网络等敏感操作时，宿主先经此鉴权：
 
 ## 6. `headless_host.rs`（29.2KB · 无 UI 宿主）
 
-供 `zed`（CLI `--dev`/扩展开发）、`cli` 复用同一 `WasmHost`，但走磁盘/同步而非 GPUI 实体（原 `remote_server` 消费方已从本 fork 移除）：
+供 `zed`（CLI `--dev`/扩展开发）、`cli` 复用同一 `WasmHost`，但走磁盘/同步而非 GPUI 实体（原 `remote_server` 消费方已随远程开发栈从本 fork 移除）：
 
 | 符号 | 位置 | 角色 |
 | --- | --- | --- |
@@ -104,6 +104,6 @@ graph TB
 ## 9. 集成 / 相关页
 
 - 上层生态/API：[Extension-Deep-Dive.md](Extension-Deep-Dive.md)（`extension_api`、`ExtensionManifest`、市场 `ExtensionStore`/UI）。
-- 消费方：`language`（LSP/grammar）见 [Language-Deep-Dive.md](Language-Deep-Dive.md)；`agent`（context server / slash command）见 [Agent-Deep-Dive.md](Agent-Deep-Dive.md)；任务/DAP 见 [Task-System-Deep-Dive.md](Task-System-Deep-Dive.md)、[Debugger-Deep-Dive.md](Debugger-Deep-Dive.md)；远程开发（`remote`，原 `remote_server` 已移除）见 [Remote-Deep-Dive.md](Remote-Deep-Dive.md)。
+- 消费方：`language`（LSP/grammar）见 [Language-Deep-Dive.md](Language-Deep-Dive.md)；`agent`（context server / slash command）见 [Agent-Deep-Dive.md](Agent-Deep-Dive.md)；任务/DAP 见 [Task-System-Deep-Dive.md](Task-System-Deep-Dive.md)、[Debugger-Deep-Dive.md](Debugger-Deep-Dive.md)。
 - 概览：[Extension-System.md](Extension-System.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

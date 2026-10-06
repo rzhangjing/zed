@@ -48,7 +48,7 @@ If you always run the same CLI in Terminal Threads, set the `agent.terminal_init
 }
 ```
 
-The command is sent to the shell as if you had typed it, so it is interpreted by your configured shell—including on Windows and in remote or WSL projects—and the terminal remains a regular interactive shell after the command exits. It runs when creating a new Terminal Thread and when recreating a saved Terminal Thread after reopening a project.
+The command is sent to the shell as if you had typed it, so it is interpreted by your configured shell, and the terminal remains a regular interactive shell after the command exits. It runs when creating a new Terminal Thread and when recreating a saved Terminal Thread after reopening a project.
 
 You can also configure this from the Settings UI under **AI**, via the "Terminal Thread Init Command" field.
 
@@ -155,11 +155,9 @@ To configure this from within Codex, run `/title` and use the picker to choose w
 terminal_title = ["spinner", "project-name", "run-state", "thread-title"]
 ```
 
-## Credentials and Remote Projects {#credentials-and-remote-projects}
+## Credentials {#credentials}
 
-Credentials come from the terminal session and the CLI/TUI running inside it.
-
-In remote projects, the CLI may read the remote shell environment and remote config files. In local Terminal Threads, it reads the local shell environment and local config files. Zed does not copy API keys from LLM provider settings into Terminal Threads.
+Credentials come from the terminal session and the CLI/TUI running inside it. The CLI reads the local shell environment and local config files. Zed does not copy API keys from LLM provider settings into Terminal Threads.
 
 ## When to Use Terminal Threads {#when-to-use-terminal-threads}
 

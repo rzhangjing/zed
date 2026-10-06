@@ -28,7 +28,7 @@
 | `session_id` | `Option<String>` | 本次启动会话 |
 | `terminal_provider`/`debugger_provider` | `dyn` trait | 可注入的终端/调试后端 |
 | `on_prompt_for_new_path`/`_open_path` | | 文件对话框钩子 |
-| `open_in_dev_container`/`multi_workspace` | | devcontainer / 多工作区（[Remote-Development.md](Remote-Development.md)） |
+| `multi_workspace` | | 多工作区 |
 
 ### 协作（follower/leader）
 `collaborators`（在 project）、`follower_states: HashMap<CollaboratorId,FollowerState>`、`last_leaders_by_pane`、`leader_updates_tx`、`active_call: GlobalAnyActiveCall`、`auto_watch`。跟随逻辑：`follow_leader`/`update_followers`（见 §5）。

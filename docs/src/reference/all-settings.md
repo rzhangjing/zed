@@ -3769,16 +3769,6 @@ List of `string` glob patterns
 
 `boolean` values
 
-## Read SSH Config
-
-- Description: Whether to read SSH configuration files
-- Setting: `read_ssh_config`
-- Default: `true`
-
-**Options**
-
-`boolean` values
-
 ## Redact Private Values
 
 - Description: Hide the values of variables from visual display in private files
@@ -5294,8 +5284,6 @@ Available variables:
 | `filePath`     | Absolute path of the active file                      |
 | `relativePath` | Path of the active file relative to its worktree root |
 | `fileStem`     | File name without extension (e.g. `main`)             |
-| `remoteName`   | Display name of the remote connection, if any         |
-| `remoteHost`   | Host of the remote connection, if any                 |
 | `appName`      | Zed release channel name (e.g. `Zed`, `Zed Nightly`)  |
 | `branch`       | Git branch checked out in the active repository       |
 | `separator`    | Separator string, omitted when neighbors are empty    |

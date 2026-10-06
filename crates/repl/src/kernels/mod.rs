@@ -9,11 +9,7 @@ pub use native_kernel::*;
 
 mod remote_kernels;
 use project::{Project, ProjectPath, Toolchains, WorktreeId};
-use remote::RemoteConnectionOptions;
 pub use remote_kernels::*;
-
-mod ssh_kernel;
-pub use ssh_kernel::*;
 
 mod wsl_kernel;
 pub use wsl_kernel::*;
@@ -247,15 +243,7 @@ pub enum KernelSpecification {
     JupyterServer(RemoteKernelSpecification),
     Jupyter(LocalKernelSpecification),
     PythonEnv(PythonEnvKernelSpecification),
-    SshRemote(SshRemoteKernelSpecification),
     WslRemote(WslKernelSpecification),
-}
-
-#[derive(Debug, Clone)]
-pub struct SshRemoteKernelSpecification {
-    pub name: String,
-    pub path: SharedString,
-    pub kernelspec: JupyterKernelspec,
 }
 
 #[derive(Debug, Clone)]
@@ -264,21 +252,6 @@ pub struct WslKernelSpecification {
     pub kernelspec: JupyterKernelspec,
     pub distro: String,
 }
-
-impl PartialEq for SshRemoteKernelSpecification {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.kernelspec.argv == other.kernelspec.argv
-            && self.path == other.path
-            && self.kernelspec.display_name == other.kernelspec.display_name
-            && self.kernelspec.language == other.kernelspec.language
-            && self.kernelspec.interrupt_mode == other.kernelspec.interrupt_mode
-            && self.kernelspec.env == other.kernelspec.env
-            && self.kernelspec.metadata == other.kernelspec.metadata
-    }
-}
-
-impl Eq for SshRemoteKernelSpecification {}
 
 impl PartialEq for WslKernelSpecification {
     fn eq(&self, other: &Self) -> bool {
@@ -301,7 +274,6 @@ impl KernelSpecification {
             Self::Jupyter(spec) => spec.name.clone().into(),
             Self::PythonEnv(spec) => spec.name.clone().into(),
             Self::JupyterServer(spec) => spec.name.clone().into(),
-            Self::SshRemote(spec) => spec.name.clone().into(),
             Self::WslRemote(spec) => spec.kernelspec.display_name.clone().into(),
         }
     }
@@ -315,7 +287,6 @@ impl KernelSpecification {
                     .unwrap_or_else(|| "Python Environment".to_string()),
             ),
             Self::JupyterServer(_) => "Jupyter Server".into(),
-            Self::SshRemote(_) => "SSH Remote".into(),
             Self::WslRemote(_) => "WSL Remote".into(),
         }
     }
@@ -325,7 +296,6 @@ impl KernelSpecification {
             Self::Jupyter(spec) => spec.path.to_string_lossy().into_owned(),
             Self::PythonEnv(spec) => spec.path.to_string_lossy().into_owned(),
             Self::JupyterServer(spec) => spec.url.to_string(),
-            Self::SshRemote(spec) => spec.path.to_string(),
             Self::WslRemote(spec) => spec.distro.clone(),
         })
     }
@@ -335,14 +305,13 @@ impl KernelSpecification {
             Self::Jupyter(spec) => spec.kernelspec.language.clone(),
             Self::PythonEnv(spec) => spec.kernelspec.language.clone(),
             Self::JupyterServer(spec) => spec.kernelspec.language.clone(),
-            Self::SshRemote(spec) => spec.kernelspec.language.clone(),
             Self::WslRemote(spec) => spec.kernelspec.language.clone(),
         })
     }
 
     pub fn has_ipykernel(&self) -> bool {
         match self {
-            Self::Jupyter(_) | Self::JupyterServer(_) | Self::SshRemote(_) | Self::WslRemote(_) => {
+            Self::Jupyter(_) | Self::JupyterServer(_) | Self::WslRemote(_) => {
                 true
             }
             Self::PythonEnv(spec) => spec.has_ipykernel,
@@ -357,7 +326,6 @@ impl KernelSpecification {
                 .map(|kind| SharedString::from(kind.clone())),
             Self::Jupyter(_) => Some("Jupyter".into()),
             Self::JupyterServer(_) => Some("Jupyter Server".into()),
-            Self::SshRemote(_) => Some("SSH Remote".into()),
             Self::WslRemote(_) => Some("WSL Remote".into()),
         }
     }
@@ -367,7 +335,6 @@ impl KernelSpecification {
             Self::Jupyter(spec) => spec.kernelspec.language.clone(),
             Self::PythonEnv(spec) => spec.kernelspec.language.clone(),
             Self::JupyterServer(spec) => spec.kernelspec.language.clone(),
-            Self::SshRemote(spec) => spec.kernelspec.language.clone(),
             Self::WslRemote(spec) => spec.kernelspec.language.clone(),
         };
 
@@ -412,16 +379,6 @@ pub fn python_env_kernel_specifications(
 ) -> impl Future<Output = Result<Vec<KernelSpecification>>> + use<> {
     let python_language = LanguageName::new_static("Python");
     let is_remote = project.read(cx).is_remote();
-    let wsl_distro = project
-        .read(cx)
-        .remote_connection_options(cx)
-        .and_then(|opts| {
-            if let RemoteConnectionOptions::Wsl(wsl) = opts {
-                Some(wsl.distro_name)
-            } else {
-                None
-            }
-        });
 
     let toolchains = project.read(cx).available_toolchains(
         ProjectPath {
@@ -456,54 +413,7 @@ pub fn python_env_kernel_specifications(
             .flatten()
             .chain(toolchains.toolchains)
             .map(|toolchain| {
-                let wsl_distro = wsl_distro.clone();
                 background_executor.spawn(async move {
-                    // For remote projects, we assume python is available assuming toolchain is reported.
-                    // We can skip the `ipykernel` check or run it remotely.
-                    // For MVP, lets trust the toolchain existence or do the check if it's cheap.
-                    // `new_smol_command` runs locally. We need to run remotely if `is_remote`.
-
-                    if is_remote {
-                        let default_kernelspec = JupyterKernelspec {
-                            argv: vec![
-                                toolchain.path.to_string(),
-                                "-m".to_string(),
-                                "ipykernel_launcher".to_string(),
-                                "-f".to_string(),
-                                "{connection_file}".to_string(),
-                            ],
-                            display_name: toolchain.name.to_string(),
-                            language: "python".to_string(),
-                            interrupt_mode: None,
-                            metadata: None,
-                            env: None,
-                        };
-
-                        if let Some(distro) = wsl_distro {
-                            log::debug!(
-                                "python_env_kernel_specifications: returning WslRemote for toolchain {}",
-                                toolchain.name
-                            );
-                            return Some(KernelSpecification::WslRemote(WslKernelSpecification {
-                                name: toolchain.name.to_string(),
-                                kernelspec: default_kernelspec,
-                                distro,
-                            }));
-                        }
-
-                        log::debug!(
-                            "python_env_kernel_specifications: returning SshRemote for toolchain {}",
-                            toolchain.name
-                        );
-                        return Some(KernelSpecification::SshRemote(
-                            SshRemoteKernelSpecification {
-                                name: format!("Remote {}", toolchain.name),
-                                path: toolchain.path.clone(),
-                                kernelspec: default_kernelspec,
-                            },
-                        ));
-                    }
-
                     let python_path = toolchain.path.to_string();
                     let environment_kind = extract_environment_kind(&toolchain.as_json);
 

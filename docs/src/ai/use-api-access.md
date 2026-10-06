@@ -84,10 +84,6 @@ Configure them with `language_models.<provider>.custom_headers`:
 
 Headers managed by Zed for each provider, such as `Authorization`, `Content-Type`, `Accept`, and provider-specific authentication headers, are ignored with a warning if you try to override them.
 
-## Remote Projects {#remote-projects}
-
-Zed LLM providers for Zed AI features are initialized in the local Zed app. In SSH, dev container, and other remote projects, API keys saved in Zed are read from the local system keychain, and provider environment variables are read from the local Zed process environment.
-
 External Agents and Terminal Threads may run their own processes and use their own remote or local environment. See [External Agents](./external-agents.md) and [Terminal Threads](./terminal-threads.md).
 
 ## Provider Notes {#provider-notes}

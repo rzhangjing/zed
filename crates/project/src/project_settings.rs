@@ -12,10 +12,7 @@ use paths::{
     local_settings_file_relative_path, local_tasks_file_relative_path,
     local_vscode_launch_file_relative_path, local_vscode_tasks_file_relative_path, task_file_name,
 };
-use rpc::{
-    AnyProtoClient, TypedEnvelope,
-    proto::{self, REMOTE_SERVER_PROJECT_ID},
-};
+use rpc::{AnyProtoClient, TypedEnvelope, proto};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 pub use settings::BinarySettings;
@@ -189,9 +186,6 @@ pub enum ContextServerSettings {
         /// Whether the context server is enabled.
         #[serde(default = "default_true")]
         enabled: bool,
-        /// If true, run this server on the remote server when using remote development.
-        #[serde(default)]
-        remote: bool,
         #[serde(flatten)]
         command: ContextServerCommand,
     },
@@ -215,9 +209,6 @@ pub enum ContextServerSettings {
         /// Whether the context server is enabled.
         #[serde(default = "default_true")]
         enabled: bool,
-        /// If true, run this server on the remote server when using remote development.
-        #[serde(default)]
-        remote: bool,
         /// The settings for this context server specified by the extension.
         ///
         /// Consult the documentation for the context server to see what settings
@@ -229,24 +220,12 @@ pub enum ContextServerSettings {
 impl From<settings::ContextServerSettingsContent> for ContextServerSettings {
     fn from(value: settings::ContextServerSettingsContent) -> Self {
         match value {
-            settings::ContextServerSettingsContent::Stdio {
-                enabled,
-                remote,
-                command,
-            } => ContextServerSettings::Stdio {
-                enabled,
-                remote,
-                command,
-            },
-            settings::ContextServerSettingsContent::Extension {
-                enabled,
-                remote,
-                settings,
-            } => ContextServerSettings::Extension {
-                enabled,
-                remote,
-                settings,
-            },
+            settings::ContextServerSettingsContent::Stdio { enabled, command } => {
+                ContextServerSettings::Stdio { enabled, command }
+            }
+            settings::ContextServerSettingsContent::Extension { enabled, settings } => {
+                ContextServerSettings::Extension { enabled, settings }
+            }
             settings::ContextServerSettingsContent::Http {
                 enabled,
                 url,
@@ -269,24 +248,12 @@ impl From<settings::ContextServerSettingsContent> for ContextServerSettings {
 impl Into<settings::ContextServerSettingsContent> for ContextServerSettings {
     fn into(self) -> settings::ContextServerSettingsContent {
         match self {
-            ContextServerSettings::Stdio {
-                enabled,
-                remote,
-                command,
-            } => settings::ContextServerSettingsContent::Stdio {
-                enabled,
-                remote,
-                command,
-            },
-            ContextServerSettings::Extension {
-                enabled,
-                remote,
-                settings,
-            } => settings::ContextServerSettingsContent::Extension {
-                enabled,
-                remote,
-                settings,
-            },
+            ContextServerSettings::Stdio { enabled, command } => {
+                settings::ContextServerSettingsContent::Stdio { enabled, command }
+            }
+            ContextServerSettings::Extension { enabled, settings } => {
+                settings::ContextServerSettingsContent::Extension { enabled, settings }
+            }
             ContextServerSettings::Http {
                 enabled,
                 url,
@@ -325,7 +292,6 @@ impl ContextServerSettings {
     pub fn default_extension() -> Self {
         Self::Extension {
             enabled: true,
-            remote: false,
             settings: serde_json::json!({}),
         }
     }
@@ -946,7 +912,8 @@ impl SettingsObserver {
             pending_local_settings: HashMap::default(),
             _user_settings_watcher: None,
             _editorconfig_watcher: Some(_editorconfig_watcher),
-            project_id: REMOTE_SERVER_PROJECT_ID,
+            // Replaced by the collaboration project id in `shared`.
+            project_id: 0,
             _global_task_config_watcher: if watch_global_configs {
                 Self::subscribe_to_global_task_file_changes(
                     fs.clone(),
@@ -989,7 +956,7 @@ impl SettingsObserver {
                                 user_settings = Some(new_settings.clone());
                                 upstream_client
                                     .send(proto::UpdateUserSettings {
-                                        project_id: REMOTE_SERVER_PROJECT_ID,
+                                        project_id: 0,
                                         contents: new_settings_string,
                                     })
                                     .log_err();
@@ -1005,7 +972,8 @@ impl SettingsObserver {
             task_store,
             mode: SettingsObserverMode::Remote { via_collab },
             downstream_client: None,
-            project_id: REMOTE_SERVER_PROJECT_ID,
+            // Replaced by the collaboration project id in `shared`.
+            project_id: 0,
             _trusted_worktrees_watcher: None,
             pending_local_settings: HashMap::default(),
             _user_settings_watcher: user_settings_watcher,

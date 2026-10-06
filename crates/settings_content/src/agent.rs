@@ -310,7 +310,7 @@ pub struct AgentSettingsContent {
     pub expand_terminal_card: Option<bool>,
     /// Command to automatically run when Zed creates a Terminal Thread shell in the agent panel.
     /// The command is sent to the shell as if typed, so it is interpreted by your
-    /// configured shell (including on Windows and remote/WSL projects).
+    /// configured shell (including on Windows).
     /// An empty string disables this behavior.
     ///
     /// Default: ""

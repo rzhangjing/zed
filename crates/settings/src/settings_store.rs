@@ -149,7 +149,6 @@ pub struct SettingsStore {
     global_settings: Option<Box<SettingsContent>>,
 
     extension_settings: Option<Box<SettingsContent>>,
-    server_settings: Option<Box<SettingsContent>>,
 
     language_semantic_token_rules: HashMap<SharedString, SemanticTokenRules>,
 
@@ -172,8 +171,7 @@ pub enum SettingsFile {
     Default,
     Global,
     User,
-    Server,
-    /// Represents project settings in ssh projects as well as local projects
+    /// Represents project settings read from a worktree's `.zed/settings.json`.
     Project((WorktreeId, Arc<RelPath>)),
 }
 
@@ -190,15 +188,12 @@ impl Ord for SettingsFile {
         use std::cmp::Ordering;
         match (self, other) {
             (User, User) => Ordering::Equal,
-            (Server, Server) => Ordering::Equal,
             (Default, Default) => Ordering::Equal,
             (Project((id1, rel_path1)), Project((id2, rel_path2))) => id1
                 .cmp(id2)
                 .then_with(|| rel_path1.cmp(rel_path2).reverse()),
             (Project(_), _) => Ordering::Less,
             (_, Project(_)) => Ordering::Greater,
-            (Server, _) => Ordering::Less,
-            (_, Server) => Ordering::Greater,
             (User, _) => Ordering::Less,
             (_, User) => Ordering::Greater,
             (Global, _) => Ordering::Less,
@@ -310,7 +305,6 @@ impl SettingsStore {
             setting_values: Default::default(),
             default_settings: default_settings.clone(),
             global_settings: None,
-            server_settings: None,
             user_settings: None,
             extension_settings: None,
             language_semantic_token_rules: HashMap::default(),
@@ -664,9 +658,6 @@ impl SettingsStore {
                 .map(SettingsFile::Project),
         );
 
-        if self.server_settings.is_some() {
-            files.push(SettingsFile::Server);
-        }
         // ignoring profiles
         // ignoring os profiles
         // ignoring release channel profiles
@@ -687,7 +678,6 @@ impl SettingsStore {
                 .as_ref()
                 .map(|settings| settings.content.as_ref()),
             SettingsFile::Default => Some(self.default_settings.as_ref()),
-            SettingsFile::Server => self.server_settings.as_deref(),
             SettingsFile::Project(ref key) => self.local_settings.get(key),
             SettingsFile::Global => self.global_settings.as_deref(),
         }
@@ -1006,24 +996,6 @@ impl SettingsStore {
             self.recompute_values(None, cx);
         }
         return parse_result;
-    }
-
-    pub fn set_server_settings(
-        &mut self,
-        server_settings_content: &str,
-        cx: &mut App,
-    ) -> Result<()> {
-        let settings = if server_settings_content.is_empty() {
-            None
-        } else {
-            Option::<SettingsContent>::parse_json_with_comments(server_settings_content)?
-        };
-
-        // Rewrite the server settings into a content type
-        self.server_settings = settings.map(|settings| Box::new(settings));
-
-        self.recompute_values(None, cx);
-        Ok(())
     }
 
     /// Sets language-specific semantic token rules.
@@ -1390,7 +1362,6 @@ impl SettingsStore {
                     merged.merge_from(&profile.settings);
                 }
             }
-            merged.merge_from_option(self.server_settings.as_deref());
 
             // Merge `disable_ai` from all project/local settings into the global value.
             // Since `SaturatingBool` uses OR logic, if any project has `disable_ai: true`,
@@ -1426,12 +1397,6 @@ impl SettingsStore {
                     .project
                     .disable_ai
                     .merge_from(&user.content.project.disable_ai);
-            }
-            if let Some(server) = &self.server_settings {
-                merged
-                    .project
-                    .disable_ai
-                    .merge_from(&server.project.disable_ai);
             }
             for local_settings in self.local_settings.values() {
                 merged
@@ -1577,9 +1542,6 @@ pub enum InvalidSettingsError {
     UserSettings {
         message: String,
     },
-    ServerSettings {
-        message: String,
-    },
     DefaultSettings {
         message: String,
     },
@@ -1602,7 +1564,6 @@ impl std::fmt::Display for InvalidSettingsError {
         match self {
             InvalidSettingsError::LocalSettings { message, .. }
             | InvalidSettingsError::UserSettings { message }
-            | InvalidSettingsError::ServerSettings { message }
             | InvalidSettingsError::DefaultSettings { message }
             | InvalidSettingsError::Tasks { message, .. }
             | InvalidSettingsError::Editorconfig { message, .. }
@@ -3148,7 +3109,6 @@ mod tests {
             &wt0_root,
             &wt1_subdir,
             &wt0_child2,
-            &SettingsFile::Server,
             &wt0_child1,
             &SettingsFile::User,
         ];
@@ -3162,7 +3122,6 @@ mod tests {
                 &wt0_root,
                 &wt1_subdir,
                 &wt1_root,
-                &SettingsFile::Server,
                 &SettingsFile::User,
                 &SettingsFile::Default,
             ]

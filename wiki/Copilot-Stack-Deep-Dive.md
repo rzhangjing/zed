@@ -101,6 +101,5 @@ graph TB
 
 - [Model-Providers-Deep-Dive](Model-Providers-Deep-Dive.md)（`copilot_chat` 作为对话 provider）
 - [Edit-Prediction-Deep-Dive](Edit-Prediction-Deep-Dive.md)（Copilot 作为预测 provider）
-- [Sandbox-Credentials-Remote-Env-Deep-Dive](Sandbox-Credentials-Remote-Env-Deep-Dive.md)（`credentials_provider`）
 - [Language-Deep-Dive](Language-Deep-Dive.md)（`LanguageServer`/补全协议）
 - [Agent-and-AI](Agent-and-AI.md)（Copilot 族概览）

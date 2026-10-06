@@ -9837,15 +9837,6 @@ impl LspStore {
         self.downstream_client.take();
     }
 
-    pub fn disconnected_from_ssh_remote(&mut self) {
-        if let LspStoreMode::Remote(RemoteLspStore {
-            upstream_client, ..
-        }) = &mut self.mode
-        {
-            upstream_client.take();
-        }
-    }
-
     pub(crate) fn set_language_server_statuses_from_proto(
         &mut self,
         project: WeakEntity<Project>,

@@ -16,8 +16,6 @@ pub struct ReplicaId(u16);
 impl ReplicaId {
     /// The local replica
     pub const LOCAL: ReplicaId = ReplicaId(0);
-    /// The remote replica of the connected remote server.
-    pub const REMOTE_SERVER: ReplicaId = ReplicaId(1);
     /// The agent's unique identifier.
     pub const AGENT: ReplicaId = ReplicaId(2);
     /// A local branch.
@@ -34,7 +32,7 @@ impl ReplicaId {
     }
 
     pub fn is_remote(self) -> bool {
-        self == ReplicaId::REMOTE_SERVER || self >= ReplicaId::FIRST_COLLAB_ID
+        self >= ReplicaId::FIRST_COLLAB_ID
     }
 }
 
@@ -42,8 +40,6 @@ impl fmt::Debug for ReplicaId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if *self == ReplicaId::LOCAL {
             write!(f, "<local>")
-        } else if *self == ReplicaId::REMOTE_SERVER {
-            write!(f, "<remote>")
         } else if *self == ReplicaId::AGENT {
             write!(f, "<agent>")
         } else if *self == ReplicaId::LOCAL_BRANCH {

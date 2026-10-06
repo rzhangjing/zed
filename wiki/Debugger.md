@@ -40,7 +40,7 @@ graph TB
 
 1. **入口**：`DebugPanel::start_session`（[debugger_panel.rs:184](../crates/debugger_ui/src/debugger_panel.rs)）；也可由 adapter 主动发起 `handle_start_debugging_request`（L438）。配置来自 `tasks.json` / `.zed/debug.json`，`insert_task_into_editor`（L1257）用于就地编辑任务。
 2. **解析 adapter**：`DapRegistry`（registry.rs:41）按语言查 `DebugAdapter`，其 `request_kind`（L372）从 JSON 的 `request` 字段判 `Launch`/`Attach`，`config_from_zed_format`（L352）把 Zed 配置翻译为标准 DAP 场景，`get_binary`（L354）负责找到或下载 adapter 二进制（`DebugAdapterBinary` L194 / `AdapterVersion` L258 / `GithubRepo` L269）。
-3. **建立通道**：按 adapter 类型选 `StdioTransport`（子进程 stdin/stdout，L649）或 `TcpTransport`（网络，L472）。SSH 远端调试时 `DebugAdapterClient::should_reconnect_for_ssh`（client.rs:60）处理重连。
+3. **建立通道**：按 adapter 类型选 `StdioTransport`（子进程 stdin/stdout，L649）或 `TcpTransport`（网络，L472）。
 4. **握手**：`DebugAdapterClient`（client.rs:32）用 `next_sequence_id`（L169）为每个请求编号，`on_request<R: dap_types::requests::Request>`（L191）注册反向请求处理（如 `readMemory`、`startDebugging`）。
 
 ## 3. Transport：DAP 报文如何流动
@@ -82,4 +82,3 @@ graph TB
 - adapter 由扩展贡献：[Extension-System.md](Extension-System.md)（`register_debug_adapter_proxy`）。
 - 调试配置写在 tasks/JSON：[Tasks-and-Tooling.md](Tasks-and-Tooling.md)。
 - 断点/hover 求值发生在编辑器内：[Editor.md](Editor.md)。
-- 远端（SSH）调试的重连：[Remote-Development.md](Remote-Development.md)。

@@ -18,7 +18,6 @@ use itertools::Itertools as _;
 use notifications::status_toast::StatusToast;
 use project::{AgentId, AgentRegistryStore, AgentServerStore};
 use release_channel::ReleaseChannel;
-use remote::RemoteConnectionOptions;
 use ui::{
     Checkbox, CommonAnimationExt, KeyBinding, ListItem, ListItemSpacing, Modal, ModalFooter,
     ModalHeader, Section, Tooltip, prelude::*,
@@ -695,19 +694,13 @@ fn fetch_sessions_for_agent(
     let mut wait_for_connection_tasks = Vec::new();
 
     for store in stores {
-        let remote_connection = store
-            .read(cx)
-            .project()
-            .read(cx)
-            .remote_connection_options(cx);
         let agent = Agent::from(agent_id.clone());
         let server = agent.server(<dyn Fs>::global(cx), ThreadStore::global(cx));
         let entry = store.update(cx, |store, cx| store.request_connection(agent, server, cx));
 
         wait_for_connection_tasks.push(entry.read(cx).wait_for_connection().map({
             let agent_id = agent_id.clone();
-            let remote_connection = remote_connection.clone();
-            move |result| (agent_id, remote_connection, result)
+            move |result| (agent_id, result)
         }));
     }
 
@@ -716,7 +709,7 @@ fn fetch_sessions_for_agent(
         let results = futures::future::join_all(wait_for_connection_tasks).await;
 
         let mut page_tasks = Vec::new();
-        for (agent_id, remote_connection, result) in results {
+        for (agent_id, result) in results {
             let state = match result {
                 Ok(state) => state,
                 Err(error) => {
@@ -738,7 +731,7 @@ fn fetch_sessions_for_agent(
                 async move |cx| {
                     (
                         agent_id_for_error,
-                        collect_all_sessions(agent_id, remote_connection, list, cx).await,
+                        collect_all_sessions(agent_id, list, cx).await,
                     )
                 }
             }));
@@ -793,7 +786,6 @@ fn fetch_sessions_for_agent(
 
 async fn collect_all_sessions(
     agent_id: AgentId,
-    remote_connection: Option<RemoteConnectionOptions>,
     list: std::rc::Rc<dyn acp_thread::AgentSessionList>,
     cx: &mut gpui::AsyncApp,
 ) -> anyhow::Result<SessionByAgent> {
@@ -812,17 +804,12 @@ async fn collect_all_sessions(
             _ => break,
         }
     }
-    Ok(SessionByAgent {
-        agent_id,
-        remote_connection,
-        sessions,
-    })
+    Ok(SessionByAgent { agent_id, sessions })
 }
 
 #[derive(Clone)]
 struct SessionByAgent {
     agent_id: AgentId,
-    remote_connection: Option<RemoteConnectionOptions>,
     sessions: Vec<acp_thread::AgentSessionInfo>,
 }
 
@@ -859,7 +846,6 @@ fn collect_importable_threads(
     let mut to_insert = Vec::new();
     for SessionByAgent {
         agent_id,
-        remote_connection,
         sessions,
     } in sessions_by_agent
     {
@@ -880,7 +866,6 @@ fn collect_importable_threads(
                 created_at: session.created_at,
                 interacted_at: None,
                 worktree_paths: WorktreePaths::from_folder_paths(&folder_paths),
-                remote_connection: remote_connection.clone(),
                 archived: true,
             });
         }
@@ -1017,7 +1002,6 @@ mod tests {
 
         let sessions_by_agent = vec![SessionByAgent {
             agent_id: AgentId::new("agent-a"),
-            remote_connection: None,
             sessions: vec![
                 make_session(
                     "existing-1",
@@ -1044,7 +1028,6 @@ mod tests {
 
         let sessions_by_agent = vec![SessionByAgent {
             agent_id: AgentId::new("agent-a"),
-            remote_connection: None,
             sessions: vec![
                 make_session("has-dirs", Some("With Dirs"), Some(paths), None, None),
                 make_session("no-dirs", Some("No Dirs"), None, None, None),
@@ -1067,7 +1050,6 @@ mod tests {
 
         let sessions_by_agent = vec![SessionByAgent {
             agent_id: AgentId::new("agent-a"),
-            remote_connection: None,
             sessions: vec![
                 make_session("s1", Some("Thread 1"), Some(paths.clone()), None, None),
                 make_session("s2", Some("Thread 2"), Some(paths), None, None),
@@ -1088,7 +1070,6 @@ mod tests {
         let sessions_by_agent = vec![
             SessionByAgent {
                 agent_id: AgentId::new("agent-a"),
-                remote_connection: None,
                 sessions: vec![make_session(
                     "s1",
                     Some("From A"),
@@ -1099,7 +1080,6 @@ mod tests {
             },
             SessionByAgent {
                 agent_id: AgentId::new("agent-b"),
-                remote_connection: None,
                 sessions: vec![make_session("s2", Some("From B"), Some(paths), None, None)],
             },
         ];
@@ -1127,7 +1107,6 @@ mod tests {
         let sessions_by_agent = vec![
             SessionByAgent {
                 agent_id: AgentId::new("agent-a"),
-                remote_connection: None,
                 sessions: vec![make_session(
                     "shared-session",
                     Some("From A"),
@@ -1138,7 +1117,6 @@ mod tests {
             },
             SessionByAgent {
                 agent_id: AgentId::new("agent-b"),
-                remote_connection: None,
                 sessions: vec![make_session(
                     "shared-session",
                     Some("From B"),
@@ -1171,7 +1149,6 @@ mod tests {
 
         let sessions_by_agent = vec![SessionByAgent {
             agent_id: AgentId::new("agent-a"),
-            remote_connection: None,
             sessions: vec![
                 make_session("s1", Some("T1"), Some(paths.clone()), None, None),
                 make_session("s2", Some("T2"), Some(paths), None, None),
@@ -1189,7 +1166,6 @@ mod tests {
         let sessions_by_agent = vec![
             SessionByAgent {
                 agent_id: AgentId::new("agent-a"),
-                remote_connection: None,
                 sessions: vec![
                     make_session(
                         "existing",
@@ -1204,7 +1180,6 @@ mod tests {
             },
             SessionByAgent {
                 agent_id: AgentId::new("agent-b"),
-                remote_connection: None,
                 sessions: vec![make_session(
                     "shared",
                     Some("Shared B"),

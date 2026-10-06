@@ -49,7 +49,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Debugger-Deep-Dive（dap 传输/Session 状态机/debugger_ui 面板）](Debugger-Deep-Dive.md)
 - [Agent-Deep-Dive（NativeAgent/Thread/31 tool/AcpThread/LanguageModel）](Agent-Deep-Dive.md)
 - [Markdown-Deep-Dive（parser/markdown.rs 渲染/preview 面板）](Markdown-Deep-Dive.md)
-- [Remote-Deep-Dive（RemoteClient/transport/Peer 协议；HeadlessProject 已移除）](Remote-Deep-Dive.md)
 - [Collab-Deep-Dive（历史：Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
 - [Panels-Deep-Dive（project_panel/outline_panel/call_hierarchy）](Panels-Deep-Dive.md)
 - [Search-Deep-Dive（BufferSearchBar/ProjectSearch/TextFinder/registrar）](Search-Deep-Dive.md)
@@ -75,10 +74,9 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Language-Tooling-Deep-Dive（languages 内置语言注册/language_tools 语法树·高亮树·LSP日志·key context 调试视图）](Language-Tooling-Deep-Dive.md)
 - [Edit-Prediction-UI-CLI-Deep-Dive（types 契约/context BM25·gitlog 检索/ui 按钮·评分弹窗/cli 离线评测）](Edit-Prediction-UI-CLI-Deep-Dive.md)
 - [Misc-Preview-Items-Deep-Dive（markdown_preview 双向同步/image_viewer 缩放持久/component_preview 预览簿）](Misc-Preview-Items-Deep-Dive.md)
-- [Sandbox-Credentials-Remote-Env-Deep-Dive（sandbox seatbelt/bwrap/WSL 隔离/credentials_provider trait/askpass 取密回环/dev_container）](Sandbox-Credentials-Remote-Env-Deep-Dive.md)
 - [Keymap-and-Navigation-Deep-Dive（keymap_editor 可视改键+冲突检测/which_key 键位提示/file_finder 模糊导航）](Keymap-and-Navigation-Deep-Dive.md)
 - [Copilot-Stack-Deep-Dive（copilot LSP server+编辑预测 provider/copilot_chat OAuth+模型清单+流式/copilot_ui 登录）](Copilot-Stack-Deep-Dive.md)
-- [CLI-and-Packaging-Deep-Dive（cli CliRequest/IPC 握手/WSL 路径/Bundle 装配/install_cli 脚本安装）](CLI-and-Packaging-Deep-Dive.md)
+- [CLI-and-Packaging-Deep-Dive（cli CliRequest/IPC 握手/Bundle 装配/install_cli 脚本安装）](CLI-and-Packaging-Deep-Dive.md)
 - [Selectors-and-Themes-Misc-Deep-Dive（theme 注册/外观/图标主题 + language·encoding·line_ending·toolchain·settings_profile·theme 选择器 + file_icons）](Selectors-and-Themes-Misc-Deep-Dive.md)
 - [Tooling-Evals-Benchmarks-Deep-Dive（eval_cli Rust+zed_eval Python 编排/eval_utils 契约/criterion 基准/edit_prediction_metrics 打分）](Tooling-Evals-Benchmarks-Deep-Dive.md)
 - [Web-Search-Deep-Dive（web_search provider 抽象+注册中心/web_search_providers 云实现/cloud_llm schema/agent WebSearchTool/授权页）](Web-Search-Deep-Dive.md)
@@ -125,7 +123,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 
 ### 高级特性
 - [Debugger（DAP 协议 / 会话状态 / 调试 UI）](Debugger.md)
-- [Remote-Development（SSH / WSL / Docker 远程编辑）](Remote-Development.md)
 - [Tasks-and-Tooling（任务运行 / REPL / 日志 / 剖析）](Tasks-and-Tooling.md)
 
 ### 构建与平台

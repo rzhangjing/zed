@@ -10,7 +10,6 @@ use gpui::{
 use jupyter_websocket_client::RemoteServer;
 use language::{Language, LanguageName};
 use project::{Fs, Project, ProjectPath, WorktreeId};
-use remote::RemoteConnectionOptions;
 use settings::{Settings, SettingsStore};
 use util::rel_path::RelPath;
 
@@ -166,14 +165,6 @@ impl ReplStore {
         }
 
         let is_remote = project.read(cx).is_remote();
-        // WSL does require access to global kernel specs, so we only exclude remote worktrees that aren't WSL.
-        // TODO: a better way to handle WSL vs SSH/remote projects,
-        let is_wsl_remote = project
-            .read(cx)
-            .remote_connection_options(cx)
-            .map_or(false, |opts| {
-                matches!(opts, RemoteConnectionOptions::Wsl(_))
-            });
         let kernel_specifications_task = python_env_kernel_specifications(project, worktree_id, cx);
         let active_toolchain = project.read(cx).active_toolchain(
             ProjectPath {
@@ -204,7 +195,7 @@ impl ReplStore {
                     this.active_python_toolchain_for_worktree
                         .insert(worktree_id, path);
                 }
-                if is_remote && !is_wsl_remote {
+                if is_remote {
                     this.remote_worktrees.insert(worktree_id);
                 } else {
                     this.remote_worktrees.remove(&worktree_id);

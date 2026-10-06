@@ -1380,7 +1380,7 @@ fn working_dir(cd: &str, project: &Entity<Project>, cx: &mut App) -> Result<Opti
 ///
 /// Absolute paths are classified with the project's [`PathStyle`] rather than
 /// the host's, so an absolute POSIX path resolves correctly on a Windows host
-/// driving a WSL/SSH project (#60040).
+/// whose project uses POSIX paths, such as a shared collab project (#60040).
 ///
 /// Both `cd` and the worktree roots are lexically normalized before prefix
 /// matching. This resolves `.` and `..` components up front, so a path that

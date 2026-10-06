@@ -342,7 +342,6 @@ To set expectations clearly, here's what PyCharm offers that Zed doesn't have:
 - **Database tools** — Use DataGrip, DBeaver, or TablePlus
 - **Django/Flask template navigation** — Use file search and grep
 - **Visual package manager** — Use pip, uv, or poetry from the terminal
-- **Remote interpreters** — Zed has remote development, but it works differently
 - **Profiler integration** — Use cProfile, py-spy, or similar tools externally
 
 ## Collaboration in Zed vs. PyCharm

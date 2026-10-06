@@ -8,7 +8,7 @@
 |---|---|---|
 | `struct Terminal` | [L1501](../crates/terminal/src/terminal.rs) | **核心状态**（见下） |
 | `struct TerminalBuilder` | [L971](../crates/terminal/src/terminal.rs) | 配置并 `build()` 出一个 `Terminal`（size/options/reader/writer/event_tx） |
-| `enum TerminalType` | terminal.rs | `Embedded`｜`Ssh`｜`IxTerm`｜`Test` |
+| `enum TerminalType` | [L1486](../crates/terminal/src/terminal.rs) | `Pty { resources, info }`｜`DisplayOnly` |
 | `struct TerminalBounds` | [L765](../crates/terminal/src/terminal.rs) | 单元格尺寸（impl `alacritty_terminal::term::Dimensions`） |
 | `struct TerminalError` | [L833](../crates/terminal/src/terminal.rs) | 构建/PTY 错误 |
 | `struct TerminalMode` / `enum TerminalModeKind` | [L935](../crates/terminal/src/terminal.rs) | 普通 / Vi 模式 |
@@ -20,7 +20,7 @@
 | `struct Search` / `ParsedAnsiText` / `Hyperlink` | [L126](../crates/terminal/src/terminal.rs)/[L191](../crates/terminal/src/terminal.rs)/[L320](../crates/terminal/src/terminal.rs) | OSC 超链接、正则链接搜索、ANSI 解析 |
 | `struct Modes(u32)` | [L355](../crates/terminal/src/terminal.rs) | 鼠标/应用光标键等 DEC 模式封装 |
 
-`Terminal` 关键字段（[L1501-1551](../crates/terminal/src/terminal.rs)）：`term: Arc<AlacrittyTermLock>`（真正网格，跨线程锁）、`output_processor: Processor<StdSyncHandler>`（把 PTY 字节喂给 alacritty）、`subprocess: Option<SubprocessHandle>`、`events: VecDeque<InternalEvent>`、`selection_head`/`matches`/`last_content`、`vi_mode_enabled`、`is_remote_terminal`、`cwd_history: Vec<CwdHistoryEntry>`、`path_style`、`event_loop_task`、`background_executor`。
+`Terminal` 关键字段（[L1494-1543](../crates/terminal/src/terminal.rs)）：`term: Arc<AlacrittyTermLock>`（真正网格，跨线程锁）、`output_processor: Processor<StdSyncHandler>`（把 PTY 字节喂给 alacritty）、`subprocess: Option<SubprocessHandle>`、`events: VecDeque<InternalEvent>`、`selection_head`/`matches`/`last_content`、`vi_mode_enabled`、`cwd_history: Vec<CwdHistoryEntry>`、`path_style`、`event_loop_task`、`background_executor`。
 
 ## 2. Alacritty 适配层 [`alacritty.rs`](../crates/terminal/src/alacritty.rs)
 把第三方 `alacritty_terminal` crate（`Term`、`Grid`、`Event`、`Pty`）接到 Zed：
@@ -69,7 +69,6 @@ graph TB
 ## 7. 集成点
 - `TerminalPanel` 作为 `Item` 常驻 bottom dock（[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)）。
 - 任务运行、debug console、agent 命令输出复用 `HeadlessTerminal`/`Terminal`。→ [Tasks-and-Tooling.md](Tasks-and-Tooling.md)。
-- 远程终端（SSH/WSL）经 remote client 转发 PTY（`is_remote_terminal`）。→ [Remote-Deep-Dive.md](Remote-Deep-Dive.md)。
 
 ## 8. 相关页
 概览 [Terminal.md](Terminal.md)；GPui 元素机制 [GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)。

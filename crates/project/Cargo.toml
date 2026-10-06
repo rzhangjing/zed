@@ -23,7 +23,6 @@ test-support = [
     "buffer_diff/test-support",
     "client/test-support",
     "language/test-support",
-    "remote/test-support",
     "settings/test-support",
     "snippet_provider/test-support",
     "text/test-support",
@@ -76,7 +75,6 @@ prettier.workspace = true
 rand.workspace = true
 regex.workspace = true
 release_channel.workspace = true
-remote.workspace = true
 rpc.workspace = true
 schemars.workspace = true
 semver.workspace = true
@@ -126,7 +124,6 @@ snippet_provider = { workspace = true, features = ["test-support"] }
 unindent.workspace = true
 util = { workspace = true, features = ["test-support"] }
 worktree = { workspace = true, features = ["test-support"] }
-remote = { workspace = true, features = ["test-support"] }
 
 [package.metadata.cargo-shear]
 ignored = ["tracing"]

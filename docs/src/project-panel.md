@@ -197,7 +197,7 @@ The `project_panel.sort_order` setting controls name comparison:
 The Project Panel keeps a history of the file operations you perform through it,
 letting you undo ({#action project_panel::Undo} / {#kb project_panel::Undo}) and
 redo ({#action project_panel::Redo} / {#kb project_panel::Redo}) these
-operations, with support for local and remote projects.
+operations.
 
 The following operations are tracked:
 
@@ -245,9 +245,5 @@ single step, and a failure in one of the operations does not block the rest.
   outside Zed, for example, a conflicting file now exists at the destination, or
   the item was moved or deleted by another program, the operation may no longer
   be undoable, and Zed will show a notification accordingly.
-- On remote hosts without system trash support, {#action project_panel::Trash}
-  will fail when used, along with anything that relies on it, such as undoing a
-  trash or undoing an operation that creates a file or directory. At the time of
-  writing, Zed does not reliably detect trash support ahead of time, so the
   action is always available but may report an error.
 - The undo history is not persisted across sessions, so quitting Zed clears it.

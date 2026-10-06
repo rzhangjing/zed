@@ -59,7 +59,6 @@ LSP 主动 `publishDiagnostics` 推送诊断，`LspStore` 汇总成 `DiagnosticS
 
 - **启动**：buffer 打开→匹配语言→若无运行中服务器则按 `LanguageServerBinary`（由语言扩展或内置 `languages` 提供）spawn 进程，走 stdio JSON-RPC。
 - **重启**：`restart_language_servers_for_buffers`（L12826）/ `restart_all_language_servers`（L12816）——改设置或服务器崩溃时重建。
-- **远端**：远程开发时，`LspStore` 及其服务器整个跑在远端 `HeadlessProject` 上，本地只见结果（见 [Remote-Development.md](Remote-Development.md)）。
 - **扩展贡献**：语言扩展通过 `register_language_server_proxy`（见 [Extension-System.md](Extension-System.md)）声明如何下载/启动服务器。
 
 ## 7. 关键符号速查
@@ -84,5 +83,4 @@ LSP 主动 `publishDiagnostics` 推送诊断，`LspStore` 汇总成 `DiagnosticS
 - 语言→服务器绑定、Tree-sitter：[Language-and-Project.md](Language-and-Project.md)。
 - 补全/悬停弹出用 Picker/popover：[Picker-and-Commands.md](Picker-and-Commands.md)。
 - 诊断标记打在 buffer 上：[Editor.md](Editor.md)。
-- 远端 LSP 在 HeadlessProject 内跑：[Remote-Development.md](Remote-Development.md)。
 - 服务器二进制由扩展提供：[Extension-System.md](Extension-System.md)。

@@ -174,9 +174,6 @@ let
         curl
         fontconfig
         freetype
-        # TODO: need staticlib of this for linking the musl remote server.
-        # should make it a separate derivation/flake output
-        # see https://crane.dev/examples/cross-musl.html
         libgit2
         openssl
         sqlite

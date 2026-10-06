@@ -150,10 +150,6 @@ Examples:
 
 If an External Agent supports subscription-backed behavior, configure that in the agent unless the agent's Zed integration says otherwise.
 
-## Remote Projects {#remote-projects}
-
-External Agents may read credentials locally, remotely, or through their own sign-in flow. Check the specific agent's setup path when using SSH, dev containers, or other remote projects.
-
 Zed LLM provider API keys saved in the local keychain are not automatically the same as an External Agent's credentials.
 
 ## Custom Agents {#custom-agents}

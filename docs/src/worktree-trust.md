@@ -20,8 +20,6 @@ If a worktree is not trusted, Zed will indicate this with an exclamation mark ic
 Trusting a worktree persists that decision between restarts. You can clear all trusted worktrees with the `workspace::ClearTrustedWorktrees` command.
 This command will restart Zed, to ensure no untrusted settings, language servers or MCP servers persist.
 
-This feature works locally and on SSH and WSL remote hosts. Zed tracks trust information per host in these cases.
-
 ## What is restricted
 
 Restricted Mode prevents:

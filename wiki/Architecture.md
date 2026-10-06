@@ -97,7 +97,6 @@ graph TB
 | `open_ai` / `anthropic` / `google_ai` / `ollama` / `mistral` / `bedrock` / `deepseek` / `codestral` / `open_router` / `lmstudio` / `llama_cpp` | 各模型 Provider |
 | `extension` / `extension_host` / `extensions_ui` | 扩展系统（WASM） |
 | `vim` / `which_key` / `terminal` / `debugger_ui` / `dap_adapters` | 编辑增强 |
-| `remote` / `remote_connection` | SSH 远程开发 |
 
 ### L6 应用装配层
 | crate | 职责 |
@@ -105,7 +104,6 @@ graph TB
 | `crates/zed` | **桌面主程序**：`main()` 装配全部子系统（详见 [Startup-Flow.md](Startup-Flow.md)） |
 | `cli` | `zed` 命令行入口 |
 | `collab`（已移除） | 协作服务端（仅依赖 `livekit_api`，不含 webrtc） |
-| `remote_server`（已移除） | 在被远程主机上运行的 Zed 服务端（Linux-musl） |
 
 ## 3. 关键设计约束
 

@@ -396,6 +396,7 @@ impl WelcomePage {
 
         let (icon, title) = match location {
             SerializedWorkspaceLocation::Local => (IconName::Folder, name),
+            // Legacy persisted remote locations still deserialize; keep their server icon.
             SerializedWorkspaceLocation::Remote(_) => (IconName::Server, name),
         };
 

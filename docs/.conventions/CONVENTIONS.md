@@ -58,7 +58,6 @@ For voice, tone, and writing style, see the [brand-writer/](./brand-writer/) dir
 | Change                               | Action                                 |
 | ------------------------------------ | -------------------------------------- |
 | New "Stash" feature for Git          | Add section to `git.md`                |
-| New "Remote Development" capability  | Create `remote-development.md`         |
 | New setting `git.inline_blame.delay` | Add to existing Git config section     |
 | New AI provider (e.g., "Ollama")     | Add section to `llm-providers.md`      |
 | New agent tool category              | Potentially new page, depends on scope |

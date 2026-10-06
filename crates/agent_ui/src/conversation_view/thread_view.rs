@@ -11522,18 +11522,6 @@ impl ThreadView {
             .severity(Severity::Warning)
             .title("Codex on Windows")
             .description("For best performance, run Codex in Windows Subsystem for Linux (WSL2)")
-            .actions_slot(
-                Button::new("open-wsl-modal", "Open in WSL").on_click(cx.listener({
-                    move |_, _, _window, cx| {
-                        #[cfg(windows)]
-                        _window.dispatch_action(
-                            zed_actions::wsl_actions::OpenWsl::default().boxed_clone(),
-                            cx,
-                        );
-                        cx.notify();
-                    }
-                })),
-            )
             .dismiss_action(
                 IconButton::new("dismiss", IconName::Close)
                     .icon_size(IconSize::Small)

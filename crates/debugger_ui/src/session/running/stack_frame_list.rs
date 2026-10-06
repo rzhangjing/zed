@@ -522,8 +522,8 @@ impl StackFrameList {
             s.path
                 .as_deref()
                 .filter(|path| {
-                    // Since we do not know if we are debugging on the host or (a remote/WSL) target,
-                    // we need to check if either the path is absolute as Posix or Windows.
+                    // A debug adapter may report a path in either Posix or
+                    // Windows style, so accept both.
                     is_absolute(path, PathStyle::Unix) || is_absolute(path, PathStyle::Windows)
                 })
                 .map(|path| Arc::<Path>::from(Path::new(path)))

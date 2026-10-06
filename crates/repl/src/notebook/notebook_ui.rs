@@ -33,7 +33,7 @@ use uuid::Uuid;
 use crate::components::{KernelPickerDelegate, KernelSelector};
 use crate::kernels::{
     Kernel, KernelSession, KernelSpecification, KernelStatus, LocalKernelSpecification,
-    NativeRunningKernel, RemoteRunningKernel, SshRunningKernel, WslRunningKernel,
+    NativeRunningKernel, RemoteRunningKernel, WslRunningKernel,
 };
 use crate::notebook::MovementDirection;
 use crate::repl_store::ReplStore;
@@ -449,7 +449,6 @@ impl NotebookEditor {
                 KernelSpecification::Jupyter(s) => s.kernelspec.display_name.clone(),
                 KernelSpecification::PythonEnv(s) => s.kernelspec.display_name.clone(),
                 KernelSpecification::JupyterServer(s) => s.kernelspec.display_name.clone(),
-                KernelSpecification::SshRemote(s) => s.kernelspec.display_name.clone(),
                 KernelSpecification::WslRemote(s) => s.kernelspec.display_name.clone(),
             };
 
@@ -488,10 +487,6 @@ impl NotebookEditor {
                 RemoteRunningKernel::new(remote_spec, working_directory, view, window, cx)
             }
 
-            KernelSpecification::SshRemote(spec) => {
-                let project = self.project.clone();
-                SshRunningKernel::new(spec, working_directory, project, view, window, cx)
-            }
             KernelSpecification::WslRemote(spec) => {
                 WslRunningKernel::new(spec, entity_id, working_directory, fs, view, window, cx)
             }

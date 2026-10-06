@@ -17,7 +17,6 @@ use project::{
     Project, ProjectGroupKey, bookmark_store::SerializedBookmark,
     debugger::breakpoint_store::SourceBreakpoint,
 };
-use remote::RemoteConnectionOptions;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -27,29 +26,27 @@ use std::{
 use util::{ResultExt, path_list::SerializedPathList};
 use uuid::Uuid;
 
-#[derive(
-    Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, serde::Serialize, serde::Deserialize,
-)]
-pub(crate) struct RemoteConnectionId(pub u64);
+/// Placeholder for the connection options of the removed remote-development
+/// support. It exists so that legacy persisted locations of the shape
+/// `{"location":{"Remote":{...}}}` still deserialize; the payload is discarded.
+#[derive(Debug, PartialEq, Clone, Default, serde::Serialize)]
+pub struct RemovedRemoteConnectionOptions;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum RemoteConnectionKind {
-    Ssh,
-    Wsl,
-    Docker,
+impl<'de> serde::Deserialize<'de> for RemovedRemoteConnectionOptions {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        serde::de::IgnoredAny::deserialize(deserializer).map(|_| RemovedRemoteConnectionOptions)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 pub enum SerializedWorkspaceLocation {
     Local,
-    Remote(RemoteConnectionOptions),
-}
-
-impl SerializedWorkspaceLocation {
-    /// Get sorted paths
-    pub fn sorted_paths(&self) -> Arc<Vec<PathBuf>> {
-        unimplemented!()
-    }
+    /// Legacy remote-development location. No longer produced, but still read
+    /// from state persisted by older versions.
+    Remote(RemovedRemoteConnectionOptions),
 }
 
 /// A workspace entry from a previous session, containing all the info needed
@@ -78,22 +75,17 @@ impl SerializedProjectGroup {
     pub fn from_group(key: &ProjectGroupKey, expanded: bool) -> Self {
         Self {
             path_list: key.path_list().serialize(),
-            location: match key.host() {
-                Some(host) => SerializedWorkspaceLocation::Remote(host),
-                None => SerializedWorkspaceLocation::Local,
-            },
+            location: SerializedWorkspaceLocation::Local,
             expanded,
         }
     }
 
     pub fn into_restored_state(self) -> SerializedProjectGroupState {
         let path_list = PathList::deserialize(&self.path_list);
-        let host = match self.location {
-            SerializedWorkspaceLocation::Local => None,
-            SerializedWorkspaceLocation::Remote(opts) => Some(opts),
-        };
+        // Legacy `Remote` locations restore as plain path groups: remote
+        // development no longer exists, so their connection options are dropped.
         SerializedProjectGroupState {
-            key: ProjectGroupKey::new(host, path_list),
+            key: ProjectGroupKey::new(path_list),
             expanded: self.expanded,
         }
     }
@@ -155,25 +147,6 @@ pub struct DockStructure {
     pub left: DockData,
     pub right: DockData,
     pub bottom: DockData,
-}
-
-impl RemoteConnectionKind {
-    pub(crate) fn serialize(&self) -> &'static str {
-        match self {
-            RemoteConnectionKind::Ssh => "ssh",
-            RemoteConnectionKind::Wsl => "wsl",
-            RemoteConnectionKind::Docker => "docker",
-        }
-    }
-
-    pub(crate) fn deserialize(text: &str) -> Option<Self> {
-        match text {
-            "ssh" => Some(Self::Ssh),
-            "wsl" => Some(Self::Wsl),
-            "docker" => Some(Self::Docker),
-            _ => None,
-        }
-    }
 }
 
 impl Column for DockStructure {
@@ -490,5 +463,38 @@ impl Column for SerializedItem {
             },
             next_index,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_remote_workspace_location_still_deserializes() {
+        // Locations persisted by versions that still supported remote development
+        // must keep parsing, even though the payload is discarded.
+        let legacy = r#"{"Remote":{"connection":{"host":"example.com","port":22,"username":"zed","nickname":null}}}"#;
+        let location: SerializedWorkspaceLocation = serde_json::from_str(legacy)
+            .expect("legacy remote workspace location should still deserialize");
+        assert_eq!(
+            location,
+            SerializedWorkspaceLocation::Remote(RemovedRemoteConnectionOptions)
+        );
+
+        let local: SerializedWorkspaceLocation =
+            serde_json::from_str(r#""Local""#).expect("local location should deserialize");
+        assert_eq!(local, SerializedWorkspaceLocation::Local);
+    }
+
+    #[test]
+    fn serialized_workspace_location_round_trips() {
+        let location = SerializedWorkspaceLocation::Remote(RemovedRemoteConnectionOptions);
+        let json = serde_json::to_string(&location).expect("location should serialize");
+        assert_eq!(json, r#"{"Remote":null}"#);
+
+        let reparsed: SerializedWorkspaceLocation =
+            serde_json::from_str(&json).expect("serialized location should deserialize");
+        assert_eq!(reparsed, location);
     }
 }

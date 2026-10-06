@@ -19,7 +19,7 @@
 | `image_store` | `Entity<ImageStore>` | 粘贴图片（[Misc-Items-and-Selectors.md](Misc-Items-and-Selectors.md)） |
 | `bookmark_store` / `breakpoint_store` | `Entity<..>` | 书签 / 断点 |
 | `snippets` | `Entity<SnippetProvider>` | snippet |
-| `user_store` / `collab_client` / `remote_client` | client | 用户 / 协作 / 远程（[Remote-Development.md](Remote-Development.md)） |
+| `user_store` / `collab_client` | client | 用户 / 协作 |
 | `collaborators` | `HashMap<PeerId,Collaborator>` | 在场协作者 |
 | `client_state` | `ProjectClientState` | `Local`｜`Shared{remote_id}`｜`Collab{capability,replica_id,..}`([L315](../crates/project/src/project.rs)) |
 | `environment` | `Entity<ProjectEnvironment>` | 语言服务器/任务用环境变量 |
@@ -41,7 +41,6 @@
 | `open_buffer(remote_id,worktree_id,path,cx)` | [L3268](../crates/project/src/project.rs) | worktree→File→Buffer |
 | `open_buffer_for_entry` / `open_unstaged_diff` / `open_conflict_lists` | project.rs | diff/冲突视图 |
 | `search(query,...)` / `search_in_project` | [L4811](../crates/project/src/project.rs) | project_search.rs（见 §6） |
-| `remote(..)` | [L1418](../crates/project/src/project.rs) | 建远程项目 |
 | `update_buffer` / `save_buffer` / `buffer_store` | project.rs | 编辑/保存（触发 LSP didSave、prettier、format） |
 | LSP 请求：`completions`/`code_actions`/`hover`/`definition`/`references`/`rename`/`format`/`inlay_hints`/`signature_help`/`document_symbols` | project.rs → lsp_command.rs(216KB) | 每个是一个 `trait LspRequest`/`typed_lsp_request` |
 
@@ -57,7 +56,7 @@
 ```rust
 pub enum Worktree {
     Local(LocalWorktree),   // 真实磁盘 + watcher
-    Remote(RemoteWorktree), // 远程主机上，经 RPC
+    Remote(RemoteWorktree), // 协作会话中被邀请方经 RPC 同步的目录树
 }
 ```
 - 核心数据结构是 `SumTree<Entry>`（按路径 key 排序），见 [Sum-Tree-Deep-Dive.md](Sum-Tree-Deep-Dive.md)。

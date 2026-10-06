@@ -20,7 +20,6 @@ use project::agent_server_store::{
     AgentServerCommand, AgentServerStore, AllAgentServersSettings, CustomAgentServerSettings,
 };
 use project::{AgentId, Project};
-use remote::remote_client::Interactive;
 use serde::Deserialize;
 use settings::{AgentConfigOptionValue, SettingsStore};
 use std::path::PathBuf;
@@ -820,30 +819,11 @@ impl AcpConnection {
                 .cloned()
         });
         let original_command = command.clone();
-        let (path, args, env) = project
-            .read_with(cx, |project, cx| {
-                project.remote_client().and_then(|client| {
-                    let template = client
-                        .read(cx)
-                        .build_command(
-                            Some(command.path.display().to_string()),
-                            &command.args,
-                            &command.env.clone().into_iter().flatten().collect(),
-                            root_dir.as_ref().map(|path| path.display().to_string()),
-                            None,
-                            Interactive::No,
-                        )
-                        .log_err()?;
-                    Some((template.program, template.args, template.env))
-                })
-            })
-            .unwrap_or_else(|| {
-                (
-                    command.path.display().to_string(),
-                    command.args,
-                    command.env.unwrap_or_default(),
-                )
-            });
+        let (path, args, env) = (
+            command.path.display().to_string(),
+            command.args,
+            command.env.unwrap_or_default(),
+        );
 
         let builder = ShellBuilder::new(&Shell::System, cfg!(windows)).non_interactive();
         let mut child = builder.build_std_command(Some(path.clone()), &args);
@@ -4334,16 +4314,11 @@ fn mcp_servers_for_project(project: &Entity<Project>, cx: &App) -> Vec<acp::McpS
         .filter_map(|id| {
             let configuration = context_server_store.configuration_for_server(id)?;
             match &*configuration {
-                project::context_server_store::ContextServerConfiguration::Custom {
-                    command,
-                    remote,
-                    ..
-                }
+                project::context_server_store::ContextServerConfiguration::Custom { command }
                 | project::context_server_store::ContextServerConfiguration::Extension {
                     command,
-                    remote,
                     ..
-                } if is_local || *remote => Some(acp::McpServer::Stdio(
+                } if is_local => Some(acp::McpServer::Stdio(
                     acp::McpServerStdio::new(id.0.to_string(), &command.path)
                         .args(command.args.clone())
                         .env(if let Some(env) = command.env.as_ref() {

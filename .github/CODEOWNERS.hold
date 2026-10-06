@@ -63,14 +63,12 @@
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # collab-team
-# Real-time collaboration, channels, calls, remote development
+# Real-time collaboration, channels, calls
 # ═══════════════════════════════════════════════════════════════════════════════
 
 /crates/channel/ @zed-industries/collab-team
 /crates/client/ @zed-industries/collab-team
-/crates/dev_container/ @zed-industries/collab-team
 /crates/proto/ @zed-industries/collab-team
-/crates/remote/ @zed-industries/collab-team
 /crates/rpc/ @zed-industries/collab-team
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -147,8 +145,6 @@
 /crates/lsp/ @zed-industries/ecosystem-team
 /crates/node_runtime/ @zed-industries/ecosystem-team
 /crates/prettier/ @zed-industries/ecosystem-team
-# SUGGESTED: Review needed - based on Piotr Osiewicz (1 commits)
-/crates/remote_connection/ @zed-industries/ecosystem-team
 /crates/toolchain_selector/ @zed-industries/ecosystem-team
 /extensions/ @zed-industries/ecosystem-team
 /extensions/glsl/ @zed-industries/ecosystem-team

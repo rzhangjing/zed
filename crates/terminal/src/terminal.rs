@@ -1037,7 +1037,6 @@ impl TerminalBuilder {
             selection_phase: SelectionPhase::Ended,
             hyperlink_regex_searches: RegexSearches::default(),
             vi_mode_enabled: false,
-            is_remote_terminal: false,
             last_mouse_move_time: Instant::now(),
             last_hyperlink_search_position: None,
             mouse_down_hyperlink: None,
@@ -1087,7 +1086,6 @@ impl TerminalBuilder {
         max_scroll_history_lines: Option<usize>,
         path_hyperlink_regexes: Vec<String>,
         path_hyperlink_timeout: Duration,
-        is_remote_terminal: bool,
         window_id: u64,
         cx: &App,
         activation_script: Vec<String>,
@@ -1324,7 +1322,6 @@ impl TerminalBuilder {
                     path_hyperlink_timeout,
                 ),
                 vi_mode_enabled: false,
-                is_remote_terminal,
                 last_mouse_move_time: Instant::now(),
                 last_hyperlink_search_position: None,
                 mouse_down_hyperlink: None,
@@ -1348,19 +1345,15 @@ impl TerminalBuilder {
                 event_loop_task: Task::ready(Ok(())),
                 background_executor,
                 path_style,
-                cwd_history: if is_remote_terminal {
-                    Vec::new()
-                } else {
-                    working_directory
-                        .as_ref()
-                        .map(|working_directory| {
-                            vec![CwdHistoryEntry {
-                                scrollback_position: i32::MIN,
-                                working_directory: working_directory.clone(),
-                            }]
-                        })
-                        .unwrap_or_default()
-                },
+                cwd_history: working_directory
+                    .as_ref()
+                    .map(|working_directory| {
+                        vec![CwdHistoryEntry {
+                            scrollback_position: i32::MIN,
+                            working_directory: working_directory.clone(),
+                        }]
+                    })
+                    .unwrap_or_default(),
                 pending_cwd_boundary: None,
                 #[cfg(any(test, feature = "test-support"))]
                 input_log: Vec::new(),
@@ -1525,7 +1518,6 @@ pub struct Terminal {
     hyperlink_regex_searches: RegexSearches,
     task: Option<TaskState>,
     vi_mode_enabled: bool,
-    is_remote_terminal: bool,
     last_mouse_move_time: Instant,
     last_hyperlink_search_position: Option<GpuiPoint<Pixels>>,
     mouse_down_hyperlink: Option<HyperlinkMatch>,
@@ -2235,7 +2227,7 @@ impl Terminal {
 
     fn write_input(&mut self, input: impl Into<Cow<'static, [u8]>>) {
         let input = input.into();
-        if !self.is_remote_terminal && input.contains(&b'\r') {
+        if input.contains(&b'\r') {
             let term = self.term.lock_unfair();
             self.pending_cwd_boundary = Some(Self::scrollback_position(
                 term.grid().cursor.point.line.0,
@@ -2876,13 +2868,13 @@ impl Terminal {
     }
 
     pub fn working_directory(&self) -> Option<PathBuf> {
-        if self.is_remote_terminal {
-            // We can't yet reliably detect the working directory of a shell on the
-            // SSH host. Until we can do that, it doesn't make sense to display
-            // the working directory on the client and persist that.
-            None
-        } else {
-            self.client_side_working_directory()
+        match &self.terminal_type {
+            TerminalType::Pty { info, .. } => info
+                .current
+                .read()
+                .as_ref()
+                .map(|process| process.cwd.clone()),
+            TerminalType::DisplayOnly => None,
         }
     }
 
@@ -2898,28 +2890,7 @@ impl Terminal {
         }
     }
 
-    /// Returns the working directory of the process that's connected to the PTY.
-    /// That means it returns the working directory of the local shell or program
-    /// that's running inside the terminal.
-    ///
-    /// This does *not* return the working directory of the shell that runs on the
-    /// remote host, in case Zed is connected to a remote host.
-    fn client_side_working_directory(&self) -> Option<PathBuf> {
-        match &self.terminal_type {
-            TerminalType::Pty { info, .. } => info
-                .current
-                .read()
-                .as_ref()
-                .map(|process| process.cwd.clone()),
-            TerminalType::DisplayOnly => None,
-        }
-    }
-
     pub(crate) fn record_cwd_change(&mut self, new_working_directory: PathBuf) {
-        if self.is_remote_terminal {
-            return;
-        }
-
         let scrollback_position = self.pending_cwd_boundary.take().unwrap_or_else(|| {
             let term = self.term.lock_unfair();
             Self::scrollback_position(term.grid().cursor.point.line.0, term.history_size())
@@ -2946,10 +2917,7 @@ impl Terminal {
     fn cwd_at_line(&self, line: i32, history_size: usize) -> Option<PathBuf> {
         // Once the scrollback cap is reached, evictions move retained lines without changing
         // `history_size`, so stored row offsets no longer identify their original lines.
-        if self.is_remote_terminal
-            || self.cwd_history.is_empty()
-            || history_size >= self.term_config.scrolling_history
-        {
+        if self.cwd_history.is_empty() || history_size >= self.term_config.scrolling_history {
             return self.working_directory();
         }
         let scrollback_position = Self::scrollback_position(line, history_size);
@@ -3196,7 +3164,6 @@ impl Terminal {
             self.template.max_scroll_history_lines,
             self.template.path_hyperlink_regexes.clone(),
             self.template.path_hyperlink_timeout,
-            self.is_remote_terminal,
             self.template.window_id,
             cx,
             self.activation_script.clone(),
@@ -3733,7 +3700,6 @@ mod tests {
                     None,
                     vec![],
                     Duration::ZERO,
-                    false,
                     0,
                     cx,
                     vec![],
@@ -3777,7 +3743,6 @@ mod tests {
                     None,
                     vec![],
                     Duration::ZERO,
-                    false,
                     0,
                     cx,
                     vec![],
@@ -4168,7 +4133,6 @@ mod tests {
                     None,
                     vec![],
                     Duration::ZERO,
-                    false,
                     0,
                     cx,
                     Vec::new(),
@@ -4235,7 +4199,6 @@ mod tests {
                     None,
                     vec![],
                     Duration::ZERO,
-                    false,
                     0,
                     cx,
                     Vec::new(),
@@ -4300,7 +4263,6 @@ mod tests {
                     None,
                     Vec::new(),
                     Duration::ZERO,
-                    false,
                     0,
                     cx,
                     Vec::new(),
@@ -5903,18 +5865,6 @@ mod tests {
                 working_directory,
             }]
         );
-    }
-
-    #[test]
-    fn test_remote_terminal_does_not_record_local_cwd() {
-        let mut terminal = make_display_only_terminal();
-        terminal.is_remote_terminal = true;
-        terminal.write_input(b"\r".to_vec());
-        terminal.record_cwd_change(PathBuf::from("/local/ssh/cwd"));
-
-        assert_eq!(terminal.pending_cwd_boundary, None);
-        assert!(terminal.cwd_history.is_empty());
-        assert_eq!(terminal.cwd_at_line(0, 0), None);
     }
 
     #[test]

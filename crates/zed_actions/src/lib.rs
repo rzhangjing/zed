@@ -61,8 +61,6 @@ actions!(
         OpenKeymap,
         /// Opens account settings.
         OpenAccountSettings,
-        /// Opens server settings.
-        OpenServerSettings,
         /// Quits the application.
         Quit,
         /// Shows information about Zed.
@@ -257,25 +255,6 @@ pub mod dev {
             ResetFrameOverlayStats,
             /// Opens the key context view for debugging keybindings.
             OpenKeyContextView
-        ]
-    );
-}
-
-pub mod remote_debug {
-    use gpui::actions;
-
-    actions!(
-        remote_debug,
-        [
-            /// Simulates a disconnection from the remote server for testing purposes.
-            /// This will trigger the reconnection logic.
-            SimulateDisconnect,
-            /// Simulates a timeout/slow connection to the remote server for testing purposes.
-            /// This will cause heartbeat failures and trigger reconnection.
-            SimulateTimeout,
-            /// Simulates a timeout/slow connection to the remote server for testing purposes.
-            /// This will cause heartbeat failures and attempting a reconnection while having exhausted all attempts.
-            SimulateTimeoutExhausted,
         ]
     );
 }
@@ -702,23 +681,6 @@ pub struct OpenRecent {
     pub create_new_window: Option<bool>,
 }
 
-/// Creates a project from a selected template.
-#[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
-#[action(namespace = projects)]
-#[serde(deny_unknown_fields)]
-pub struct OpenRemote {
-    #[serde(default)]
-    pub from_existing_connection: bool,
-    #[serde(default)]
-    pub create_new_window: Option<bool>,
-}
-
-/// Opens the dev container connection modal.
-#[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
-#[action(namespace = projects)]
-#[serde(deny_unknown_fields)]
-pub struct OpenDevContainer;
-
 /// Where to spawn the task in the UI.
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -858,38 +820,6 @@ pub mod vim {
             OpenDefaultKeymap
         ]
     );
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct WslConnectionOptions {
-    pub distro_name: String,
-    pub user: Option<String>,
-}
-
-// `debug_assertions` makes the actions visible for the docs preprocessor
-#[cfg(any(debug_assertions, target_os = "windows"))]
-pub mod wsl_actions {
-    use gpui::Action;
-    use schemars::JsonSchema;
-    use serde::Deserialize;
-
-    /// Opens a folder inside Wsl.
-    #[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
-    #[action(namespace = projects)]
-    #[serde(deny_unknown_fields)]
-    pub struct OpenFolderInWsl {
-        #[serde(default)]
-        pub create_new_window: Option<bool>,
-    }
-
-    /// Open a wsl distro.
-    #[derive(PartialEq, Clone, Deserialize, Default, JsonSchema, Action)]
-    #[action(namespace = projects)]
-    #[serde(deny_unknown_fields)]
-    pub struct OpenWsl {
-        #[serde(default)]
-        pub create_new_window: Option<bool>,
-    }
 }
 
 pub mod preview {

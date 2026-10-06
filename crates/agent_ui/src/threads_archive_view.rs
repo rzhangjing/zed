@@ -39,8 +39,7 @@ use ui::{
 use util::ResultExt;
 use util::paths::PathExt;
 use workspace::{
-    CloseWindow, ModalView, PathList, RecentWorkspace, SerializedWorkspaceLocation, Workspace,
-    WorkspaceDb, WorkspaceId,
+    CloseWindow, ModalView, PathList, RecentWorkspace, Workspace, WorkspaceDb, WorkspaceId,
 };
 
 use zed_actions::agents_sidebar::FocusSidebarFilter;
@@ -1517,7 +1516,6 @@ impl PickerDelegate for ProjectPickerDelegate {
             ),
             ProjectPickerEntry::Workspace(hit) => {
                 let workspace = self.workspaces.get(hit.candidate_id)?;
-                let location = &workspace.location;
 
                 let ordered_paths: Vec<_> = workspace
                     .identity_paths
@@ -1569,12 +1567,7 @@ impl PickerDelegate for ProjectPickerDelegate {
                     .collect();
 
                 let highlighted_match = HighlightedMatchWithPaths {
-                    prefix: match location {
-                        SerializedWorkspaceLocation::Remote(options) => {
-                            Some(SharedString::from(options.display_name()))
-                        }
-                        _ => None,
-                    },
+                    prefix: None,
                     match_label: HighlightedMatch::join(match_labels.into_iter().flatten(), ", "),
                     paths: Vec::new(),
                     active: false,

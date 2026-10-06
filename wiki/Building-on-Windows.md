@@ -79,7 +79,7 @@ any(test, feature = "test-support",
 曾有以 GNU 工具链绕开 MSVC 的想法，结论是 **不可行**（分析，非改动）：
 - （历史理由）原 `livekit_client`（已移除）无条件依赖 `scap`（屏幕捕获）→ `windows-capture`，二者依赖 MSVC 专属的 Windows API 组件/构建方式，GNU 目标缺少稳定支持；官方亦明确 **不支持 MSYS2/mingw-w64 的 Zed**（windows.md“Installing from msys2”）。
 - `.cargo/config.toml` 强制 `crt-static`（L16-17），GNU 静态 CRT 链接易出问题。
-- 官方 CI 的 Windows 产物只有 `remote-server`，并不产出用 GNU 构建的桌面。
+- 官方 CI 的 Windows 产物是 MSVC 构建的 `Zed-x86_64.exe` / `Zed-aarch64.exe`（本 fork 的打包清单 `EXPECTED_ASSETS` 里已无 `zed-remote-server-*`），并不产出用 GNU 构建的桌面。
 - 即便 `rust-toolchain.toml` 目前仍列 `targets = ["x86_64-pc-windows-gnu"]`，也不改变上述阻塞——真正可编译桌面的是 **MSVC**。
 
 因此路线确定为：**MSVC + `no_webrtc` + spectre stub**，而非切换 GNU。

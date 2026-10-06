@@ -10,9 +10,9 @@
 | FS 实现 | `RealFs` | [`fs.rs:445`](../crates/fs/src/fs.rs) | 真实磁盘实现 |
 | 文件监听 | `Watcher` trait | [`fs.rs:72`](../crates/fs/src/fs.rs) | 基于 notify 的目录变更监听 |
 | 监听注册 | `WatcherRegistrationId` | [`fs_watcher.rs:788`](../crates/fs/src/fs_watcher.rs) | 监听句柄 |
-| 工作区模型 | `enum Worktree` | [`worktree.rs:102`](../crates/worktree/src/worktree.rs) | `Local`/`Remote` 两态 |
+| 工作区模型 | `enum Worktree` | [`worktree.rs:102`](../crates/worktree/src/worktree.rs) | `Local` 或 `Remote`（协作会话客座端） |
 | 本地工作区 | `LocalWorktree` | [`worktree.rs:140`](../crates/worktree/src/worktree.rs) | 后台扫描线程 + 快照 |
-| 远端工作区 | `RemoteWorktree` | [`worktree.rs:168`](../crates/worktree/src/worktree.rs) | 经 RPC 从远端同步 |
+| 远端工作区 | `RemoteWorktree` | [`worktree.rs:168`](../crates/worktree/src/worktree.rs) | 协作会话中被邀请方经 RPC 同步的目录树 |
 | 树节点 | `Entry` | [`worktree.rs:3959`](../crates/worktree/src/worktree.rs) | 文件/目录条目（含 git 状态、is_ignored） |
 | 工作区事件 | `Event` | [`worktree.rs:470`](../crates/worktree/src/worktree.rs) | 增删改/扫描进度通知 |
 | 工作区集合 | `WorktreeStore` | [`worktree_store.rs:207`](../crates/project/src/worktree_store.rs) | Project 持有多根 worktree |
@@ -21,14 +21,14 @@
 
 ## 2. fs：可替换的文件系统抽象
 
-`FileSystem`（[fs.rs](../crates/fs/src/fs.rs)）把全部磁盘操作做成 `async` trait 方法：`create_dir`(L99)、`rename`(L113)、`write`(L138)、`read_dir`(L144)、`watch`(L164)。`RealFs`（L445）是生产实现（同文件里另有多套 impl：L730/L809/L1030… 对应不同 OS/测试）。之所以抽象成 trait，是为了：① 远端开发时把文件操作走 RPC 转发（见 [Remote-Development.md](Remote-Development.md)）；② 测试用内存/伪 FS。`Watcher`（L72）+ `WatcherRegistrationId`（fs_watcher.rs:788）封装 `notify`，目录一有变化就回调，供 `Worktree` 增量刷新。
+`FileSystem`（[fs.rs](../crates/fs/src/fs.rs)）把全部磁盘操作做成 `async` trait 方法：`create_dir`(L99)、`rename`(L113)、`write`(L138)、`read_dir`(L144)、`watch`(L164)。`RealFs`（L445）是生产实现（同文件里另有多套 impl：L730/L809/L1030… 对应不同 OS/测试）。之所以抽象成 trait，是为了能替换实现（测试用内存/伪 FS）。`Watcher`（L72）+ `WatcherRegistrationId`（fs_watcher.rs:788）封装 `notify`，目录一有变化就回调，供 `Worktree` 增量刷新。
 
 ## 3. Worktree：把目录变成可订阅的内存树
 
-`Worktree` 现在是枚举（[worktree.rs:102](../crates/worktree/src/worktree.rs)）：`Local(LocalWorktree)`（L140）或 `Remote(RemoteWorktree)`（L168），`impl EventEmitter<Event>`（L481）。它是 `Project`、`project_panel`、搜索、Git 共用的"目录真相"。
+`Worktree` 现在是枚举（[worktree.rs:102](../crates/worktree/src/worktree.rs)）：`Local(LocalWorktree)`（L140）或 `Remote(RemoteWorktree)`（L168，协作会话客座端使用的 RPC 同步态），`impl EventEmitter<Event>`（L481）。它是 `Project`、`project_panel`、搜索、Git 共用的"目录真相"。
 
 - **扫描**：`LocalWorktree` 起后台线程递归读目录，产出 `Entry`（L3959，携带 `is_ignored`/git 状态/symlink 等）。扫描进度经 `Event`（L470）流式上报，UI 据此显示 loading。忽略规则、`.gitignore` 在此解析。
-- **变更**：`create_entry`（[L963](../crates/worktree/src/worktree.rs)）、`delete_entry`（L1031）、`rename`/`copy` 等改动树；本地直接落 `fs`，远端（`handle_create_entry` L1142 等）走 RPC 并等对端回执再更新。
+- **变更**：`create_entry`（[L963](../crates/worktree/src/worktree.rs)）、`delete_entry`（L1031）、`rename`/`copy` 等改动树；本地直接落 `fs`（`RemoteWorktree` 侧另有 `handle_create_entry` L1142、`handle_delete_entry` L1192 等经 RPC 同步的路径，供协作会话客座端使用）。
 - **快照读**：UI/搜索不锁活树，而是取 `WorktreeSnapshot` 只读遍历，保证 GPUI 主线程不阻塞。
 
 ## 4. WorktreeStore：多根工作区
@@ -69,5 +69,4 @@
 - 全局搜索遍历 worktree：[Search.md](Search.md)。
 - Git 状态徽标来源：[Git-Integration.md](Git-Integration.md)。
 - LSP 随文件增删启停：[LSP-Features.md](LSP-Features.md)、[Language-and-Project.md](Language-and-Project.md)。
-- 远端 `RemoteWorktree` 走 RPC：[Remote-Development.md](Remote-Development.md)。
 - 面板停靠与 Item 体系：[Workspace-Pane-Dock.md](Workspace-Pane-Dock.md)。

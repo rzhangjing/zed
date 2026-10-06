@@ -47,7 +47,7 @@ use serde_json::Value;
 use settings::Settings;
 use stack_frame_list::StackFrameList;
 use task::{
-    BuildTaskDefinition, DebugScenario, SharedTaskContext, Shell, ShellBuilder, SpawnInTerminal,
+    BuildTaskDefinition, DebugScenario, SharedTaskContext, ShellBuilder, SpawnInTerminal,
     TaskContext, ZedDebugConfig, substitute_variables_in_str,
 };
 use terminal_view::TerminalView;
@@ -1063,11 +1063,6 @@ impl RunningState {
         let weak_project = project.downgrade();
         let weak_workspace = workspace.downgrade();
         let is_windows = project.read(cx).path_style(cx).is_windows();
-        let remote_shell = project
-            .read(cx)
-            .remote_client()
-            .as_ref()
-            .and_then(|remote| remote.read(cx).shell());
 
         cx.spawn_in(window, async move |this, cx| {
             let DebugScenario {
@@ -1085,12 +1080,10 @@ impl RunningState {
 
                 let weak_workspace_clone = weak_workspace.clone();
                 weak_workspace.update_in(cx, |workspace, window, cx| {
-                    let project = workspace.project().clone();
                     workspace.toggle_modal(window, cx, |window, cx| {
                         AttachModal::new(
                             ModalIntent::ResolveProcessId(Some(tx)),
                             weak_workspace_clone,
-                            project,
                             true,
                             window,
                             cx,
@@ -1139,7 +1132,7 @@ impl RunningState {
                         (task, None)
                     }
                 };
-                let Some(mut task) = task_template.resolve_task("debug-build-task", &task_context) else {
+                let Some(task) = task_template.resolve_task("debug-build-task", &task_context) else {
                     anyhow::bail!("Could not resolve task variables within a debug scenario");
                 };
 
@@ -1175,10 +1168,6 @@ impl RunningState {
                 } else {
                     None
                 };
-
-                if let Some(remote_shell) = remote_shell && task.resolved.shell == Shell::System {
-                    task.resolved.shell = Shell::Program(remote_shell);
-                }
 
                 let builder = ShellBuilder::new(&task.resolved.shell, is_windows);
                 let command_label = builder.command_label(task.resolved.command.as_deref().unwrap_or(""));

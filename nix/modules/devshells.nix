@@ -44,9 +44,6 @@
           passthru.env = attrs.env;
         })).env; # exfil `env`; it's not in drvAttrs
 
-      # Musl cross-compiler for building remote_server
-      muslCross = pkgs.pkgsCross.musl64;
-
       # Cargo build timings wrapper script
       wrappedCargo = pkgs.writeShellApplication {
         name = "cargo";
@@ -120,10 +117,6 @@
             # and `output.zed-html.command` in `docs/book.toml`.
             MDBOOK_PREPROCESSOR__ZED_DOCS_PREPROCESSOR__COMMAND = "${docs-preprocessor}/bin/docs_preprocessor";
             MDBOOK_OUTPUT__ZED_HTML__COMMAND = "${docs-preprocessor}/bin/docs_preprocessor postprocess";
-
-            ZED_ZSTD_MUSL_LIB = "${pkgs.pkgsCross.musl64.pkgsStatic.zstd.out}/lib";
-            # For aws-lc-sys musl cross-compilation
-            CC_x86_64_unknown_linux_musl = "${muslCross.stdenv.cc}/bin/x86_64-unknown-linux-musl-gcc";
           };
       };
     };

@@ -127,7 +127,6 @@ mod tests {
                 "slack".into(),
                 ContextServerSettings::Stdio {
                     enabled: true,
-                    remote: false,
                     command: ContextServerCommand {
                         path: "slack-mcp-server".into(),
                         args: Vec::new(),
