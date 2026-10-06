@@ -64,7 +64,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Task-System-Deep-Dive（TaskTemplate/变量替换/Inventory/TasksModal/终端·DAP 分发）](Task-System-Deep-Dive.md)
 - [Extension-Host-Deep-Dive（Wasmtime 组件宿主/版本化 WIT/CapabilityGranter/Headless）](Extension-Host-Deep-Dive.md)
 - [GPUI-Macros-and-Utilities-Deep-Dive（proc-macro/Refineable 样式级联/SharedString/Tokio 桥/gpui_util）](GPUI-Macros-and-Utilities-Deep-Dive.md)
-- [Model-Providers-Deep-Dive（LanguageModel/Provider 契约 + 逐厂商 client→适配层两层架构/SSE/Bedrock SigV4/云）](Model-Providers-Deep-Dive.md)
+- [Model-Providers-Deep-Dive（LanguageModel/Provider 契约 + 逐厂商 client→适配层两层架构/SSE/云；原 Bedrock SigV4 路径已移除）](Model-Providers-Deep-Dive.md)
 - [Persistence-Deep-Dive（sqlez/db 两套迁移栈 + AppMigrator inventory 拓扑排序 + migrator 配置 JSON 迁移）](Persistence-Deep-Dive.md)
 - [Network-HTTP-Deep-Dive（HttpClient 契约/ReqwestClient 实现/http_proxy 沙箱代理+DNS 重绑定防护/proxy_handshake 隧道/net Windows UDS/session）](Network-HTTP-Deep-Dive.md)
 - [Telemetry-and-Updates-Deep-Dive（telemetry 事件门/telemetry_events schema/crashes Sentry/release_channel 通道/AutoUpdater 跨平台安装/auto_update_ui/feedback）](Telemetry-and-Updates-Deep-Dive.md)

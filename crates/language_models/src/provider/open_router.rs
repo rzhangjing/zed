@@ -581,7 +581,7 @@ pub fn into_open_router(
 
     if is_anthropic_model && any_message_wants_cache {
         // OpenRouter's top-level automatic cache_control restricts routing to
-        // Anthropic direct; explicit block breakpoints also work on Bedrock and Vertex.
+        // Anthropic direct; explicit block breakpoints also work on Vertex.
         if let Some(content) = last_cache_message_index
             .and_then(|index| messages.get_mut(index))
             .and_then(request_message_content_mut)

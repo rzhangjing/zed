@@ -5,19 +5,17 @@ use settings::RegisterSetting;
 
 use crate::provider::{
     anthropic, anthropic::AnthropicSettings, anthropic_compatible::AnthropicCompatibleSettings,
-    bedrock, bedrock::AmazonBedrockSettings, cloud::ZedDotDevSettings, deepseek::DeepSeekSettings,
-    google::GoogleSettings, llama_cpp::LlamaCppSettings, lmstudio::LmStudioSettings, mistral,
-    mistral::MistralSettings, ollama::OllamaSettings, open_ai::OpenAiSettings,
-    open_ai_compatible::OpenAiCompatibleSettings, open_router, open_router::OpenRouterSettings,
-    opencode, opencode::OpenCodeSettings, resolve_custom_headers,
-    vercel_ai_gateway::VercelAiGatewaySettings, x_ai::XAiSettings,
+    cloud::ZedDotDevSettings, deepseek::DeepSeekSettings, google::GoogleSettings,
+    llama_cpp::LlamaCppSettings, lmstudio::LmStudioSettings, mistral, mistral::MistralSettings,
+    ollama::OllamaSettings, open_ai::OpenAiSettings, open_ai_compatible::OpenAiCompatibleSettings,
+    open_router, open_router::OpenRouterSettings, opencode, opencode::OpenCodeSettings,
+    resolve_custom_headers, vercel_ai_gateway::VercelAiGatewaySettings, x_ai::XAiSettings,
 };
 
 #[derive(Debug, RegisterSetting)]
 pub struct AllLanguageModelSettings {
     pub anthropic: AnthropicSettings,
     pub anthropic_compatible: HashMap<Arc<str>, AnthropicCompatibleSettings>,
-    pub bedrock: AmazonBedrockSettings,
     pub deepseek: DeepSeekSettings,
     pub google: GoogleSettings,
     pub llama_cpp: LlamaCppSettings,
@@ -51,7 +49,6 @@ impl settings::Settings for AllLanguageModelSettings {
         let language_models = content.language_models.clone().unwrap();
         let anthropic = language_models.anthropic.unwrap();
         let anthropic_compatible = language_models.anthropic_compatible.unwrap();
-        let bedrock = language_models.bedrock.unwrap();
         let deepseek = language_models.deepseek.unwrap();
         let google = language_models.google.unwrap();
         let llama_cpp = language_models.llama_cpp.unwrap();
@@ -93,23 +90,6 @@ impl settings::Settings for AllLanguageModelSettings {
                     )
                 })
                 .collect(),
-            bedrock: AmazonBedrockSettings {
-                available_models: bedrock.available_models.unwrap_or_default(),
-                mantle_available_models: bedrock.mantle_available_models.unwrap_or_default(),
-                custom_headers: custom_headers_from(
-                    "Amazon Bedrock",
-                    bedrock.custom_headers,
-                    bedrock::RESERVED_HEADER_NAMES,
-                ),
-                region: bedrock.region,
-                endpoint: bedrock.endpoint_url, // todo(should be api_url)
-                profile_name: bedrock.profile,
-                role_arn: None, // todo(was never a setting for this...)
-                authentication_method: bedrock.authentication_method.map(Into::into),
-                allow_global: bedrock.allow_global,
-                guardrail_identifier: bedrock.guardrail_identifier,
-                guardrail_version: bedrock.guardrail_version,
-            },
             deepseek: DeepSeekSettings {
                 api_url: deepseek.api_url.unwrap(),
                 available_models: deepseek.available_models.unwrap_or_default(),

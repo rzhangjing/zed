@@ -8,7 +8,7 @@ Zed 的 AI 能力分三层：**Provider（厂商接入）** → **LanguageModel�
 |---|---|---|
 | `language_model_core` | 与 UI 无关的基础类型：请求/事件/错误/token 统计、ProviderId 常量 | `LanguageModelCompletionEvent`(`language_model_core.rs:36`)、`TokenUsage`(L511)、`LanguageModelToolUse`(L578)、`StopReason`(L503) |
 | `language_model` | **模型与 Provider 的 trait 抽象**、全局注册表 | `LanguageModel`(`language_model.rs:91`)、`LanguageModelProvider`(L366)、`LanguageModelRegistry`(`registry.rs:46`) |
-| `language_models` | 各厂商 **具体实现**（20 个 provider） | `provider/`：`anthropic.rs`、`open_ai.rs`、`ollama.rs`、`bedrock.rs`、`cloud.rs`(Zed)、`google.rs`、`mistral.rs`、`deepseek.rs`、`x_ai.rs`、`open_router.rs`、`llama_cpp.rs`、`lmstudio.rs`、`copilot_chat.rs` … |
+| `language_models` | 各厂商 **具体实现**（20 个 provider） | `provider/`：`anthropic.rs`、`open_ai.rs`、`ollama.rs`、`bedrock.rs`（已移除）、`cloud.rs`(Zed)、`google.rs`、`mistral.rs`、`deepseek.rs`、`x_ai.rs`、`open_router.rs`、`llama_cpp.rs`、`lmstudio.rs`、`copilot_chat.rs` … |
 | `agent` | 对话线程、工具集、权限、沙箱 | `thread.rs`(AcpThread)、`tools/`、`tool_permissions.rs`、`sandboxing.rs` |
 | `acp_thread` | Agent Client Protocol 下的共享会话模型（UI 与后端解耦） | `AcpThread`、`ClientUserMessageId` |
 | `edit_prediction` | 内联编辑预测（next-edit / ghost text） | `EditPredictionStore`(`edit_prediction.rs:164`) |

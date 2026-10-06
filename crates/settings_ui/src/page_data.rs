@@ -8599,11 +8599,9 @@ fn ai_page(cx: &App) -> SettingsPage {
                 description: Some("Configure natively-included model providers.".into()),
                 search_aliases: &[
                     "ai",
-                    "amazon",
                     "anthropic",
                     "api key",
                     "azure",
-                    "bedrock",
                     "chat",
                     "claude",
                     "copilot",

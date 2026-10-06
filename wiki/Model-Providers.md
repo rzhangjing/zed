@@ -1,6 +1,6 @@
 # Model Providers（模型 Provider 全厂商详解）
 
-本页深挖 [Agent-and-AI.md](Agent-and-AI.md) 中"模型接入"这一层的完整实现：核心 trait 在 [`language_model`](../crates/language_model)，各厂商 provider 在 [`language_models/src/provider`](../crates/language_models/src/provider)，具体 HTTP 客户端各自独立 crate（`anthropic`/`open_ai`/`ollama`/`bedrock`…）。
+本页深挖 [Agent-and-AI.md](Agent-and-AI.md) 中"模型接入"这一层的完整实现：核心 trait 在 [`language_model`](../crates/language_model)，各厂商 provider 在 [`language_models/src/provider`](../crates/language_models/src/provider)，具体 HTTP 客户端各自独立 crate（`anthropic`/`open_ai`/`ollama`…；`bedrock` 已移除）。
 
 ## 1. 两大抽象
 
@@ -45,7 +45,7 @@ graph TB
 | Mistral | [mistral.rs](../crates/language_models/src/provider/mistral.rs) | `mistral` | API key |
 | DeepSeek | [deepseek.rs](../crates/language_models/src/provider/deepseek.rs) | `deepseek` | API key |
 | Google (Gemini) | [google.rs](../crates/language_models/src/provider/google.rs) | `google_ai` | API key |
-| Bedrock | [bedrock.rs](../crates/language_models/src/provider/bedrock.rs) (~149KB) | `bedrock` + `aws_http_client` | SigV4/region |
+| Bedrock（已移除 · 历史） | [bedrock.rs](../crates/language_models/src/provider/bedrock.rs) (~149KB) | `bedrock` + `aws_http_client` | SigV4/region |
 | xAI | [x_ai.rs](../crates/language_models/src/provider/x_ai.rs) | `x_ai` | API key |
 | Codestral | （mistral 系）| `codestral` | API key |
 | Ollama（本地）| [ollama.rs](../crates/language_models/src/provider/ollama.rs) | `ollama` | 无/本地 |

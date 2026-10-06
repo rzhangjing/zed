@@ -418,7 +418,7 @@ impl ToolCallAccumulator {
 ///
 /// This is shared by every provider that speaks an OpenAI-compatible Chat
 /// Completions dialect (OpenAI, OpenAI-compatible endpoints, OpenRouter,
-/// LM Studio, llama.cpp, Bedrock/Mantle, and others), so its behavior must
+/// LM Studio, llama.cpp, and others), so its behavior must
 /// stay provider-neutral: any provider-specific interpretation belongs in the
 /// provider's own adapter before or after this mapping.
 pub struct ChatCompletionEventMapper {

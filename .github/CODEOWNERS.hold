@@ -32,7 +32,6 @@
 /crates/agent_ui/ @zed-industries/ai-team
 /crates/ai_onboarding/ @zed-industries/ai-team
 /crates/anthropic/ @zed-industries/ai-team
-/crates/bedrock/ @zed-industries/ai-team
 /crates/cloud_llm_client/ @zed-industries/ai-team
 /crates/codestral/ @zed-industries/ai-team
 /crates/context_server/ @zed-industries/ai-team
@@ -158,7 +157,6 @@
 # Core utilities, networking, database, telemetry, reliability
 # ═══════════════════════════════════════════════════════════════════════════════
 
-/crates/aws_http_client/ @zed-industries/infrastructure-team
 /crates/clock/ @zed-industries/infrastructure-team
 /crates/collections/ @zed-industries/infrastructure-team
 /crates/crashes/ @zed-industries/infrastructure-team

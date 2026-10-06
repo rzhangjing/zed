@@ -1081,8 +1081,9 @@ async fn test_tool_hallucination(cx: &mut TestAppContext) {
     assert_eq!(update.fields.status, Some(acp::ToolCallStatus::Failed));
 }
 
-/// Regression test: some providers (confirmed on Bedrock Mantle/GPT-5.x)
-/// reset their raw `tool_use` id counter every request/response cycle, so
+/// Regression test: some providers (observed with OpenAI-compatible
+/// streaming endpoints) reset their raw `tool_use` id counter every
+/// request/response cycle, so
 /// the same id (e.g. `call_1`) can recur within one turn. Used verbatim as
 /// the ACP id, this let a later tool call overwrite an earlier, unrelated
 /// one in `AcpThread::upsert_tool_call`.

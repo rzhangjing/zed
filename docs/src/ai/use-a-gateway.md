@@ -1,17 +1,16 @@
 ---
 title: Use a Gateway - Zed
-description: Configure OpenRouter, Vercel AI Gateway, Amazon Bedrock, and other gateway or cloud model platforms in Zed.
+description: Configure OpenRouter, Vercel AI Gateway, and other gateway or cloud model platforms in Zed.
 ---
 
 # Use a Gateway
 
-Use a gateway when you route model requests through a platform such as OpenRouter, Vercel AI Gateway, Amazon Bedrock, or another OpenAI-compatible service.
+Use a gateway when you route model requests through a platform such as OpenRouter, Vercel AI Gateway, or another OpenAI-compatible service.
 
 | Gateway                   | Zed AI features | External Agents | Terminal Threads | Notes                                        |
 | ------------------------- | --------------- | --------------- | ---------------- | -------------------------------------------- |
 | OpenRouter                | Yes             | Separate config | Separate config  | Uses OpenRouter API access                   |
 | Vercel AI Gateway         | Yes             | Separate config | Separate config  | Uses Vercel AI Gateway API access            |
-| Amazon Bedrock            | Yes             | Separate config | Separate config  | Uses AWS credentials or Bedrock bearer token |
 | OpenAI-compatible gateway | Yes             | Separate config | Separate config  | Configure base URL, model, and key           |
 
 ## OpenRouter {#openrouter}
@@ -120,130 +119,6 @@ You can set a custom endpoint for Vercel AI Gateway in settings:
   }
 }
 ```
-
-## Amazon Bedrock {#amazon-bedrock}
-
-Use Amazon Bedrock when you want model access through AWS.
-
-Bedrock supports models that support streaming tool use. See [Amazon Bedrock's Tool Use documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html).
-
-Your AWS credentials need these permissions:
-
-- `bedrock:InvokeModelWithResponseStream`
-- `bedrock:InvokeModel`
-
-Bedrock supports Zed-prefixed AWS environment variables so Zed does not override or consume your normal AWS credentials:
-
-- `ZED_ACCESS_KEY_ID`
-- `ZED_SECRET_ACCESS_KEY`
-- `ZED_SESSION_TOKEN`
-- `ZED_AWS_PROFILE`
-- `ZED_AWS_REGION`
-- `ZED_AWS_ENDPOINT`
-- `ZED_BEDROCK_BEARER_TOKEN`
-
-### Bedrock Authentication {#bedrock-authentication}
-
-You can authenticate with a named profile, static credentials, or a Bedrock API key.
-
-For a named profile, configure Bedrock in settings:
-
-```json [settings]
-{
-  "language_models": {
-    "bedrock": {
-      "authentication_method": "named_profile",
-      "region": "your-aws-region",
-      "profile": "your-profile-name"
-    }
-  }
-}
-```
-
-For static credentials, open Agent Settings with {#action agent::OpenSettings}, go to the Amazon Bedrock section, and enter the access key ID, secret access key, and region.
-
-For a Bedrock API key, choose API key authentication:
-
-```json [settings]
-{
-  "language_models": {
-    "bedrock": {
-      "authentication_method": "api_key",
-      "region": "your-aws-region"
-    }
-  }
-}
-```
-
-The API key itself is stored in the system keychain, not in `settings.json`.
-
-### Bedrock Cross-Region Inference {#bedrock-cross-region-inference}
-
-Zed uses [Cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html) for Bedrock on a best-effort basis.
-
-By default, Zed uses regional inference profiles. To opt into global profiles, add `allow_global`:
-
-```json [settings]
-{
-  "language_models": {
-    "bedrock": {
-      "authentication_method": "named_profile",
-      "region": "your-aws-region",
-      "profile": "your-profile-name",
-      "allow_global": true
-    }
-  }
-}
-```
-
-Only some models support global inference profiles. See the AWS Bedrock supported models documentation for the current list.
-
-### Bedrock Guardrails {#bedrock-guardrails}
-
-Some AWS environments require a guardrail on every Bedrock API call. Add `guardrail_identifier` to apply a guardrail to all Bedrock requests:
-
-```json [settings]
-{
-  "language_models": {
-    "bedrock": {
-      "guardrail_identifier": "arn:aws:bedrock:us-east-1:123456789012:guardrail/abc123",
-      "guardrail_version": "DRAFT"
-    }
-  }
-}
-```
-
-### Bedrock Mantle Models {#bedrock-mantle-models}
-
-Some models, such as the GPT-5.6 family (Sol, Terra, and Luna), GPT-5.5, GPT-5.4, and Grok 4.3, aren't available through Bedrock's Converse API and are only reachable through `bedrock-mantle`, AWS's OpenAI-compatible inference endpoint. Zed routes these models through `bedrock-mantle` automatically; they appear alongside the rest of the Bedrock models in the model picker once you're authenticated, with no extra configuration required.
-
-Mantle models require IAM permissions for the `bedrock-mantle` endpoint (for example via the `AmazonBedrockMantleInferenceAccess` managed policy) in addition to whatever permissions your existing Bedrock credentials already have, and `bedrock-mantle` is only available in [some AWS Regions](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html#regions). Zed surfaces an error naming the current Region and the supported ones if you try to use a Mantle model outside of them.
-
-#### Custom Bedrock Mantle Models {#bedrock-mantle-custom-models}
-
-You can add custom models served through `bedrock-mantle` with `mantle_available_models`:
-
-```json [settings]
-{
-  "language_models": {
-    "bedrock": {
-      "mantle_available_models": [
-        {
-          "name": "openai.gpt-oss-120b",
-          "display_name": "GPT-OSS 120B",
-          "max_tokens": 128000,
-          "protocol": "chat_completions",
-          "supports_tools": true,
-          "supports_images": false,
-          "supports_thinking": true
-        }
-      ]
-    }
-  }
-}
-```
-
-`protocol` selects which OpenAI-compatible API the model is called through, and must be either `chat_completions` or `responses`. Set `supports_thinking` to `true` for custom Mantle models that accept OpenAI reasoning effort parameters; Zed will then expose `low`, `medium`, `high`, and `xhigh` in the thinking effort picker, while disabling thinking sends `none`.
 
 ## OpenAI-Compatible Gateways {#openai-compatible}
 

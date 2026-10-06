@@ -17,7 +17,7 @@ graph TB
     ALM["XxxLanguageModel impl LanguageModel"]
     end
     subgraph client层 独立 crate
-    CLI["anthropic/open_ai/bedrock/ollama… stream_completion + EventMapper"]
+    CLI["anthropic/open_ai/ollama… stream_completion + EventMapper（原含 bedrock，已移除）"]
     end
     LP --> ADP --> ALM --> LM
     ALM -->|调用| CLI
@@ -46,7 +46,7 @@ graph TB
 | OpenRouter | `open_router` | `open_router.rs`:197 / 340 |
 | opencode | `opencode` | `opencode.rs`:192 / 539 |
 | Google Gemini | `google_ai` | `google.rs` |
-| AWS Bedrock | `bedrock`（+ `aws_http_client` SigV4） | `bedrock.rs`(149KB，适配最厚) |
+| AWS Bedrock（已移除 · 历史） | `bedrock`（+ `aws_http_client` SigV4） | `bedrock.rs`(149KB，适配最厚) |
 | Copilot Chat | `copilot_chat` | `copilot_chat.rs`:80 |
 | Vercel AI Gateway | — | `vercel_ai_gateway.rs`:198 / 378 |
 | **Zed 云托管** | `cloud_llm_client`/`cloud_api_*` | `cloud.rs`(40KB) |
@@ -73,14 +73,14 @@ graph TB
 | `struct OpenAiResponseEventMapper` | completion.rs:732 | SSE→统一事件；`ChatCompletionMaxTokensParameter`(46) |
 | Responses API：`Request`(18)/`ResponseInput`(173)/`ResponseMessageItem`(260)/`ResponseFunctionCallItem`(268)/`ResponseReasoningInputItem`(296) | responses.rs | `/v1/responses` 输入项模型（含推理/工具项） |
 
-## 5. AWS Bedrock（`crates/bedrock/src/` + `aws_http_client`）
+## 5. AWS Bedrock（已移除 · 历史 · `crates/bedrock/src/` + `aws_http_client`）
 
 | 符号 | 位置 | 角色 |
 | --- | --- | --- |
-| `async fn stream_completion` | bedrock.rs:35 | Converse API 流式；`struct Request`(261)/`Thinking`(186) |
-| `aws_document_to_value` / `value_to_aws_document` | bedrock.rs:141 / 160 | AWS `Document`⇄`serde_json::Value` |
-| `enum ConverseModel` | models.rs:49 | 型号目录（`from_id`242/`max_token_count`436/`supports_tool_use`539…） |
-| `struct AwsHttpClient` | aws_http_client.rs:67 | **SigV4 签名**包装 `dyn HttpClient`；`convert_to_sdk_body`(95)/`convert_to_async_body`(99) |
+| `async fn stream_completion`（已移除） | bedrock.rs:35 | Converse API 流式；`struct Request`(261)/`Thinking`(186) |
+| `aws_document_to_value` / `value_to_aws_document`（已移除） | bedrock.rs:141 / 160 | AWS `Document`⇄`serde_json::Value` |
+| `enum ConverseModel`（已移除） | models.rs:49 | 型号目录（`from_id`242/`max_token_count`436/`supports_tool_use`539…） |
+| `struct AwsHttpClient`（已移除 · 历史） | aws_http_client.rs:67 | 原描述为"**SigV4 签名**包装 `dyn HttpClient`"（不准确：该 crate 只适配传输，SigV4 由 aws-config/aws-sigv4 完成）；`convert_to_sdk_body`(95)/`convert_to_async_body`(99) |
 
 ## 6. Zed 云托管（`crates/cloud_llm_client/src/`）
 
@@ -100,7 +100,7 @@ Zed 自有多租户推理协议（`cloud.rs` provider 走此 client）：
 graph TB
     A["Agent 持 Arc<dyn LanguageModel>"] --> B["XxxLanguageModel::stream_completion (适配层)"]
     B --> C["构造厂商 Request (client crate)"]
-    C --> D["http_client 发 SSE 请求 (Bedrock 经 AwsHttpClient SigV4)"]
+    C --> D["http_client 发 SSE 请求（Bedrock 经 AwsHttpClient SigV4 的路径已移除）"]
     D --> E["厂商 EventMapper 逐块解析 SSE"]
     E --> F["产出 LanguageModelEvent 流 (Text/ToolUse/Thought/Usage)"]
     F --> G["适配层回投统一事件给 Agent"]
