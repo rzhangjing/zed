@@ -18,7 +18,7 @@ corgi_version = "0.1.43"
 # packages' build scripts via the given environment variable. URLs and hashes
 # are for the macOS arm64 build host.
 #
-# Note: no protoc tool is needed. `proto` and `livekit_api` compile their
+# Note: no protoc tool is needed. `proto` compiles its
 # protobufs with `protox` (a pure-Rust protoc) and `prost_build::compile_fds`,
 # so nothing shells out to a protoc binary.
 
@@ -45,8 +45,8 @@ packages = ["webrtc-sys"]
 # Plan-time probe: the git SHA is read here (outside the sandbox) and frozen
 # into the keyed value. zed/build.rs prefers $ZED_COMMIT_SHA over running git,
 # which the sandbox blocks. Release-only; dev builds embed no SHA (the source
-# reads it via option_env!). cli/remote_server build.rs run git directly rather
-# than reading this var, so they are not listed here.
+# reads it via option_env!). cli/build.rs runs git directly rather
+# than reading this var, so it is not listed here.
 [env.ZED_COMMIT_SHA]
 command = "git rev-parse HEAD"
 packages = ["zed"]

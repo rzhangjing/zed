@@ -1,6 +1,6 @@
 # CLI 启动器与打包 深入解析（Deep Dive）
 
-> 本页覆盖 `cli` crate（`zed` 命令行入口：一个轻量启动器，负责决定"直开/远程/WSL/新建实例"并通过 IPC 与已运行实例对话）与 `install_cli`（把 `zed` 二进制安装到 PATH / 注册 `zed://` scheme）。关联：`zed` 主程序、`remote_server`、`paths`、`release_channel`。
+> 本页覆盖 `cli` crate（`zed` 命令行入口：一个轻量启动器，负责决定"直开/远程/WSL/新建实例"并通过 IPC 与已运行实例对话）与 `install_cli`（把 `zed` 二进制安装到 PATH / 注册 `zed://` scheme）。关联：`zed` 主程序、`paths`、`release_channel`。原关联的 `remote_server` 已从本 fork 移除。
 
 ## 1. 分层设计
 
@@ -61,7 +61,7 @@
 graph TB
     A[zed 进程启动] --> B[run 解析 argv]
     B --> C{--remote/--wsl?}
-    C -->|remote| D[走 remote_server 建连]
+    C -->|remote| D["走 remote_server 建连（该 crate 已移除）"]
     C -->|wsl| E[parse_path_in_wsl 转路径]
     C -->|否| F{有实例在跑?}
     E --> F
@@ -75,7 +75,7 @@ graph TB
 
 - `cli` 是 `default-members` 之外的独立二进制（`crates/zed` 才是真正的编辑器 GUI）；它靠 `paths` 定位数据目录、靠 IPC socket 与 `zed` 通信。
 - `--install-cli`/`zed install` 落到 `install_cli`；`zed_env_vars` 提供 `ZED_*` 常量。
-- WSL/remote 路径衔接 `remote_server`/`ssh_remote`（见 Remote-Deep-Dive、Sandbox-Credentials 页）。
+- WSL/remote 路径衔接 [`remote`](../crates/remote)/[`remote_connection`](../crates/remote_connection)（见 Remote-Deep-Dive、Sandbox-Credentials 页）；`remote_server` 已移除。
 - `release_channel` 决定 `zed`/`zed-dev`/`zed-nightly` 各自的 bundle id 与 PATH 名。
 
 ## 6. 相关页

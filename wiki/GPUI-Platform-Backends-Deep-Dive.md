@@ -116,5 +116,5 @@ graph TB
 
 - 桌面入口 `crates/zed` 调 `gpui_platform::application()`；`App`/`Window` 由 `gpui` 核心驱动，仅依赖本页 trait。
 - 无头/视觉测试：`PlatformHeadlessRenderer`(998) + macOS `MetalHeadlessRenderer`；Linux `headless` 后端供 CI。
-- 相关深页：[GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)、[GPUI-Internals.md](GPUI-Internals.md)、[Editor-Deep-Dive.md](Editor-Deep-Dive.md)、[Terminal-Deep-Dive.md](Terminal-Deep-Dive.md)（ConPTY/portable_pty）、[Remote-Deep-Dive.md](Remote-Deep-Dive.md)（`remote_server` 无头）。
+- 相关深页：[GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)、[GPUI-Internals.md](GPUI-Internals.md)、[Editor-Deep-Dive.md](Editor-Deep-Dive.md)、[Terminal-Deep-Dive.md](Terminal-Deep-Dive.md)（ConPTY/portable_pty）、[Remote-Deep-Dive.md](Remote-Deep-Dive.md)（headless 后端；原 `remote_server` 已移除）。
 - 导航：[Home](Home) · [Module-Index](Module-Index)

@@ -193,12 +193,12 @@
 |---|---|---|
 | `rpc` | `Peer`/传输/keepalive | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Remote-Deep-Dive.md)** |
 | `client` | `Client`/用户/项目 RPC | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
-| `collab` | 协作服务器（独立二进制） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
-| `collab_ui` | 协作面板/频道视图/通知 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
+| `collab`（已移除） | 协作服务器（独立二进制） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
+| `collab_ui`（已移除） | 协作面板/频道视图/通知 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `channel` | 频道存储/共享笔记 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `proto` | protobuf 消息定义 | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) |
-| `call` | 通话/房间（`ActiveCall`/`Room`/`toggle_mute`/`share_screen`） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
-| `livekit_api` / `livekit_client` | 音视频 SFU（含 mock 路径） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
+| `call`（已移除） | 通话/房间（`ActiveCall`/`Room`/`toggle_mute`/`share_screen`） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
+| `livekit_api` / `livekit_client`（已移除） | 音视频 SFU（含 mock 路径） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
 | `audio` | 音效/音频管线（cpal/rodio） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
 | `notifications` | 系统通知 | 🔧 [Channels-and-Collab-UI](Channels-and-Collab-UI.md) |
 | `askpass` | SSH/凭据口令弹窗（AskPassSession/PasswordProxy/EncryptedPassword） | 🔧 [Remote-Development](Remote-Development.md) / **📘[Deep](Sandbox-Credentials-Remote-Env-Deep-Dive.md)** |
@@ -209,7 +209,7 @@
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `remote` | SSH/WSL/Docker 传输（`RemoteClient`） | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
-| `remote_server` | 远端 headless 进程 | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
+| `remote_server`（已移除） | 远端 headless 进程 | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
 | `remote_connection` | 连接流程 UI | ✅ [Remote-Development](Remote-Development.md) / **📘[Deep](Remote-Deep-Dive.md)** |
 
 ## 16. 调试（DAP）
@@ -314,5 +314,4 @@
 ### 仍可按需继续细分的方向（如后续需要）
 - 每个模型 provider crate（`anthropic`/`ollama`/`bedrock`…）的**逐方法** HTTP 细节；
 - `languages`/`grammars` 各内置语言的 config/queries 明细；
-- `collab` 服务器端各 domain handler 的完整 RPC 矩阵；
 - `extension_api` 的 wit ABI 与宿主 proxy 全方法表。

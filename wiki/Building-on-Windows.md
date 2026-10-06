@@ -20,7 +20,7 @@ graph TB
     CFG[.cargo/config.toml windows target] --> A[--cfg no_webrtc]
     CFG --> B[--check-cfg cfg no_webrtc]
     CFG --> C[-C target-feature=+crt-static]
-    A --> LK[livekit_client 走 mock_client]
+    A --> LK["livekit_client 走 mock_client（已移除）"]
     A --> AU[audio 走 fake EchoCanceller]
     PATCH[Cargo.toml patch.crates-io] --> SP[msvc_spectre_libs 空 stub]
     SP --> NOERR[不再 panic 找 Spectre CRT]
@@ -37,7 +37,9 @@ graph TB
 
 **动机**：`libwebrtc`/`webrtc-sys` 需要下载预编译 WebRTC 二进制，且 `webrtc-sys` 的构建脚本按 **仅 Linux** 供给，MSVC 下无法完成。
 
-**做法**：`--cfg no_webrtc` 复用 Zed 内建替身机制。`livekit_client` 的门控条件（[`lib.rs:13-68`](../crates/livekit_client/src/lib.rs)）：
+> ⚠️ 历史：`livekit_client` / `call` 已从本 fork 移除（提交 `移除call和remote`），下面关于二者的门控/补偿点描述仅作参考。`--cfg no_webrtc` 仍然生效，但现仅作用于 `audio`（仍依赖 `libwebrtc`）。
+
+**做法**：`--cfg no_webrtc` 复用 Zed 内建替身机制。原 `livekit_client` 的门控条件（`crates/livekit_client/src/lib.rs:13-68`）：
 
 ```
 any(test, feature = "test-support",
@@ -46,9 +48,9 @@ any(test, feature = "test-support",
     no_webrtc)
 ```
 
-命中即编译 `mock_client` + `pub mod test`，不链接真实 livekit。`audio` 侧同理改用 fake `EchoCanceller`。这样整条 webrtc/LiveKit 原生依赖被裁掉。
+命中即编译 `mock_client` + `pub mod test`，不链接真实 livekit（该 crate 已移除）。当前仍然生效的是 `audio` 侧：改用 fake `EchoCanceller`（`crates/audio/src/audio_pipeline/echo_canceller.rs`）。这样整条 webrtc/LiveKit 原生依赖被裁掉。
 
-**补偿点（易漏）**：任何直接引用真实 `RtcStats::*` 变体的代码，必须用同一判定切到替身版，否则报 E0599。已修的 [`call/src/call_impl/diagnostics.rs`](../crates/call/src/call_impl/diagnostics.rs)：`compute_remote_audio_stats`、`extract_metrics` 各有替身/真实两版门控，均已补 `no_webrtc`。替身符号见 [`livekit_client/src/test.rs`](../crates/livekit_client/src/test.rs)（`RtcStats` 空枚举 L50、`SessionStats` L44）。详见 [Collaboration-and-Call.md](Collaboration-and-Call.md) 第 5 节。
+**补偿点（易漏，历史）**：任何直接引用真实 `RtcStats::*` 变体的代码，必须用同一判定切到替身版，否则报 E0599。原 `call/src/call_impl/diagnostics.rs`（已移除）：`compute_remote_audio_stats`、`extract_metrics` 各有替身/真实两版门控，均已补 `no_webrtc`。替身符号见 `livekit_client/src/test.rs`（已移除；`RtcStats` 空枚举 L50、`SessionStats` L44）。详见 [Collaboration-and-Call.md](Collaboration-and-Call.md) 第 5 节。
 
 `--check-cfg cfg(no_webrtc)` 用于声明该自定义 cfg，避免 `unexpected_cfgs` lint 报错。
 
@@ -75,7 +77,7 @@ any(test, feature = "test-support",
 ## 5. 为什么不能用 `windows-gnu` 编译桌面
 
 曾有以 GNU 工具链绕开 MSVC 的想法，结论是 **不可行**（分析，非改动）：
-- `livekit_client` 无条件依赖 `scap`（屏幕捕获）→ `windows-capture`，二者依赖 MSVC 专属的 Windows API 组件/构建方式，GNU 目标缺少稳定支持；官方亦明确 **不支持 MSYS2/mingw-w64 的 Zed**（windows.md“Installing from msys2”）。
+- （历史理由）原 `livekit_client`（已移除）无条件依赖 `scap`（屏幕捕获）→ `windows-capture`，二者依赖 MSVC 专属的 Windows API 组件/构建方式，GNU 目标缺少稳定支持；官方亦明确 **不支持 MSYS2/mingw-w64 的 Zed**（windows.md“Installing from msys2”）。
 - `.cargo/config.toml` 强制 `crt-static`（L16-17），GNU 静态 CRT 链接易出问题。
 - 官方 CI 的 Windows 产物只有 `remote-server`，并不产出用 GNU 构建的桌面。
 - 即便 `rust-toolchain.toml` 目前仍列 `targets = ["x86_64-pc-windows-gnu"]`，也不改变上述阻塞——真正可编译桌面的是 **MSVC**。
@@ -93,7 +95,7 @@ cargo build --release         # release（gpui_windows 会调 fxc.exe 编译着�
 | 现象 | 处理 |
 |---|---|
 | `No spectre-mitigated libs were found` | 已由第 4 节 patch 消除；若仍出现，确认 `[patch.crates-io]` 生效 |
-| 找不到 `RtcStats::InboundRtp` 等（E0599） | webrtc 门控漏补 `no_webrtc`，见第 3 节补偿点 |
+| 找不到 `RtcStats::InboundRtp` 等（E0599，历史） | webrtc 门控漏补 `no_webrtc`，见第 3 节补偿点（`call`/`livekit_client` 已移除） |
 | `STATUS_ACCESS_VIOLATION`（rust-lld） | 换链接器 / 调整 `.cargo/config.toml` 层级 |
 | `Invalid RC path selected` | 设 `ZED_RC_TOOLKIT_PATH` 到 `Windows Kits\10\bin\<ver>\x64` |
 | `path too long`（`pet`） | `git config --system core.longpaths true` + 启用 Windows `LongPathsEnabled` |
@@ -104,9 +106,10 @@ cargo build --release         # release（gpui_windows 会调 fxc.exe 编译着�
 | 项 | 位置 | 作用 |
 |---|---|---|
 | windows rustflags | `.cargo/config.toml:12-22` | 注入 `no_webrtc`、`--check-cfg`、`crt-static` |
-| `livekit_client` 门控 | `crates/livekit_client/src/lib.rs:13-68` | 真实 ↔ mock 二选一 |
-| diagnostics 补偿 | `crates/call/src/call_impl/diagnostics.rs` | `compute_remote_audio_stats`/`extract_metrics` 双版本 |
-| `RtcStats`/`SessionStats` 替身 | `crates/livekit_client/src/test.rs:50`/`44` | 空枚举/精简结构 |
+| `livekit_client` 门控（已移除） | `crates/livekit_client/src/lib.rs:13-68` | 真实 ↔ mock 二选一 |
+| diagnostics 补偿（已移除） | `crates/call/src/call_impl/diagnostics.rs` | `compute_remote_audio_stats`/`extract_metrics` 双版本 |
+| `RtcStats`/`SessionStats` 替身（已移除） | `crates/livekit_client/src/test.rs:50`/`44` | 空枚举/精简结构 |
+| `audio` fake `EchoCanceller`（仍生效） | `crates/audio/src/audio_pipeline/echo_canceller.rs` | `no_webrtc` 下不链接 `libwebrtc` 的实现 |
 | spectre patch 行 | `Cargo.toml:996` | path 替换 `msvc_spectre_libs` |
 | spectre stub | `build-patches/msvc_spectre_libs/{Cargo.toml,build.rs}` | 0.1.3 + 空 `error` 特性 + no-op build.rs |
 | 官方 Windows 指南 | `docs/src/development/windows.md` | 工具链与故障排查 |

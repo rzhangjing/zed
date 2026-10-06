@@ -27,7 +27,7 @@ use command_palette_hooks::CommandPaletteFilter;
 use gpui::{
     Action, Anchor, Animation, AnimationExt, AnyElement, App, Context, Element, Entity, Focusable,
     InteractiveElement, IntoElement, MouseButton, ParentElement, Render,
-    StatefulInteractiveElement, Styled, Subscription, TaskExt, WeakEntity, Window, actions, div,
+    StatefulInteractiveElement, Styled, Subscription, WeakEntity, Window, actions, div,
     pulsating_between,
 };
 use onboarding_banner::OnboardingBanner;
@@ -374,7 +374,6 @@ impl Render for TitleBar {
                 .pr_1()
                 .gap_1()
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .child(self.render_call_controls(window, cx))
                 .children(self.render_connection_status(status, cx))
                 .child(self.update_version.clone())
                 .when(
@@ -513,7 +512,7 @@ impl TitleBar {
 
         let banner = None;
 
-        let mut this = Self {
+        let this = Self {
             platform_titlebar,
             application_menu,
             workspace: workspace.weak_handle(),

@@ -7,7 +7,7 @@
 Zed 是一款用 **Rust** 编写的高性能代码编辑器 / IDE，核心卖点：
 
 - **自研 GPU 加速 UI 框架 [GPUI](GPUI.md)**：整棵界面树在 GPU 上合成，输入延迟极低。
-- **实时多人协作**：基于 CRDT 的共享项目 / 频道语音（[`collab`](#) / [`client`](#) / [`livekit_client`](Collaboration-and-Call.md)）。
+- **实时协作**：基于 CRDT 的共享项目（[`client`](#)）。原 `collab` 服务端与 `livekit_client`/`call` 语音栈已从本 fork 移除。
 - **内置 AI 助手**：对话式 Agent、代码编辑预测（[`agent`](#) / [`language_model`](Agent-and-AI.md) / [`edit_prediction`](Agent-and-AI.md)）。
 - **语言支持**：Tree-sitter 语法 + LSP 双轨（[`language`](Language-and-Project.md) / [`languages`](Language-and-Project.md)）。
 - **编辑器内核**：Rope 缓冲区、多缓冲 diff（[`editor`](Editor.md) / [`rope`](Editor.md) / [`multi_buffer`](Editor.md)）。
@@ -49,8 +49,8 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Debugger-Deep-Dive（dap 传输/Session 状态机/debugger_ui 面板）](Debugger-Deep-Dive.md)
 - [Agent-Deep-Dive（NativeAgent/Thread/31 tool/AcpThread/LanguageModel）](Agent-Deep-Dive.md)
 - [Markdown-Deep-Dive（parser/markdown.rs 渲染/preview 面板）](Markdown-Deep-Dive.md)
-- [Remote-Deep-Dive（RemoteClient/transport/HeadlessProject/Peer 协议）](Remote-Deep-Dive.md)
-- [Collab-Deep-Dive（Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
+- [Remote-Deep-Dive（RemoteClient/transport/Peer 协议；HeadlessProject 已移除）](Remote-Deep-Dive.md)
+- [Collab-Deep-Dive（历史：Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
 - [Panels-Deep-Dive（project_panel/outline_panel/call_hierarchy）](Panels-Deep-Dive.md)
 - [Search-Deep-Dive（BufferSearchBar/ProjectSearch/TextFinder/registrar）](Search-Deep-Dive.md)
 - [Git-Deep-Dive（git 状态/GitStore·Repository/GitPanel·图/冲突）](Git-Deep-Dive.md)
@@ -61,7 +61,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Diagnostics-Deep-Dive（Diagnostic/DiagnosticSet → editor 波浪线/块 → 项目/缓冲侧栏）](Diagnostics-Deep-Dive.md)
 - [Settings-and-Onboarding-Deep-Dive（settings_content 模型/SettingsWindow/Onboarding 引导）](Settings-and-Onboarding-Deep-Dive.md)
 - [Vim-Deep-Dive（Mode/Operator/Motion/文本对象/Helix 增强/Neovim 差分测试）](Vim-Deep-Dive.md)
-- [Call-and-Voice-Deep-Dive（Room/参与者的音视频 RTC/livekit_client·mock·audio 管线）](Call-and-Voice-Deep-Dive.md)
+- [Call-and-Voice-Deep-Dive（历史：音视频 RTC/livekit_client·mock；audio 管线仍在）](Call-and-Voice-Deep-Dive.md)
 - [Task-System-Deep-Dive（TaskTemplate/变量替换/Inventory/TasksModal/终端·DAP 分发）](Task-System-Deep-Dive.md)
 - [Extension-Host-Deep-Dive（Wasmtime 组件宿主/版本化 WIT/CapabilityGranter/Headless）](Extension-Host-Deep-Dive.md)
 - [GPUI-Macros-and-Utilities-Deep-Dive（proc-macro/Refineable 样式级联/SharedString/Tokio 桥/gpui_util）](GPUI-Macros-and-Utilities-Deep-Dive.md)
@@ -110,8 +110,8 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Agent & AI（模型接入 / 对话请求流程）](Agent-and-AI.md)
 - [Model-Providers（全厂商 Provider / 注册表 / 鉴权）](Model-Providers.md)
 - [Edit-Prediction（Zeta 编辑预测全链）](Edit-Prediction.md)
-- [Collaboration & Call（RPC / livekit / audio 与 mock 机制）](Collaboration-and-Call.md)
-- [Channels-and-Collab-UI（频道 / 协作侧栏 / 通话通知）](Channels-and-Collab-UI.md)
+- [Collaboration & Call（历史：RPC / livekit / audio 与 mock 机制）](Collaboration-and-Call.md)
+- [Channels-and-Collab-UI（频道仍在；协作侧栏 / 通话通知已移除）](Channels-and-Collab-UI.md)
 
 ### 基础设施与工具
 - [Persistence（db / sqlez / migrator）](Persistence.md)

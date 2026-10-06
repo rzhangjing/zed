@@ -9,13 +9,13 @@ graph TB
     subgraph L6[应用装配层]
         ZED[crates/zed 主程序]
         CLI[crates/cli]
-        COLLAB[crates/collab 服务端]
-        RS[crates/remote_server]
+        COLLAB["crates/collab 服务端（已移除）"]
+        RS["crates/remote_server（已移除）"]
     end
     subgraph L5[特性层]
         AGENT[agent / agent_ui]
         PRED[edit_prediction]
-        CALL[call / collab_ui]
+        CALL["call / collab_ui（已移除）"]
         VIM[vim / which_key]
         DBG[debugger_ui / dap_adapters]
         EXT[extension / extension_host]
@@ -93,7 +93,7 @@ graph TB
 |---|---|
 | `agent` / `agent_ui` / `acp_thread` / `acp_tools` | AI 助手与对话（详见 [Agent-and-AI.md](Agent-and-AI.md)） |
 | `edit_prediction*` | 内联编辑预测 |
-| `call` / `collab_ui` / `livekit_client` / `audio` | 语音/视频与协作（详见 [Collaboration-and-Call.md](Collaboration-and-Call.md)） |
+| `audio` | 音频管线（cpal/rodio）；原 `call` / `collab_ui` / `livekit_client` 已移除（详见 [Collaboration-and-Call.md](Collaboration-and-Call.md)） |
 | `open_ai` / `anthropic` / `google_ai` / `ollama` / `mistral` / `bedrock` / `deepseek` / `codestral` / `open_router` / `lmstudio` / `llama_cpp` | 各模型 Provider |
 | `extension` / `extension_host` / `extensions_ui` | 扩展系统（WASM） |
 | `vim` / `which_key` / `terminal` / `debugger_ui` / `dap_adapters` | 编辑增强 |
@@ -104,8 +104,8 @@ graph TB
 |---|---|
 | `crates/zed` | **桌面主程序**：`main()` 装配全部子系统（详见 [Startup-Flow.md](Startup-Flow.md)） |
 | `cli` | `zed` 命令行入口 |
-| `collab` | 协作服务端（仅依赖 `livekit_api`，不含 webrtc） |
-| `remote_server` | 在被远程主机上运行的 Zed 服务端（Linux-musl） |
+| `collab`（已移除） | 协作服务端（仅依赖 `livekit_api`，不含 webrtc） |
+| `remote_server`（已移除） | 在被远程主机上运行的 Zed 服务端（Linux-musl） |
 
 ## 3. 关键设计约束
 

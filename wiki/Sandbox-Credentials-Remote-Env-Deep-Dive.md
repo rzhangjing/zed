@@ -7,7 +7,7 @@
 - **命令隔离层** `sandbox`：根据 `SandboxPolicy`（文件系统 + 网络策略）把待执行命令包装成平台原语——macOS `macos_seatbelt`（生成 `.sb` profile）、Linux `linux_bubblewrap`（bwrap 命名空间）、Windows `windows_wsl`（WSL 内套 seatbelt）。`http_proxy`（见 Network-HTTP 页）实现其网络白名单。
 - **凭据抽象层** `credentials_provider`：`trait CredentialsProvider`（read/write/delete）让 `git`/`copilot` 等以同一接口读写密码；真实实现在平台密钥链（macOS Keychain / Windows CredentialManager / Secret Service）。
 - **交互取密层** `askpass`：当 git/ssh 需要密码或 GPG passphrase 时，起一个临时"SSH_ASKPASS 脚本 + socket"回环（`AskPassSession`/`PasswordProxy`），把 GUI 弹窗结果以 `EncryptedPassword` 安全回传给子进程。
-- **容器环境层** `dev_container`：解析 `devcontainer.json`（`devcontainer_manifest.rs` 416KB 为完整 schema）、调 `docker.rs` 构建/启动容器，产出远程连接所需信息交给 `remote_server`。
+- **容器环境层** `dev_container`：解析 `devcontainer.json`（`devcontainer_manifest.rs` 416KB 为完整 schema）、调 `docker.rs` 构建/启动容器，产出远程连接所需信息交给 `remote_server`（该 crate 已从本 fork 移除）。
 
 ## 2. 类型总览
 
@@ -63,7 +63,7 @@
 - `EncryptedPassword::decrypt(..)`(encrypted_password.rs:66) 要求传入 `IKnowWhatIAmDoingAndIHaveReadTheDocs`(:63) 哨兵类型，强制调用方显式确认后才拿到明文——防误用。
 
 **dev_container（lib.rs / docker.rs）**
-- 解析 `devcontainer.json`（schema 在 `devcontainer_manifest.rs`），`DevContainerContext`(:98) 持有镜像/feature/run 参数；`environment(cx)`(:126) 汇总容器环境变量；`docker.rs`(54KB) 执行 build/up；结果交给 `remote_server` 在其内启动 Zed 远程服务。
+- 解析 `devcontainer.json`（schema 在 `devcontainer_manifest.rs`），`DevContainerContext`(:98) 持有镜像/feature/run 参数；`environment(cx)`(:126) 汇总容器环境变量；`docker.rs`(54KB) 执行 build/up；结果交给 `remote_server`（已移除）在其内启动 Zed 远程服务。
 
 ## 4. 沙箱化命令执行流程
 
@@ -86,12 +86,12 @@ graph TB
 
 - `agent`/`project` 的命令工具（terminal 执行）用 `sandbox` 包裹；策略来源是设置里的 agent 权限与 `SandboxPolicy`。
 - `git` crate 通过 `credentials_provider` 读写远程仓库口令；`askpass` 被 `git`/`remote` 在无头场景调起（`SSH_ASKPASS`）。
-- `remote_server`/`ssh_remote`（见 Remote-Deep-Dive）在 `dev_container` 起好的容器里安装并运行 Zed server。
+- `remote_server`（已移除）/`ssh_remote`（见 Remote-Deep-Dive）在 `dev_container` 起好的容器里安装并运行 Zed server。
 - `http_proxy`（Network-HTTP 页）是 `sandbox` 网络策略的执行者。
 
 ## 6. 相关页
 
 - [Network-HTTP-Deep-Dive](Network-HTTP-Deep-Dive.md)（`http_proxy` 网络白名单执行）
-- [Remote-Deep-Dive](Remote-Deep-Dive.md)（`dev_container`/`remote_server` 衔接）
+- [Remote-Deep-Dive](Remote-Deep-Dive.md)（`dev_container` 与原 `remote_server`（已移除）衔接）
 - [Git-Deep-Dive](Git-Deep-Dive.md)（`credentials_provider`/`askpass` 消费方）
 - [Agent-Deep-Dive](Agent-Deep-Dive.md)（命令工具沙箱化执行）

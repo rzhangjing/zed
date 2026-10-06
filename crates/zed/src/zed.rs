@@ -2835,18 +2835,15 @@ mod tests {
     use editor::{
         DisplayPoint, Editor, MultiBufferOffset, SelectionEffects, display_map::DisplayRow,
     };
-    use fs::FakeFs;
     use gpui::{
         Action, AnyWindowHandle, App, AssetSource, BorrowAppContext, Modifiers, OwnedMenuItem,
         TestAppContext, UpdateGlobal, VisualTestContext, WindowHandle, actions, point, px,
     };
     use language::LanguageRegistry;
     use languages::{markdown_lang, rust_lang};
-    use node_runtime::NodeRuntime;
     use pretty_assertions::{assert_eq, assert_ne};
     use project::{Project, ProjectPath};
     use prompt_store::PromptBuilder;
-    use remote::RemoteClient;
     use semver::Version;
     use serde_json::json;
     use settings::{SaturatingBool, SettingsStore, SplicingVec, watch_config_file};

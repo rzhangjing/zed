@@ -71,5 +71,5 @@ graph TB
 
 ## 5. 与编辑器/协作联动
 - gutter 断点标记、当前帧高亮、inline value 由 editor 侧订阅 session（[Editor-Deep-Dive.md](Editor-Deep-Dive.md)）。
-- 远程调试：DAP 走 remote server（`proto_conversions` + `RemoteClient`），见 [Remote-Deep-Dive.md](Remote-Deep-Dive.md)。
+- 远程调试（历史）：DAP 原走 remote server（`proto_conversions` + `RemoteClient`）；本 fork 已移除 `crates/remote_server`，见 [Remote-Deep-Dive.md](Remote-Deep-Dive.md)。
 → 概览页 [Debugger.md](Debugger.md)。

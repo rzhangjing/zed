@@ -127,7 +127,7 @@ graph TB
 - `language_models` / 各厂商 client 只依赖 `Arc<dyn HttpClient>`，故测试用 `FakeHttpClient` 注入桩响应。
 - `gpui_tokio` 与 `reqwest_client::runtime()`(:123) 共用同一 tokio 运行时，避免多 runtime 冲突。
 - `sandbox` crate 启动终端命令时 `http_proxy::spawn`(:163) 起代理，并把返回的 `ProxyHandle::port()`(:273) 写进沙箱网络白名单，使子进程出网必须经此代理。
-- `net` 的 Windows `UnixStream`/`UnixListener` 供 `remote`/`collab` 在 Windows 上做本地 IPC。
+- `net` 的 Windows `UnixStream`/`UnixListener` 供 `remote`（原还包括已移除的 `collab`）在 Windows 上做本地 IPC。
 - `session::AppSession` 注册为 GPUI global，`crashes`/遥测读取 `id()`(:117) 关联崩溃与更新事件。
 
 ## 7. 相关页

@@ -226,6 +226,8 @@ If it is not there or the version mismatches, Zed will try to download the lates
 
 If you'd like to maintain the server binary yourself you can. You can either download our prebuilt versions from [GitHub](https://github.com/zed-industries/zed/releases), or [build your own](https://zed.dev/docs/development):
 
+> **Note:** This fork removed the `remote_server` crate, so the server binary can no longer be built from this repository. The build commands below apply to upstream Zed only.
+
 ```bash
 cargo build --release --package remote_server
 llvm-objcopy --strip-debug target/release/remote_server

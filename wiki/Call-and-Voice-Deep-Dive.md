@@ -1,5 +1,7 @@
 # Call 与音视频深挖（实时通话 · LiveKit RTC · 音频管线）
 
+> ⚠️ 历史文档：本页描述的 `call` / `collab_ui` / `livekit_client` / `livekit_api` 栈已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。仅 `audio` crate（cpal/rodio 音频管线）仍在本 fork 中。
+
 > 返回 [Home](Home) · [Module-Index](Module-Index)
 >
 > 概览见 [Collaboration-and-Call.md](Collaboration-and-Call.md)；协作协议/频道/房间业务见 [Collab-Deep-Dive.md](Collab-Deep-Dive.md)。本页聚焦**实时音视频（RTC）栈**：`call`（房间/成员/麦克风/屏幕共享业务）· `livekit_client`（对 `livekit` 的封装 + mock 后端）· `livekit_api`（FFI 绑定）· `audio`（cpal/rodio 音频管线）。所有符号均来自 `grep`/`read` 确证（`文件:行号`）。
@@ -8,15 +10,15 @@
 
 ```mermaid
 graph TB
-    UI[collab_ui / voice 动作] --> CALL["call::Room (call_impl/room.rs)"]
-    CALL --> LKC["livekit_client::Room (封装)"]
-    LKC -->|真实| LKAPI["livekit_api (FFI → native WebRTC)"]
-    LKC -->|无 webrtc / 测试| MOCK["livekit_client::mock_client"]
+    UI["collab_ui（已移除） / voice 动作"] --> CALL["call::Room (call_impl/room.rs)（已移除）"]
+    CALL --> LKC["livekit_client::Room (封装)（已移除）"]
+    LKC -->|真实| LKAPI["livekit_api (FFI → native WebRTC)（已移除）"]
+    LKC -->|无 webrtc / 测试| MOCK["livekit_client::mock_client（已移除）"]
     LKC --> AUD["audio::Audio (cpal 输入/输出流 + rodio 混音)"]
-    CALL --> DIAG["call_impl::CallDiagnostics (ICE/统计)"]
+    CALL --> DIAG["call_impl::CallDiagnostics (ICE/统计)（已移除）"]
 ```
 
-## 2. `call`（房间业务 · `crates/call/src/call_impl/`）
+## 2. `call`（已移除 · 房间业务 · `crates/call/src/call_impl/`）
 
 `call.rs` 为薄壳（re-export），实体在 `call_impl/`（`mod.rs` 28KB + `room.rs` 70KB + `participant.rs` + `diagnostics.rs`）：
 
@@ -36,7 +38,7 @@ graph TB
 
 > `diagnostics.rs` 是通话遥测/自检子系统（与 Windows `no_webrtc` 场景的 mock 路径协同，见 [Building-on-Windows.md](Building-on-Windows.md)）。
 
-## 3. `livekit_client`（RTC 封装 + Mock · `crates/livekit_client/src/`）
+## 3. `livekit_client`（已移除 · RTC 封装 + Mock · `crates/livekit_client/src/`）
 
 对 `livekit`（经 `livekit_api`）的**新类型封装 + trait 化后端**，使真实 RTC 与 mock 可互换：
 
@@ -68,7 +70,7 @@ graph TB
 ```mermaid
 graph TB
     A["用户点击加入通话"] --> B["Room::join_channel 取 LiveKit token"]
-    B --> C["livekit_client::Room.connect"]
+    B --> C["livekit_client::Room.connect（已移除）"]
     C --> D["发布 LocalTrack::Microphone (audio::open_input_stream)"]
     D --> E["订阅远端 RemoteAudioTrack → playback.rs 混音播放"]
     E --> F["RoomStatus: Joining→Ready; 发 Event"]
@@ -78,8 +80,8 @@ graph TB
 
 ## 6. 集成 / 相关页
 
-- 上层：`collab_ui`（通话面板/成员列表）、`voice` 动作、`channel`（频道→房间映射）；见 [Collab-Deep-Dive.md](Collab-Deep-Dive.md)。
-- 底层：`livekit_api`（native FFI）、`cpal`/`rodio`；GPUI 纹理视频。
+- 上层（已移除）：`collab_ui`（通话面板/成员列表）、`voice` 动作；仍在的 `channel`（频道→房间映射）见 [Collab-Deep-Dive.md](Collab-Deep-Dive.md)。
+- 底层：`livekit_api`（已移除，native FFI）、`cpal`/`rodio`；GPUI 纹理视频。
 - 深页：[Collab-Deep-Dive.md](Collab-Deep-Dive.md)、[Remote-Deep-Dive.md](Remote-Deep-Dive.md)、[GPUI-Platform-Backends-Deep-Dive.md](GPUI-Platform-Backends-Deep-Dive.md)
 - 概览：[Collaboration-and-Call.md](Collaboration-and-Call.md) · [Building-on-Windows.md](Building-on-Windows.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

@@ -28,7 +28,7 @@
 | `struct ExtensionIndex` | [L216](../crates/extension_host/src/extension_host.rs) | **市场索引**（下载自 cloud）：`ExtensionIndexEntry`(L278)、`ExtensionIndexThemeEntry`(L284)/`IconThemeEntry`(L290)/`LanguageEntry`(L296) |
 | `struct WasmHost` | [wasm_host.rs:48](../crates/extension_host/src/wasm_host.rs) | **运行单个扩展 wasm**（`wasmtime` Engine/Store/Module）：加载 `.wasm`、链接 WASI imports、调 `extension_api::Extension` 方法、缓存 |
 | [capability_granter.rs](../crates/extension_host/src/capability_granter.rs) | WASI **能力授权/沙箱**（网络/进程按 grant 放行） |
-| [headless_head.rs / headless_host.rs](../crates/extension_host/src/headless_host.rs) | headless（CLI/remote server）用扩展宿主 |
+| [headless_head.rs / headless_host.rs](../crates/extension_host/src/headless_host.rs) | headless（CLI；原 remote server 已移除）用扩展宿主 |
 | [extension_settings.rs](../crates/extension_host/src/extension_settings.rs) | `ExtensionSettings`（enabled/disabled 列表）。→ [Settings-and-Themes.md](Settings-and-Themes.md) |
 
 ## 4. `crates/extensions_ui`：市场页 [`extensions_ui.rs`](../crates/extensions_ui/src/extensions_ui.rs)
@@ -53,7 +53,7 @@ graph TB
 ## 6. dev 与分发
 - 本地开发：`zed --dev-extension` / `extensions_ui` 的 dev 卡片，`RebuildDevExtension` 触发 `extension-builder` 重编。
 - 发布：`crates/extension_cli`（打包/校验 manifest）、cloud 市场（`crates/cloud_api_*`，见 [Model-Providers.md](Model-Providers.md)）。
-- 远程：remote server 经 `headless_host` + `ProtoClient` 同步扩展（[Remote-Deep-Dive.md](Remote-Deep-Dive.md)）。
+- 远程（历史）：原 remote server 经 `headless_host` + `ProtoClient` 同步扩展；本 fork 已移除 `crates/remote_server`（[Remote-Deep-Dive.md](Remote-Deep-Dive.md)）。
 
 ## 7. 相关页
 概览 [Extension-System.md](Extension-System.md)；被注册目标 [Language-Deep-Dive.md](Language-Deep-Dive.md)、[Agent-Deep-Dive.md](Agent-Deep-Dive.md)、[Debugger-Deep-Dive.md](Debugger-Deep-Dive.md)、[Settings-and-Themes.md](Settings-and-Themes.md)。
