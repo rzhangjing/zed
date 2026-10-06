@@ -10,14 +10,3 @@ services:
       MINIO_ROOT_PASSWORD: the-blob-store-secret-key
     volumes:
       - ./.blob_store:/data
-
-  livekit_server:
-    image: docker.io/livekit/livekit-server
-    container_name: livekit_server
-    entrypoint: /livekit-server --config /livekit.yaml
-    ports:
-      - 7880:7880
-      - 7881:7881
-      - 7882:7882/udp
-    volumes:
-      - ./livekit.yaml:/livekit.yaml
