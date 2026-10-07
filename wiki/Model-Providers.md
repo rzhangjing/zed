@@ -1,6 +1,6 @@
 # Model Providers（模型 Provider 全厂商详解）
 
-本页深挖 [Agent-and-AI.md](Agent-and-AI.md) 中"模型接入"这一层的完整实现：核心 trait 在 [`language_model`](../crates/language_model)，各厂商 provider 在 [`language_models/src/provider`](../crates/language_models/src/provider)，具体 HTTP 客户端各自独立 crate（`anthropic`/`open_ai`/`ollama`…；`bedrock` 已移除）。
+本页深挖 [Agent-and-AI.md](Agent-and-AI.md) 中"模型接入"这一层的完整实现：核心 trait 在 [`language_model`](../crates/language_model)，各厂商 provider 在 [`language_models/src/provider`](../crates/language_models/src/provider)，具体 HTTP 客户端各自独立 crate（`anthropic`/`open_ai`/`ollama`…；`bedrock`、`mistral`、`x_ai`、`open_router`、`opencode`、`openai_subscribed` 已移除）。
 
 ## 1. 两大抽象
 
@@ -41,19 +41,19 @@ graph TB
 | Anthropic 兼容 | [anthropic_compatible.rs](../crates/language_models/src/provider/anthropic_compatible.rs) | `anthropic` | base_url + key |
 | OpenAI | [open_ai.rs](../crates/language_models/src/provider/open_ai.rs) | `open_ai` | API key |
 | OpenAI 兼容 | [open_ai_compatible.rs](../crates/language_models/src/provider/open_ai_compatible.rs) | `open_ai` | base_url + key |
-| OpenAI 订阅 | [openai_subscribed.rs](../crates/language_models/src/provider/openai_subscribed.rs) | `openai_subscribed` | ChatGPT 账户 OAuth |
-| Mistral | [mistral.rs](../crates/language_models/src/provider/mistral.rs) | `mistral` | API key |
+| OpenAI 订阅（已移除 · 历史） | [openai_subscribed.rs](../crates/language_models/src/provider/openai_subscribed.rs) | `openai_subscribed` | ChatGPT 账户 OAuth |
+| Mistral（已移除 · 历史） | [mistral.rs](../crates/language_models/src/provider/mistral.rs) | `mistral` | API key |
 | DeepSeek | [deepseek.rs](../crates/language_models/src/provider/deepseek.rs) | `deepseek` | API key |
 | Google (Gemini) | [google.rs](../crates/language_models/src/provider/google.rs) | `google_ai` | API key |
 | Bedrock（已移除 · 历史） | [bedrock.rs](../crates/language_models/src/provider/bedrock.rs) (~149KB) | `bedrock` + `aws_http_client` | SigV4/region |
-| xAI | [x_ai.rs](../crates/language_models/src/provider/x_ai.rs) | `x_ai` | API key |
-| Codestral | （mistral 系）| `codestral` | API key |
+| xAI（已移除 · 历史） | [x_ai.rs](../crates/language_models/src/provider/x_ai.rs) | `x_ai` | API key |
+| Codestral（已移除 · 历史） | （mistral 系，`codestral` crate 已删除）| `codestral` | API key |
 | Ollama（本地）| [ollama.rs](../crates/language_models/src/provider/ollama.rs) | `ollama` | 无/本地 |
 | LM Studio | [lmstudio.rs](../crates/language_models/src/provider/lmstudio.rs) | `lmstudio` | 本地 |
 | llama.cpp | [llama_cpp.rs](../crates/language_models/src/provider/llama_cpp.rs) (~76KB) | `llama_cpp` | 本地 |
-| OpenRouter | [open_router.rs](../crates/language_models/src/provider/open_router.rs) | `open_router` | API key |
-| Vercel AI Gateway | [vercel_ai_gateway.rs](../crates/language_models/src/provider/vercel_ai_gateway.rs) | — | API key |
-| opencode | [opencode.rs](../crates/language_models/src/provider/opencode.rs) | `opencode` | 账户 |
+| OpenRouter（已移除 · 历史） | [open_router.rs](../crates/language_models/src/provider/open_router.rs) | `open_router` | API key |
+| Vercel AI Gateway（已移除 · 历史） | [vercel_ai_gateway.rs](../crates/language_models/src/provider/vercel_ai_gateway.rs) | — | API key |
+| opencode（已移除 · 历史） | [opencode.rs](../crates/language_models/src/provider/opencode.rs) | `opencode` | 账户 |
 | Copilot Chat | [copilot_chat.rs](../crates/language_models/src/provider/copilot_chat.rs) | `copilot_chat` | GitHub 授权 |
 | Zed Cloud | [cloud.rs](../crates/language_models/src/provider/cloud.rs) | `cloud_llm_client` | Zed 账号 |
 | 通用 API 兼容 | [api_compatible.rs](../crates/language_models/src/provider/api_compatible.rs) | — | 自定义 |

@@ -167,7 +167,7 @@
 | `language_model_core` | 模型基础类型（事件/用量/工具调用） | ✅ [Agent-and-AI](Agent-and-AI.md) |
 | `language_models` | 各 provider 装配 | ✅ [Agent-and-AI](Agent-and-AI.md) |
 | `language_models_cloud` | Zed 云托管模型目录 | 🔧 [Agent-and-AI](Agent-and-AI.md) |
-| `anthropic`/`open_ai`/`openai_subscribed`/`codestral`/`mistral`/`deepseek`/`google_ai`/`bedrock`（已移除）/`x_ai`/`ollama`/`open_router`/`llama_cpp`/`lmstudio`/`opencode` | 各厂商 HTTP 客户端 | ✅ [Agent-and-AI](Agent-and-AI.md) / **📘[Deep](Model-Providers-Deep-Dive.md)** |
+| `anthropic`/`open_ai`/`openai_subscribed`（已移除）/`codestral`（已移除）/`mistral`（已移除）/`deepseek`/`google_ai`/`bedrock`（已移除）/`x_ai`（已移除）/`ollama`/`open_router`（已移除）/`llama_cpp`/`lmstudio`/`opencode`（已移除） | 各厂商 HTTP 客户端 | ✅ [Agent-and-AI](Agent-and-AI.md) / **📘[Deep](Model-Providers-Deep-Dive.md)** |
 | `aws_http_client`（已移除 · 历史） | 原 AWS SigV4 签名 HTTP（Bedrock）；该 crate 仅适配传输，SigV4 由 aws-config/aws-sigv4 完成 | **📘[Deep](Model-Providers-Deep-Dive.md)** |
 | `cloud_llm_client` / `cloud_api_client` / `cloud_api_types` | Zed 云 LLM/API 协议 | **📘[Deep](Model-Providers-Deep-Dive.md)** |
 | `web_search` / `web_search_providers` | 联网搜索工具（Agent 用） | **📘[Deep](Web-Search-Deep-Dive.md)** |

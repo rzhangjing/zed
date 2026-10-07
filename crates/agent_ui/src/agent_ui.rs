@@ -818,7 +818,6 @@ fn update_command_palette_filter(cx: &mut App) {
             filter.hide_namespace("agent");
             filter.hide_namespace("agents");
             filter.hide_namespace("assistant");
-            filter.hide_namespace("copilot");
             filter.hide_namespace("zed_predict_onboarding");
             filter.hide_namespace("edit_prediction");
 
@@ -838,21 +837,12 @@ fn update_command_palette_filter(cx: &mut App) {
             match edit_prediction_provider {
                 EditPredictionProvider::None => {
                     filter.hide_namespace("edit_prediction");
-                    filter.hide_namespace("copilot");
                     filter.hide_action_types(&edit_prediction_actions);
                 }
-                EditPredictionProvider::Copilot => {
-                    filter.show_namespace("edit_prediction");
-                    filter.show_namespace("copilot");
-                    filter.show_action_types(edit_prediction_actions.iter());
-                }
                 EditPredictionProvider::Zed
-                | EditPredictionProvider::Codestral
                 | EditPredictionProvider::Ollama
-                | EditPredictionProvider::OpenAiCompatibleApi
-                | EditPredictionProvider::Mercury => {
+                | EditPredictionProvider::OpenAiCompatibleApi => {
                     filter.show_namespace("edit_prediction");
-                    filter.hide_namespace("copilot");
                     filter.show_action_types(edit_prediction_actions.iter());
                 }
             }
@@ -1084,27 +1074,8 @@ mod tests {
         });
 
         // Test EditPredictionProvider
-        // Enable EditPredictionProvider::Copilot
-        cx.update(|cx| {
-            cx.update_global::<SettingsStore, _>(|store, cx| {
-                store.update_user_settings(cx, |s| {
-                    s.project
-                        .all_languages
-                        .edit_predictions
-                        .get_or_insert(Default::default())
-                        .provider = Some(EditPredictionProvider::Copilot);
-                });
-            });
-            update_command_palette_filter(cx);
-        });
-
-        cx.update(|cx| {
-            let filter = CommandPaletteFilter::try_global(cx).unwrap();
-            assert!(
-                !filter.is_hidden(&AcceptEditPrediction),
-                "EditPrediction should be visible when provider is Copilot"
-            );
-        });
+        // The GitHub Copilot edit-prediction provider has been removed, so it now
+        // behaves like `None`; there is nothing Copilot-specific left to assert here.
 
         // Disable EditPredictionProvider (None)
         cx.update(|cx| {

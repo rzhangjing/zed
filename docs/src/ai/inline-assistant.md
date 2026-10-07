@@ -17,7 +17,7 @@ If you're using the Inline Assistant for the first time, you need to have at lea
 You can do that by:
 
 1. [using Zed-hosted models](../account/zed-hosted-models.md), so you have access to models billed through Zed
-2. [using API access](./use-api-access.md), either from model providers like Anthropic or model gateways like OpenRouter.
+2. [using API access](./use-api-access.md), either from model providers like Anthropic or from an OpenAI-compatible gateway.
 
 If you have already set up an LLM provider to interact with [the Agent Panel](./agent-panel.md#getting-started), then that will also work for the Inline Assistant.
 

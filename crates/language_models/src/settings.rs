@@ -6,10 +6,8 @@ use settings::RegisterSetting;
 use crate::provider::{
     anthropic, anthropic::AnthropicSettings, anthropic_compatible::AnthropicCompatibleSettings,
     cloud::ZedDotDevSettings, deepseek::DeepSeekSettings, google::GoogleSettings,
-    llama_cpp::LlamaCppSettings, lmstudio::LmStudioSettings, mistral, mistral::MistralSettings,
-    ollama::OllamaSettings, open_ai::OpenAiSettings, open_ai_compatible::OpenAiCompatibleSettings,
-    open_router, open_router::OpenRouterSettings, opencode, opencode::OpenCodeSettings,
-    resolve_custom_headers, vercel_ai_gateway::VercelAiGatewaySettings, x_ai::XAiSettings,
+    llama_cpp::LlamaCppSettings, lmstudio::LmStudioSettings, ollama::OllamaSettings,
+    open_ai::OpenAiSettings, open_ai_compatible::OpenAiCompatibleSettings, resolve_custom_headers,
 };
 
 #[derive(Debug, RegisterSetting)]
@@ -20,14 +18,9 @@ pub struct AllLanguageModelSettings {
     pub google: GoogleSettings,
     pub llama_cpp: LlamaCppSettings,
     pub lmstudio: LmStudioSettings,
-    pub mistral: MistralSettings,
     pub ollama: OllamaSettings,
-    pub opencode: OpenCodeSettings,
-    pub open_router: OpenRouterSettings,
     pub openai: OpenAiSettings,
     pub openai_compatible: HashMap<Arc<str>, OpenAiCompatibleSettings>,
-    pub vercel_ai_gateway: VercelAiGatewaySettings,
-    pub x_ai: XAiSettings,
     pub zed_dot_dev: ZedDotDevSettings,
 }
 
@@ -53,14 +46,9 @@ impl settings::Settings for AllLanguageModelSettings {
         let google = language_models.google.unwrap();
         let llama_cpp = language_models.llama_cpp.unwrap();
         let lmstudio = language_models.lmstudio.unwrap();
-        let mistral = language_models.mistral.unwrap();
         let ollama = language_models.ollama.unwrap();
-        let opencode = language_models.opencode.unwrap();
-        let open_router = language_models.open_router.unwrap();
         let openai = language_models.openai.unwrap();
         let openai_compatible = language_models.openai_compatible.unwrap();
-        let vercel_ai_gateway = language_models.vercel_ai_gateway.unwrap();
-        let x_ai = language_models.x_ai.unwrap();
         let zed_dot_dev = language_models.zed_dot_dev.unwrap();
         Self {
             anthropic: AnthropicSettings {
@@ -112,41 +100,12 @@ impl settings::Settings for AllLanguageModelSettings {
                 available_models: lmstudio.available_models.unwrap_or_default(),
                 custom_headers: custom_headers_from("LM Studio", lmstudio.custom_headers, &[]),
             },
-            mistral: MistralSettings {
-                api_url: mistral.api_url.unwrap(),
-                available_models: mistral.available_models.unwrap_or_default(),
-                custom_headers: custom_headers_from(
-                    "Mistral",
-                    mistral.custom_headers,
-                    mistral::RESERVED_HEADER_NAMES,
-                ),
-            },
             ollama: OllamaSettings {
                 api_url: ollama.api_url.unwrap(),
                 auto_discover: ollama.auto_discover.unwrap_or(true),
                 available_models: ollama.available_models.unwrap_or_default(),
                 context_window: ollama.context_window,
                 custom_headers: custom_headers_from("Ollama", ollama.custom_headers, &[]),
-            },
-            opencode: OpenCodeSettings {
-                api_url: opencode.api_url.unwrap(),
-                available_models: opencode.available_models.unwrap_or_default(),
-                custom_headers: custom_headers_from(
-                    "OpenCode",
-                    opencode.custom_headers,
-                    opencode::RESERVED_HEADER_NAMES,
-                ),
-                show_zen_models: opencode.show_zen_models.unwrap_or(true),
-                show_go_models: opencode.show_go_models.unwrap_or(true),
-            },
-            open_router: OpenRouterSettings {
-                api_url: open_router.api_url.unwrap(),
-                available_models: open_router.available_models.unwrap_or_default(),
-                custom_headers: custom_headers_from(
-                    "OpenRouter",
-                    open_router.custom_headers,
-                    open_router::RESERVED_HEADER_NAMES,
-                ),
             },
             openai: OpenAiSettings {
                 api_url: openai.api_url.unwrap(),
@@ -171,20 +130,6 @@ impl settings::Settings for AllLanguageModelSettings {
                     )
                 })
                 .collect(),
-            vercel_ai_gateway: VercelAiGatewaySettings {
-                api_url: vercel_ai_gateway.api_url.unwrap(),
-                available_models: vercel_ai_gateway.available_models.unwrap_or_default(),
-                custom_headers: custom_headers_from(
-                    "Vercel AI Gateway",
-                    vercel_ai_gateway.custom_headers,
-                    &[],
-                ),
-            },
-            x_ai: XAiSettings {
-                api_url: x_ai.api_url.unwrap(),
-                available_models: x_ai.available_models.unwrap_or_default(),
-                custom_headers: custom_headers_from("xAI", x_ai.custom_headers, &[]),
-            },
             zed_dot_dev: ZedDotDevSettings {
                 available_models: zed_dot_dev.available_models.unwrap_or_default(),
             },

@@ -45,7 +45,7 @@ The Zed Agent and other model-backed Zed AI features use models configured throu
 | Use models billed through Zed                                                 | [Zed-Hosted Models](../account/zed-hosted-models.md)              |
 | Bring your own provider API key, credits, top-ups, or usage billing           | [Use API Access](./use-api-access.md)                             |
 | Use a subscription you already pay for                                        | [Use an Existing Subscription](./use-an-existing-subscription.md) |
-| Use OpenRouter, Vercel AI Gateway, or another gateway                         | [Use a Gateway](./use-a-gateway.md)                               |
+| Use an OpenAI-compatible gateway                                              | [Use a Gateway](./use-a-gateway.md)                               |
 | Use Ollama, LM Studio, local OpenAI-compatible servers, or self-hosted models | [Use a Local Model](./use-a-local-model.md)                       |
 
 Provider keys saved through Zed are stored in the system keychain, not in `settings.json`.

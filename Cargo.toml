@@ -29,15 +29,12 @@ members = [
     "crates/cloud_api_client",
     "crates/cloud_api_types",
     "crates/cloud_llm_client",
-    "crates/codestral",
     "crates/collections",
     "crates/command_palette",
     "crates/command_palette_hooks",
     "crates/component",
     "crates/component_preview",
     "crates/context_server",
-    "crates/copilot",
-    "crates/copilot_chat",
     "crates/crashes",
     "crates/credentials_provider",
     "crates/dap",
@@ -132,7 +129,6 @@ members = [
     "crates/mermaid_render",
     "crates/migrator",
     "crates/miniprofiler_ui",
-    "crates/mistral",
     "crates/multi_buffer",
     "crates/net",
     "crates/node_runtime",
@@ -142,9 +138,6 @@ members = [
     "crates/onboarding",
     "crates/open_ai",
     "crates/open_path_prompt",
-    "crates/open_router",
-    "crates/openai_subscribed",
-    "crates/opencode",
     "crates/outline",
     "crates/outline_panel",
     "crates/path",
@@ -224,7 +217,6 @@ members = [
     "crates/workspace",
     "crates/worktree",
     #"crates/worktree_benchmarks",
-    "crates/x_ai",
     "crates/zed",
     "crates/zed_actions",
     "crates/zed_credentials_provider",
@@ -292,7 +284,6 @@ clock = { path = "crates/clock" }
 cloud_api_client = { path = "crates/cloud_api_client" }
 cloud_api_types = { path = "crates/cloud_api_types" }
 cloud_llm_client = { path = "crates/cloud_llm_client" }
-codestral = { path = "crates/codestral" }
 collections = { path = "crates/collections", version = "0.1.0" }
 command_palette = { path = "crates/command_palette" }
 command_palette_hooks = { path = "crates/command_palette_hooks" }
@@ -300,9 +291,6 @@ compliance = { path = "tooling/compliance" }
 component = { path = "crates/component" }
 component_preview = { path = "crates/component_preview" }
 context_server = { path = "crates/context_server" }
-copilot = { path = "crates/copilot" }
-copilot_chat = { path = "crates/copilot_chat" }
-copilot_ui = { path = "crates/copilot_ui" }
 crashes = { path = "crates/crashes" }
 credentials_provider = { path = "crates/credentials_provider" }
 dap = { path = "crates/dap" }
@@ -390,7 +378,6 @@ menu = { path = "crates/menu" }
 mermaid_render = { path = "crates/mermaid_render" }
 migrator = { path = "crates/migrator" }
 miniprofiler_ui = { path = "crates/miniprofiler_ui" }
-mistral = { path = "crates/mistral" }
 multi_buffer = { path = "crates/multi_buffer" }
 net = { path = "crates/net" }
 node_runtime = { path = "crates/node_runtime" }
@@ -400,9 +387,6 @@ ollama = { path = "crates/ollama" }
 onboarding = { path = "crates/onboarding" }
 open_ai = { path = "crates/open_ai" }
 open_path_prompt = { path = "crates/open_path_prompt" }
-open_router = { path = "crates/open_router", features = ["schemars"] }
-openai_subscribed = { path = "crates/openai_subscribed" }
-opencode = { path = "crates/opencode" }
 outline = { path = "crates/outline" }
 outline_panel = { path = "crates/outline_panel" }
 path = { path = "crates/path" }
@@ -478,7 +462,6 @@ web_search_providers = { path = "crates/web_search_providers" }
 which_key = { path = "crates/which_key" }
 workspace = { path = "crates/workspace" }
 worktree = { path = "crates/worktree" }
-x_ai = { path = "crates/x_ai" }
 zed_actions = { path = "crates/zed_actions" }
 zed_credentials_provider = { path = "crates/zed_credentials_provider" }
 zed_env_vars = { path = "crates/zed_env_vars" }

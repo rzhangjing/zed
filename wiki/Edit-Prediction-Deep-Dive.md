@@ -2,14 +2,14 @@
 
 > 返回 [Home](Home) · [Module-Index](Module-Index)
 >
-> 概览见 [Edit-Prediction.md](Edit-Prediction.md)。本页是**函数/类型级参考手册**，覆盖 edit_prediction 全族：`edit_prediction_types`（共享类型 + 双 delegate 抽象）· `edit_prediction`（`EditPredictionStore` 中心 + zeta/mercury/fim/ollama 多 provider）· `edit_prediction_context`（相关上下文检索）· `edit_prediction_ui`（按钮/评分）· editor 内联渲染。所有符号均来自 `grep`/`read` 确证（`文件:行号`）。
+> 概览见 [Edit-Prediction.md](Edit-Prediction.md)。本页是**函数/类型级参考手册**，覆盖 edit_prediction 全族：`edit_prediction_types`（共享类型 + 双 delegate 抽象）· `edit_prediction`（`EditPredictionStore` 中心 + zeta/fim/ollama 多 provider）· `edit_prediction_context`（相关上下文检索）· `edit_prediction_ui`（按钮/评分）· editor 内联渲染。所有符号均来自 `grep`/`read` 确证（`文件:行号`）。
 
 ## 1. 分层总览
 
 ```mermaid
 graph TB
     T[edit_prediction_types<br/>共享类型 + EditPredictionDelegate/Handle] --> E[editor 内联 ghost text]
-    M[edit_prediction 主<br/>EditPredictionStore + zeta/mercury/fim] --> T
+    M[edit_prediction 主<br/>EditPredictionStore + zeta/fim] --> T
     CTX[edit_prediction_context<br/>RelatedExcerptStore/BM25] --> M
     UI[edit_prediction_ui<br/>EditPredictionButton/rate] --> E
     SUG[zeta_prompt vendor] --> M
@@ -38,16 +38,16 @@ graph TB
 
 ## 3. `edit_prediction`（主 crate · `EditPredictionStore` 中心）
 
-`edit_prediction.rs`（3568 行）核心类型：
+`edit_prediction.rs`（3165 行）核心类型：
 
 | 类型 | 行 | 角色 |
 | --- | --- | --- |
-| `struct EditPredictionStore` | 164 | **中心协调器**（Entity，`EditPredictionStoreGlobal` 全局）：持 `client`/`user_store`/`llm_token`、`projects: HashMap<EntityId,ProjectState>`、`edit_prediction_model`、`mercury`、退避 `request_backoff_until`、实验 `preferred/available_experiments`、可评分队列 `rateable_predictions`/`rated_predictions`、拒绝/结算 mpsc |
-| `enum EditPredictionModel` | 193 | 当前后端：`Zeta` \| `Fim{format}` \| `SweepPrompt` \| `Mercury` |
-| `struct EditPredictionModelInput` | 200 | 请求入参：`buffer`/`snapshot`/`position`/`events`/`related_files`/`editable_context`/`mode`/`trigger`/`diagnostic_search_range`/`allow_jump`… |
-| `struct Zeta2RawConfig` | 158 | 直连 Zeta2 raw 端点（自构 prompt，含 `ZetaFormat`） |
-| `enum DebugEvent` | 219 | 生命周期埋点：`ContextRetrievalStarted/Finished`(227/234)、`EditPredictionStarted/Finished`(241/248) |
-| `struct StoredEvent` | 256 | 缓冲编辑事件（`zeta_prompt::Event` + 前后快照），供 prompt 重建；`can_merge` 合并相邻手改/预测事件 |
+| `struct EditPredictionStore` | 158 | **中心协调器**（Entity，`EditPredictionStoreGlobal` 全局）：持 `client`/`user_store`/`llm_token`、`projects: HashMap<EntityId,ProjectState>`、`edit_prediction_model`、退避 `request_backoff_until`、实验 `preferred/available_experiments`、可评分队列 `rateable_predictions`/`rated_predictions`、拒绝/结算 mpsc |
+| `enum EditPredictionModel` | 185 | 当前后端：`Zeta` \| `Fim{format}` \| `SweepPrompt` |
+| `struct EditPredictionModelInput` | 191 | 请求入参：`buffer`/`snapshot`/`position`/`events`/`related_files`/`editable_context`/`mode`/`trigger`/`diagnostic_search_range`/`allow_jump`… |
+| `struct Zeta2RawConfig` | 152 | 直连 Zeta2 raw 端点（自构 prompt，含 `ZetaFormat`） |
+| `enum DebugEvent` | 210 | 生命周期埋点：`ContextRetrievalStarted/Finished`(211/212)、`EditPredictionStarted/Finished`(213/214) |
+| `struct StoredEvent` | 247 | 缓冲编辑事件（`zeta_prompt::Event` + 前后快照），供 prompt 重建；`can_merge` 合并相邻手改/预测事件 |
 | `struct ZedEditPredictionDelegate` | zed_edit_prediction_delegate.rs:18 | Zed 云 provider 对 `EditPredictionDelegate` 的实现 |
 
 `prediction.rs`：`EditPredictionId`(10)、`enum EditPredictionInputs`(26)、`struct EditPredictionResult`(32, `new_rejected` 108)、`struct EditPrediction`(138, `interpolate` 152 / `targets_buffer` 159)。
@@ -55,7 +55,6 @@ graph TB
 **多后端/传输模块**（`edit_prediction/src/`）：
 
 - `zeta.rs`（40KB）：`request_prediction_with_zeta`(41)、`zeta2_prompt_input`(787)、`compute_edits`(885)/`compute_edits_and_cursor_position`(894)、`edit_prediction_accepted`(841)、`active_buffer_diagnostics`(704)
-- `mercury.rs`（17KB）：`struct Mercury`(25) —— 端侧/新后端
 - `fim.rs`（11KB）：fill-in-middle prompt 格式化（`EditPredictionPromptFormat`）
 - `sweep_prompt.rs`（18KB）：sweep 实验 prompt 组装
 - `ollama.rs`（5KB）：本地 Ollama 推理后端
@@ -87,7 +86,7 @@ graph TB
     A["editor 击键/移动光标"] --> B["DelegateHandle.refresh(trigger, debounce)"]
     B --> C["EditPredictionStore: 组 EditPredictionModelInput"]
     C --> D["context: RelatedExcerptStore/BM25 相关文件"]
-    D --> E["provider: zeta/mercury/fim 请求模型"]
+    D --> E["provider: zeta/fim/ollama 请求模型"]
     E --> F["udiff: edits_for_diff 解析为 EditPrediction"]
     F --> G["editor suggest → 内联 ghost text"]
     G -->|Tab| H["accept → edit_prediction_accepted/上报"]

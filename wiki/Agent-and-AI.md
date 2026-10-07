@@ -8,10 +8,10 @@ Zed 的 AI 能力分三层：**Provider（厂商接入）** → **LanguageModel�
 |---|---|---|
 | `language_model_core` | 与 UI 无关的基础类型：请求/事件/错误/token 统计、ProviderId 常量 | `LanguageModelCompletionEvent`(`language_model_core.rs:36`)、`TokenUsage`(L511)、`LanguageModelToolUse`(L578)、`StopReason`(L503) |
 | `language_model` | **模型与 Provider 的 trait 抽象**、全局注册表 | `LanguageModel`(`language_model.rs:91`)、`LanguageModelProvider`(L366)、`LanguageModelRegistry`(`registry.rs:46`) |
-| `language_models` | 各厂商 **具体实现**（20 个 provider） | `provider/`：`anthropic.rs`、`open_ai.rs`、`ollama.rs`、`bedrock.rs`（已移除）、`cloud.rs`(Zed)、`google.rs`、`mistral.rs`、`deepseek.rs`、`x_ai.rs`、`open_router.rs`、`llama_cpp.rs`、`lmstudio.rs`、`copilot_chat.rs` … |
+| `language_models` | 各厂商 **具体实现**（`provider/` 目录） | `provider/`：`anthropic.rs`、`open_ai.rs`、`ollama.rs`、`bedrock.rs`（已移除）、`cloud.rs`(Zed)、`google.rs`、`mistral.rs`（已移除）、`deepseek.rs`、`x_ai.rs`（已移除）、`open_router.rs`（已移除）、`opencode.rs`（已移除）、`openai_subscribed.rs`（已移除）、`vercel_ai_gateway.rs`（已移除）、`llama_cpp.rs`、`lmstudio.rs`、`copilot_chat.rs` … |
 | `agent` | 对话线程、工具集、权限、沙箱 | `thread.rs`(AcpThread)、`tools/`、`tool_permissions.rs`、`sandboxing.rs` |
 | `acp_thread` | Agent Client Protocol 下的共享会话模型（UI 与后端解耦） | `AcpThread`、`ClientUserMessageId` |
-| `edit_prediction` | 内联编辑预测（next-edit / ghost text） | `EditPredictionStore`(`edit_prediction.rs:164`) |
+| `edit_prediction` | 内联编辑预测（next-edit / ghost text） | `EditPredictionStore`(`edit_prediction.rs:158`) |
 
 ## 2. 模型抽象：`LanguageModel` trait
 
@@ -85,7 +85,7 @@ graph TB
 
 ## 6. 内联编辑预测（Edit Prediction）
 
-与“对话”并行的低延迟路径：[`EditPredictionStore`](../crates/edit_prediction/src/edit_prediction.rs)（L164）持有 `Client` 与当前 `EditPredictionModel`（`set_edit_prediction_model()`，L1075）。编辑器光标处根据上下文（`edit_prediction_context`）异步拉取预测，渲染为 ghost text；指标由 `edit_prediction_metrics` 采集。Copilot 作为其中一种 provider（`copilot_chat`）。
+与“对话”并行的低延迟路径：[`EditPredictionStore`](../crates/edit_prediction/src/edit_prediction.rs)（L158）持有 `Client` 与当前 `EditPredictionModel`（`set_edit_prediction_model()`，L1060）。编辑器光标处根据上下文（`edit_prediction_context`）异步拉取预测，渲染为 ghost text；指标由 `edit_prediction_metrics` 采集。provider 选择已收敛为 Zed / Ollama / OpenAI 兼容 API（Zed 通过 `zeta` 路径）。
 
 ## 7. 关键符号速查
 
@@ -99,7 +99,7 @@ graph TB
 | `run_turn_internal` | `agent/src/thread.rs:2753` | 对话-工具多轮主循环 |
 | `build_completion_request` | `agent/src/thread.rs:4038` | 组装请求（消息+工具） |
 | `AnyAgentTool::run` | `agent/src/thread.rs:5161` | 工具执行（擦除后统一签名） |
-| `EditPredictionStore` | `edit_prediction/src/edit_prediction.rs:164` | 内联预测状态与模型 |
+| `EditPredictionStore` | `edit_prediction/src/edit_prediction.rs:158` | 内联预测状态与模型 |
 
 ## 8. 与其他页面的关系
 - Provider 通过扩展注册：见 [Architecture.md](Architecture.md)、[Language-and-Project.md](Language-and-Project.md) 的扩展体系。

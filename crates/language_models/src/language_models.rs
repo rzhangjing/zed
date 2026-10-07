@@ -14,19 +14,12 @@ mod settings;
 use crate::provider::anthropic::AnthropicLanguageModelProvider;
 use crate::provider::anthropic_compatible::AnthropicCompatibleLanguageModelProvider;
 use crate::provider::cloud::CloudLanguageModelProvider;
-use crate::provider::copilot_chat::CopilotChatLanguageModelProvider;
 use crate::provider::google::GoogleLanguageModelProvider;
 use crate::provider::llama_cpp::LlamaCppLanguageModelProvider;
 use crate::provider::lmstudio::LmStudioLanguageModelProvider;
-pub use crate::provider::mistral::MistralLanguageModelProvider;
 use crate::provider::ollama::OllamaLanguageModelProvider;
 use crate::provider::open_ai::OpenAiLanguageModelProvider;
 use crate::provider::open_ai_compatible::OpenAiCompatibleLanguageModelProvider;
-use crate::provider::open_router::OpenRouterLanguageModelProvider;
-use crate::provider::openai_subscribed::OpenAiSubscribedProvider;
-use crate::provider::opencode::OpenCodeLanguageModelProvider;
-use crate::provider::vercel_ai_gateway::VercelAiGatewayLanguageModelProvider;
-use crate::provider::x_ai::XAiLanguageModelProvider;
 pub use crate::settings::*;
 
 pub fn init(user_store: Entity<UserStore>, client: Arc<Client>, cx: &mut App) {
@@ -220,55 +213,6 @@ fn register_language_model_providers(
         Arc::new(GoogleLanguageModelProvider::new(
             client.http_client(),
             credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(
-        MistralLanguageModelProvider::global(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        ),
-        cx,
-    );
-    registry.register_provider(
-        Arc::new(OpenRouterLanguageModelProvider::new(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(
-        Arc::new(VercelAiGatewayLanguageModelProvider::new(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(
-        Arc::new(XAiLanguageModelProvider::new(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(
-        Arc::new(OpenCodeLanguageModelProvider::new(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(Arc::new(CopilotChatLanguageModelProvider::new(cx)), cx);
-    registry.register_provider(
-        Arc::new(OpenAiSubscribedProvider::new(
-            client.http_client(),
-            credentials_provider,
             cx,
         )),
         cx,

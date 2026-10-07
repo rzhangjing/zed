@@ -90,14 +90,12 @@ impl merge_from::MergeFrom for AllLanguageSettingsContent {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum EditPredictionProvider {
-    None,
-    #[default]
-    Copilot,
     Zed,
-    Codestral,
     Ollama,
     OpenAiCompatibleApi,
-    Mercury,
+    #[default]
+    #[serde(other)]
+    None,
 }
 
 impl EditPredictionProvider {
@@ -105,20 +103,14 @@ impl EditPredictionProvider {
         match self {
             EditPredictionProvider::Zed => true,
             EditPredictionProvider::None
-            | EditPredictionProvider::Copilot
-            | EditPredictionProvider::Codestral
             | EditPredictionProvider::Ollama
-            | EditPredictionProvider::OpenAiCompatibleApi
-            | EditPredictionProvider::Mercury => false,
+            | EditPredictionProvider::OpenAiCompatibleApi => false,
         }
     }
 
     pub fn display_name(&self) -> Option<&'static str> {
         match self {
             EditPredictionProvider::Zed => Some("Zed AI"),
-            EditPredictionProvider::Copilot => Some("GitHub Copilot"),
-            EditPredictionProvider::Codestral => Some("Codestral"),
-            EditPredictionProvider::Mercury => Some("Mercury"),
             EditPredictionProvider::None => None,
             EditPredictionProvider::Ollama => Some("Ollama"),
             EditPredictionProvider::OpenAiCompatibleApi => Some("OpenAI-Compatible API"),
@@ -139,18 +131,12 @@ pub struct EditPredictionSettingsContent {
     /// The mode used to display edit predictions in the buffer.
     /// Provider support required.
     pub mode: Option<EditPredictionsMode>,
-    /// Settings specific to GitHub Copilot.
-    pub copilot: Option<CopilotSettingsContent>,
-    /// Settings specific to Codestral.
-    pub codestral: Option<CodestralSettingsContent>,
     /// Settings specific to Ollama.
     pub ollama: Option<OllamaEditPredictionSettingsContent>,
     /// Settings specific to using custom OpenAI-compatible servers for edit prediction.
     pub open_ai_compatible_api: Option<CustomEditPredictionProviderSettingsContent>,
     /// Settings specific to Zed's Edit Predictions provider.
     pub zed: Option<ZedEditPredictionSettingsContent>,
-    /// Settings specific to the Mercury Edit Predictions provider.
-    pub mercury: Option<MercuryEditPredictionSettingsContent>,
     /// Controls whether Zed may collect training data when using Zed's Edit Predictions.
     /// Data is only ever captured for files in projects that are detected as open source.
     ///
@@ -218,69 +204,10 @@ pub enum EditPredictionPromptFormatContent {
     Sweep,
 }
 
-#[with_fallible_options]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
-pub struct CopilotSettingsContent {
-    /// HTTP/HTTPS proxy to use for Copilot.
-    ///
-    /// Default: none
-    pub proxy: Option<String>,
-    /// Disable certificate verification for the proxy (not recommended).
-    ///
-    /// Default: false
-    pub proxy_no_verify: Option<bool>,
-    /// Enterprise URI for Copilot.
-    ///
-    /// Default: none
-    pub enterprise_uri: Option<String>,
-    /// Whether the Copilot Next Edit Suggestions feature is enabled.
-    ///
-    /// Default: true
-    pub enable_next_edit_suggestions: Option<bool>,
-    /// The debounce delay in milliseconds before automatically requesting a prediction
-    /// after typing stops. Set to 0 to request predictions immediately.
-    ///
-    /// Default: 75
-    pub prediction_debounce: Option<DelayMs>,
-}
-
-#[with_fallible_options]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
-pub struct CodestralSettingsContent {
-    /// Model to use for completions.
-    ///
-    /// Default: "codestral-latest"
-    pub model: Option<String>,
-    /// Maximum tokens to generate.
-    ///
-    /// Default: 150
-    pub max_tokens: Option<u32>,
-    /// Api URL to use for completions.
-    ///
-    /// Default: "https://codestral.mistral.ai"
-    pub api_url: Option<String>,
-    /// The debounce delay in milliseconds before automatically requesting a prediction
-    /// after typing stops. Set to 0 to request predictions immediately.
-    ///
-    /// Default: 150
-    pub prediction_debounce: Option<DelayMs>,
-}
-
 /// Settings specific to Zed's Edit Predictions provider.
 #[with_fallible_options]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
 pub struct ZedEditPredictionSettingsContent {
-    /// The debounce delay in milliseconds before automatically requesting a prediction
-    /// after typing stops. Set to 0 to request predictions immediately.
-    ///
-    /// Default: 0
-    pub prediction_debounce: Option<DelayMs>,
-}
-
-/// Settings specific to the Mercury Edit Predictions provider.
-#[with_fallible_options]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
-pub struct MercuryEditPredictionSettingsContent {
     /// The debounce delay in milliseconds before automatically requesting a prediction
     /// after typing stops. Set to 0 to request predictions immediately.
     ///

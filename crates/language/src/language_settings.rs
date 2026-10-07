@@ -482,7 +482,7 @@ impl InlayHintSettings {
     }
 }
 
-/// The settings for edit predictions, such as [GitHub Copilot](https://github.com/features/copilot).
+/// The settings for edit predictions.
 #[derive(Clone, Debug, Default)]
 pub struct EditPredictionSettings {
     /// The provider that supplies edit predictions.
@@ -493,18 +493,12 @@ pub struct EditPredictionSettings {
     pub disabled_globs: Vec<DisabledGlob>,
     /// Configures how edit predictions are displayed in the buffer.
     pub mode: settings::EditPredictionsMode,
-    /// Settings specific to GitHub Copilot.
-    pub copilot: CopilotSettings,
-    /// Settings specific to Codestral.
-    pub codestral: CodestralSettings,
     /// Settings specific to Ollama.
     pub ollama: Option<OpenAiCompatibleEditPredictionSettings>,
     /// Settings specific to using custom OpenAI-compatible servers for edit prediction.
     pub open_ai_compatible_api: Option<OpenAiCompatibleEditPredictionSettings>,
     /// Settings specific to Zed's Edit Predictions provider.
     pub zed: ZedEditPredictionSettings,
-    /// Settings specific to the Mercury Edit Predictions provider.
-    pub mercury: MercuryEditPredictionSettings,
     /// Controls whether training data collection is enabled.
     ///
     /// `Default` means the value stored in the legacy KV store is used as a fallback,
@@ -528,8 +522,6 @@ impl EditPredictionSettings {
     /// Returns the configured debounce delay for the given provider.
     pub fn debounce_for(&self, provider: settings::EditPredictionProvider) -> Duration {
         let delay = match provider {
-            settings::EditPredictionProvider::Copilot => self.copilot.prediction_debounce,
-            settings::EditPredictionProvider::Codestral => self.codestral.prediction_debounce,
             settings::EditPredictionProvider::Ollama => self
                 .ollama
                 .as_ref()
@@ -539,7 +531,6 @@ impl EditPredictionSettings {
                 .as_ref()
                 .map_or_else(DelayMs::default, |settings| settings.prediction_debounce),
             settings::EditPredictionProvider::Zed => self.zed.prediction_debounce,
-            settings::EditPredictionProvider::Mercury => self.mercury.prediction_debounce,
             settings::EditPredictionProvider::None => DelayMs::default(),
         };
         Duration::from_millis(delay.0)
@@ -548,12 +539,10 @@ impl EditPredictionSettings {
     /// Returns the configured debounce delay for the active prediction delegate.
     ///
     /// The Zed edit-prediction delegate handles multiple settings providers
-    /// (Zed, Mercury, Ollama, OpenAI-compatible), so it is identified by name
+    /// (Zed, Ollama, OpenAI-compatible), so it is identified by name
     /// and then uses the currently configured provider to resolve the delay.
     pub fn debounce_for_delegate(&self, delegate_name: &str) -> Duration {
         match delegate_name {
-            "copilot" => Duration::from_millis(self.copilot.prediction_debounce.0),
-            "codestral" => Duration::from_millis(self.codestral.prediction_debounce.0),
             "zed-predict" => self.debounce_for(self.provider),
             _ => Duration::ZERO,
         }
@@ -567,40 +556,7 @@ pub struct DisabledGlob {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct CopilotSettings {
-    /// HTTP/HTTPS proxy to use for Copilot.
-    pub proxy: Option<String>,
-    /// Disable certificate verification for proxy (not recommended).
-    pub proxy_no_verify: Option<bool>,
-    /// Enterprise URI for Copilot.
-    pub enterprise_uri: Option<String>,
-    /// Whether the Copilot Next Edit Suggestions feature is enabled.
-    pub enable_next_edit_suggestions: Option<bool>,
-    /// Automatic prediction debounce delay.
-    pub prediction_debounce: DelayMs,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct CodestralSettings {
-    /// Model to use for completions.
-    pub model: Option<String>,
-    /// Maximum tokens to generate.
-    pub max_tokens: Option<u32>,
-    /// Custom API URL to use for Codestral.
-    pub api_url: Option<String>,
-    /// Automatic prediction debounce delay.
-    pub prediction_debounce: DelayMs,
-}
-
-#[derive(Clone, Debug, Default)]
 pub struct ZedEditPredictionSettings {
-    /// Automatic prediction debounce delay.
-    pub prediction_debounce: DelayMs,
-}
-
-/// Settings specific to the Mercury Edit Predictions provider.
-#[derive(Clone, Debug, Default)]
-pub struct MercuryEditPredictionSettings {
     /// Automatic prediction debounce delay.
     pub prediction_debounce: DelayMs,
 }
@@ -921,23 +877,6 @@ impl settings::Settings for AllLanguageSettings {
             .iter()
             .collect();
 
-        let copilot = edit_predictions.copilot.unwrap();
-        let copilot_settings = CopilotSettings {
-            proxy: copilot.proxy,
-            proxy_no_verify: copilot.proxy_no_verify,
-            enterprise_uri: copilot.enterprise_uri,
-            enable_next_edit_suggestions: copilot.enable_next_edit_suggestions,
-            prediction_debounce: copilot.prediction_debounce.unwrap(),
-        };
-
-        let codestral = edit_predictions.codestral.unwrap();
-        let codestral_settings = CodestralSettings {
-            model: codestral.model,
-            max_tokens: codestral.max_tokens,
-            api_url: codestral.api_url,
-            prediction_debounce: codestral.prediction_debounce.unwrap(),
-        };
-
         let ollama = edit_predictions.ollama.unwrap();
         let ollama_settings = ollama
             .model
@@ -966,7 +905,6 @@ impl settings::Settings for AllLanguageSettings {
                 prediction_debounce: openai_compatible_settings.prediction_debounce.unwrap(),
             });
         let zed_settings = edit_predictions.zed.unwrap();
-        let mercury_settings = edit_predictions.mercury.unwrap();
 
         let mut file_types: FxHashMap<Arc<str>, (GlobSet, Vec<String>)> = FxHashMap::default();
 
@@ -1004,15 +942,10 @@ impl settings::Settings for AllLanguageSettings {
                     })
                     .collect(),
                 mode: edit_predictions_mode,
-                copilot: copilot_settings,
-                codestral: codestral_settings,
                 ollama: ollama_settings,
                 open_ai_compatible_api: openai_compatible_settings,
                 zed: ZedEditPredictionSettings {
                     prediction_debounce: zed_settings.prediction_debounce.unwrap(),
-                },
-                mercury: MercuryEditPredictionSettings {
-                    prediction_debounce: mercury_settings.prediction_debounce.unwrap(),
                 },
                 allow_data_collection: edit_predictions.allow_data_collection.unwrap_or_default(),
             },

@@ -19,14 +19,8 @@ Zed supports these first-class API providers for model-backed Zed AI features:
   - [Custom OpenAI Models](#openai-custom-models)
 - [Google AI](#google-ai)
   - [Custom Google AI Models](#google-ai-custom-models)
-- [Mistral](#mistral)
-  - [Custom Mistral Models](#mistral-custom-models)
 - [DeepSeek](#deepseek)
   - [Custom DeepSeek Models](#deepseek-custom-models)
-- [xAI](#xai)
-  - [Custom xAI Models](#xai-custom-models)
-- [OpenCode API](#opencode)
-  - [Custom OpenCode Models](#opencode-custom-models)
 - [Anthropic-compatible endpoints](#anthropic-compatible)
 - [OpenAI-compatible endpoints](#openai-compatible)
 
@@ -45,19 +39,14 @@ Most API-access providers can be configured on the **Settings → AI → LLM Pro
 
 Zed also reads provider-specific environment variables. Non-empty environment variables take precedence over keychain values. If a key comes from an environment variable, unset the variable and restart Zed to stop using it.
 
-| Provider          | Environment variable                                  |
-| ----------------- | ----------------------------------------------------- |
-| Anthropic         | `ANTHROPIC_API_KEY`                                   |
-| OpenAI            | `OPENAI_API_KEY`                                      |
-| Google AI         | `GEMINI_API_KEY`, falling back to `GOOGLE_AI_API_KEY` |
-| Mistral           | `MISTRAL_API_KEY`                                     |
-| DeepSeek          | `DEEPSEEK_API_KEY`                                    |
-| xAI               | `XAI_API_KEY`                                         |
-| OpenCode          | `OPENCODE_API_KEY`                                    |
-| OpenRouter        | `OPENROUTER_API_KEY`                                  |
-| Vercel AI Gateway | `VERCEL_AI_GATEWAY_API_KEY`                           |
-| Ollama            | `OLLAMA_API_KEY`                                      |
-| LM Studio         | `LMSTUDIO_API_KEY`                                    |
+| Provider  | Environment variable                                  |
+| --------- | ----------------------------------------------------- |
+| Anthropic | `ANTHROPIC_API_KEY`                                   |
+| OpenAI    | `OPENAI_API_KEY`                                      |
+| Google AI | `GEMINI_API_KEY`, falling back to `GOOGLE_AI_API_KEY` |
+| DeepSeek  | `DEEPSEEK_API_KEY`                                    |
+| Ollama    | `OLLAMA_API_KEY`                                      |
+| LM Studio | `LMSTUDIO_API_KEY`                                    |
 
 OpenAI-compatible provider environment variables are generated from the configured provider ID as upper snake case plus `_API_KEY`. For example, provider ID `my-gateway` uses `MY_GATEWAY_API_KEY`.
 
@@ -80,7 +69,7 @@ Configure them with `language_models.<provider>.custom_headers`:
 }
 ```
 
-`custom_headers` is supported by Anthropic, DeepSeek, Google AI, LM Studio, Mistral, Ollama, OpenAI, OpenAI-compatible providers, OpenCode, OpenRouter, Vercel AI Gateway, and xAI.
+`custom_headers` is supported by Anthropic, DeepSeek, Google AI, LM Studio, Ollama, OpenAI, and OpenAI-compatible providers.
 
 Headers managed by Zed for each provider, such as `Authorization`, `Content-Type`, `Accept`, and provider-specific authentication headers, are ignored with a warning if you try to override them.
 
@@ -223,42 +212,6 @@ including experimental models, or a thinking-mode configuration.
 }
 ```
 
-### Mistral {#mistral}
-
-Use Mistral API access when you have a Mistral API key.
-
-1. Visit the Mistral platform and [create an API key](https://console.mistral.ai/api-keys/).
-2. Open Agent Settings with {#action agent::OpenSettings} and go to the Mistral section.
-3. Enter your Mistral API key.
-
-Zed also reads `MISTRAL_API_KEY` from the local Zed process environment.
-
-#### Custom Mistral Models {#mistral-custom-models}
-
-Add custom Mistral models when you need alternate model IDs, custom limits, tool
-support, image support, or a custom endpoint.
-
-```json [settings]
-{
-  "language_models": {
-    "mistral": {
-      "api_url": "https://api.mistral.ai/v1",
-      "available_models": [
-        {
-          "name": "mistral-tiny-latest",
-          "display_name": "Mistral Tiny",
-          "max_tokens": 32000,
-          "max_output_tokens": 4096,
-          "max_completion_tokens": 1024,
-          "supports_tools": true,
-          "supports_images": false
-        }
-      ]
-    }
-  }
-}
-```
-
 ### DeepSeek {#deepseek}
 
 Use DeepSeek API access when you have paid API usage, top-ups, or an API key. In Zed, DeepSeek is API access, not subscription sign-in.
@@ -297,118 +250,6 @@ limits, or a custom endpoint.
   }
 }
 ```
-
-### xAI {#xai}
-
-Use xAI API access when you have an xAI API key.
-
-1. [Create an API key in the xAI Console](https://console.x.ai/team/default/api-keys).
-2. Open Agent Settings with {#action agent::OpenSettings} and go to the xAI section.
-3. Enter your xAI API key.
-
-Zed also reads `XAI_API_KEY` from the local Zed process environment.
-
-#### Custom xAI Models {#xai-custom-models}
-
-Add custom xAI models when you need alternate Grok model IDs, custom limits,
-image support, or a custom endpoint.
-
-```json [settings]
-{
-  "language_models": {
-    "x_ai": {
-      "api_url": "https://api.x.ai/v1",
-      "available_models": [
-        {
-          "name": "grok-1.5",
-          "display_name": "Grok 1.5",
-          "max_tokens": 131072,
-          "max_output_tokens": 8192
-        },
-        {
-          "name": "grok-1.5v",
-          "display_name": "Grok 1.5V (Vision)",
-          "max_tokens": 131072,
-          "max_output_tokens": 8192,
-          "supports_images": true
-        }
-      ]
-    }
-  }
-}
-```
-
-### OpenCode API {#opencode}
-
-Use OpenCode API access when you have an OpenCode API key. OpenCode Zen and Go affect which OpenCode models are available.
-
-Zed does not sign in to OpenCode with OAuth or detect your OpenCode subscription; it uses an OpenCode API key saved in the system keychain or `OPENCODE_API_KEY`.
-
-1. Visit [OpenCode Console](https://opencode.ai/auth) and create an account.
-2. To use Zen or Go models, make sure you have enough credits or an active
-   subscription. OpenCode Free models are not available when using OpenCode as a
-   provider in Zed's Agent. You can use them in Zed by running OpenCode as an
-   [external agent through ACP](https://zed.dev/acp/agent/opencode).
-3. Generate an API key from the API Keys section in the OpenCode Console.
-4. Open Agent Settings with {#action agent::OpenSettings} and go to the OpenCode section.
-5. Enter your OpenCode API key.
-
-Zed also reads `OPENCODE_API_KEY` from the local Zed process environment.
-
-By default, models from all OpenCode subscription types are shown. You can hide subscriptions that are not relevant to you in the provider UI or in settings:
-
-```json [settings]
-{
-  "language_models": {
-    "opencode": {
-      "show_zen_models": false,
-      "show_go_models": true
-    }
-  }
-}
-```
-
-#### Custom OpenCode Models {#opencode-custom-models}
-
-The Zed Agent comes preconfigured with OpenCode models. Add custom OpenCode models when you need newer models or models with custom endpoints.
-
-Add custom models in your settings file:
-
-```json [settings]
-{
-  "language_models": {
-    "opencode": {
-      "available_models": [
-        {
-          "name": "my-custom-model",
-          "display_name": "My Custom Model",
-          "max_tokens": 123456,
-          "max_output_tokens": 98765,
-          "protocol": "openai_chat",
-          "reasoning_effort_levels": ["low", "medium", "high", "max"],
-          "interleaved_reasoning": false,
-          "subscription": "go",
-          "custom_model_api_url": "https://example.com/zen"
-        }
-      ]
-    }
-  }
-}
-```
-
-The available configuration options for custom OpenCode models are:
-
-- `name` (required): model ID used by OpenCode, such as `glm-9000`
-- `display_name` (optional): human-readable model name shown in the UI, such as `Custom GLM 9000`
-- `max_tokens` (required): maximum model context window size, such as `1000000`
-- `max_output_tokens` (optional): maximum tokens the model can generate, such as `64000`
-- `protocol` (optional, default `"openai_chat"`): model API protocol, one of `"anthropic"`, `"openai_responses"`, `"openai_chat"`, or `"google"`
-- `reasoning_effort_levels` (optional): list of supported reasoning effort levels, such as `["none", "low", "medium", "high", "xhigh", "max"]`. The last value in the list is used as the default
-- `interleaved_reasoning` (optional, default `false`): whether thinking tokens are sent as a dedicated `reasoning_content` field. Applies only when using the `openai_chat` protocol
-- `subscription` (optional): `"zen"` or `"go"`; defaults to `"zen"`
-- `custom_model_api_url` (optional): custom API base URL to use instead of the default OpenCode API
-
-Custom OpenCode models are listed in the model dropdown in the Agent Panel.
 
 ### Anthropic-Compatible Endpoints {#anthropic-compatible}
 

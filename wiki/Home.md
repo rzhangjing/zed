@@ -54,7 +54,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Search-Deep-Dive（BufferSearchBar/ProjectSearch/TextFinder/registrar）](Search-Deep-Dive.md)
 - [Git-Deep-Dive（git 状态/GitStore·Repository/GitPanel·图/冲突）](Git-Deep-Dive.md)
 - [Extension-Deep-Dive（extension_api/宿主类型/ExtensionStore·WasmHost/市场页）](Extension-Deep-Dive.md)
-- [Edit-Prediction-Deep-Dive（EditPredictionStore/Delegate 双抽象/zeta・mercury・fim・ollama/context）](Edit-Prediction-Deep-Dive.md)
+- [Edit-Prediction-Deep-Dive（EditPredictionStore/Delegate 双抽象/zeta・fim・ollama/context）](Edit-Prediction-Deep-Dive.md)
 - [GPUI-Platform-Backends-Deep-Dive（Platform/PlatformWindow 抽象 + macOS・Windows・Linux・wgpu・Web 后端）](GPUI-Platform-Backends-Deep-Dive.md)
 - [Picker-Family-Deep-Dive（Picker/PickerDelegate + fuzzy・fuzzy_nucleo 双引擎 + file_finder/project_symbols）](Picker-Family-Deep-Dive.md)
 - [Diagnostics-Deep-Dive（Diagnostic/DiagnosticSet → editor 波浪线/块 → 项目/缓冲侧栏）](Diagnostics-Deep-Dive.md)

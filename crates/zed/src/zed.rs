@@ -585,7 +585,6 @@ pub fn initialize_workspace(app_state: Arc<AppState>, cx: &mut App) {
                 app_state.fs.clone(),
                 app_state.user_store.clone(),
                 edit_prediction_menu_handle.clone(),
-                workspace.project().clone(),
                 cx,
             )
         });
@@ -5632,8 +5631,6 @@ mod tests {
                 "command_palette",
                 "console",
                 "context_server",
-                "copilot",
-                "copilot_edit_predictions",
                 "debug_panel",
                 "debugger",
                 "dev",
@@ -5893,13 +5890,6 @@ mod tests {
             project_panel::init(cx);
             outline_panel::init(cx);
             terminal_view::init(cx);
-            let credentials_provider = zed_credentials_provider::global(cx);
-            copilot_chat::init(
-                app_state.client.http_client(),
-                credentials_provider,
-                copilot_chat::CopilotChatConfiguration::default(),
-                cx,
-            );
             image_viewer::init(cx);
             language_model::init(cx);
             client::RefreshLlmTokenListener::register(

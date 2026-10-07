@@ -1,6 +1,6 @@
 ---
 title: AI by Company - Zed
-description: Find the right Zed setup path for OpenAI, ChatGPT, Codex, Claude, Gemini, Copilot, Cursor, OpenCode, Pi, Poolside, OpenRouter, local models, and other AI tools.
+description: Find the right Zed setup path for OpenAI, ChatGPT, Codex, Claude, Gemini, Copilot, Cursor, OpenCode, Pi, Poolside, local models, and other AI tools.
 ---
 
 # AI by Company
@@ -44,20 +44,19 @@ Claude Pro and Max subscriptions are separate from Anthropic API credits. If you
 
 ## GitHub / Copilot {#github-copilot}
 
-| Path                    | Support level     | What you get                                         | Account / billing           | Setup                                                                            |
-| ----------------------- | ----------------- | ---------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| GitHub Copilot Chat     | Configured in Zed | Copilot Chat models for Zed AI features              | GitHub Copilot/Copilot Chat | [Use an Existing Subscription](./use-an-existing-subscription.md#github-copilot) |
-| Copilot edit prediction | Built into Zed    | Edit prediction provider option                      | GitHub Copilot              | [Edit Prediction](./edit-prediction.md)                                          |
-| Copilot External Agent  | Hosted in Zed     | Copilot in an External Agent thread, where available | Owned by Copilot            | [External Agents](./external-agents.md#copilot)                                  |
-| Copilot CLI             | Run in terminal   | Native CLI experience, where available               | Owned by Copilot            | [Terminal Threads](./terminal-threads.md)                                        |
+| Path                    | Support level     | What you get                                          | Account / billing           | Setup                                                                            |
+| ----------------------- | ----------------- | ----------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
+| GitHub Copilot Chat     | Configured in Zed | Copilot Chat models for Zed AI features               | GitHub Copilot/Copilot Chat | [Use an Existing Subscription](./use-an-existing-subscription.md#github-copilot) |
+| Copilot edit prediction | Removed           | Edit prediction provider removed, no longer available | n/a                         | [Edit Prediction](./edit-prediction.md#github-copilot)                           |
+| Copilot External Agent  | Hosted in Zed     | Copilot in an External Agent thread, where available  | Owned by Copilot            | [External Agents](./external-agents.md#copilot)                                  |
+| Copilot CLI             | Run in terminal   | Native CLI experience, where available                | Owned by Copilot            | [Terminal Threads](./terminal-threads.md)                                        |
 
-## OpenCode / Zen / Go {#opencode}
+## OpenCode {#opencode}
 
-| Path                    | Support level     | What you get                                          | Account / billing                                    | Setup                                            |
-| ----------------------- | ----------------- | ----------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
-| OpenCode provider       | Configured in Zed | OpenCode models for Zed AI features                   | OpenCode API key; Zen or Go affects available models | [Use API Access](./use-api-access.md#opencode)   |
-| OpenCode External Agent | Hosted in Zed     | OpenCode in an External Agent thread, where available | Owned by OpenCode                                    | [External Agents](./external-agents.md#opencode) |
-| `opencode` CLI          | Run in terminal   | Native OpenCode CLI experience                        | Owned by OpenCode                                    | [Terminal Threads](./terminal-threads.md)        |
+| Path                    | Support level   | What you get                                          | Account / billing | Setup                                            |
+| ----------------------- | --------------- | ----------------------------------------------------- | ----------------- | ------------------------------------------------ |
+| OpenCode External Agent | Hosted in Zed   | OpenCode in an External Agent thread, where available | Owned by OpenCode | [External Agents](./external-agents.md#opencode) |
+| `opencode` CLI          | Run in terminal | Native OpenCode CLI experience                        | Owned by OpenCode | [Terminal Threads](./terminal-threads.md)        |
 
 ## Cursor {#cursor}
 
@@ -96,10 +95,7 @@ Paid DeepSeek usage is API access in Zed, not subscription sign-in.
 
 ## Gateways and Cloud Platforms {#gateways}
 
-| Provider          | Support level     | What you get                         | Account / billing  | Setup                                                 |
-| ----------------- | ----------------- | ------------------------------------ | ------------------ | ----------------------------------------------------- |
-| OpenRouter        | Configured in Zed | Gateway access to multiple providers | OpenRouter billing | [Use a Gateway](./use-a-gateway.md#openrouter)        |
-| Vercel AI Gateway | Configured in Zed | Gateway access through Vercel        | Vercel billing     | [Use a Gateway](./use-a-gateway.md#vercel-ai-gateway) |
+For gateway or cloud-platform model access, configure an [OpenAI-compatible gateway](./use-a-gateway.md#openai-compatible).
 
 ## Local Models {#local-models}
 
@@ -113,4 +109,4 @@ Paid DeepSeek usage is API access in Zed, not subscription sign-in.
 
 ## Other API Providers {#other-api-providers}
 
-For Mistral, xAI, and OpenAI-compatible endpoints that are not listed above, see [Use API Access](./use-api-access.md).
+For OpenAI-compatible endpoints that are not listed above, see [Use API Access](./use-api-access.md#openai-compatible).

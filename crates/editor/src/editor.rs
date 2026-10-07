@@ -10660,9 +10660,7 @@ impl Editor {
             .unwrap_or(false);
 
         let edit_predictions_provider = all_language_settings(file, cx).edit_predictions.provider;
-        let copilot_enabled = edit_predictions_provider
-            == language::language_settings::EditPredictionProvider::Copilot;
-        let copilot_enabled_for_language = self
+        let edit_predictions_enabled_for_language = self
             .buffer
             .read(cx)
             .language_settings(cx)
@@ -10676,8 +10674,7 @@ impl Editor {
                 type = if auto_saved {"autosave"} else {"manual"},
                 file_extension,
                 vim_mode,
-                copilot_enabled,
-                copilot_enabled_for_language,
+                edit_predictions_enabled_for_language,
                 edit_predictions_provider,
             );
         } else {
@@ -10685,8 +10682,7 @@ impl Editor {
                 event_type,
                 file_extension,
                 vim_mode,
-                copilot_enabled,
-                copilot_enabled_for_language,
+                edit_predictions_enabled_for_language,
                 edit_predictions_provider,
             );
         };

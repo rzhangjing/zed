@@ -395,9 +395,6 @@ impl LanguageModels {
                                     //
                                     // These fail noisily, so we don't log them.
                                 }
-                                "copilot_chat" => {
-                                    // Copilot Chat returns an error if Copilot is not enabled, so we don't log those errors.
-                                }
                                 _ => {
                                     log::error!(
                                         "Failed to authenticate provider: {}: {err:#}",

@@ -1,7 +1,5 @@
-use codestral::{CODESTRAL_API_URL, codestral_api_key_state, codestral_api_url};
 use edit_prediction::{
     ApiKeyState,
-    mercury::{MERCURY_CREDENTIALS_URL, mercury_api_token},
     open_ai_compatible::{open_ai_compatible_api_token, open_ai_compatible_api_url},
 };
 use edit_prediction_ui::{get_available_providers, set_completion_provider};
@@ -9,8 +7,7 @@ use gpui::{App, Entity, ScrollHandle, TaskExt, prelude::*};
 use language::language_settings::AllLanguageSettings;
 
 use settings::Settings as _;
-use ui::{ButtonLink, ConfiguredApiCard, ContextMenu, DropdownMenu, DropdownStyle, prelude::*};
-use workspace::AppState;
+use ui::{ConfiguredApiCard, ContextMenu, DropdownMenu, DropdownStyle, prelude::*};
 
 const OLLAMA_API_URL_PLACEHOLDER: &str = "http://localhost:11434";
 const OLLAMA_MODEL_PLACEHOLDER: &str = "qwen2.5-coder:3b-base";
@@ -32,64 +29,12 @@ pub(crate) fn render_edit_prediction_setup_page(
     let providers = [
         Some(render_provider_dropdown(window, cx)),
         Some(render_zed_provider(settings_window, window, cx).into_any_element()),
-        render_github_copilot_provider(settings_window, window, cx)
-            .map(IntoElement::into_any_element),
-        Some(
-            render_api_key_provider(
-                IconName::Inception,
-                "Mercury",
-                ApiKeyDocs::Link {
-                    dashboard_url: "https://platform.inceptionlabs.ai/dashboard/api-keys".into(),
-                },
-                mercury_api_token(cx),
-                |_cx| MERCURY_CREDENTIALS_URL,
-                Some(
-                    settings_window
-                        .render_sub_page_items_section(
-                            mercury_settings().iter().enumerate(),
-                            true,
-                            window,
-                            cx,
-                        )
-                        .into_any_element(),
-                ),
-                window,
-                cx,
-            )
-            .into_any_element(),
-        ),
-        Some(
-            render_api_key_provider(
-                IconName::AiMistral,
-                "Codestral",
-                ApiKeyDocs::Link {
-                    dashboard_url: "https://console.mistral.ai/codestral".into(),
-                },
-                codestral_api_key_state(cx),
-                |cx| codestral_api_url(cx),
-                Some(
-                    settings_window
-                        .render_sub_page_items_section(
-                            codestral_settings().iter().enumerate(),
-                            true,
-                            window,
-                            cx,
-                        )
-                        .into_any_element(),
-                ),
-                window,
-                cx,
-            )
-            .into_any_element(),
-        ),
         Some(render_ollama_provider(settings_window, window, cx).into_any_element()),
         Some(
             render_api_key_provider(
                 IconName::AiOpenAiCompat,
                 "OpenAI Compatible API",
-                ApiKeyDocs::Custom {
-                    message: "The API key sent as Authorization: Bearer {key}.".into(),
-                },
+                "The API key sent as Authorization: Bearer {key}.".into(),
                 open_ai_compatible_api_token(cx),
                 |cx| open_ai_compatible_api_url(cx),
                 Some(
@@ -183,15 +128,10 @@ fn render_provider_dropdown(window: &mut Window, cx: &mut App) -> AnyElement {
         .into_any_element()
 }
 
-enum ApiKeyDocs {
-    Link { dashboard_url: SharedString },
-    Custom { message: SharedString },
-}
-
 fn render_api_key_provider(
     icon: IconName,
     title: &'static str,
-    docs: ApiKeyDocs,
+    docs_message: SharedString,
     api_key_state: Entity<ApiKeyState>,
     current_url: fn(&mut App) -> SharedString,
     additional_fields: Option<AnyElement>,
@@ -249,34 +189,11 @@ fn render_api_key_provider(
         .icon(icon)
         .no_padding(true);
 
-    let description = match docs {
-        ApiKeyDocs::Custom { message } => div().min_w_0().w_full().child(
-            Label::new(message)
-                .size(LabelSize::Small)
-                .color(Color::Muted),
-        ),
-        ApiKeyDocs::Link { dashboard_url } => h_flex()
-            .w_full()
-            .min_w_0()
-            .flex_wrap()
-            .gap_0p5()
-            .child(
-                Label::new("Visit the")
-                    .size(LabelSize::Small)
-                    .color(Color::Muted),
-            )
-            .child(
-                ButtonLink::new(format!("{title} dashboard"), dashboard_url)
-                    .no_icon(true)
-                    .label_size(LabelSize::Small)
-                    .label_color(Color::Muted),
-            )
-            .child(
-                Label::new("to generate an API key.")
-                    .size(LabelSize::Small)
-                    .color(Color::Muted),
-            ),
-    };
+    let description = div().min_w_0().w_full().child(
+        Label::new(docs_message)
+            .size(LabelSize::Small)
+            .color(Color::Muted),
+    );
 
     let configured_card_label = if is_from_env_var {
         "API Key Set in Environment Variable"
@@ -706,174 +623,7 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
     ])
 }
 
-fn codestral_settings() -> Box<[SettingsPageItem]> {
-    Box::new([
-        SettingsPageItem::SettingItem(SettingItem {
-            title: "API URL",
-            description: "The API URL to use for Codestral.",
-            field: Box::new(SettingField {
-                organization_override: None,
-                pick: |settings| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .as_ref()?
-                        .codestral
-                        .as_ref()?
-                        .api_url
-                        .as_ref()
-                },
-                write: |settings, value, _app: &App| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .get_or_insert_default()
-                        .codestral
-                        .get_or_insert_default()
-                        .api_url = value;
-                },
-                json_path: Some("edit_predictions.codestral.api_url"),
-            }),
-            metadata: Some(Box::new(SettingsFieldMetadata {
-                placeholder: Some(CODESTRAL_API_URL),
-                ..Default::default()
-            })),
-            files: USER,
-        }),
-        SettingsPageItem::SettingItem(SettingItem {
-            title: "Max Tokens",
-            description: "The maximum number of tokens to generate.",
-            field: Box::new(SettingField {
-                organization_override: None,
-                pick: |settings| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .as_ref()?
-                        .codestral
-                        .as_ref()?
-                        .max_tokens
-                        .as_ref()
-                },
-                write: |settings, value, _app: &App| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .get_or_insert_default()
-                        .codestral
-                        .get_or_insert_default()
-                        .max_tokens = value;
-                },
-                json_path: Some("edit_predictions.codestral.max_tokens"),
-            }),
-            metadata: None,
-            files: USER,
-        }),
-        SettingsPageItem::SettingItem(SettingItem {
-            title: "Model",
-            description: "The Codestral model id to use.",
-            field: Box::new(SettingField {
-                organization_override: None,
-                pick: |settings| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .as_ref()?
-                        .codestral
-                        .as_ref()?
-                        .model
-                        .as_ref()
-                },
-                write: |settings, value, _app: &App| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .get_or_insert_default()
-                        .codestral
-                        .get_or_insert_default()
-                        .model = value;
-                },
-                json_path: Some("edit_predictions.codestral.model"),
-            }),
-            metadata: Some(Box::new(SettingsFieldMetadata {
-                placeholder: Some("codestral-latest"),
-                ..Default::default()
-            })),
-            files: USER,
-        }),
-        SettingsPageItem::SettingItem(SettingItem {
-            title: "Prediction Debounce",
-            description: "Delay in milliseconds before automatically requesting a prediction after typing stops. Set to 0 to request predictions immediately.",
-            field: Box::new(SettingField {
-                organization_override: None,
-                pick: |settings| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .as_ref()?
-                        .codestral
-                        .as_ref()?
-                        .prediction_debounce
-                        .as_ref()
-                },
-                write: |settings, value, _app: &App| {
-                    settings
-                        .project
-                        .all_languages
-                        .edit_predictions
-                        .get_or_insert_default()
-                        .codestral
-                        .get_or_insert_default()
-                        .prediction_debounce = value;
-                },
-                json_path: Some("edit_predictions.codestral.prediction_debounce"),
-            }),
-            metadata: None,
-            files: USER,
-        }),
-    ])
-}
 
-fn mercury_settings() -> Box<[SettingsPageItem]> {
-    Box::new([SettingsPageItem::SettingItem(SettingItem {
-        title: "Prediction Debounce",
-        description: "Delay in milliseconds before automatically requesting a prediction after typing stops. Set to 0 to request predictions immediately.",
-        field: Box::new(SettingField {
-            organization_override: None,
-            pick: |settings| {
-                settings
-                    .project
-                    .all_languages
-                    .edit_predictions
-                    .as_ref()?
-                    .mercury
-                    .as_ref()?
-                    .prediction_debounce
-                    .as_ref()
-            },
-            write: |settings, value, _app: &App| {
-                settings
-                    .project
-                    .all_languages
-                    .edit_predictions
-                    .get_or_insert_default()
-                    .mercury
-                    .get_or_insert_default()
-                    .prediction_debounce = value;
-            },
-            json_path: Some("edit_predictions.mercury.prediction_debounce"),
-        }),
-        metadata: None,
-        files: USER,
-    })])
-}
 
 fn zed_settings() -> Box<[SettingsPageItem]> {
     Box::new([SettingsPageItem::SettingItem(SettingItem {
@@ -930,75 +680,4 @@ fn render_zed_provider(
                 .no_padding(true),
         )
         .child(div().px_neg_8().child(additional_fields))
-}
-
-fn copilot_settings() -> Box<[SettingsPageItem]> {
-    Box::new([SettingsPageItem::SettingItem(SettingItem {
-        title: "Prediction Debounce",
-        description: "Delay in milliseconds before automatically requesting a prediction after typing stops. Set to 0 to request predictions immediately.",
-        field: Box::new(SettingField {
-            organization_override: None,
-            pick: |settings| {
-                settings
-                    .project
-                    .all_languages
-                    .edit_predictions
-                    .as_ref()?
-                    .copilot
-                    .as_ref()?
-                    .prediction_debounce
-                    .as_ref()
-            },
-            write: |settings, value, _app: &App| {
-                settings
-                    .project
-                    .all_languages
-                    .edit_predictions
-                    .get_or_insert_default()
-                    .copilot
-                    .get_or_insert_default()
-                    .prediction_debounce = value;
-            },
-            json_path: Some("edit_predictions.copilot.prediction_debounce"),
-        }),
-        metadata: None,
-        files: USER,
-    })])
-}
-
-fn render_github_copilot_provider(
-    settings_window: &SettingsWindow,
-    window: &mut Window,
-    cx: &mut Context<SettingsWindow>,
-) -> Option<impl IntoElement> {
-    let configuration_view = window.use_state(cx, |_, cx| {
-        copilot_ui::ConfigurationView::new(
-            move |cx| {
-                let app_state = AppState::global(cx);
-                copilot::GlobalCopilotAuth::try_get_or_init(app_state, cx)
-                    .is_some_and(|copilot| copilot.0.read(cx).is_authenticated())
-            },
-            copilot_ui::ConfigurationMode::EditPrediction,
-            cx,
-        )
-    });
-
-    let additional_fields = settings_window
-        .render_sub_page_items_section(copilot_settings().iter().enumerate(), true, window, cx)
-        .into_any_element();
-
-    Some(
-        v_flex()
-            .id("github-copilot")
-            .min_w_0()
-            .pt_8()
-            .gap_1p5()
-            .child(
-                SettingsSectionHeader::new("GitHub Copilot")
-                    .icon(IconName::Copilot)
-                    .no_padding(true),
-            )
-            .child(configuration_view)
-            .child(div().px_neg_8().child(additional_fields)),
-    )
 }

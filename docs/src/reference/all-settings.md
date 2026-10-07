@@ -699,7 +699,7 @@ List of `string` values.
 
 - Description: How long Zed waits after you stop typing before automatically requesting an edit prediction.
 - Setting: `edit_predictions.<provider>.prediction_debounce`
-- Default: `75` for GitHub Copilot, `150` for Codestral, and `0` for Zed, Mercury, Ollama, and OpenAI-compatible APIs.
+- Default: `0` for Zed, Ollama, and OpenAI-compatible APIs.
 
 **Options**
 
@@ -2006,17 +2006,7 @@ While other options may be changed at a runtime and should be placed under `sett
 }
 ```
 
-2. Use Copilot as the edit prediction provider:
-
-```json [settings]
-{
-  "edit_predictions": {
-    "provider": "copilot"
-  }
-}
-```
-
-3. Turn off edit predictions across all providers
+2. Turn off edit predictions across all providers
 
 ```json [settings]
 {

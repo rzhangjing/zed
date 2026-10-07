@@ -627,18 +627,11 @@ impl JsonSchema for LanguageModelProviderSetting {
                     "type": "string",
                     "enum": [
                         "anthropic",
-                        "copilot_chat",
                         "deepseek",
                         "google",
                         "lmstudio",
-                        "mistral",
                         "ollama",
                         "openai",
-                        "openai-subscribed",
-                        "opencode",
-                        "openrouter",
-                        "vercel_ai_gateway",
-                        "x_ai",
                         "zed.dev"
                     ]
                 },

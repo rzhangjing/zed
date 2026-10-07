@@ -25,15 +25,15 @@ graph TB
 
 | 符号 | 位置 | 作用 |
 |---|---|---|
-| `struct EditPredictionStore` | [`edit_prediction.rs:164`](../crates/edit_prediction/src/edit_prediction.rs) | 全局预测状态（每 buffer 的 pending 预测、光标位置） |
-| `impl EditPredictionStore` | [L957](../crates/edit_prediction/src/edit_prediction.rs) / [L2514](../crates/edit_prediction/src/edit_prediction.rs) | 主逻辑与 delegate 实现 |
-| `EditPredictionStore::register_buffer` | [L1328](../crates/edit_prediction/src/edit_prediction.rs) | 打开 buffer 时纳入管理 |
+| `struct EditPredictionStore` | [`edit_prediction.rs:158`](../crates/edit_prediction/src/edit_prediction.rs) | 全局预测状态（每 buffer 的 pending 预测、光标位置） |
+| `impl EditPredictionStore` | [L947](../crates/edit_prediction/src/edit_prediction.rs) / [L2433](../crates/edit_prediction/src/edit_prediction.rs) | 主逻辑与 delegate 实现 |
+| `EditPredictionStore::register_buffer` | [L1267](../crates/edit_prediction/src/edit_prediction.rs) | 打开 buffer 时纳入管理 |
 | `struct EditPrediction` | [`prediction.rs:138`](../crates/edit_prediction/src/prediction.rs) | 单个预测（编辑集 + 位置 + 状态） |
 | `struct EditPredictionId` | [L10](../crates/edit_prediction/src/prediction.rs) | 预测标识（`SharedString`） |
 | `EditPrediction::new_rejected` | [L108](../crates/edit_prediction/src/prediction.rs) | 构造"已拒绝"记录（用于指标） |
 | `EditPrediction::interpolate` | [L152](../crates/edit_prediction/src/prediction.rs) | 锚点随 buffer 更新做位置插值 |
 | `EditPrediction::targets_buffer` | [L159](../crates/edit_prediction/src/prediction.rs) | 判断预测是否命中该 buffer |
-| `enum EditPredictionProvider` | [`settings_content/src/language.rs:92`](../crates/settings_content/src/language.rs) | 提供方选择（Zed/Copilot/LSP…） |
+| `enum EditPredictionProvider` | [`settings_content/src/language.rs:92`](../crates/settings_content/src/language.rs) | 提供方选择（Zed/Ollama/OpenAI 兼容 API；未知值回落 `None`） |
 
 ## 3. 提示构造：多种策略并存
 

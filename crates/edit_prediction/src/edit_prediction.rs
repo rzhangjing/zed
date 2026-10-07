@@ -21,8 +21,6 @@ use cloud_llm_client::{
     ZED_VERSION_HEADER_NAME,
 };
 use collections::{HashMap, HashSet};
-use copilot::{Copilot, Reinstall};
-use credentials_provider::CredentialsProvider;
 use db::kvp::{Dismissable, KeyValueStore};
 use edit_prediction_context::{RelatedExcerptStore, RelatedExcerptStoreEvent, RelatedFile};
 use edit_prediction_types::EditPredictionRequestTrigger;
@@ -47,13 +45,11 @@ use language::{
     EditPredictionsMode, EditPreview, File, OffsetRangeExt, Point, TextBufferSnapshot, ToOffset,
     ToPoint, language_settings::all_language_settings,
 };
-use project::{DisableAiSettings, Project, ProjectPath, WorktreeId};
+use project::{Project, ProjectPath, WorktreeId};
 use release_channel::AppVersion;
 use semver::Version;
 use serde::de::DeserializeOwned;
-use settings::{
-    EditPredictionDataCollectionChoice, EditPredictionProvider, Settings as _, update_settings_file,
-};
+use settings::{EditPredictionDataCollectionChoice, EditPredictionProvider, update_settings_file};
 use std::collections::{VecDeque, hash_map};
 use std::env;
 use std::rc::Rc;
@@ -77,7 +73,6 @@ pub mod data_collection;
 pub mod example_spec;
 pub mod fim;
 mod license_detection;
-pub mod mercury;
 pub mod metrics;
 pub mod ollama;
 mod onboarding_modal;
@@ -98,7 +93,6 @@ use crate::cursor_excerpt::expand_context_syntactically_then_linewise;
 use crate::data_collection::{CapturedPredictionContext, capture_prediction_context};
 use crate::example_spec::RecentFile;
 use crate::license_detection::LicenseDetectionWatcher;
-use crate::mercury::Mercury;
 pub use crate::metrics::{KeptRateResult, compute_kept_rate};
 use crate::onboarding_modal::ZedPredictModal;
 use crate::prediction::EditPredictionResult;
@@ -173,7 +167,6 @@ pub struct EditPredictionStore {
     request_backoff_until: Option<Instant>,
     preferred_experiment: Option<String>,
     available_experiments: Vec<String>,
-    pub mercury: Mercury,
     legacy_data_collection_enabled: bool,
     reject_predictions_tx: mpsc::UnboundedSender<EditPredictionRejectionPayload>,
     settled_predictions_tx: mpsc::UnboundedSender<Instant>,
@@ -181,7 +174,6 @@ pub struct EditPredictionStore {
     rated_predictions: HashSet<EditPredictionId>,
     #[cfg(test)]
     settled_event_callback: Option<Box<dyn Fn(EditPredictionId, String)>>,
-    credentials_provider: Arc<dyn CredentialsProvider>,
 }
 
 pub(crate) struct EditPredictionRejectionPayload {
@@ -194,7 +186,6 @@ pub enum EditPredictionModel {
     Zeta,
     Fim { format: EditPredictionPromptFormat },
     SweepPrompt,
-    Mercury,
 }
 
 pub struct EditPredictionModelInput {
@@ -373,7 +364,6 @@ struct ProjectState {
     context: Entity<RelatedExcerptStore>,
     license_detection_watchers: HashMap<WorktreeId, Rc<LicenseDetectionWatcher>>,
     _subscriptions: [gpui::Subscription; 2],
-    copilot: Option<Entity<Copilot>>,
 }
 
 impl ProjectState {
@@ -1030,8 +1020,6 @@ impl EditPredictionStore {
             .log_err();
         });
 
-        let credentials_provider = zed_credentials_provider::global(cx);
-
         let this = Self {
             projects: HashMap::default(),
             client,
@@ -1044,7 +1032,6 @@ impl EditPredictionStore {
             request_backoff_until: None,
             preferred_experiment: None,
             available_experiments: Vec::new(),
-            mercury: Mercury::new(cx),
             legacy_data_collection_enabled,
 
             reject_predictions_tx: reject_tx,
@@ -1053,8 +1040,6 @@ impl EditPredictionStore {
             rateable_predictions: Default::default(),
             #[cfg(test)]
             settled_event_callback: None,
-
-            credentials_provider,
         };
 
         this
@@ -1184,9 +1169,6 @@ impl EditPredictionStore {
     pub fn icons(&self, cx: &App) -> edit_prediction_types::EditPredictionIconSet {
         use ui::IconName;
         match self.edit_prediction_model {
-            EditPredictionModel::Mercury => {
-                edit_prediction_types::EditPredictionIconSet::new(IconName::Inception)
-            }
             EditPredictionModel::Zeta => {
                 edit_prediction_types::EditPredictionIconSet::new(IconName::ZedPredict)
                     .with_disabled(IconName::ZedPredictDisabled)
@@ -1206,14 +1188,6 @@ impl EditPredictionStore {
                 }
             }
         }
-    }
-
-    pub fn has_mercury_api_token(&self, cx: &App) -> bool {
-        self.mercury.api_token.read(cx).has_key()
-    }
-
-    pub fn mercury_has_payment_required_error(&self) -> bool {
-        self.mercury.has_payment_required_error()
     }
 
     pub fn clear_history(&mut self) {
@@ -1261,41 +1235,6 @@ impl EditPredictionStore {
                 })
             })
             .unwrap_or_default()
-    }
-
-    pub fn copilot_for_project(&self, project: &Entity<Project>) -> Option<Entity<Copilot>> {
-        self.projects
-            .get(&project.entity_id())
-            .and_then(|project| project.copilot.clone())
-    }
-
-    pub fn start_copilot_for_project(
-        &mut self,
-        project: &Entity<Project>,
-        cx: &mut Context<Self>,
-    ) -> Option<Entity<Copilot>> {
-        if DisableAiSettings::get(None, cx).disable_ai {
-            return None;
-        }
-        let state = self.get_or_init_project(project, cx);
-
-        if state.copilot.is_some() {
-            return state.copilot.clone();
-        }
-        let _project = project.clone();
-        let project = project.read(cx);
-
-        let node = project.node_runtime().cloned();
-        if let Some(node) = node {
-            let next_id = project.languages().next_language_server_id();
-            let fs = project.fs().clone();
-
-            let copilot = cx.new(|cx| Copilot::new(Some(_project), next_id, fs, node, cx));
-            state.copilot = Some(copilot.clone());
-            Some(copilot)
-        } else {
-            None
-        }
     }
 
     pub fn context_for_project_with_buffers<'a>(
@@ -1443,7 +1382,6 @@ impl EditPredictionStore {
                         cx.notify();
                     }),
                 ],
-                copilot: None,
             })
     }
 
@@ -1863,13 +1801,6 @@ impl EditPredictionStore {
         }
 
         match self.edit_prediction_model {
-            EditPredictionModel::Mercury => {
-                mercury::edit_prediction_accepted(
-                    current_prediction.prediction.id,
-                    self.client.http_client(),
-                    cx,
-                );
-            }
             EditPredictionModel::Zeta => {
                 let is_cloud = !matches!(
                     all_language_settings(None, cx).edit_predictions.provider,
@@ -2281,15 +2212,6 @@ impl EditPredictionStore {
                         .log_err();
                 }
             }
-            EditPredictionModel::Mercury => {
-                mercury::edit_prediction_rejected(
-                    prediction_id,
-                    was_shown,
-                    reason,
-                    self.client.http_client(),
-                    cx,
-                );
-            }
             EditPredictionModel::SweepPrompt | EditPredictionModel::Fim { .. } => {}
         }
     }
@@ -2502,12 +2424,9 @@ fn currently_following(project: &Entity<Project>, cx: &App) -> bool {
 fn is_ep_store_provider(provider: EditPredictionProvider) -> bool {
     match provider {
         EditPredictionProvider::Zed
-        | EditPredictionProvider::Mercury
         | EditPredictionProvider::Ollama
         | EditPredictionProvider::OpenAiCompatibleApi => true,
-        EditPredictionProvider::None
-        | EditPredictionProvider::Copilot
-        | EditPredictionProvider::Codestral => false,
+        EditPredictionProvider::None => false,
     }
 }
 
@@ -2526,12 +2445,10 @@ impl EditPredictionStore {
     ) {
         let (needs_acceptance_tracking, max_pending_predictions) =
             match all_language_settings(None, cx).edit_predictions.provider {
-                EditPredictionProvider::Zed | EditPredictionProvider::Mercury => (true, 2),
+                EditPredictionProvider::Zed => (true, 2),
                 EditPredictionProvider::Ollama => (false, 1),
                 EditPredictionProvider::OpenAiCompatibleApi => (false, 2),
-                EditPredictionProvider::None
-                | EditPredictionProvider::Copilot
-                | EditPredictionProvider::Codestral => {
+                EditPredictionProvider::None => {
                     log::error!("queue_prediction_refresh called with non-store provider");
                     return;
                 }
@@ -2912,10 +2829,6 @@ impl EditPredictionStore {
             }
             EditPredictionModel::Fim { format } => fim::request_prediction(inputs, format, cx),
             EditPredictionModel::SweepPrompt => sweep_prompt::request_prediction(inputs, cx),
-            EditPredictionModel::Mercury => {
-                self.mercury
-                    .request_prediction(inputs, self.credentials_provider.clone(), cx)
-            }
         };
 
         task
@@ -3542,17 +3455,6 @@ pub fn init(cx: &mut App) {
                     .get_or_insert_default()
                     .provider = Some(EditPredictionProvider::None)
             });
-        });
-        fn copilot_for_project(project: &Entity<Project>, cx: &mut App) -> Option<Entity<Copilot>> {
-            EditPredictionStore::try_global(cx).and_then(|store| {
-                store.update(cx, |this, cx| this.start_copilot_for_project(project, cx))
-            })
-        }
-
-        workspace.register_action(|workspace, _: &Reinstall, window, cx| {
-            if let Some(copilot) = copilot_for_project(workspace.project(), cx) {
-                copilot_ui::reinstall_and_sign_in(copilot, window, cx);
-            }
         });
     })
     .detach();

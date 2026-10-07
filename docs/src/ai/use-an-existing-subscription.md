@@ -14,8 +14,8 @@ Some subscriptions work as Zed model providers. Others are used through an Exter
 | Zed Pro, Business, or Student | [Zed-hosted models](../account/zed-hosted-models.md) | No                                    | No                             | Billed through Zed                                               |
 | ChatGPT Plus / Pro            | ChatGPT Subscription                                 | Codex where supported                 | Codex CLI                      | Sign in with OpenAI in Zed; separate from OpenAI API keys        |
 | Claude Pro / Max              | No direct Zed LLM provider path                      | Claude Agent                          | Claude Code                    | Separate from Anthropic API keys                                 |
-| GitHub Copilot                | GitHub Copilot Chat; Copilot edit prediction         | Copilot agent where available         | CLI where available            | Requires Copilot/Copilot Chat auth                               |
-| OpenCode Zen / Go             | OpenCode provider                                    | OpenCode agent where available        | `opencode` CLI                 | Requires OpenCode API key; subscription affects available models |
+| GitHub Copilot                | No direct Zed LLM provider path                      | Copilot agent where available         | CLI where available            | Requires Copilot agent or CLI auth                               |
+| OpenCode Zen / Go             | No direct Zed LLM provider path                      | OpenCode agent where available        | `opencode` CLI                 | Requires OpenCode agent or CLI; Zed does not sign in to OpenCode |
 | Cursor subscription           | No Zed LLM provider path                             | Cursor External Agent where available | Cursor CLI/TUI where available | Use agent/CLI paths instead of Zed LLM provider settings         |
 
 ## ChatGPT Plus / Pro {#chatgpt}
@@ -34,13 +34,13 @@ See [What Anthropic's New Claude Billing Means for Zed Users](https://zed.dev/bl
 
 ## GitHub Copilot {#github-copilot}
 
-GitHub Copilot can be used as a Copilot Chat model provider for Zed AI features where supported. Copilot can also be used for [Edit Prediction](./edit-prediction.md).
+GitHub Copilot was removed as a Zed model provider and as an [Edit Prediction](./edit-prediction.md) provider. Zed no longer signs in to GitHub Copilot for those features.
 
 If you use a Copilot agent or CLI, that setup is owned by Copilot. See [External Agents](./external-agents.md) and [Terminal Threads](./terminal-threads.md).
 
 ## OpenCode Zen / Go {#opencode}
 
-OpenCode is a first-class language model provider in Zed. If you think of Zen or Go as your OpenCode subscription, the Zed setup path is still [Use API Access](./use-api-access.md#opencode): enter an OpenCode API key, then choose which OpenCode models to show. Zed does not sign in to OpenCode with OAuth or detect your subscription directly.
+OpenCode Zen and Go are OpenCode's own subscription plans. Zed does not act as an OpenCode model provider; use the [OpenCode External Agent](./external-agents.md#opencode) or the `opencode` CLI in a [Terminal Thread](./terminal-threads.md) so OpenCode handles its own auth and model selection.
 
 ## Cursor {#cursor}
 

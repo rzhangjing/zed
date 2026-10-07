@@ -2443,27 +2443,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "codestral"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "edit_prediction",
- "edit_prediction_types",
- "futures 0.3.32",
- "gpui",
- "http_client",
- "icons",
- "language",
- "language_model",
- "log",
- "serde",
- "serde_json",
- "text",
- "zed_credentials_provider",
- "zeta_prompt",
-]
-
-[[package]]
 name = "collections"
 version = "0.1.0"
 dependencies = [
@@ -2750,80 +2729,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "affbf0190ed2caf063e3def54ff444b449371d55c58e513a95ab98eca50adb49"
 dependencies = [
  "unicode-segmentation",
-]
-
-[[package]]
-name = "copilot"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "collections",
- "command_palette_hooks",
- "copilot_chat",
- "edit_prediction_types",
- "editor",
- "fs",
- "futures 0.3.32",
- "gpui",
- "icons",
- "indoc",
- "language",
- "log",
- "lsp",
- "node_runtime",
- "parking_lot",
- "paths",
- "pretty_assertions",
- "project",
- "rpc",
- "serde",
- "serde_json",
- "settings",
- "sum_tree",
- "theme",
- "theme_settings",
- "util",
- "workspace",
- "zlog",
-]
-
-[[package]]
-name = "copilot_chat"
-version = "0.1.0"
-dependencies = [
- "anthropic",
- "anyhow",
- "collections",
- "credentials_provider",
- "futures 0.3.32",
- "gpui",
- "http_client",
- "language_model",
- "log",
- "serde",
- "serde_json",
- "util",
-]
-
-[[package]]
-name = "copilot_ui"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "copilot",
- "copilot_chat",
- "gpui",
- "language",
- "log",
- "lsp",
- "menu",
- "project",
- "release_channel",
- "serde_json",
- "settings",
- "ui",
- "util",
- "workspace",
 ]
 
 [[package]]
@@ -4078,9 +3983,6 @@ dependencies = [
  "cloud_api_types",
  "cloud_llm_client",
  "collections",
- "copilot",
- "copilot_ui",
- "credentials_provider",
  "criterion",
  "ctor",
  "db",
@@ -4193,11 +4095,7 @@ dependencies = [
  "buffer_diff",
  "client",
  "cloud_llm_client",
- "codestral",
  "command_palette_hooks",
- "copilot",
- "copilot_chat",
- "copilot_ui",
  "edit_prediction",
  "edit_prediction_types",
  "editor",
@@ -7626,8 +7524,6 @@ dependencies = [
  "collections",
  "component",
  "convert_case 0.11.0",
- "copilot_chat",
- "copilot_ui",
  "credentials_provider",
  "db",
  "deepseek",
@@ -7645,12 +7541,8 @@ dependencies = [
  "lmstudio",
  "log",
  "menu",
- "mistral",
  "ollama",
  "open_ai",
- "open_router",
- "openai_subscribed",
- "opencode",
  "parking_lot",
  "rand 0.9.4",
  "release_channel",
@@ -7663,7 +7555,6 @@ dependencies = [
  "ui",
  "ui_input",
  "util",
- "x_ai",
 ]
 
 [[package]]
@@ -8800,19 +8691,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mistral"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures 0.3.32",
- "http_client",
- "schemars 1.0.4",
- "serde",
- "serde_json",
- "strum",
-]
-
-[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9873,61 +9751,6 @@ dependencies = [
  "ui",
  "util",
  "workspace",
-]
-
-[[package]]
-name = "open_router"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures 0.3.32",
- "http_client",
- "language_model_core",
- "open_ai",
- "schemars 1.0.4",
- "serde",
- "serde_json",
- "settings",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "openai_subscribed"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64",
- "credentials_provider",
- "futures 0.3.32",
- "gpui",
- "http_client",
- "language_model",
- "log",
- "oauth_callback_server",
- "open_ai",
- "parking_lot",
- "rand 0.9.4",
- "serde",
- "serde_json",
- "sha2",
- "smol",
- "url",
- "util",
-]
-
-[[package]]
-name = "opencode"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures 0.3.32",
- "google_ai",
- "http_client",
- "language_model_core",
- "schemars 1.0.4",
- "serde",
- "serde_json",
- "strum",
 ]
 
 [[package]]
@@ -13390,12 +13213,9 @@ dependencies = [
  "audio",
  "client",
  "cloud_api_types",
- "codestral",
  "collections",
  "component",
  "context_server",
- "copilot",
- "copilot_ui",
  "cpal",
  "edit_prediction",
  "edit_prediction_ui",
@@ -18118,16 +17938,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6fc2961e4ef194dcbfe56bb845534d0dc8098940c7e5c012a258bfec6701bd"
 
 [[package]]
-name = "x_ai"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "schemars 1.0.4",
- "serde",
- "strum",
-]
-
-[[package]]
 name = "xattr"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -18461,13 +18271,9 @@ dependencies = [
  "cli",
  "client",
  "clock",
- "codestral",
  "collections",
  "command_palette",
  "component_preview",
- "copilot",
- "copilot_chat",
- "copilot_ui",
  "crashes",
  "dap_adapters",
  "db",

@@ -26,8 +26,6 @@ cloud_api_types.workspace = true
 collections.workspace = true
 component.workspace = true
 convert_case.workspace = true
-copilot_chat.workspace = true
-copilot_ui.workspace = true
 credentials_provider.workspace = true
 deepseek = { workspace = true, features = ["schemars"] }
 fs.workspace = true
@@ -43,12 +41,8 @@ llama_cpp = { workspace = true, features = ["schemars"] }
 lmstudio = { workspace = true, features = ["schemars"] }
 log.workspace = true
 menu.workspace = true
-mistral = { workspace = true, features = ["schemars"] }
 ollama = { workspace = true, features = ["schemars"] }
 open_ai = { workspace = true, features = ["schemars"] }
-openai_subscribed.workspace = true
-opencode = { workspace = true, features = ["schemars"] }
-open_router = { workspace = true, features = ["schemars"] }
 rand.workspace = true
 release_channel.workspace = true
 schemars.workspace = true
@@ -60,7 +54,6 @@ strum.workspace = true
 ui.workspace = true
 ui_input.workspace = true
 util.workspace = true
-x_ai = { workspace = true, features = ["schemars"] }
 
 [dev-dependencies]
 client = { workspace = true, features = ["test-support"] }

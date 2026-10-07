@@ -633,22 +633,6 @@ fn main() {
         eager_load_active_theme_and_icon_theme(fs.clone(), cx);
 
         command_palette::init(cx);
-        let copilot_chat_configuration = copilot_chat::CopilotChatConfiguration {
-            enterprise_uri: language::language_settings::all_language_settings(None, cx)
-                .edit_predictions
-                .copilot
-                .enterprise_uri
-                .clone(),
-        };
-        let credentials_provider = zed_credentials_provider::global(cx);
-        copilot_chat::init(
-            app_state.client.http_client(),
-            credentials_provider,
-            copilot_chat_configuration,
-            cx,
-        );
-
-        copilot_ui::init(&app_state, cx);
         language_model::init(cx);
         RefreshLlmTokenListener::register(
             app_state.client.clone(),

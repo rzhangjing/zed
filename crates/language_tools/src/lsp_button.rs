@@ -8,8 +8,6 @@ use std::{
 
 use sysinfo::{Pid, ProcessRefreshKind, RefreshKind, System};
 
-use language::language_settings::{EditPredictionProvider, all_language_settings};
-
 use client::proto;
 use collections::HashSet;
 use editor::{Editor, EditorEvent};
@@ -1438,14 +1436,8 @@ impl Render for LspButton {
 
         div().child(
             PopoverMenu::new("lsp-tool")
-                .on_open(Rc::new(move |_window, cx| {
-                    let copilot_enabled = all_language_settings(None, cx).edit_predictions.provider
-                        == EditPredictionProvider::Copilot;
-                    telemetry::event!(
-                        "Toolbar Menu Opened",
-                        name = "Language Servers",
-                        copilot_enabled,
-                    );
+                .on_open(Rc::new(move |_window, _cx| {
+                    telemetry::event!("Toolbar Menu Opened", name = "Language Servers");
                 }))
                 .menu(move |_, cx| {
                     lsp_button

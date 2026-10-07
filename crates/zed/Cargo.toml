@@ -92,13 +92,9 @@ clap.workspace = true
 cli.workspace = true
 client.workspace = true
 clock = { workspace = true, optional = true }
-codestral.workspace = true
 collections.workspace = true
 command_palette.workspace = true
 component_preview.workspace = true
-copilot.workspace = true
-copilot_chat.workspace = true
-copilot_ui.workspace = true
 crashes.workspace = true
 dap_adapters.workspace = true
 db.workspace = true

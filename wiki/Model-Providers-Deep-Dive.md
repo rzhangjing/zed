@@ -36,19 +36,19 @@ graph TB
 | Anthropic | `anthropic` | `anthropic.rs`（`AnthropicLanguageModelProvider`）/ 兼容 `anthropic_compatible.rs` |
 | OpenAI | `open_ai` | `open_ai.rs`:147 / 473 |
 | OpenAI 兼容 | —（复用 `open_ai`） | `open_ai_compatible.rs`:102 / 334；`api_compatible.rs` |
-| OpenAI 订阅（Codex） | `openai_subscribed` | `openai_subscribed.rs`:41（`impl LanguageModel` 在 client crate:745） |
+| OpenAI 订阅（Codex）（已移除 · 历史） | `openai_subscribed` | `openai_subscribed.rs`:41（`impl LanguageModel` 在 client crate:745） |
 | Ollama | `ollama` | `ollama.rs`:267 / 496 |
 | LM Studio | `lmstudio` | `lmstudio.rs`:237 / 498 |
 | llama.cpp | `llama_cpp` | `llama_cpp.rs`:539 / 874（76KB，含本地 HTTP） |
-| Mistral | `mistral` | `mistral.rs`:153 / 289；Codestral→`codestral` crate |
+| Mistral（已移除 · 历史） | `mistral` | `mistral.rs`:153 / 289；Codestral→`codestral` crate（已移除 · 历史） |
 | DeepSeek | `deepseek` | `deepseek.rs`:145 / 259 |
-| xAI（Grok） | `x_ai` | `x_ai.rs`:134 / 341 |
-| OpenRouter | `open_router` | `open_router.rs`:197 / 340 |
-| opencode | `opencode` | `opencode.rs`:192 / 539 |
+| xAI（Grok）（已移除 · 历史） | `x_ai` | `x_ai.rs`:134 / 341 |
+| OpenRouter（已移除 · 历史） | `open_router` | `open_router.rs`:197 / 340 |
+| opencode（已移除 · 历史） | `opencode` | `opencode.rs`:192 / 539 |
 | Google Gemini | `google_ai` | `google.rs` |
 | AWS Bedrock（已移除 · 历史） | `bedrock`（+ `aws_http_client` SigV4） | `bedrock.rs`(149KB，适配最厚) |
 | Copilot Chat | `copilot_chat` | `copilot_chat.rs`:80 |
-| Vercel AI Gateway | — | `vercel_ai_gateway.rs`:198 / 378 |
+| Vercel AI Gateway（已移除 · 历史） | — | `vercel_ai_gateway.rs`:198 / 378 |
 | **Zed 云托管** | `cloud_llm_client`/`cloud_api_*` | `cloud.rs`(40KB) |
 
 ## 3. Anthropic（`crates/anthropic/src/`）

@@ -1,6 +1,6 @@
 ---
-title: AI Code Completion in Zed - Zeta, Copilot, Codestral, Mercury Coder
-description: Set up AI code completions in Zed with Zeta (built-in), GitHub Copilot, Codestral, or Mercury Coder. Multi-line predictions as you type.
+title: AI Code Completion in Zed - Zeta and Local Models
+description: Set up AI code completions in Zed with Zeta (built-in) or local and self-hosted models. Multi-line predictions as you type.
 ---
 
 # Edit Prediction
@@ -8,7 +8,7 @@ description: Set up AI code completions in Zed with Zeta (built-in), GitHub Copi
 Edit Prediction is how Zed's AI code completions work: an LLM predicts the code you want to write.
 As you type, Zed requests predictions from the edit prediction provider, which returns individual or multi-line suggestions you accept by pressing `tab`.
 
-The default provider is [Zeta, an open source model developed by Zed](https://zed.dev/blog/zeta2), but you can also use [other providers](#other-providers) like GitHub Copilot, Mercury Coder, and Codestral.
+The default provider is [Zeta, an open source model developed by Zed](https://zed.dev/blog/zeta2), but you can also use [other providers](#other-providers) like Ollama or any server that implements the OpenAI completion API format.
 
 For privacy and training data details, see
 [AI Privacy](./privacy-and-security.md) and
@@ -165,10 +165,7 @@ The default debounce depends on the provider:
 
 | Provider              | Default |
 | --------------------- | ------: |
-| GitHub Copilot        |   75 ms |
-| Codestral             |  150 ms |
 | Zed                   |    0 ms |
-| Mercury               |    0 ms |
 | Ollama                |    0 ms |
 | OpenAI-compatible API |    0 ms |
 
@@ -235,88 +232,20 @@ To completely turn off edit prediction across all providers, explicitly set the 
 
 Edit Prediction also works with other providers.
 
-### GitHub Copilot {#github-copilot}
+### GitHub Copilot (Removed) {#github-copilot}
 
-To use GitHub Copilot as your provider, set this in your settings file ([how to edit](../configuring-zed.md#settings-files)):
+GitHub Copilot was removed as an edit prediction provider. Setting
+`"provider": "copilot"` no longer enables edit predictions.
 
-```json [settings]
-{
-  "edit_predictions": {
-    "provider": "copilot"
-  }
-}
-```
+Use any of the other [providers](#other-providers) instead.
 
-To sign in to GitHub Copilot, click on the Copilot icon in the status bar. A popup window appears displaying a device code. Click the copy button to copy the code, then click "Connect to GitHub" to open the GitHub verification page in your browser. Paste the code when prompted. The popup window closes automatically after successful authorization.
+### Codestral and Mercury Coder (Removed) {#codestral-mercury-removed}
 
-#### Using GitHub Copilot Enterprise
+Codestral and Mercury Coder were removed as edit prediction providers. Setting
+`"provider": "codestral"` or `"provider": "mercury"` no longer enables edit
+predictions; the value is treated as `"none"`.
 
-If your organization uses GitHub Copilot Enterprise, you can configure Zed to use your enterprise instance by specifying the enterprise URI in your settings file ([how to edit](../configuring-zed.md#settings-files)):
-
-```json [settings]
-{
-  "edit_predictions": {
-    "copilot": {
-      "enterprise_uri": "https://your.enterprise.domain"
-    }
-  }
-}
-```
-
-Replace `"https://your.enterprise.domain"` with the URL provided by your GitHub Enterprise administrator (e.g., `https://foo.ghe.com`).
-
-Once set, Zed routes Copilot requests through your enterprise endpoint.
-When you sign in by clicking the Copilot icon in the status bar, you are redirected to your configured enterprise URL to complete authentication.
-All other Copilot features and usage remain the same.
-
-Copilot can provide multiple completion alternatives, and these can be navigated with the following actions:
-
-- {#action editor::NextEditPrediction} ({#kb editor::NextEditPrediction}): To cycle to the next edit prediction
-- {#action editor::PreviousEditPrediction} ({#kb editor::PreviousEditPrediction}): To cycle to the previous edit prediction
-
-### Mercury Coder {#mercury-coder}
-
-To use [Mercury Coder](https://www.inceptionlabs.ai/) by Inception Labs as your provider:
-
-1. Open the Settings Editor ({#kb zed::OpenSettings})
-2. Search for "Edit Predictions" and click **Configure Providers**
-3. Find the Mercury section and enter your API key from the
-   [Inception Labs dashboard](https://platform.inceptionlabs.ai/dashboard/api-keys)
-
-Alternatively, click the edit prediction icon in the status bar and select
-**Configure Providers** from the menu.
-
-After adding your API key, Mercury Coder will appear in the provider dropdown in the status bar menu, where you can select it. You can also set it directly in your settings file:
-
-```json [settings]
-{
-  "edit_predictions": {
-    "provider": "mercury"
-  }
-}
-```
-
-### Codestral {#codestral}
-
-To use Mistral's Codestral as your provider:
-
-1. Open the Settings Editor (`Cmd+,` on macOS, `Ctrl+,` on Linux/Windows)
-2. Search for "Edit Predictions" and click **Configure Providers**
-3. Find the Codestral section and enter your API key from the
-   [Codestral dashboard](https://console.mistral.ai/codestral)
-
-Alternatively, click the edit prediction icon in the status bar and select
-**Configure Providers** from the menu.
-
-After adding your API key, Codestral will appear in the provider dropdown in the status bar menu, where you can select it. You can also set it directly in your settings file:
-
-```json [settings]
-{
-  "edit_predictions": {
-    "provider": "codestral"
-  }
-}
-```
+Use any of the other [providers](#other-providers) instead.
 
 ### Local and self-hosted models
 

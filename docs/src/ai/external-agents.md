@@ -64,7 +64,7 @@ If `GEMINI_API_KEY` or `GOOGLE_AI_API_KEY` is available to the agent process, Ge
 
 Use OpenCode when you want OpenCode running as an ACP-integrated External Agent in Zed.
 
-Install OpenCode from the [ACP Registry](#registry), then start an OpenCode thread from the Agent Panel or Threads Sidebar. OpenCode owns its own auth, model selection, and subscription behavior. To use OpenCode models in Zed Agent instead, configure [OpenCode API access](./use-api-access.md#opencode).
+Install OpenCode from the [ACP Registry](#registry), then start an OpenCode thread from the Agent Panel or Threads Sidebar. OpenCode owns its own auth, model selection, and subscription behavior. Zed does not configure OpenCode as a model provider; see [AI by Company](./by-company.md#opencode) for the OpenCode paths Zed supports.
 
 ## Copilot {#copilot}
 
