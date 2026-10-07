@@ -259,7 +259,6 @@
 | `collections` | `HashMap`/`IndexMap` 等别名与扩展 | 🔧 [Editing-Deep-Dive](Editing-Deep-Dive.md) |
 | `path` | 路径与位置类型 | 🔧 [Language-and-Project](Language-and-Project.md) |
 | `util` / `util_macros` | 通用工具（结果/网络/进程/宏） | 🔧 [Architecture](Architecture.md) |
-| `media` | SIMD/底层原语封装 | ⏳ |
 | `clock` | 时间抽象 | 🔧 [Editing-Deep-Dive](Editing-Deep-Dive.md) |
 | `node_runtime` | 内嵌 Node.js 下载/运行 | ⏳ |
 | `watch` | 文件监视（notify 封装） | 🔧 [Project-Panel-and-FS](Project-Panel-and-FS.md) |

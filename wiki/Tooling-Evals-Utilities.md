@@ -1,6 +1,6 @@
 # Tooling, Evals & Utilities（评测 / 基准 / 基础工具库）
 
-收拢"不直接面向用户、但支撑全局"的模块：**离线评测** [`eval_cli`](../crates/eval_cli)/[`eval_utils`](../crates/eval_utils)、**性能基准** `*_benchmarks`、**Schema/文档** [`schema_generator`](../crates/schema_generator)/[`json_schema_store`](../crates/json_schema_store)/[`docs_preprocessor`](../crates/docs_preprocessor)、以及**基础工具库** [`util`](../crates/util)/`util_macros`、[`collections`](../crates/collections)、[`path`](../crates/path)、[`node_runtime`](../crates/node_runtime)、[`watch`](../crates/watch)、[`media`](../crates/media)、[`env_var`](../crates/env_var)。
+收拢"不直接面向用户、但支撑全局"的模块：**离线评测** [`eval_cli`](../crates/eval_cli)/[`eval_utils`](../crates/eval_utils)、**性能基准** `*_benchmarks`、**Schema/文档** [`schema_generator`](../crates/schema_generator)/[`json_schema_store`](../crates/json_schema_store)/[`docs_preprocessor`](../crates/docs_preprocessor)、以及**基础工具库** [`util`](../crates/util)/`util_macros`、[`collections`](../crates/collections)、[`path`](../crates/path)、[`node_runtime`](../crates/node_runtime)、[`watch`](../crates/watch)、[`env_var`](../crates/env_var)。
 
 ## 1. eval_utils / eval_cli：Agent 离线评测框架
 用于在 CI/本地跑"给定任务 → Agent 执行 → 校验结果"的可复现评测（配合 gpui 无头）。
@@ -33,10 +33,9 @@
 ## 5. docs_preprocessor
 [`docs_preprocessor`](../crates/docs_preprocessor)：mdbook 预处理器，展开 `# {{#action ...}}` 之类的占位（生成文档时注入 Action/设置清单）。纯构建期工具，无 `pub struct` 运行类型。
 
-## 6. node_runtime / watch / media / env_var
+## 6. node_runtime / watch / env_var
 - [`node_runtime`](../crates/node_runtime/src/node_runtime.rs)：`struct NodeRuntime`（[L52](../crates/node_runtime/src/node_runtime.rs)）——下载/管理内嵌 Node.js，供 LSP（ts/js/pyright）、扩展、prettier 使用；`new`（[L63](../crates/node_runtime/src/node_runtime.rs)）。
 - [`watch`](../crates/watch)：对 `notify`/fswatch/FSEvents 的封装，被 [`fs::Watcher`](Project-Panel-and-FS.md) 使用。
-- [`media`](../crates/media)：SIMD/低位宽原语（`avx2`/`sse2` 探测与封装），被 `fuzzy_nucleo`/`rope` 等热路径复用。
 - [`env_var`](../crates/env_var)：进程环境读写；`zed_env_vars` 集中常量。
 
 ## 7. 基础工具库（几乎被所有 crate 依赖）
