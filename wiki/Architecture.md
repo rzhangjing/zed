@@ -16,7 +16,7 @@ graph TB
         AGENT[agent / agent_ui]
         PRED[edit_prediction]
         CALL["call / collab_ui（已移除）"]
-        VIM[vim / which_key]
+        VIM[which_key]
         DBG[debugger_ui / dap_adapters]
         EXT[extension / extension_host]
         PROV[open_ai / ollama / deepseek ...]
@@ -96,7 +96,7 @@ graph TB
 | `audio` | 音频管线（cpal/rodio）；原 `call` / `collab_ui` / `livekit_client` 已移除（详见 [Collaboration-and-Call.md](Collaboration-and-Call.md)） |
 | `open_ai` / `anthropic`（已移除 · 历史） / `google_ai`（已移除 · 历史） / `ollama` / `mistral`（已移除） / `bedrock`（已移除） / `deepseek` / `codestral`（已移除） / `open_router`（已移除） / `lmstudio` / `llama_cpp` | 各模型 Provider |
 | `extension` / `extension_host` / `extensions_ui` | 扩展系统（WASM） |
-| `vim` / `which_key` / `terminal` / `debugger_ui` / `dap_adapters` | 编辑增强 |
+| `which_key` / `terminal` / `debugger_ui` / `dap_adapters` | 编辑增强 |
 
 ### L6 应用装配层
 | crate | 职责 |

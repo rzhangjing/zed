@@ -59,7 +59,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Picker-Family-Deep-Dive（Picker/PickerDelegate + fuzzy・fuzzy_nucleo 双引擎 + file_finder/project_symbols）](Picker-Family-Deep-Dive.md)
 - [Diagnostics-Deep-Dive（Diagnostic/DiagnosticSet → editor 波浪线/块 → 项目/缓冲侧栏）](Diagnostics-Deep-Dive.md)
 - [Settings-and-Onboarding-Deep-Dive（settings_content 模型/SettingsWindow/Onboarding 引导）](Settings-and-Onboarding-Deep-Dive.md)
-- [Vim-Deep-Dive（Mode/Operator/Motion/文本对象/Helix 增强/Neovim 差分测试）](Vim-Deep-Dive.md)
 - [Call-and-Voice-Deep-Dive（历史：音视频 RTC/livekit_client·mock；audio 管线仍在）](Call-and-Voice-Deep-Dive.md)
 - [Task-System-Deep-Dive（TaskTemplate/变量替换/Inventory/TasksModal/终端·DAP 分发）](Task-System-Deep-Dive.md)
 - [Extension-Host-Deep-Dive（Wasmtime 组件宿主/版本化 WIT/CapabilityGranter/Headless）](Extension-Host-Deep-Dive.md)
@@ -92,7 +91,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Editor（编辑器：输入 → 缓冲区 → 渲染）](Editor.md)
 - [Editing-Deep-Dive（多光标 / 撤销 / 片段 / 多缓冲）](Editing-Deep-Dive.md)
 - [Data-Structures（sum_tree / rope / diff 底座）](Data-Structures.md)
-- [Vim-and-Key-Input（Vim/Helix 模式 / which-key / 键位编辑器）](Vim-and-Key-Input.md)
 - [Search（缓冲查找 / 全局搜索 / 替换）](Search.md)
 - [Markdown-and-Preview（解析 / 渲染 / 实时预览）](Markdown-and-Preview.md)
 

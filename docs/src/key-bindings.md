@@ -24,8 +24,6 @@ We currently support:
 
 This setting can also be changed via the command palette through the {#action zed::ToggleBaseKeymapSelector} action.
 
-You can also enable `vim_mode` or `helix_mode`, which add modal bindings.
-For more information, see the documentation for [Vim mode](./vim.md) and [Helix mode](./helix.md).
 
 ## Keymap Editor
 
@@ -129,7 +127,7 @@ For example:
 # in an editor, it might look like this:
 Workspace os=macos keyboard_layout=com.apple.keylayout.QWERTY
   Pane
-    Editor mode=full extension=md vim_mode=insert
+    Editor mode=full extension=md
 
 # in the project panel
 Workspace os=macos
@@ -151,11 +149,10 @@ For example:
 - `"context": "!Editor && !Terminal"` - matches anywhere except where an Editor or Terminal is focused
 - `"context": "os == macos > Editor"` - matches any editor on macOS.
 
-It's worth noting that attributes are only available on the node they are defined on. This means that if you want to (for example) only enable a keybinding when the debugger is stopped in vim normal mode, you need to do `debugger_stopped > vim_mode == normal`.
+It's worth noting that attributes are only available on the node they are defined on. This means that if you want to (for example) only enable a keybinding when the debugger is stopped, you need to do `debugger_stopped > Editor`.
 
 > Note: Before Zed v0.197.x, the `!` operator only looked at one node at a time, and `>` meant "parent" not "ancestor". This meant that `!Editor` would match the context `Workspace > Pane > Editor`, because (confusingly) the Pane matches `!Editor`, and that `os == macos > Editor` did not match the context `Workspace > Pane > Editor` because of the intermediate `Pane` node.
 
-If you're using Vim mode, we have information on how [vim modes influence the context](./vim.md#contexts). Helix mode is built on top of Vim mode and uses the same contexts.
 
 ### Actions
 
@@ -177,7 +174,7 @@ When this happens, and both bindings are active in the current context, Zed will
 
 Zed can also wait before inserting printable text when it might begin a multi-stroke binding. For example, with a `j k` binding, typing `j` waits briefly for `k`; otherwise, `j` is inserted after the timeout.
 
-Whenever pending input has a timeout, a countdown indicator with the pending keystrokes is shown in the status bar. Hovering it lists the bindings that could still match and pauses the timeout so you can read them. The timeout resumes with the same remaining duration when the pointer leaves. The indicator can be hidden with `{"status_bar": {"pending_keystrokes_indicator": false}}`. Vim and Helix modes continue to use their existing pending-key indicator instead.
+Whenever pending input has a timeout, a countdown indicator with the pending keystrokes is shown in the status bar. Hovering it lists the bindings that could still match and pauses the timeout so you can read them. The timeout resumes with the same remaining duration when the pointer leaves. The indicator can be hidden with `{"status_bar": {"pending_keystrokes_indicator": false}}`.
 
 To also use the larger which-key menu, open the Settings Editor and search for
 `Show Which-key Menu`. The pending keystrokes indicator remains visible when the
@@ -287,7 +284,7 @@ A common request is to be able to map from a single keystroke to a sequence. You
     }
   },
   {
-    "context": "Editor && vim_mode == insert",
+    "context": "Editor && mode == full",
     "bindings": {
       "j k": ["workspace::SendKeystrokes", "escape"]
     }

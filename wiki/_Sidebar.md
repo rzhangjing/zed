@@ -31,7 +31,6 @@
 - [Picker-Family-Deep-Dive](Picker-Family-Deep-Dive)
 - [Diagnostics-Deep-Dive](Diagnostics-Deep-Dive)
 - [Settings-and-Onboarding-Deep-Dive](Settings-and-Onboarding-Deep-Dive)
-- [Vim-Deep-Dive](Vim-Deep-Dive)
 - [Call-and-Voice-Deep-Dive](Call-and-Voice-Deep-Dive)
 - [Task-System-Deep-Dive](Task-System-Deep-Dive)
 - [Extension-Host-Deep-Dive](Extension-Host-Deep-Dive)
@@ -64,7 +63,6 @@
 - [Editor](Editor)
 - [Editing-Deep-Dive](Editing-Deep-Dive)
 - [Data-Structures](Data-Structures)
-- [Vim-and-Key-Input](Vim-and-Key-Input)
 - [Search](Search)
 - [Markdown-and-Preview](Markdown-and-Preview)
 

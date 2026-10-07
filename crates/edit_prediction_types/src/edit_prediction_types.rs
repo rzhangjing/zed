@@ -21,7 +21,6 @@ pub enum EditPredictionRequestTrigger {
     EditorCreated,
     ProviderChanged,
     UserInfoChanged,
-    VimModeChanged,
     SettingsChanged,
     #[default]
     Other,
@@ -44,7 +43,6 @@ pub enum PredictEditsRequestTrigger {
     EditorCreated,
     ProviderChanged,
     UserInfoChanged,
-    VimModeChanged,
     SettingsChanged,
     #[default]
     Other,

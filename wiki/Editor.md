@@ -67,4 +67,3 @@ graph TB
 ## 5. 相关子系统
 - **语法高亮/补全**：由 `Buffer` + `Language` + LSP 提供，见 [Language-and-Project.md](Language-and-Project.md)。
 - **内联预测（ghost text）**：`edit_prediction*` 在选区处渲染候选，接受即转成一次 `Buffer::edit`，见 [Agent-and-AI.md](Agent-and-AI.md)。
-- **Vim 模式**：`crates/vim` 拦截按键、维护 modal state，最终仍复用 `Editor` 的编辑 API。

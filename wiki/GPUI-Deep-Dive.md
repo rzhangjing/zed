@@ -83,7 +83,7 @@ graph TB
 ## 8. 输入 / 键盘映射
 | 符号 | 位置 | 说明 |
 |---|---|---|
-| `struct KeyContext` | [keymap/context.rs:10](../crates/gpui/src/keymap/context.rs) | 上下文栈（`"vim_mode && !editor"` 表达式） |
+| `struct KeyContext` | [keymap/context.rs:10](../crates/gpui/src/keymap/context.rs) | 上下文栈（`"editor && !terminal"` 表达式） |
 | `struct Keymap` / `Binding` | [keymap.rs](../crates/gpui/src/keymap.rs)(35KB)+[keymap/](../crates/gpui/src/keymap) | 键→`Action` 映射、`use_key_context` |
 | `Keystroke`/`Modifier`/`KeyId` | [input.rs](../crates/gpui/src/input.rs) | 归一化键输入 |
 | key dispatch | [key_dispatch.rs](../crates/gpui/src/key_dispatch.rs)(61KB) | pending keystrokes 匹配、which-key 数据来源 |

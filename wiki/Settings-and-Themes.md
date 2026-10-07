@@ -44,7 +44,7 @@ graph LR
 
 ## 5. 设置界面（settings_ui）
 
-[`settings_ui`](../crates/settings_ui)（`settings_ui.rs` 约 259KB、`page_data.rs` 约 513KB）把上述注册过的 settings 结构渲染成可视化页面（Editor/Appearance/Vim/Keybindings/Extensions/Tool Permissions 等 `pages/`）。每个 `Settings` 类型的 `Element`/`Section` 声明驱动 UI 表单，写回时落到对应 JSON 层。工具权限设置页与 Agent 工具三重门禁相关联（见 [Agent-and-AI.md](Agent-and-AI.md)）。
+[`settings_ui`](../crates/settings_ui)（`settings_ui.rs` 约 259KB、`page_data.rs` 约 513KB）把上述注册过的 settings 结构渲染成可视化页面（Editor/Appearance/Keybindings/Extensions/Tool Permissions 等 `pages/`）。每个 `Settings` 类型的 `Element`/`Section` 声明驱动 UI 表单，写回时落到对应 JSON 层。工具权限设置页与 Agent 工具三重门禁相关联（见 [Agent-and-AI.md](Agent-and-AI.md)）。
 
 ## 6. 一次改设置如何生效
 

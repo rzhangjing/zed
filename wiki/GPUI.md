@@ -74,7 +74,7 @@ graph TB
 ```
 
 - **键位映射**：`keymap.rs` + `assets/keymaps/`，`Keymap::bindings` 把 `Keystroke` 解析成 `Action`；`handle_keymap_file_changes`（启动阶段）负责热更新。
-- **上下文（context）**：Action 只在特定"焦点上下文"（如 `workspace`、`editor`、`vim_mode`）下可触发，用于命令面板的启用/禁用与键位作用域（`key_dispatch.rs`、`command_palette_hooks`）。
+- **上下文（context）**：Action 只在特定"焦点上下文"（如 `workspace`、`editor`）下可触发，用于命令面板的启用/禁用与键位作用域（`key_dispatch.rs`、`command_palette_hooks`）。
 - **注册处理**：视图用 `cx.on_action(cx, |view, action: &SomeAction, window, cx| ...)` 或 `cx.listen(...)` 订阅；分发时沿元素树的 `AnyView` 链向父级冒泡直到被处理。
 - **交互元素**：`interactive.rs` 提供 `div().on_click(...)`、`on_action`、焦点句柄 `FocusHandle`，把回调挂到 `Element` 的 `prepaint/paint` 阶段。
 

@@ -171,7 +171,6 @@ Zed is made up of several smaller crates - let's go over those you're most likel
 - [`editor`](/crates/editor) contains the core `Editor` type that drives both the code editor and all various input fields within Zed. It also handles a display layer for LSP features such as Inlay Hints or code completions.
 - [`project`](/crates/project) manages files and navigation within the filetree. It is also Zed's side of communication with LSP.
 - [`workspace`](/crates/workspace) handles local state serialization and groups projects together.
-- [`vim`](/crates/vim) is a thin implementation of Vim workflow over `editor`.
 - [`lsp`](/crates/lsp) handles communication with external LSP server.
 - [`language`](/crates/language) drives `editor`'s understanding of language - from providing a list of symbols to the syntax map.
 - [`rpc`](/crates/rpc) defines messages to be exchanged with collaboration server.

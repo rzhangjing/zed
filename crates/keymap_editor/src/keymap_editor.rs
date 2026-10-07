@@ -233,15 +233,19 @@ impl FilterState {
 struct SourceFilters {
     user: bool,
     zed_defaults: bool,
-    vim_defaults: bool,
 }
 
 impl SourceFilters {
     fn allows(&self, source: Option<KeybindSource>) -> bool {
         match source {
             Some(KeybindSource::User) => self.user,
-            Some(KeybindSource::Vim) => self.vim_defaults,
-            Some(KeybindSource::Base | KeybindSource::Default | KeybindSource::Unknown) | None => {
+            Some(
+                KeybindSource::Base
+                | KeybindSource::Default
+                | KeybindSource::Unknown
+                | KeybindSource::Vim,
+            )
+            | None => {
                 self.zed_defaults
             }
         }
@@ -603,7 +607,6 @@ impl KeymapEditor {
             source_filters: SourceFilters {
                 user: true,
                 zed_defaults: true,
-                vim_defaults: true,
             },
             show_no_action_bindings: true,
             search_mode: SearchMode::default(),
@@ -852,7 +855,7 @@ impl KeymapEditor {
             let is_no_action = gpui::is_no_action(key_binding.action());
             let is_unbound_by_unbind =
                 binding_is_unbound_by_unbind(key_binding, binding_index, &key_bindings);
-            let binding = KeyBinding::new(key_binding, source);
+            let binding = KeyBinding::new(key_binding);
 
             let context = key_binding
                 .predicate()
@@ -1518,11 +1521,6 @@ impl KeymapEditor {
         self.on_query_changed(cx);
     }
 
-    fn toggle_vim_defaults_filter(&mut self, cx: &mut Context<Self>) {
-        self.source_filters.vim_defaults = !self.source_filters.vim_defaults;
-        self.on_query_changed(cx);
-    }
-
     fn set_filter_state(&mut self, filter_state: FilterState, cx: &mut Context<Self>) {
         if self.filter_state != filter_state {
             self.filter_state = filter_state;
@@ -1661,16 +1659,6 @@ impl KeymapEditor {
                                 Some(|editor, cx| {
                                     editor.toggle_zed_defaults_filter(cx);
                                 }),
-                            ))
-                            .map(add_filter(
-                                "Vim",
-                                source_filters.vim_defaults,
-                                None,
-                                &focus_handle,
-                                &keymap_editor,
-                                Some(|editor, cx| {
-                                    editor.toggle_vim_defaults_filter(cx);
-                                }),
                             ));
                         menu
                     }
@@ -1747,14 +1735,12 @@ impl HumanizedActionNameCache {
 #[derive(Clone)]
 struct KeyBinding {
     keystrokes: Rc<[KeybindingKeystroke]>,
-    source: KeybindSource,
 }
 
 impl KeyBinding {
-    fn new(binding: &gpui::KeyBinding, source: KeybindSource) -> Self {
+    fn new(binding: &gpui::KeyBinding) -> Self {
         Self {
             keystrokes: Rc::from(binding.keystrokes()),
-            source,
         }
     }
 }
@@ -2198,7 +2184,7 @@ impl Render for KeymapEditor {
                                             .cloned()
                                             .unwrap_or_default()
                                             .into_any_element(),
-                                        |binding| ui::KeyBinding::from_keystrokes(binding.keystrokes.clone(), binding.source == KeybindSource::Vim).into_any_element()
+                                        |binding| ui::KeyBinding::from_keystrokes(binding.keystrokes.clone()).into_any_element()
                                     );
 
                                     let action_arguments = match binding.action().arguments.clone()

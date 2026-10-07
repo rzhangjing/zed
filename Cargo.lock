@@ -3992,7 +3992,6 @@ dependencies = [
  "urlencoding",
  "util",
  "uuid",
- "vim_mode_setting",
  "workspace",
  "zed_actions",
  "zlog",
@@ -9142,7 +9141,6 @@ dependencies = [
  "theme_settings",
  "ui",
  "util",
- "vim_mode_setting",
  "workspace",
  "zed_actions",
  "zlog",
@@ -15425,14 +15423,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "vim_mode_setting"
-version = "0.1.0"
-dependencies = [
- "gpui",
- "settings",
-]
-
-[[package]]
 name = "vscode_theme"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -16258,7 +16248,6 @@ dependencies = [
  "theme_settings",
  "ui",
  "util",
- "vim_mode_setting",
  "workspace",
  "zed_actions",
 ]
@@ -17737,7 +17726,6 @@ dependencies = [
  "urlencoding",
  "util",
  "uuid",
- "vim_mode_setting",
  "watch",
  "which_key",
  "windows 0.62.2",

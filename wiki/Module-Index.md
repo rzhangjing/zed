@@ -9,7 +9,7 @@
 > 📘 **第四批**：[Edit-Prediction](Edit-Prediction-Deep-Dive.md)
 > 🌐 **第五批**：[GPUI-Platform-Backends](GPUI-Platform-Backends-Deep-Dive.md)
 > 📚 **第六批**：[Picker-Family](Picker-Family-Deep-Dive.md) · [Diagnostics](Diagnostics-Deep-Dive.md) · [Settings&Onboarding](Settings-and-Onboarding-Deep-Dive.md)
-> ⌨️ **第七批**：[Vim](Vim-Deep-Dive.md) · [Call&Voice](Call-and-Voice-Deep-Dive.md) · [Task-System](Task-System-Deep-Dive.md)
+> ⌨️ **第七批**：[Call&Voice](Call-and-Voice-Deep-Dive.md) · [Task-System](Task-System-Deep-Dive.md)
 > 🧩 **第八批**：[Extension-Host](Extension-Host-Deep-Dive.md)（extension_host 运行时内核）
 > ⚙️ **第九批**：[GPUI-Macros&Util](GPUI-Macros-and-Utilities-Deep-Dive.md) · [Model-Providers](Model-Providers-Deep-Dive.md)
 > 🗄️ **第十批**：[Persistence](Persistence-Deep-Dive.md) · [Network-HTTP](Network-HTTP-Deep-Dive.md)
@@ -231,7 +231,6 @@
 | `toolchain_selector` | 语言工具链选择 | **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `keymap_editor` | 键位映射编辑器（冲突检测） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
 | `which_key` | which-key 键位提示浮层（`WhichKeyModal`、`PendingKeystrokesIndicator`） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
-| `vim` / `vim_mode_setting` | Vim 模式（`Mode`/`Operator`/`Motion`/文本对象/Helix） | ✅ [Vim-and-Key-Input](Vim-and-Key-Input.md) / **📘[Deep](Vim-Deep-Dive.md)** |
 
 ## 17. 扩展系统
 | Crate | 职责 | 覆盖 |
@@ -292,7 +291,6 @@
 ## 22. 深挖批次（已全部完成 ✅）
 本索引已**覆盖全部模块的定位**。此前标 `⏳` 的模块族已逐族深挖成页（均先 `grep`/`read` 确证真实符号）：
 
-- ✅ G1 **Vim 与键位输入** → [Vim-and-Key-Input.md](Vim-and-Key-Input.md)
 - ✅ G9 **数据结构底座** → [Data-Structures.md](Data-Structures.md)
 - ✅ G3 **模型 Provider 逐个** → [Model-Providers.md](Model-Providers.md)
 - ✅ G2 **编辑预测全链** → [Edit-Prediction.md](Edit-Prediction.md)

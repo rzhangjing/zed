@@ -79,13 +79,10 @@ graph TB
 
 - `keymap_editor`/`which_key` 都依赖 `gpui` 的 `Keymap`/`KeyContext`/`BindingObserver` 与 `settings::KeymapFile`；`keymap_editor` 由命令面板 `keymap_editor:Expand` 打开。
 - `file_finder` 基于 `picker`+`fuzzy`+`project::Project`（工作树 entry），由 `workspace` Action `file_finder::Toggle` 调起（见 Picker-Family 页）。
-- `which_key` 与 Vim 模式（Vim 页）互补：which-key 提示对所有 keymap 生效，Vim 页处理模态状态机。
 - `keymap_editor/action_completion_provider` 复用 `command_palette_hooks` 的动作索引。
 
 ## 6. 相关页
 
 - [Picker-Family-Deep-Dive](Picker-Family-Deep-Dive.md)（`file_finder` 依赖的 `Picker`/`fuzzy`）
-- [Vim-Deep-Dive](Vim-Deep-Dive.md)（模态键位状态机）
 - [Settings-and-Onboarding-Deep-Dive](Settings-and-Onboarding-Deep-Dive.md)（`KeymapFile`/settings 栈）
 - [GPUI-Deep-Dive](GPUI-Deep-Dive.md)（`Keymap`/`KeyContext`/`Action` 内核）
-- [Vim-and-Key-Input](Vim-and-Key-Input.md)（键位输入族概览）

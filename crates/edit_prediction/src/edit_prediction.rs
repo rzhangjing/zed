@@ -704,7 +704,6 @@ fn predict_edits_request_trigger_from_editor_trigger(
         EditPredictionRequestTrigger::UserInfoChanged => {
             PredictEditsRequestTrigger::UserInfoChanged
         }
-        EditPredictionRequestTrigger::VimModeChanged => PredictEditsRequestTrigger::VimModeChanged,
         EditPredictionRequestTrigger::SettingsChanged => {
             PredictEditsRequestTrigger::SettingsChanged
         }

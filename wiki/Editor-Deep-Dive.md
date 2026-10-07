@@ -14,7 +14,6 @@
 | [`input.rs`](../crates/editor/src/input.rs) | 126KB | `EditorInput`：把 GPui `Keystroke` 结合 IME/vim 前置处理，转成 editor 原语（插入/删除/换行/undo…）。`handle_input`/`replace_to_whitespace` 等 |
 | [`actions.rs`](../crates/editor/src/actions.rs) | 38KB | 全部 editor `Action`（`MoveToStartOfLine`、`SelectUp`、`DeleteToPreviousWordStart`、`Fold`、`JoinLines`…）与 `actions!` 声明清单 |
 | [`movement.rs`](../crates/editor/src/movement.rs) | 62KB | 游标运动内核：`word/paragraph/line` 边界、`clip`、`find_next_word_end`、`movement` 系列 fn（被 vim motions 复用） |
-| vim | —— | 见 [Vim-and-Key-Input.md](Vim-and-Key-Input.md)（`Vim` 挂到本 Editor 上重写 `input`） |
 
 ## 3. 显示层：`display_map.rs`（缓冲区→屏幕的行映射核心）
 [`display_map.rs`](../crates/editor/src/display_map.rs)（171KB）把 `MultiBuffer` 的行经多级变换映射为**可见行**：
@@ -81,9 +80,7 @@ Buffer text (MultiBuffer)
 ## 9. 一次按键的端到端流程
 ```mermaid
 graph TB
-    A[GPui Keystroke] --> B{Vim 拦截?}
-    B -- 是 --> V[vim::use_input 处理]
-    B -- 否 --> C[EditorInput::handle_input]
+    A[GPui Keystroke] --> C[EditorInput::handle_input]
     C --> D[editor 原语: 修改 selections / buffer.edit]
     D --> E[MultiBuffer/Buffer CRDT edit + Operation]
     E --> F[BufferSnapshot 变 -> DisplayMap 重算 fold/wrap]

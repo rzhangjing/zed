@@ -27,7 +27,7 @@ graph TB
 | `trait RootUserSettings` | 422 | 用户根设置契约（`DeserializeOwned`） |
 | `enum ProfileBase` / `struct SettingsProfile` | 470 / 481 | 设置档位（base）与自定义 profile |
 | `struct UserSettingsContent` / `ExtensionsSettingsContent` / `AudioSettingsContent` | 496 / 510 / 560 | 分面内容 |
-| `enum BaseKeymapContent` | 530 | 基础键位（VSCode/Vim/…）内容 |
+| `enum BaseKeymapContent` | 530 | 基础键位（VSCode/JetBrains/…）内容 |
 | `enum ParseStatus` | 107 | jsonc 解析状态 |
 | `struct PixelSetting` / `enum HideMouseMode` / `ReduceMotionMode` | 60 / 135 / 164 | 通用取值类型 |
 | `struct FeatureFlagsMap` | 359 | 特性开关 map |

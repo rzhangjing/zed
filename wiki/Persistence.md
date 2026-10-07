@@ -77,6 +77,5 @@ KV 存储 [`kvp.rs`](../crates/db/src/kvp.rs)（最常用的通用键值表）�
 
 ## 7. 与其他页面的关系
 - 路径来源 `database_dir`：[Settings-and-Themes.md](Settings-and-Themes.md)（`paths`）。
-- 键位草稿持久化 `KeybindingEditorDb`：[Vim-and-Key-Input.md](Vim-and-Key-Input.md)。
 - 设置结构 `settings_content`：[Settings-and-Themes.md](Settings-and-Themes.md)。
 - 被谁使用：project history / agent 会话 / telemetry 等（见 [Module-Index.md](Module-Index.md) 第 20 类）。
