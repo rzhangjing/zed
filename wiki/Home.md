@@ -79,7 +79,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [CLI-and-Packaging-Deep-Dive（cli CliRequest/IPC 握手/Bundle 装配/install_cli 脚本安装）](CLI-and-Packaging-Deep-Dive.md)
 - [Selectors-and-Themes-Misc-Deep-Dive（theme 注册/外观/图标主题 + language·encoding·line_ending·toolchain·settings_profile·theme 选择器 + file_icons）](Selectors-and-Themes-Misc-Deep-Dive.md)
 - [Tooling-Evals-Benchmarks-Deep-Dive（eval_cli Rust+zed_eval Python 编排/eval_utils 契约/criterion 基准/edit_prediction_metrics 打分）](Tooling-Evals-Benchmarks-Deep-Dive.md)
-- [Web-Search-Deep-Dive（web_search provider 抽象+注册中心/web_search_providers 云实现/cloud_llm schema/agent WebSearchTool/授权页）](Web-Search-Deep-Dive.md)
 
 ### UI 框架与交互
 - [GPUI（UI 框架：渲染三阶段 / 事件 / Action 分发）](GPUI.md)
@@ -109,7 +108,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Model-Providers（全厂商 Provider / 注册表 / 鉴权）](Model-Providers.md)
 - [Edit-Prediction（Zeta 编辑预测全链）](Edit-Prediction.md)
 - [Collaboration & Call（历史：RPC / livekit / audio 与 mock 机制）](Collaboration-and-Call.md)
-- [Channels-and-Collab-UI（频道仍在；协作侧栏 / 通话通知已移除）](Channels-and-Collab-UI.md)
+- [Channels-and-Collab-UI（频道 crate 与协作侧栏 / 通话通知均已移除 · 历史）](Channels-and-Collab-UI.md)
 
 ### 基础设施与工具
 - [Persistence（db / sqlez / migrator）](Persistence.md)

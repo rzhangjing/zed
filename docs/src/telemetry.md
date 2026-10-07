@@ -1,21 +1,20 @@
 ---
 title: Telemetry
-description: "What data Zed collects and how to control telemetry settings."
+description: "What this fork collects and how to control crash reporting."
 ---
 
 # Telemetry in Zed
 
-Zed collects anonymous telemetry to understand usage patterns and diagnose issues.
+This fork does not upload usage metrics or talk to any Zed-hosted service. The
+analytics uploader was removed: there is no event queue, no
+`POST /telemetry/events` request, and `telemetry::event!(...)` calls throughout
+the codebase are compiled no-ops.
 
-Telemetry falls into two categories:
-
-- **Client-side**: Usage metrics and crash reports. You can disable these in settings.
-- **Server-side**: Collected when using hosted services like AI or Collaboration. Required for these features to function.
+What remains is **crash reporting**, which you can turn off in settings.
 
 ## Configuring Telemetry Settings
 
-You have full control over what data is sent out by Zed.
-To enable or disable some or all telemetry types, open Settings ({#kb zed::OpenSettings}) and search for "telemetry", or add the following to your settings file:
+Open Settings ({#kb zed::OpenSettings}) and search for "telemetry", or add the following to your settings file:
 
 ```json [settings]
 "telemetry": {
@@ -24,51 +23,31 @@ To enable or disable some or all telemetry types, open Settings ({#kb zed::OpenS
 },
 ```
 
-## Dataflow
+- `diagnostics` controls crash reporting (minidumps).
+- `metrics` is accepted so existing settings files keep parsing. It has no effect, because no metrics are uploaded.
 
-Telemetry is sent from the application to our servers every 5 minutes (or when 50 events accumulate), then routed to the appropriate service. We currently use:
+## Crash Reporting {#diagnostics}
 
-- [Sentry](https://sentry.io): Crash-monitoring service - stores diagnostic events
-- [Snowflake](https://snowflake.com): Data warehouse - stores both diagnostic and metric events
-- [Hex](https://www.hex.tech): Dashboards and data exploration - accesses data stored in Snowflake
-- [Amplitude](https://www.amplitude.com): Dashboards and data exploration - accesses data stored in Snowflake
-
-## Types of Telemetry
-
-### Diagnostics
-
-Crash reports consist of a [minidump](https://learn.microsoft.com/en-us/windows/win32/debug/minidump-files) and debug metadata. Reports are sent on the next launch after a crash, allowing Zed to identify and fix issues without requiring you to file a bug report.
+Crash reports consist of a [minidump](https://learn.microsoft.com/en-us/windows/win32/debug/minidump-files) and debug metadata. Reports are sent on the next launch after a crash, so problems can be identified without you filing a bug report. Installations built without a minidump endpoint (the default for local development builds) do not send anything.
 
 You can inspect what data is sent in the `CrashInfo` struct in [crates/crashes/src/crashes.rs](https://github.com/zed-industries/zed/blob/main/crates/crashes/src/crashes.rs). See also: [Debugging Crashes](./development/debugging-crashes.md).
 
-### Client-Side Metrics
+## Installation and System Identifiers {#identifiers}
 
-Client-side telemetry includes:
+Zed still generates an installation id and a system id locally. They are used to
+group crash reports: the crash reporter tags reports with
+`SENTRY_USER_ID = installation-<id>`. Nothing signs in, and no account id is
+attached to them.
 
-- File extensions of opened files
-- Features and tools used within the editor
-- Project statistics (e.g., number of files)
-- Frameworks detected in your projects
+System and OS details (OS name, OS version, architecture, app version) are
+included with crash reports.
 
-This data does not include your code or sensitive project details. Events are sent over HTTPS and rate-limited.
+## Removed in This Fork {#removed}
 
-Usage data is tied to a random telemetry ID. If you've authenticated, this ID may be linked to your email so Zed can analyze patterns over time and reach out for feedback.
-
-To audit what Zed has reported, run {#action zed::OpenTelemetryLog} from the command palette or click `Help > View Telemetry Log`.
-
-For the full list of event types, see the `Event` enum in [telemetry_events.rs](https://github.com/zed-industries/zed/blob/main/crates/telemetry_events/src/telemetry_events.rs).
-
-### Server-Side Metrics
-
-When using Zed's hosted services, we collect metadata for rate limiting and billing (e.g., token usage). Zed does not store your prompts or code unless you explicitly share feedback or opt into Edit Prediction training data collection.
-
-For details on AI request paths and opt-in data sharing, see [AI Privacy](./ai/privacy-and-security.md) and [Feedback and Training Data](./ai/ai-improvement.md).
-
-## Zed Business
-
-Administrators on Zed Business can enforce a no-sharing policy org-wide; members can't opt into [Edit Prediction training data sharing](./ai/ai-improvement.md#edit-predictions) or [AI feedback ratings](./ai/ai-improvement.md#ai-feedback-with-ratings). See [Data Sharing](./business/admin-controls.md#data-sharing) in Admin Controls.
-
-<!-- TODO: link to telemetry org-wide disable control once it ships (currently planned for a future release) -->
+- Client-side metrics (file extensions, features used, project statistics, detected frameworks)
+- Server-side metrics for hosted services (rate limiting, billing, token usage)
+- The telemetry log viewer (`Help > View Telemetry Log` and the `zed::OpenTelemetryLog` action)
+- Org-wide data-sharing controls for Zed Business
 
 ## Concerns and Questions
 

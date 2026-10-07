@@ -453,8 +453,6 @@ pub enum CompletionIntent {
     ThreadContextSummarization,
     CreateFile,
     EditFile,
-    InlineAssist,
-    TerminalInlineAssist,
     GenerateGitCommitMessage,
 }
 

@@ -1,6 +1,6 @@
 ---
 title: AI Quick Start - Zed
-description: Choose the right Zed AI setup path for agents, models, subscriptions, local models, edit prediction, and privacy.
+description: Choose the right Zed AI setup path for agents, models, gateways, local models, edit prediction, and privacy.
 ---
 
 # AI Quick Start
@@ -42,7 +42,6 @@ The Zed Agent and other model-backed Zed AI features use models configured throu
 
 | If you want to...                                                             | Use                                                               |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Use models billed through Zed                                                 | [Zed-Hosted Models](../account/zed-hosted-models.md)              |
 | Bring your own provider API key, credits, top-ups, or usage billing           | [Use API Access](./use-api-access.md)                             |
 | Use a subscription you already pay for                                        | [Use an Existing Subscription](./use-an-existing-subscription.md) |
 | Use an OpenAI-compatible gateway                                              | [Use a Gateway](./use-a-gateway.md)                               |
@@ -66,16 +65,14 @@ For general settings mechanics, see [Configuring Zed](../configuring-zed.md).
 | ---------------------------------------------- | ---------------------------------------------------- |
 | Prompt agents, add context, and review changes | [Agent Panel](./agent-panel.md)                      |
 | Accept AI completions while typing             | [Edit Prediction](./edit-prediction.md)              |
-| Rewrite selected code or terminal text         | [Inline Assistant](./inline-assistant.md)            |
 | Run multiple AI tasks at once                  | [Parallel Agents](./parallel-agents.md)              |
 | Generate commit messages                       | [Git commit generation](../git.md#ai-support-in-git) |
 
 ## Learn More {#learn-more}
 
-| If you want to...                    | Use                                                                                                                                            |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Understand privacy and data controls | [AI Privacy](./privacy-and-security.md) and [Feedback and Training Data](./ai-improvement.md)                                                  |
-| Understand plans, usage, and billing | [Plans & Pricing](../account/plans-and-pricing.md), [Zed-Hosted Models](../account/zed-hosted-models.md), and [Billing](../account/billing.md) |
+| If you want to...                    | Use                                                                                          |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Understand privacy and data controls | [AI Privacy](./privacy-and-security.md) and [Feedback and Training Data](./ai-improvement.md) |
 
 ## Turn AI Off {#turn-ai-off}
 
@@ -89,4 +86,4 @@ You can also add this to your settings file:
 }
 ```
 
-When AI is turned off, all AI features are disabled. This includes the Threads Sidebar, Agent Panel, Edit Prediction, and Inline Assistant.
+When AI is turned off, all AI features are disabled. This includes the Threads Sidebar, Agent Panel, and Edit Prediction.

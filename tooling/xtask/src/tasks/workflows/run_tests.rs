@@ -500,7 +500,7 @@ fn check_wasm() -> NamedJob {
     fn cargo_check_wasm() -> Step<Run> {
         named::bash(concat!(
             "cargo -Zbuild-std=std,panic_abort ",
-            "check --target wasm32-unknown-unknown -p gpui_platform -p cloud_api_client",
+            "check --target wasm32-unknown-unknown -p gpui_platform",
         ))
         .add_env((
             "CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS",

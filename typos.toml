@@ -14,9 +14,6 @@ extend-exclude = [
     "crates/theme/src/icon_theme.rs",
     "crates/extensions_ui/src/extension_suggest.rs",
 
-    # Some mock data is flagged as typos.
-    "crates/assistant_tools/src/web_search_tool.rs",
-
     # Vendored JSON schemas from SchemaStore.
     "crates/json_schema_store/src/schemas/",
 

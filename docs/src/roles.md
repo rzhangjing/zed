@@ -5,6 +5,8 @@ description: Understand Zed's organization roles and what each role can access, 
 
 # Roles
 
+> **Removed in this fork.** Zed organizations, roles, and the Zed Business plans were removed. This page is kept for historical reference.
+
 Every member of a Zed organization is assigned a role that determines what they
 can access and configure.
 

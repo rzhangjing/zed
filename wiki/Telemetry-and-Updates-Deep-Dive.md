@@ -1,13 +1,14 @@
 # Telemetry & 自动更新 深入解析（Deep Dive）
 
 > 本页覆盖 Zed 的"遥测 + 崩溃上报 + 发布通道 + 自动更新"闭环：`telemetry`（事件发送门）、`telemetry_events`（事件 schema）、`crashes`（Sentry 崩溃钩子）、`release_channel`（Dev/Nightly/Preview/Stable 通道）、`auto_update`（跨平台更新引擎）、`auto_update_ui`（更新提示/发布说明/公告）、`feedback`（一键反馈/报障）。共 7 个 crate。
+@@NL@> ⚠️ 已移除 · 历史：`client::Telemetry` 的批量上报（`report_event`/`flush_events`/`build_request` → `POST /telemetry/events`）、事件去重器 `event_coalescer.rs`、`TelemetrySubscription`/日志查看器与 `report_assistant_event`/`log_edit_event`/`report_discovered_project_type_events` 均已删除。
 
 ## 1. 分层设计
 
 这条链路把"应用运行状态 → 上报/更新决策 → 落地"拆成清晰层次：
 
 - **事件 schema 层** `telemetry_events`：纯数据定义 crate，声明 `Event`（大枚举）与请求体 `EventRequestBody`/`EventWrapper`，无逻辑，供多方共享。
-- **事件门层** `telemetry`：`init(tx)` 保存一个 `mpsc::UnboundedSender<Event>` 到 `TELEMETRY_QUEUE`（`OnceLock`），`send_event(event)` 把事件塞进队列——业务代码只依赖这个极薄门面，实际网络发送由 `client`/`zed` 后台任务批量上传。
+- **事件门层** `telemetry`：`init(tx)` 保存一个 `mpsc::UnboundedSender<Event>` 到 `TELEMETRY_QUEUE`（`OnceLock`），`send_event(event)` 把事件塞进队列——业务代码只依赖这个极薄门面，实际网络发送由 `client`/`zed` 后台任务批量上传（本 fork 中该上传侧已移除，`init` 无调用方，队列永远为空，`event!` 等同 no-op）。
 - **崩溃层** `crashes`：基于 `crash_handler` 附加原生崩溃处理器，落地为 Sentry（`SENTRY_USER_ID`），携带 `CrashInfo`/`InitCrashHandler`。
 - **通道层** `release_channel`：编译期确定当前 `RELEASE_CHANNEL`，提供版本号、更新检查端点、显示名。
 - **更新引擎层** `auto_update`：`AutoUpdater`（GPUI Entity）负责查询发布资产、下载、按平台安装（macOS/Windows/Linux 各一条路径）。
@@ -21,7 +22,7 @@
 | `fn send_event(event: Event)` | telemetry.rs:56 | 事件入队门 |
 | `fn init(tx)` | telemetry.rs:62 | 保存 sender 到 `TELEMETRY_QUEUE`(:66) |
 | `pub use FlexibleEvent as Event` | telemetry.rs:5 | 门面重导出的事件类型 |
-| `struct EventRequestBody` | telemetry_events.rs:8 | 批量上传的请求体 |
+| `struct EventRequestBody`（已无生产者在用 · 历史） | telemetry_events.rs:8 | 原批量上传的请求体 |
 | `struct EventWrapper` | telemetry_events.rs:37 | 单事件封装（时间戳/实时标志） |
 | `enum Event` | telemetry_events.rs:94 | 所有事件变体总枚举 |
 | `struct FlexibleEvent` | telemetry_events.rs:99 | 松类型事件（`telemetry!` 宏构造） |

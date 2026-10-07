@@ -53,7 +53,6 @@ The `tool_permissions` setting lets you customize tool permissions by specifying
 | `copy_path`        | Source and destination paths                     |
 | `create_directory` | The directory path                               |
 | `fetch`            | The URL                                          |
-| `search_web`       | The search query                                 |
 | `skill`            | The absolute path to the skill's `SKILL.md` file |
 
 For MCP tools, use the format `mcp:<server>:<tool_name>`.

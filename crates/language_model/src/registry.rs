@@ -50,12 +50,10 @@ pub struct LanguageModelRegistry {
     /// This model is automatically configured by a user's environment after
     /// authenticating all providers. It's only used when `default_model` is not set.
     available_fallback_model: Option<ConfiguredModel>,
-    inline_assistant_model: Option<ConfiguredModel>,
     commit_message_model: Option<ConfiguredModel>,
     thread_summary_model: Option<ConfiguredModel>,
     compaction_model: Option<ConfiguredModel>,
     providers: BTreeMap<LanguageModelProviderId, Arc<dyn LanguageModelProvider>>,
-    inline_alternatives: Vec<Arc<dyn LanguageModel>>,
     /// Set of installed extension IDs that provide language models.
     /// Used to determine which built-in providers should be hidden.
     installed_llm_extension_ids: HashSet<Arc<str>>,
@@ -110,7 +108,6 @@ impl ConfiguredModel {
 
 pub enum Event {
     DefaultModelChanged,
-    InlineAssistantModelChanged,
     CommitMessageModelChanged,
     CompactionModelChanged,
     ThreadSummaryModelChanged,
@@ -299,15 +296,6 @@ impl LanguageModelRegistry {
         self.set_default_model(configured_model, cx);
     }
 
-    pub fn select_inline_assistant_model(
-        &mut self,
-        model: Option<&SelectedModel>,
-        cx: &mut Context<Self>,
-    ) {
-        let configured_model = model.and_then(|model| self.select_model(model, cx));
-        self.set_inline_assistant_model(configured_model, cx);
-    }
-
     pub fn select_commit_message_model(
         &mut self,
         model: Option<&SelectedModel>,
@@ -333,22 +321,6 @@ impl LanguageModelRegistry {
     ) {
         let configured_model = model.and_then(|model| self.select_model(model, cx));
         self.set_compaction_model(configured_model, cx);
-    }
-
-    /// Selects and sets the inline alternatives for language models based on
-    /// provider name and id.
-    pub fn select_inline_alternative_models(
-        &mut self,
-        alternatives: impl IntoIterator<Item = SelectedModel>,
-        cx: &mut Context<Self>,
-    ) {
-        self.inline_alternatives = alternatives
-            .into_iter()
-            .flat_map(|alternative| {
-                self.select_model(&alternative, cx)
-                    .map(|configured_model| configured_model.model)
-            })
-            .collect::<Vec<_>>();
     }
 
     pub fn select_model(
@@ -406,19 +378,6 @@ impl LanguageModelRegistry {
             }
         }
         self.available_fallback_model = model;
-    }
-
-    pub fn set_inline_assistant_model(
-        &mut self,
-        model: Option<ConfiguredModel>,
-        cx: &mut Context<Self>,
-    ) {
-        match (self.inline_assistant_model.as_ref(), model.as_ref()) {
-            (Some(old), Some(new)) if old.is_same_as(new) => {}
-            (None, None) => {}
-            _ => cx.emit(Event::InlineAssistantModelChanged),
-        }
-        self.inline_assistant_model = model;
     }
 
     pub fn set_commit_message_model(
@@ -480,17 +439,6 @@ impl LanguageModelRegistry {
         })
     }
 
-    pub fn inline_assistant_model(&self) -> Option<ConfiguredModel> {
-        #[cfg(debug_assertions)]
-        if std::env::var("ZED_SIMULATE_NO_LLM_PROVIDER").is_ok() {
-            return None;
-        }
-
-        self.inline_assistant_model
-            .clone()
-            .or_else(|| self.default_model.clone())
-    }
-
     pub fn commit_message_model(&self, cx: &App) -> Option<ConfiguredModel> {
         #[cfg(debug_assertions)]
         if std::env::var("ZED_SIMULATE_NO_LLM_PROVIDER").is_ok() {
@@ -525,13 +473,6 @@ impl LanguageModelRegistry {
         }
 
         self.compaction_model.clone()
-    }
-
-    /// The models to use for inline assists. Returns the union of the active
-    /// model and all inline alternatives. When there are multiple models, the
-    /// user will be able to cycle through results.
-    pub fn inline_alternative_models(&self) -> &[Arc<dyn LanguageModel>] {
-        &self.inline_alternatives
     }
 }
 

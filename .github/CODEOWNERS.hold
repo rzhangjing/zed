@@ -30,9 +30,6 @@
 /crates/agent_servers/ @zed-industries/ai-team
 /crates/agent_settings/ @zed-industries/ai-team
 /crates/agent_ui/ @zed-industries/ai-team
-/crates/ai_onboarding/ @zed-industries/ai-team
-/crates/anthropic/ @zed-industries/ai-team
-/crates/cloud_llm_client/ @zed-industries/ai-team
 /crates/codestral/ @zed-industries/ai-team
 /crates/context_server/ @zed-industries/ai-team
 /crates/copilot/ @zed-industries/ai-team
@@ -45,7 +42,6 @@
 /crates/edit_prediction_types/ @zed-industries/ai-team
 /crates/edit_prediction_ui/ @zed-industries/ai-team
 /crates/eval_utils/ @zed-industries/ai-team
-/crates/google_ai/ @zed-industries/ai-team
 /crates/language_model/ @zed-industries/ai-team
 /crates/language_models/ @zed-industries/ai-team
 /crates/lmstudio/ @zed-industries/ai-team
@@ -58,10 +54,9 @@
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # collab-team
-# Real-time collaboration, channels, calls
+# Real-time collaboration, calls
 # ═══════════════════════════════════════════════════════════════════════════════
 
-/crates/channel/ @zed-industries/collab-team
 /crates/client/ @zed-industries/collab-team
 /crates/proto/ @zed-industries/collab-team
 /crates/rpc/ @zed-industries/collab-team
@@ -178,8 +173,6 @@
 /crates/util/ @zed-industries/infrastructure-team
 /crates/util_macros/ @zed-industries/infrastructure-team
 /crates/watch/ @zed-industries/infrastructure-team
-/crates/web_search/ @zed-industries/infrastructure-team
-/crates/web_search_providers/ @zed-industries/infrastructure-team
 /crates/zlog/ @zed-industries/infrastructure-team
 /crates/zlog_settings/ @zed-industries/infrastructure-team
 /crates/ztracing/ @zed-industries/infrastructure-team
@@ -314,6 +307,4 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 /.cloudflare/ @zed-industries/cloud-team
-/crates/cloud_api_client/ @zed-industries/cloud-team
-/crates/cloud_api_types/ @zed-industries/cloud-team
 /legal/ @zed-industries/bizops-team

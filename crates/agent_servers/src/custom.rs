@@ -291,7 +291,7 @@ fn api_key_for_gemini_cli(cx: &mut App) -> Task<Result<String>> {
         return Task::ready(Ok(key));
     }
     let credentials_provider = zed_credentials_provider::global(cx);
-    let api_url = google_ai::API_URL.to_string();
+    let api_url = "https://generativelanguage.googleapis.com".to_string();
     cx.spawn(async move |cx| {
         Ok(
             ApiKey::load_from_system_keychain(&api_url, credentials_provider.as_ref(), cx)

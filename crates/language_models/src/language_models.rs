@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ::settings::{Settings, SettingsStore};
 use client::{Client, UserStore};
-use collections::{HashMap, HashSet};
+use collections::HashMap;
 use credentials_provider::CredentialsProvider;
 use gpui::{App, Context, Entity};
 use language_model::{LanguageModelProviderId, LanguageModelRegistry};
@@ -11,10 +11,6 @@ use provider::deepseek::DeepSeekLanguageModelProvider;
 pub mod provider;
 mod settings;
 
-use crate::provider::anthropic::AnthropicLanguageModelProvider;
-use crate::provider::anthropic_compatible::AnthropicCompatibleLanguageModelProvider;
-use crate::provider::cloud::CloudLanguageModelProvider;
-use crate::provider::google::GoogleLanguageModelProvider;
 use crate::provider::llama_cpp::LlamaCppLanguageModelProvider;
 use crate::provider::lmstudio::LmStudioLanguageModelProvider;
 use crate::provider::ollama::OllamaLanguageModelProvider;
@@ -77,31 +73,16 @@ struct CompatibleProviders(HashMap<Arc<str>, CompatibleProviderKind>);
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum CompatibleProviderKind {
     OpenAi,
-    Anthropic,
 }
 
 impl CompatibleProviders {
     fn from_settings(cx: &App) -> Self {
         let settings = AllLanguageModelSettings::get_global(cx);
-        let mut providers: HashMap<Arc<str>, CompatibleProviderKind> = settings
+        let providers: HashMap<Arc<str>, CompatibleProviderKind> = settings
             .openai_compatible
             .keys()
             .map(|id| (id.clone(), CompatibleProviderKind::OpenAi))
             .collect();
-        for id in settings.anthropic_compatible.keys() {
-            // The registry has a single provider ID namespace, so a name can
-            // only refer to one provider. OpenAI-compatible entries win
-            // collisions because they predate Anthropic-compatible ones, so
-            // existing configurations keep working.
-            if providers.contains_key(id) {
-                log::warn!(
-                    "ignoring `anthropic_compatible` provider `{id}`: \
-                     an `openai_compatible` provider with the same name exists"
-                );
-            } else {
-                providers.insert(id.clone(), CompatibleProviderKind::Anthropic);
-            }
-        }
         Self(providers)
     }
 }
@@ -132,15 +113,6 @@ fn register_compatible_providers(
                     )),
                     cx,
                 ),
-                CompatibleProviderKind::Anthropic => registry.register_provider(
-                    Arc::new(AnthropicCompatibleLanguageModelProvider::new(
-                        provider_id.clone(),
-                        client.http_client(),
-                        credentials_provider.clone(),
-                        cx,
-                    )),
-                    cx,
-                ),
             }
         }
     }
@@ -148,27 +120,11 @@ fn register_compatible_providers(
 
 fn register_language_model_providers(
     registry: &mut LanguageModelRegistry,
-    user_store: Entity<UserStore>,
+    _user_store: Entity<UserStore>,
     client: Arc<Client>,
     credentials_provider: Arc<dyn CredentialsProvider>,
     cx: &mut Context<LanguageModelRegistry>,
 ) {
-    registry.register_provider(
-        Arc::new(CloudLanguageModelProvider::new(
-            user_store,
-            client.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(
-        Arc::new(AnthropicLanguageModelProvider::new(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
     registry.register_provider(
         Arc::new(OpenAiLanguageModelProvider::new(
             client.http_client(),
@@ -203,14 +159,6 @@ fn register_language_model_providers(
     );
     registry.register_provider(
         Arc::new(DeepSeekLanguageModelProvider::new(
-            client.http_client(),
-            credentials_provider.clone(),
-            cx,
-        )),
-        cx,
-    );
-    registry.register_provider(
-        Arc::new(GoogleLanguageModelProvider::new(
             client.http_client(),
             credentials_provider.clone(),
             cx,
@@ -280,11 +228,7 @@ mod tests {
         (client, Arc::new(FakeCredentialsProvider))
     }
 
-    fn update_compatible_provider_settings(
-        openai: &[&str],
-        anthropic: &[&str],
-        cx: &mut App,
-    ) -> CompatibleProviders {
+    fn update_compatible_provider_settings(openai: &[&str], cx: &mut App) -> CompatibleProviders {
         fn section(ids: &[&str]) -> serde_json::Value {
             ids.iter()
                 .map(|id| {
@@ -303,7 +247,6 @@ mod tests {
         let content = serde_json::json!({
             "language_models": {
                 "openai_compatible": section(openai),
-                "anthropic_compatible": section(anthropic),
             }
         })
         .to_string();
@@ -325,19 +268,16 @@ mod tests {
     }
 
     #[gpui::test]
-    fn test_compatible_provider_id_collision_resolves_when_one_entry_is_removed(cx: &mut App) {
+    fn test_compatible_provider_registers_and_unregisters(cx: &mut App) {
         let (client, credentials_provider) = init_test(cx);
         let registry = cx.new(|_| LanguageModelRegistry::default());
 
-        // The same provider name is configured in both `openai_compatible`
-        // and `anthropic_compatible` settings sections; the OpenAI-compatible
-        // entry wins the collision.
-        let both = update_compatible_provider_settings(&["acme"], &["acme"], cx);
+        let acme = update_compatible_provider_settings(&["acme"], cx);
         registry.update(cx, |registry, cx| {
             register_compatible_providers(
                 registry,
                 &CompatibleProviders::default(),
-                &both,
+                &acme,
                 &client,
                 &credentials_provider,
                 cx,
@@ -346,71 +286,15 @@ mod tests {
         assert_eq!(
             registry.read_with(cx, |registry, _| provider_icons(registry, "acme")),
             vec![IconOrSvg::Icon(IconName::AiOpenAiCompat)],
-            "the OpenAI-compatible provider should win the name collision"
-        );
-
-        // The user removes the `anthropic_compatible` entry; the remaining
-        // `openai_compatible` entry must stay registered.
-        let openai_only = update_compatible_provider_settings(&["acme"], &[], cx);
-        registry.update(cx, |registry, cx| {
-            register_compatible_providers(
-                registry,
-                &both,
-                &openai_only,
-                &client,
-                &credentials_provider,
-                cx,
-            );
-        });
-        assert_eq!(
-            registry.read_with(cx, |registry, _| provider_icons(registry, "acme")),
-            vec![IconOrSvg::Icon(IconName::AiOpenAiCompat)],
-            "the provider registered for `acme` should be the OpenAI-compatible one"
-        );
-    }
-
-    #[gpui::test]
-    fn test_compatible_provider_changes_kind_and_unregisters(cx: &mut App) {
-        let (client, credentials_provider) = init_test(cx);
-        let registry = cx.new(|_| LanguageModelRegistry::default());
-
-        let both = update_compatible_provider_settings(&["acme"], &["acme"], cx);
-        registry.update(cx, |registry, cx| {
-            register_compatible_providers(
-                registry,
-                &CompatibleProviders::default(),
-                &both,
-                &client,
-                &credentials_provider,
-                cx,
-            );
-        });
-
-        // Removing the `openai_compatible` entry hands the name over to the
-        // remaining `anthropic_compatible` entry.
-        let anthropic_only = update_compatible_provider_settings(&[], &["acme"], cx);
-        registry.update(cx, |registry, cx| {
-            register_compatible_providers(
-                registry,
-                &both,
-                &anthropic_only,
-                &client,
-                &credentials_provider,
-                cx,
-            );
-        });
-        assert_eq!(
-            registry.read_with(cx, |registry, _| provider_icons(registry, "acme")),
-            vec![IconOrSvg::Icon(IconName::AiAnthropicCompat)],
-            "after removing the openai_compatible entry, the anthropic_compatible provider should be registered"
+            "the configured OpenAI-compatible provider should be registered"
         );
 
         // Removing the last entry unregisters the provider entirely.
-        let none = update_compatible_provider_settings(&[], &[], cx);
+        let none = update_compatible_provider_settings(&[], cx);
         registry.update(cx, |registry, cx| {
             register_compatible_providers(
                 registry,
-                &anthropic_only,
+                &acme,
                 &none,
                 &client,
                 &credentials_provider,

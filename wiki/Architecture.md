@@ -19,7 +19,7 @@ graph TB
         VIM[vim / which_key]
         DBG[debugger_ui / dap_adapters]
         EXT[extension / extension_host]
-        PROV[open_ai / anthropic / ollama ...]
+        PROV[open_ai / ollama / deepseek ...]
     end
     subgraph L4[编辑与 UI 面板层]
         EDITOR[editor]
@@ -94,7 +94,7 @@ graph TB
 | `agent` / `agent_ui` / `acp_thread` / `acp_tools` | AI 助手与对话（详见 [Agent-and-AI.md](Agent-and-AI.md)） |
 | `edit_prediction*` | 内联编辑预测 |
 | `audio` | 音频管线（cpal/rodio）；原 `call` / `collab_ui` / `livekit_client` 已移除（详见 [Collaboration-and-Call.md](Collaboration-and-Call.md)） |
-| `open_ai` / `anthropic` / `google_ai` / `ollama` / `mistral`（已移除） / `bedrock`（已移除） / `deepseek` / `codestral`（已移除） / `open_router`（已移除） / `lmstudio` / `llama_cpp` | 各模型 Provider |
+| `open_ai` / `anthropic`（已移除 · 历史） / `google_ai`（已移除 · 历史） / `ollama` / `mistral`（已移除） / `bedrock`（已移除） / `deepseek` / `codestral`（已移除） / `open_router`（已移除） / `lmstudio` / `llama_cpp` | 各模型 Provider |
 | `extension` / `extension_host` / `extensions_ui` | 扩展系统（WASM） |
 | `vim` / `which_key` / `terminal` / `debugger_ui` / `dap_adapters` | 编辑增强 |
 

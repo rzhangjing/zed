@@ -1,8 +1,8 @@
 # Channels & Collab UI（频道 / 协作侧栏 / 通话通知）
 
-> ⚠️ 历史文档：本页描述的 `collab_ui`（协作面板 / 频道视图 / 通话通知）已从本 fork 移除（提交 `移除call和remote`）。以下 `CollabPanel`/`ChannelView`/通知等内容仅作参考，代码已不存在。`channel` crate 仍在本 fork 中。
+> ⚠️ 历史文档：本页描述的 `collab_ui`（协作面板 / 频道视图 / 通话通知）已从本 fork 移除（提交 `移除call和remote`）。以下 `CollabPanel`/`ChannelView`/通知等内容仅作参考，代码已不存在。`channel` crate（`ChannelStore`/`ChannelBuffer`）与 `notifications` 的 `notification_store`（协作通知存储）亦已于本批删除；`client` 仍保留 `ChannelId`/`ProjectId`/`ParticipantIndex` 等类型。
 
-**频道（Channels）** 是 Zed 的社区空间：成员列表、文字聊天、共享笔记（channel notes）。底层数据/协议在 [`channel`](../crates/channel)，界面原在 `crates/collab_ui`（已移除）。它与"共享项目 / 语音通话"共用 [`client`](../crates/client) 的 RPC 通道（见 [Collaboration-and-Call.md](Collaboration-and-Call.md)）。
+**频道（Channels）** 是 Zed 的社区空间：成员列表、文字聊天、共享笔记（channel notes）。底层数据/协议原在 `crates/channel`（已移除 · 历史），界面原在 `crates/collab_ui`（已移除）。它与"共享项目 / 语音通话"共用 [`client`](../crates/client) 的 RPC 通道（见 [Collaboration-and-Call.md](Collaboration-and-Call.md)）。
 
 ## 1. 分层职责
 

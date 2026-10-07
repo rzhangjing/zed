@@ -1155,7 +1155,7 @@ impl Editor {
 
             if let Some(url) = url {
                 cx.update(|window, cx| {
-                    if parse_zed_link(&url, cx).is_some() {
+                    if url.starts_with("zed://") {
                         window.dispatch_action(
                             Box::new(zed_actions::OpenZedUrl { url: url.into() }),
                             cx,
@@ -1851,7 +1851,7 @@ impl Editor {
                 match first_url_or_file {
                     Some(Either::Left(url)) => {
                         cx.update(|window, cx| {
-                            if parse_zed_link(&url, cx).is_some() {
+                            if url.starts_with("zed://") {
                                 window.dispatch_action(
                                     Box::new(zed_actions::OpenZedUrl { url: url.into() }),
                                     cx,

@@ -18,7 +18,6 @@ use agent::{
 };
 use agent_settings::UserAgentsMd;
 use agent_skills::MAX_SKILL_DESCRIPTION_LEN;
-use cloud_api_types::{SubmitAgentThreadFeedbackBody, SubmitAgentThreadFeedbackCommentsBody};
 use editor::actions::OpenExcerpts;
 use sandbox::{SandboxFsPolicy, SandboxNetPolicy, SandboxPolicy};
 
@@ -40,7 +39,7 @@ use language_model::{
     LanguageModelProvider, LanguageModelProviderId, LanguageModelRegistry, Speed,
 };
 use notifications::status_toast::StatusToast;
-use settings::{update_settings_file, update_settings_file_with_completion};
+use settings::update_settings_file;
 use ui::{
     ButtonLike, CalloutBorderPosition, Checkbox, SpinnerLabel, SpinnerVariant, SplitButton,
     SplitButtonStyle, Tab, ToggleState,
@@ -64,20 +63,11 @@ struct ThreadFeedbackState {
 impl ThreadFeedbackState {
     pub fn submit(
         &mut self,
-        thread: Entity<AcpThread>,
+        _thread: Entity<AcpThread>,
         feedback: ThreadFeedback,
         window: &mut Window,
         cx: &mut App,
     ) {
-        let Some(telemetry) = thread.read(cx).connection().telemetry() else {
-            return;
-        };
-
-        let project = thread.read(cx).project().read(cx);
-        let client = project.client();
-        let user_store = project.user_store();
-        let organization = user_store.read(cx).current_organization();
-
         if self.feedback == Some(feedback) {
             return;
         }
@@ -91,75 +81,10 @@ impl ThreadFeedbackState {
                 self.comments_editor = Some(Self::build_feedback_comments_editor(window, cx));
             }
         }
-        let session_id = thread.read(cx).session_id().clone();
-        let parent_session_id = thread.read(cx).parent_session_id().cloned();
-        let agent_telemetry_id = thread.read(cx).connection().telemetry_id();
-        let task = telemetry.thread_data(&session_id, cx);
-        let rating = match feedback {
-            ThreadFeedback::Positive => "positive",
-            ThreadFeedback::Negative => "negative",
-        };
-        cx.background_spawn(async move {
-            let thread = task.await?;
-
-            client
-                .cloud_client()
-                .submit_agent_feedback(SubmitAgentThreadFeedbackBody {
-                    organization_id: organization.map(|organization| organization.id.clone()),
-                    agent: agent_telemetry_id.to_string(),
-                    session_id: session_id.to_string(),
-                    parent_session_id: parent_session_id.map(|id| id.to_string()),
-                    rating: rating.to_string(),
-                    thread,
-                })
-                .await?;
-
-            anyhow::Ok(())
-        })
-        .detach_and_log_err(cx);
     }
 
-    pub fn submit_comments(&mut self, thread: Entity<AcpThread>, cx: &mut App) {
-        let Some(telemetry) = thread.read(cx).connection().telemetry() else {
-            return;
-        };
-
-        let Some(comments) = self
-            .comments_editor
-            .as_ref()
-            .map(|editor| editor.read(cx).text(cx))
-            .filter(|text| !text.trim().is_empty())
-        else {
-            return;
-        };
-
+    pub fn submit_comments(&mut self, _thread: Entity<AcpThread>, _cx: &mut App) {
         self.comments_editor.take();
-
-        let project = thread.read(cx).project().read(cx);
-        let client = project.client();
-        let user_store = project.user_store();
-        let organization = user_store.read(cx).current_organization();
-
-        let session_id = thread.read(cx).session_id().clone();
-        let agent_telemetry_id = thread.read(cx).connection().telemetry_id();
-        let task = telemetry.thread_data(&session_id, cx);
-        cx.background_spawn(async move {
-            let thread = task.await?;
-
-            client
-                .cloud_client()
-                .submit_agent_feedback_comments(SubmitAgentThreadFeedbackCommentsBody {
-                    organization_id: organization.map(|organization| organization.id.clone()),
-                    agent: agent_telemetry_id.to_string(),
-                    session_id: session_id.to_string(),
-                    comments,
-                    thread,
-                })
-                .await?;
-
-            anyhow::Ok(())
-        })
-        .detach_and_log_err(cx);
     }
 
     pub fn clear(&mut self) {
@@ -6943,14 +6868,6 @@ impl ThreadView {
 
     fn is_thread_feedback_enabled(&self, cx: &App) -> bool {
         util::maybe!({
-            let project = self.thread.read(cx).project().read(cx);
-            let user_store = project.user_store();
-            if let Some(configuration) = user_store.read(cx).current_organization_configuration() {
-                if !configuration.is_agent_thread_feedback_enabled {
-                    return false;
-                }
-            }
-
             AgentSettings::get_global(cx).enable_feedback
                 && self.thread.read(cx).connection().telemetry().is_some()
         })
@@ -11195,7 +11112,6 @@ impl ThreadView {
             .actions_slot(
                 h_flex()
                     .gap_0p5()
-                    .child(self.upgrade_button(cx))
                     .child(self.create_copy_button(ERROR_MESSAGE)),
             )
             .dismiss_action(self.dismiss_error_button(cx))
@@ -11359,18 +11275,6 @@ impl ThreadView {
             .on_click(cx.listener(|this, _, window, cx| {
                 this.clear_thread_error(cx);
                 window.dispatch_action(NewThread.boxed_clone(), cx);
-            }))
-    }
-
-    fn upgrade_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        Button::new("upgrade", "Upgrade")
-            .label_size(LabelSize::Small)
-            .style(ButtonStyle::Tinted(ui::TintColor::Accent))
-            .on_click(cx.listener({
-                move |this, _, _, cx| {
-                    this.clear_thread_error(cx);
-                    cx.open_url(&zed_urls::upgrade_to_zed_pro_url(cx));
-                }
             }))
     }
 
@@ -11945,35 +11849,9 @@ impl ThreadView {
                                 this.switch_to_data_retention_fallback_and_resend(cx);
                             })),
                         )
-                    })
-                    .child(
-                        Button::new("accept-data-retention", "Accept")
-                            .label_size(LabelSize::Small)
-                            .style(ButtonStyle::Tinted(TintColor::Warning))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.accept_data_retention_and_resend(cx);
-                            })),
-                    ),
+                    }),
             )
             .dismiss_action(self.dismiss_error_button(cx))
-    }
-
-    fn accept_data_retention_and_resend(&mut self, cx: &mut Context<Self>) {
-        let fs = self.thread.read(cx).project().read(cx).fs().clone();
-        // Resume the failed turn only once the in-memory settings reflect
-        // consent, otherwise the resent request would be rejected again.
-        let completion = update_settings_file_with_completion(fs, cx, |settings, _| {
-            settings
-                .telemetry
-                .get_or_insert_default()
-                .anthropic_retention = Some(true);
-        });
-        cx.spawn(async move |this, cx| {
-            completion.await??;
-            this.update(cx, |this, cx| this.retry_generation(cx))?;
-            anyhow::Ok(())
-        })
-        .detach_and_log_err(cx);
     }
 
     fn switch_to_data_retention_fallback_and_resend(&mut self, cx: &mut Context<Self>) {

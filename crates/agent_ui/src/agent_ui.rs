@@ -1,21 +1,16 @@
 mod agent_configuration;
 pub mod agent_connection_store;
 mod agent_diff;
-mod agent_model_selector;
 mod agent_panel;
 mod agent_registry_ui;
-mod buffer_codegen;
 mod completion_provider;
 mod config_options;
-mod context;
 pub(crate) mod conversation_view;
 mod diagnostics;
 pub mod draft_prompt_store;
 mod entry_view_state;
 mod external_source_prompt;
 mod favorite_models;
-mod inline_assistant;
-mod inline_prompt_editor;
 mod language_model_selector;
 mod mention_set;
 mod message_editor;
@@ -23,8 +18,6 @@ mod mode_selector;
 mod model_selector;
 mod model_selector_popover;
 mod profile_selector;
-mod terminal_codegen;
-mod terminal_inline_assistant;
 pub mod terminal_thread_metadata_store;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
@@ -54,9 +47,7 @@ use language::{
     LanguageRegistry,
     language_settings::{AllLanguageSettings, EditPredictionProvider},
 };
-use language_model::{
-    ConfiguredModel, LanguageModelId, LanguageModelProviderId, LanguageModelRegistry,
-};
+use language_model::{LanguageModelId, LanguageModelProviderId, LanguageModelRegistry};
 use project::{AgentId, DisableAiSettings};
 use prompt_store::{self, PromptBuilder, rules_to_skills_migration};
 use rope::Point;
@@ -74,7 +65,6 @@ pub use crate::agent_panel::{
     ThreadTitleRegenerationResult,
 };
 use crate::agent_registry_ui::AgentRegistryPage;
-pub use crate::inline_assistant::InlineAssistant;
 pub use crate::message_editor::MessageEditorEvent;
 pub use crate::thread_metadata_store::ThreadId;
 pub use agent_diff::{AgentDiffPane, AgentDiffToolbar};
@@ -232,10 +222,6 @@ actions!(
         RenameSelectedThread,
         /// Starts a chat conversation with follow-up enabled.
         ChatWithFollow,
-        /// Cycles to the next inline assist suggestion.
-        CycleNextInlineAssist,
-        /// Cycles to the previous inline assist suggestion.
-        CyclePreviousInlineAssist,
         /// Moves focus up in the interface.
         FocusUp,
         /// Moves focus down in the interface.
@@ -531,21 +517,6 @@ impl ManageProfiles {
     }
 }
 
-#[derive(Clone)]
-pub(crate) enum ModelUsageContext {
-    InlineAssistant,
-}
-
-impl ModelUsageContext {
-    pub fn configured_model(&self, cx: &App) -> Option<ConfiguredModel> {
-        match self {
-            Self::InlineAssistant => {
-                LanguageModelRegistry::read_global(cx).inline_assistant_model()
-            }
-        }
-    }
-}
-
 pub(crate) fn humanize_token_count(count: u64) -> String {
     match count {
         0..=999 => count.to_string(),
@@ -579,8 +550,8 @@ pub(crate) fn humanize_token_count(count: u64) -> String {
 /// Initializes the `agent` crate.
 pub fn init(
     fs: Arc<dyn Fs>,
-    prompt_builder: Arc<PromptBuilder>,
-    language_registry: Arc<LanguageRegistry>,
+    _prompt_builder: Arc<PromptBuilder>,
+    _language_registry: Arc<LanguageRegistry>,
     is_new_install: bool,
     is_eval: bool,
     cx: &mut App,
@@ -616,8 +587,6 @@ pub fn init(
     thread_metadata_store::init(cx);
     terminal_thread_metadata_store::init(cx);
 
-    inline_assistant::init(fs.clone(), prompt_builder.clone(), cx);
-    terminal_inline_assistant::init(fs.clone(), prompt_builder, cx);
     cx.observe_new(|workspace: &mut Workspace, _window, _cx| {
         workspace.register_action(
             move |workspace: &mut Workspace,
@@ -839,8 +808,7 @@ fn update_command_palette_filter(cx: &mut App) {
                     filter.hide_namespace("edit_prediction");
                     filter.hide_action_types(&edit_prediction_actions);
                 }
-                EditPredictionProvider::Zed
-                | EditPredictionProvider::Ollama
+                EditPredictionProvider::Ollama
                 | EditPredictionProvider::OpenAiCompatibleApi => {
                     filter.show_namespace("edit_prediction");
                     filter.show_action_types(edit_prediction_actions.iter());
@@ -902,10 +870,6 @@ fn update_active_language_model_from_settings(cx: &mut App) {
         .is_none();
 
     let default = settings.default_model.as_ref().map(to_selected_model);
-    let inline_assistant = settings
-        .inline_assistant_model
-        .as_ref()
-        .map(to_selected_model);
     let commit_message = settings
         .commit_message_model
         .as_ref()
@@ -915,19 +879,12 @@ fn update_active_language_model_from_settings(cx: &mut App) {
         .as_ref()
         .map(to_selected_model);
     let compaction = settings.compaction_model.as_ref().map(to_selected_model);
-    let inline_alternatives = settings
-        .inline_alternatives
-        .iter()
-        .map(to_selected_model)
-        .collect::<Vec<_>>();
 
     LanguageModelRegistry::global(cx).update(cx, |registry, cx| {
         registry.select_default_model(default.as_ref(), cx);
-        registry.select_inline_assistant_model(inline_assistant.as_ref(), cx);
         registry.select_commit_message_model(commit_message.as_ref(), cx);
         registry.select_thread_summary_model(thread_summary.as_ref(), cx);
         registry.select_compaction_model(compaction.as_ref(), cx);
-        registry.select_inline_alternative_models(inline_alternatives, cx);
         registry.set_should_use_fallback(should_use_fallback);
     });
 }
@@ -967,14 +924,11 @@ mod tests {
             max_content_width: Some(px(850.)),
             default_model: None,
             subagent_model: None,
-            inline_assistant_model: None,
-            inline_assistant_use_streaming_tools: false,
             commit_message_model: None,
             commit_message_include_project_rules: true,
             commit_message_instructions: None,
             thread_summary_model: None,
             compaction_model: None,
-            inline_alternatives: vec![],
             favorite_models: vec![],
             default_profile: AgentProfileId::default(),
             profiles: Default::default(),

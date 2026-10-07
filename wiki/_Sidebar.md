@@ -51,7 +51,6 @@
 - [CLI-and-Packaging-Deep-Dive](CLI-and-Packaging-Deep-Dive)
 - [Selectors-and-Themes-Misc-Deep-Dive](Selectors-and-Themes-Misc-Deep-Dive)
 - [Tooling-Evals-Benchmarks-Deep-Dive](Tooling-Evals-Benchmarks-Deep-Dive)
-- [Web-Search-Deep-Dive](Web-Search-Deep-Dive)
 
 ### UI 框架与交互
 - [GPUI](GPUI)

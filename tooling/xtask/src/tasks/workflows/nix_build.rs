@@ -141,10 +141,6 @@ pub(crate) fn build_nix(
         .runs_on(runner)
         .add_env(("ZED_CLIENT_CHECKSUM_SEED", vars::ZED_CLIENT_CHECKSUM_SEED))
         .add_env(("ZED_MINIDUMP_ENDPOINT", vars::ZED_SENTRY_MINIDUMP_ENDPOINT))
-        .add_env((
-            "ZED_CLOUD_PROVIDER_ADDITIONAL_MODELS_JSON",
-            vars::ZED_CLOUD_PROVIDER_ADDITIONAL_MODELS_JSON,
-        ))
         .add_env(("GIT_LFS_SKIP_SMUDGE", "1")) // avoid smudging LFS pointers the nix build never reads
         .add_step(steps::checkout_repo());
 

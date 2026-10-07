@@ -7,7 +7,6 @@ pub mod tool_schema;
 pub mod util;
 
 use anyhow::{Context as _, Result, anyhow};
-use cloud_llm_client::CompletionRequestStatus;
 use http_client::{StatusCode, http};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,6 +29,29 @@ pub use crate::util::{
     parse_tool_arguments,
 };
 pub use gpui_shared_string::SharedString;
+
+/// The status of a completion request that is being served by a remote
+/// language model service.
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CompletionRequestStatus {
+    Queued {
+        position: usize,
+    },
+    Started,
+    Failed {
+        code: String,
+        message: String,
+        request_id: uuid::Uuid,
+        /// Retry duration in seconds.
+        retry_after: Option<f64>,
+    },
+    /// The remote service sends a StreamEnded message when the stream from the
+    /// LLM provider finishes.
+    StreamEnded,
+    #[serde(other)]
+    Unknown,
+}
 
 /// A completion event from a language model.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

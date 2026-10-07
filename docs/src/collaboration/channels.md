@@ -5,6 +5,8 @@ description: "Persistent collaboration rooms in Zed for sharing projects, voice 
 
 # Channels {#channels}
 
+> **Removed in this fork.** The `channel` crate and every channel action (`OpenChannelNotesById`, channel notes, channel links) were deleted. This page is kept for historical reference.
+
 Channels are persistent rooms for team collaboration. Each channel can contain shared projects, voice chat, and collaborative notes.
 
 Channels support:

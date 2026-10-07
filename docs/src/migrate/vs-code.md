@@ -306,6 +306,8 @@ You won’t find one-to-one replacements for every VS Code extension, especially
 Unlike VS Code, Zed doesn’t require an extension to collaborate. It’s built into the core experience.
 
 - Open the Collab Panel in the left dock.
+> **Removed in this fork.** Collaboration, channels, contacts, and the collaboration server were removed, so the steps in this section no longer apply.
+
 - Create a channel and [invite your collaborators](https://zed.dev/docs/collaboration#inviting-a-collaborator) to join.
 - [Share your screen or your codebase](https://zed.dev/docs/collaboration#share-a-project) directly.
 
@@ -315,22 +317,17 @@ Learn how [Zed uses Zed](https://zed.dev/blog/zed-is-our-office) to plan work an
 
 ### Using AI in Zed
 
-If you’re used to GitHub Copilot in VS Code, you can do the same in Zed. You can also explore other agents through Zed Pro, or bring your own keys and connect without authentication. You can disable AI features entirely if you prefer.
+If you’re used to GitHub Copilot in VS Code, you can do the same in Zed. You can also explore other agents, or bring your own keys and connect without authentication. You can disable AI features entirely if you prefer.
 
-#### Configuring GitHub Copilot
+#### Configuring Edit Prediction
 
-1. Open Settings with `Cmd+,` (macOS) or `Ctrl+,` (Linux/Windows)
-2. Navigate to **AI → Edit Predictions**
-3. Click **Configure** next to "Configure Providers"
-4. Under **GitHub Copilot**, click **Sign in to GitHub**
-
-Once signed in, just start typing. Zed will offer suggestions inline for you to accept.
+GitHub Copilot is not available in this fork, and neither is a Zed-hosted model. Open Settings with `Cmd+,` (macOS) or `Ctrl+,` (Linux/Windows), go to **AI -> Edit Predictions**, and configure **Ollama** or an **OpenAI-compatible** endpoint. See [Edit Prediction](../ai/edit-prediction.md).
 
 #### Additional AI Options
 
 To use other AI models in Zed, you have several options:
 
-- Use Zed’s hosted models, with higher rate limits. Requires [authentication](https://zed.dev/docs/authentication) and access through [Zed Pro](https://zed.dev/docs/account/zed-hosted-models.html).
+- Use a local model through [Ollama or an OpenAI-compatible endpoint](../ai/use-a-local-model.md)
 - Bring your own [API keys](https://zed.dev/docs/ai/use-api-access.html), no authentication needed
 - Use [External Agents like Claude Agent](https://zed.dev/docs/ai/external-agents.html).
 

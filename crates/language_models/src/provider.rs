@@ -2,12 +2,8 @@ use collections::HashMap;
 use http_client::CustomHeaders;
 use http_client::http::{HeaderName, HeaderValue};
 
-pub mod anthropic;
-pub mod anthropic_compatible;
 pub mod api_compatible;
-pub mod cloud;
 pub mod deepseek;
-pub mod google;
 pub mod llama_cpp;
 pub mod lmstudio;
 pub mod ollama;

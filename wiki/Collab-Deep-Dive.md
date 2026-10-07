@@ -1,8 +1,8 @@
 # Deep Reference: collaboration (client / call / collab / channel / collab_ui)
 
-> ⚠️ 历史文档：本页描述的 `crates/call` / `crates/collab` / `crates/collab_ui` 与 `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。`crates/client` 与 `crates/channel` 仍在本 fork 中。
+> ⚠️ 历史文档：本页描述的 `crates/call` / `crates/collab` / `crates/collab_ui` 与 `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。`crates/client` 仍在本 fork 中；`crates/channel` 亦已于本批删除（仅 `client` 的 `ChannelId` 等类型保留）。
 
-> 参考手册级：多人协作由五 crate 分层——`crates/client`（**连 collab 服务器的客户端 + `UserStore`**）、`crates/call`（**本地房间状态机 `Room`**）、`crates/collab`（**云端服务器**）、`crates/channel`（**频道/共享 markdown**）、`crates/collab_ui`（**协作面板/聊天**）。音视频曾走 `livekit_client`/`livekit_api`（WebRTC），该轴连同 `no_webrtc` 替身机制已一并移除。CRDT 同步底座为 [text::Buffer](Text-Buffer-Deep-Dive.md) + `clock::Lamport`。
+> 参考手册级：多人协作由五 crate 分层——`crates/client`（**连 collab 服务器的客户端 + `UserStore`**）、`crates/call`（**本地房间状态机 `Room`**）、`crates/collab`（**云端服务器**）、`crates/channel`（**频道/共享 markdown**，已移除 · 历史）、`crates/collab_ui`（**协作面板/聊天**）。音视频曾走 `livekit_client`/`livekit_api`（WebRTC），该轴连同 `no_webrtc` 替身机制已一并移除。CRDT 同步底座为 [text::Buffer](Text-Buffer-Deep-Dive.md) + `clock::Lamport`。
 
 ## 1. `crates/client`：客户端连接与身份 [`client.rs`](../crates/client/src/client.rs)(86KB)
 | 类型 | 位置 | 角色 |
@@ -40,7 +40,7 @@
 | lib | `crates/collab/src/lib.rs` | `Server` 组装、`Session` |
 `crates/proto` 定义所有 `Room`/`Project`/`Buffer`/`Channel` 消息；服务器是权威 `Peer`（`ConnectionId` 路由）。服务端连同其部署脚手架（`compose.yml`/`Dockerfile-collab`/`script/deploy-collab`/k8s 清单）均已从本 fork 移除。
 
-## 4. `crates/channel`：频道与共享 markdown [`channel_store.rs`](../crates/channel/src/channel_store.rs)
+## 4. `crates/channel`（已移除 · 历史）：频道与共享 markdown
 | 类型 | 位置 | 角色 |
 |---|---|---|
 | `struct ChannelStore` | [L36](../crates/channel/src/channel_store.rs) | 频道树/成员/聊天（`Entity`）；`channel_ledger`、订阅 `ChannelUpdated`/`ChannelMessageSent` |

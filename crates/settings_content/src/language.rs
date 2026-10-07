@@ -90,7 +90,6 @@ impl merge_from::MergeFrom for AllLanguageSettingsContent {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum EditPredictionProvider {
-    Zed,
     Ollama,
     OpenAiCompatibleApi,
     #[default]
@@ -99,18 +98,8 @@ pub enum EditPredictionProvider {
 }
 
 impl EditPredictionProvider {
-    pub fn is_zed(&self) -> bool {
-        match self {
-            EditPredictionProvider::Zed => true,
-            EditPredictionProvider::None
-            | EditPredictionProvider::Ollama
-            | EditPredictionProvider::OpenAiCompatibleApi => false,
-        }
-    }
-
     pub fn display_name(&self) -> Option<&'static str> {
         match self {
-            EditPredictionProvider::Zed => Some("Zed AI"),
             EditPredictionProvider::None => None,
             EditPredictionProvider::Ollama => Some("Ollama"),
             EditPredictionProvider::OpenAiCompatibleApi => Some("OpenAI-Compatible API"),
@@ -135,8 +124,6 @@ pub struct EditPredictionSettingsContent {
     pub ollama: Option<OllamaEditPredictionSettingsContent>,
     /// Settings specific to using custom OpenAI-compatible servers for edit prediction.
     pub open_ai_compatible_api: Option<CustomEditPredictionProviderSettingsContent>,
-    /// Settings specific to Zed's Edit Predictions provider.
-    pub zed: Option<ZedEditPredictionSettingsContent>,
     /// Controls whether Zed may collect training data when using Zed's Edit Predictions.
     /// Data is only ever captured for files in projects that are detected as open source.
     ///
@@ -202,17 +189,6 @@ pub enum EditPredictionPromptFormatContent {
     Codestral,
     Glm,
     Sweep,
-}
-
-/// Settings specific to Zed's Edit Predictions provider.
-#[with_fallible_options]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
-pub struct ZedEditPredictionSettingsContent {
-    /// The debounce delay in milliseconds before automatically requesting a prediction
-    /// after typing stops. Set to 0 to request predictions immediately.
-    ///
-    /// Default: 0
-    pub prediction_debounce: Option<DelayMs>,
 }
 
 /// Ollama model name for edit predictions.

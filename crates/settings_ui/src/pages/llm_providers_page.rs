@@ -8,9 +8,8 @@ use language_model::{
 };
 
 use settings::{
-    AnthropicCompatibleAvailableModel, AnthropicCompatibleModelCapabilities,
-    AnthropicCompatibleSettingsContent, OpenAiCompatibleAvailableModel,
-    OpenAiCompatibleModelCapabilities, OpenAiCompatibleSettingsContent, OpenAiReasoningEffort,
+    OpenAiCompatibleAvailableModel, OpenAiCompatibleModelCapabilities,
+    OpenAiCompatibleSettingsContent, OpenAiReasoningEffort,
 };
 use ui::{
     ButtonLink, Checkbox, ConfiguredApiCard, ContextMenu, Divider, DividerColor, DropdownMenu,
@@ -46,28 +45,6 @@ pub(crate) fn render_llm_providers_page(
                 .collect::<Vec<_>>(),
         )
         .into_any_element()
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CompatibleProviderKind {
-    OpenAi,
-    Anthropic,
-}
-
-impl CompatibleProviderKind {
-    fn label(self) -> &'static str {
-        match self {
-            Self::OpenAi => "OpenAI",
-            Self::Anthropic => "Anthropic",
-        }
-    }
-
-    fn default_api_url(self) -> &'static str {
-        match self {
-            Self::OpenAi => "https://api.openai.com/v1",
-            Self::Anthropic => "https://api.anthropic.com",
-        }
-    }
 }
 
 pub(crate) fn render_add_llm_provider_popover(
@@ -109,27 +86,7 @@ pub(crate) fn render_add_llm_provider_popover(
                         move |window, cx| {
                             settings_window
                                 .update(cx, |this, cx| {
-                                    open_llm_provider_form(
-                                        this,
-                                        CompatibleProviderKind::OpenAi,
-                                        window,
-                                        cx,
-                                    );
-                                })
-                                .log_err();
-                        }
-                    })
-                    .entry("Anthropic", None, {
-                        let settings_window = settings_window;
-                        move |window, cx| {
-                            settings_window
-                                .update(cx, |this, cx| {
-                                    open_llm_provider_form(
-                                        this,
-                                        CompatibleProviderKind::Anthropic,
-                                        window,
-                                        cx,
-                                    );
+                                    open_llm_provider_form(this, window, cx);
                                 })
                                 .log_err();
                         }
@@ -522,7 +479,6 @@ fn get_or_create_configuration_view(
 }
 
 pub(crate) struct LlmProviderForm {
-    kind: CompatibleProviderKind,
     provider_name: Entity<Editor>,
     api_url: Entity<Editor>,
     api_key: Entity<Editor>,
@@ -531,15 +487,10 @@ pub(crate) struct LlmProviderForm {
 }
 
 impl LlmProviderForm {
-    fn new(
-        kind: CompatibleProviderKind,
-        window: &mut Window,
-        cx: &mut Context<SettingsWindow>,
-    ) -> Self {
+    fn new(window: &mut Window, cx: &mut Context<SettingsWindow>) -> Self {
         Self {
-            kind,
-            provider_name: new_input(kind.label(), None, false, window, cx),
-            api_url: new_input(kind.default_api_url(), None, false, window, cx),
+            provider_name: new_input("OpenAI", None, false, window, cx),
+            api_url: new_input("https://api.openai.com/v1", None, false, window, cx),
             api_key: new_input(
                 "000000000000000000000000000000000000000000000000",
                 None,
@@ -627,13 +578,12 @@ fn new_input(
 
 fn open_llm_provider_form(
     settings_window: &mut SettingsWindow,
-    kind: CompatibleProviderKind,
     window: &mut Window,
     cx: &mut Context<SettingsWindow>,
 ) {
-    settings_window.llm_provider_form = Some(LlmProviderForm::new(kind, window, cx));
+    settings_window.llm_provider_form = Some(LlmProviderForm::new(window, cx));
     settings_window.push_dynamic_sub_page(
-        format!("Add {}-Compatible Provider", kind.label()),
+        "Add OpenAI-Compatible Provider",
         "Agent Configuration",
         Some("llm_providers"),
         true,
@@ -664,14 +614,9 @@ fn render_llm_provider_form_page(
                 .pb_16()
                 .gap_4()
                 .overflow_y_scroll()
-                .child(Label::new(match form.kind {
-                    CompatibleProviderKind::OpenAi => {
-                        "This provider will use an OpenAI-compatible API."
-                    }
-                    CompatibleProviderKind::Anthropic => {
-                        "This provider will use an Anthropic Messages-compatible API."
-                    }
-                }))
+                .child(Label::new(
+                    "This provider will use an OpenAI-compatible API.",
+                ))
                 .child(Divider::horizontal().flex_shrink_0())
                 .child(render_form_field(
                     "Provider Name",
@@ -783,12 +728,11 @@ fn render_models_section(
                 ),
         )
         .children(form.models.iter().enumerate().map(|(index, model)| {
-            render_model(form.kind, model, index, form.models.len(), window, cx)
+            render_model(model, index, form.models.len(), window, cx)
         }))
 }
 
 fn render_model(
-    kind: CompatibleProviderKind,
     model: &ModelInput,
     index: usize,
     model_count: usize,
@@ -809,14 +753,12 @@ fn render_model(
             &model.name,
             cx,
         ))
-        .when(matches!(kind, CompatibleProviderKind::OpenAi), |this| {
-            this.child(render_form_field(
-                "Max Completion Tokens",
-                "Maximum completion tokens for OpenAI-compatible requests.",
-                &model.max_completion_tokens,
-                cx,
-            ))
-        })
+        .child(render_form_field(
+            "Max Completion Tokens",
+            "Maximum completion tokens for OpenAI-compatible requests.",
+            &model.max_completion_tokens,
+            cx,
+        ))
         .child(render_form_field(
             "Max Output Tokens",
             "The maximum number of tokens the model can output.",
@@ -829,7 +771,7 @@ fn render_model(
             &model.max_tokens,
             cx,
         ))
-        .child(render_model_capabilities(kind, model, index, window, cx))
+        .child(render_model_capabilities(model, index, window, cx))
         .when(model_count > 1, |this| {
             this.child(
                 Button::new(("remove-model", index), "Remove Model")
@@ -855,7 +797,6 @@ fn render_model(
 }
 
 fn render_model_capabilities(
-    kind: CompatibleProviderKind,
     model: &ModelInput,
     index: usize,
     window: &mut Window,
@@ -879,66 +820,64 @@ fn render_model_capabilities(
             |model, state| model.supports_images = state,
             cx,
         ))
-        .when(matches!(kind, CompatibleProviderKind::OpenAi), |this| {
+        .child(render_capability_checkbox(
+            "supports-parallel-tool-calls",
+            index,
+            "Supports parallel_tool_calls",
+            model.supports_parallel_tool_calls,
+            |model, state| model.supports_parallel_tool_calls = state,
+            cx,
+        ))
+        .child(render_capability_checkbox(
+            "supports-prompt-cache-key",
+            index,
+            "Supports prompt_cache_key",
+            model.supports_prompt_cache_key,
+            |model, state| model.supports_prompt_cache_key = state,
+            cx,
+        ))
+        .child(render_capability_checkbox(
+            "supports-chat-completions",
+            index,
+            "Supports /chat/completions",
+            model.supports_chat_completions,
+            |model, state| model.supports_chat_completions = state,
+            cx,
+        ))
+        .when(model.supports_chat_completions.selected(), |this| {
             this.child(render_capability_checkbox(
-                "supports-parallel-tool-calls",
+                "max-tokens-parameter",
                 index,
-                "Supports parallel_tool_calls",
-                model.supports_parallel_tool_calls,
-                |model, state| model.supports_parallel_tool_calls = state,
+                "Uses max_tokens for output limit",
+                model.max_tokens_parameter,
+                |model, state| model.max_tokens_parameter = state,
                 cx,
             ))
-            .child(render_capability_checkbox(
-                "supports-prompt-cache-key",
+        })
+        .child(render_capability_checkbox(
+            "supports-thinking",
+            index,
+            "Supports thinking",
+            model.supports_thinking,
+            |model, state| model.supports_thinking = state,
+            cx,
+        ))
+        .when(model.supports_thinking.selected(), |this| {
+            this.child(render_reasoning_effort_selector(
+                model.reasoning_effort,
                 index,
-                "Supports prompt_cache_key",
-                model.supports_prompt_cache_key,
-                |model, state| model.supports_prompt_cache_key = state,
-                cx,
-            ))
-            .child(render_capability_checkbox(
-                "supports-chat-completions",
-                index,
-                "Supports /chat/completions",
-                model.supports_chat_completions,
-                |model, state| model.supports_chat_completions = state,
+                window,
                 cx,
             ))
             .when(model.supports_chat_completions.selected(), |this| {
                 this.child(render_capability_checkbox(
-                    "max-tokens-parameter",
+                    "interleaved-reasoning",
                     index,
-                    "Uses max_tokens for output limit",
-                    model.max_tokens_parameter,
-                    |model, state| model.max_tokens_parameter = state,
+                    "Preserves thinking in chat history",
+                    model.interleaved_reasoning,
+                    |model, state| model.interleaved_reasoning = state,
                     cx,
                 ))
-            })
-            .child(render_capability_checkbox(
-                "supports-thinking",
-                index,
-                "Supports thinking",
-                model.supports_thinking,
-                |model, state| model.supports_thinking = state,
-                cx,
-            ))
-            .when(model.supports_thinking.selected(), |this| {
-                this.child(render_reasoning_effort_selector(
-                    model.reasoning_effort,
-                    index,
-                    window,
-                    cx,
-                ))
-                .when(model.supports_chat_completions.selected(), |this| {
-                    this.child(render_capability_checkbox(
-                        "interleaved-reasoning",
-                        index,
-                        "Preserves thinking in chat history",
-                        model.interleaved_reasoning,
-                        |model, state| model.interleaved_reasoning = state,
-                        cx,
-                    ))
-                })
             })
         })
 }
@@ -1045,7 +984,6 @@ fn render_form_actions(cx: &mut Context<SettingsWindow>) -> impl IntoElement {
 }
 
 struct LlmProviderFormValues {
-    kind: CompatibleProviderKind,
     provider_name: String,
     api_url: String,
     api_key: String,
@@ -1068,11 +1006,6 @@ struct ModelValues {
     max_tokens_parameter: bool,
 }
 
-enum ParsedModels {
-    OpenAi(Vec<OpenAiCompatibleAvailableModel>),
-    Anthropic(Vec<AnthropicCompatibleAvailableModel>),
-}
-
 fn save_llm_provider_form(
     settings_window: &mut SettingsWindow,
     window: &mut Window,
@@ -1083,7 +1016,6 @@ fn save_llm_provider_form(
             return;
         };
         LlmProviderFormValues {
-            kind: form.kind,
             provider_name: form.provider_name.read(cx).text(cx),
             api_url: form.api_url.read(cx).text(cx),
             api_key: form.api_key.read(cx).text(cx),
@@ -1109,16 +1041,17 @@ fn save_llm_provider_form(
         }
     };
 
-    let (provider_name, api_url, api_key, models) = match validate_llm_provider_form(&values, cx) {
-        Ok(value) => value,
-        Err(error) => {
-            if let Some(form) = settings_window.llm_provider_form.as_mut() {
-                form.error = Some(error);
+    let (provider_name, api_url, api_key, available_models) =
+        match validate_llm_provider_form(&values, cx) {
+            Ok(value) => value,
+            Err(error) => {
+                if let Some(form) = settings_window.llm_provider_form.as_mut() {
+                    form.error = Some(error);
+                }
+                cx.notify();
+                return;
             }
-            cx.notify();
-            return;
-        }
-    };
+        };
 
     let fs = <dyn fs::Fs>::global(cx);
     cx.spawn_in(window, async move |this, cx| {
@@ -1127,34 +1060,17 @@ fn save_llm_provider_form(
             let settings_update = cx.update(|_window, cx| {
                 settings::update_settings_file_with_completion(fs, cx, move |settings, _cx| {
                     let language_models = settings.language_models.get_or_insert_default();
-                    match models {
-                        ParsedModels::OpenAi(available_models) => {
-                            language_models
-                                .openai_compatible
-                                .get_or_insert_default()
-                                .insert(
-                                    Arc::from(provider_name.as_str()),
-                                    OpenAiCompatibleSettingsContent {
-                                        api_url: api_url.clone(),
-                                        available_models,
-                                        custom_headers: None,
-                                    },
-                                );
-                        }
-                        ParsedModels::Anthropic(available_models) => {
-                            language_models
-                                .anthropic_compatible
-                                .get_or_insert_default()
-                                .insert(
-                                    Arc::from(provider_name.as_str()),
-                                    AnthropicCompatibleSettingsContent {
-                                        api_url: api_url.clone(),
-                                        available_models,
-                                        custom_headers: None,
-                                    },
-                                );
-                        }
-                    }
+                    language_models
+                        .openai_compatible
+                        .get_or_insert_default()
+                        .insert(
+                            Arc::from(provider_name.as_str()),
+                            OpenAiCompatibleSettingsContent {
+                                api_url: api_url.clone(),
+                                available_models,
+                                custom_headers: None,
+                            },
+                        );
                 })
             })?;
 
@@ -1199,7 +1115,7 @@ fn save_llm_provider_form(
 fn validate_llm_provider_form(
     values: &LlmProviderFormValues,
     cx: &App,
-) -> Result<(String, String, String, ParsedModels), SharedString> {
+) -> Result<(String, String, String, Vec<OpenAiCompatibleAvailableModel>), SharedString> {
     let provider_name = values.provider_name.clone();
     if provider_name.is_empty() {
         return Err("Provider Name cannot be empty".into());
@@ -1226,32 +1142,16 @@ fn validate_llm_provider_form(
         return Err("API Key cannot be empty".into());
     }
 
-    let models = match values.kind {
-        CompatibleProviderKind::OpenAi => ParsedModels::OpenAi(
-            values
-                .models
-                .iter()
-                .map(parse_open_ai_model)
-                .collect::<Result<Vec<_>, _>>()?,
-        ),
-        CompatibleProviderKind::Anthropic => ParsedModels::Anthropic(
-            values
-                .models
-                .iter()
-                .map(parse_anthropic_model)
-                .collect::<Result<Vec<_>, _>>()?,
-        ),
-    };
+    let models = values
+        .models
+        .iter()
+        .map(parse_open_ai_model)
+        .collect::<Result<Vec<_>, _>>()?;
 
     let mut model_names = HashSet::new();
-    let model_names_are_unique = match &models {
-        ParsedModels::OpenAi(models) => models
-            .iter()
-            .all(|model| model_names.insert(model.name.clone())),
-        ParsedModels::Anthropic(models) => models
-            .iter()
-            .all(|model| model_names.insert(model.name.clone())),
-    };
+    let model_names_are_unique = models
+        .iter()
+        .all(|model| model_names.insert(model.name.clone()));
     if !model_names_are_unique {
         return Err("Model Names must be unique".into());
     }
@@ -1296,102 +1196,9 @@ fn parse_open_ai_model(
     })
 }
 
-fn parse_anthropic_model(
-    model: &ModelValues,
-) -> Result<AnthropicCompatibleAvailableModel, SharedString> {
-    Ok(AnthropicCompatibleAvailableModel {
-        name: parse_model_name(model)?,
-        display_name: None,
-        max_tokens: parse_u64_field(&model.max_tokens, "Max Tokens")?,
-        tool_override: None,
-        max_output_tokens: Some(parse_u64_field(
-            &model.max_output_tokens,
-            "Max Output Tokens",
-        )?),
-        default_temperature: None,
-        extra_beta_headers: Vec::new(),
-        mode: None,
-        capabilities: AnthropicCompatibleModelCapabilities {
-            tools: model.supports_tools,
-            images: model.supports_images,
-            prompt_caching: false,
-        },
-    })
-}
-
 fn parse_u64_field(value: &str, name: &str) -> Result<u64, SharedString> {
     value
         .parse::<u64>()
         .map_err(|_| format!("{name} must be a number").into())
 }
 
-#[cfg(test)]
-mod tests {
-    use gpui::{TestAppContext, VisualTestContext, size};
-    use language_models::provider::cloud;
-    use settings::SettingsStore;
-
-    use super::*;
-
-    struct YoungAccountProviderRow;
-
-    impl Render for YoungAccountProviderRow {
-        fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-            div().size_full().p_4().child(
-                div()
-                    .w_full()
-                    .debug_selector(|| "provider-row".into())
-                    .child(render_inline_body(
-                        "Zed".into(),
-                        Some("Subscribed to Business".into()),
-                        Some(InlineDescription::Text(
-                            "You have access to Zed's hosted models through your organization."
-                                .into(),
-                        )),
-                        cloud::test_support::young_account_configuration(),
-                    )),
-            )
-        }
-    }
-
-    #[gpui::test]
-    fn young_account_configuration_stays_within_provider_row(cx: &mut TestAppContext) {
-        cx.update(|cx| {
-            let settings_store = SettingsStore::test(cx);
-            cx.set_global(settings_store);
-            theme::init(theme::LoadThemes::JustBase, cx);
-            theme_settings::init(theme::LoadThemes::JustBase, cx);
-        });
-
-        for width in [500., 600., 800.] {
-            let window = cx.open_window(size(px(width), px(400.)), |_window, _cx| {
-                YoungAccountProviderRow
-            });
-            cx.run_until_parked();
-
-            let mut visual_context = VisualTestContext::from_window(window.into(), cx);
-            let provider_row_bounds = visual_context
-                .debug_bounds("provider-row")
-                .expect("provider row should be rendered");
-            let description_bounds = visual_context
-                .debug_bounds("inline-provider-description")
-                .expect("provider description should be rendered");
-            let configuration_bounds = visual_context
-                .debug_bounds("zed-ai-configuration")
-                .expect("Zed AI configuration should be rendered");
-
-            assert!(
-                configuration_bounds.right() <= provider_row_bounds.right(),
-                "young account configuration extends past the provider row at {width}px"
-            );
-            assert!(
-                configuration_bounds.size.height >= px(80.),
-                "young account warning does not wrap at {width}px"
-            );
-            assert!(
-                description_bounds.size.width >= px(width / 3.),
-                "provider description collapsed at {width}px"
-            );
-        }
-    }
-}

@@ -9,11 +9,11 @@ graph TB
     A[用户在 Editor 输入/停顿] --> B[EditPredictionStore 收集上下文]
     B --> C[edit_prediction_context 采集 buffer/worktree/最近快照]
     C --> D{Provider?}
-    D -->|Zeta 云| E[zeta.rs: zeta2_prompt_input]
+    D -->|Zeta 云（已移除 · 历史）| E[zeta.rs: zeta2_prompt_input]
     D -->|本地/兼容| F[fim.rs / sweep_prompt.rs 构造提示]
     E --> G[调用 LanguageModel 推理]
     F --> G
-    G --> H[解析响应: udiff.rs / open_ai_response.rs]
+    G --> H[解析响应: udiff.rs]
     H --> I[compute_edits → EditPrediction 列表]
     I --> J[edit_prediction_ui 呈现 ghost text]
     J --> K{Tab 接受 / Esc 拒绝}
@@ -33,14 +33,14 @@ graph TB
 | `EditPrediction::new_rejected` | [L108](../crates/edit_prediction/src/prediction.rs) | 构造"已拒绝"记录（用于指标） |
 | `EditPrediction::interpolate` | [L152](../crates/edit_prediction/src/prediction.rs) | 锚点随 buffer 更新做位置插值 |
 | `EditPrediction::targets_buffer` | [L159](../crates/edit_prediction/src/prediction.rs) | 判断预测是否命中该 buffer |
-| `enum EditPredictionProvider` | [`settings_content/src/language.rs:92`](../crates/settings_content/src/language.rs) | 提供方选择（Zed/Ollama/OpenAI 兼容 API；未知值回落 `None`） |
+| `enum EditPredictionProvider` | [`settings_content/src/language.rs:92`](../crates/settings_content/src/language.rs) | 提供方选择（Ollama/OpenAI 兼容 API；`zed`/云端选项已移除 · 历史，未知值回落 `None`） |
 
 ## 3. 提示构造：多种策略并存
 
-- **Zeta（Zed 自研云模型）**：[`zeta.rs`](../crates/edit_prediction/src/zeta.rs) —— `zeta2_prompt_input`（[L787](../crates/edit_prediction/src/zeta.rs)）组装结构化输入；`compute_edits`（[L885](../crates/edit_prediction/src/zeta.rs)）/ `compute_edits_and_cursor_position`（[L894](../crates/edit_prediction/src/zeta.rs)）把模型输出折成 buffer 编辑。提示模板由 [`zeta_prompt`](../crates/zeta_prompt) crate 生成。
+- **Zeta（Zed 自研云模型，云端推理已移除 · 历史；下述 prompt 机械仍在）**：[`zeta.rs`](../crates/edit_prediction/src/zeta.rs) —— `zeta2_prompt_input`（[L787](../crates/edit_prediction/src/zeta.rs)）组装结构化输入；`compute_edits`（[L885](../crates/edit_prediction/src/zeta.rs)）/ `compute_edits_and_cursor_position`（[L894](../crates/edit_prediction/src/zeta.rs)）把模型输出折成 buffer 编辑。提示模板由 [`zeta_prompt`](../crates/zeta_prompt) crate 生成。
 - **FIM（Fill-In-Middle）**：[`fim.rs`](../crates/edit_prediction/src/fim.rs) —— `request_prediction`（[L26](../crates/edit_prediction/src/fim.rs)）、`infer_prompt_format`（[L170](../crates/edit_prediction/src/fim.rs)）按模型推断 `<prefix>/<suffix>` 标记格式。
 - **Sweep**：[`sweep_prompt.rs`](../crates/edit_prediction/src/sweep_prompt.rs) —— `request_prediction`（[L46](../crates/edit_prediction/src/sweep_prompt.rs)）、`build_prompt`（[L207](../crates/edit_prediction/src/sweep_prompt.rs)）。
-- **OpenAI 兼容后端**：[`open_ai_compatible.rs`](../crates/edit_prediction/src/open_ai_compatible.rs)（`open_ai_compatible_api_url` L9、token 管理 L27-52）、响应解析 [`open_ai_response.rs`](../crates/edit_prediction/src/open_ai_response.rs)（`text_from_response`）。
+- **OpenAI 兼容后端**：[`open_ai_compatible.rs`](../crates/edit_prediction/src/open_ai_compatible.rs)（`open_ai_compatible_api_url` L9、token 管理 L27-52）。（响应解析模块 `open_ai_response.rs` 已移除 · 历史）
 
 ## 4. 多文件 diff 与许可门控
 

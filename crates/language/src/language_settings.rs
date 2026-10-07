@@ -497,8 +497,6 @@ pub struct EditPredictionSettings {
     pub ollama: Option<OpenAiCompatibleEditPredictionSettings>,
     /// Settings specific to using custom OpenAI-compatible servers for edit prediction.
     pub open_ai_compatible_api: Option<OpenAiCompatibleEditPredictionSettings>,
-    /// Settings specific to Zed's Edit Predictions provider.
-    pub zed: ZedEditPredictionSettings,
     /// Controls whether training data collection is enabled.
     ///
     /// `Default` means the value stored in the legacy KV store is used as a fallback,
@@ -530,7 +528,6 @@ impl EditPredictionSettings {
                 .open_ai_compatible_api
                 .as_ref()
                 .map_or_else(DelayMs::default, |settings| settings.prediction_debounce),
-            settings::EditPredictionProvider::Zed => self.zed.prediction_debounce,
             settings::EditPredictionProvider::None => DelayMs::default(),
         };
         Duration::from_millis(delay.0)
@@ -538,8 +535,8 @@ impl EditPredictionSettings {
 
     /// Returns the configured debounce delay for the active prediction delegate.
     ///
-    /// The Zed edit-prediction delegate handles multiple settings providers
-    /// (Zed, Ollama, OpenAI-compatible), so it is identified by name
+    /// The edit-prediction delegate handles multiple settings providers
+    /// (Ollama, OpenAI-compatible), so it is identified by name
     /// and then uses the currently configured provider to resolve the delay.
     pub fn debounce_for_delegate(&self, delegate_name: &str) -> Duration {
         match delegate_name {
@@ -553,12 +550,6 @@ impl EditPredictionSettings {
 pub struct DisabledGlob {
     matcher: GlobMatcher,
     is_absolute: bool,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct ZedEditPredictionSettings {
-    /// Automatic prediction debounce delay.
-    pub prediction_debounce: DelayMs,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -904,7 +895,7 @@ impl settings::Settings for AllLanguageSettings {
                 prompt_format: openai_compatible_settings.prompt_format.unwrap().into(),
                 prediction_debounce: openai_compatible_settings.prediction_debounce.unwrap(),
             });
-        let zed_settings = edit_predictions.zed.unwrap();
+
 
         let mut file_types: FxHashMap<Arc<str>, (GlobSet, Vec<String>)> = FxHashMap::default();
 
@@ -944,9 +935,6 @@ impl settings::Settings for AllLanguageSettings {
                 mode: edit_predictions_mode,
                 ollama: ollama_settings,
                 open_ai_compatible_api: openai_compatible_settings,
-                zed: ZedEditPredictionSettings {
-                    prediction_debounce: zed_settings.prediction_debounce.unwrap(),
-                },
                 allow_data_collection: edit_predictions.allow_data_collection.unwrap_or_default(),
             },
             defaults: default_language_settings,

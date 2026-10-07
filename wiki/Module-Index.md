@@ -19,7 +19,7 @@
 > 🔒 **第十四批**：[Misc-Preview-Items](Misc-Preview-Items-Deep-Dive.md)
 > ⌨️ **第十五批**：[Keymap&Navigation](Keymap-and-Navigation-Deep-Dive.md) · [Copilot-Stack](Copilot-Stack-Deep-Dive.md)
 > 🎨 **第十六批**：[CLI&Packaging](CLI-and-Packaging-Deep-Dive.md) · [Selectors&Themes](Selectors-and-Themes-Misc-Deep-Dive.md)
-> 🧪 **第十七批**：[Tooling&Evals&Benchmarks](Tooling-Evals-Benchmarks-Deep-Dive.md) · [Web&Search](Web-Search-Deep-Dive.md)
+> 🧪 **第十七批**：[Tooling&Evals&Benchmarks](Tooling-Evals-Benchmarks-Deep-Dive.md)
 
 ## 1. 应用入口与打包
 | Crate | 职责 | 覆盖 |
@@ -158,7 +158,7 @@
 | `prompt_store` | 提示词模板引擎与存储 | 🔧 [Agent-and-AI](Agent-and-AI.md) / **📘[Deep](Agent-Skills-and-Context-Deep-Dive.md)** |
 | `zeta_prompt` | 编辑预测提示构造 | 🔧 [Agent-and-AI](Agent-and-AI.md) |
 | `activity_indicator` | 活动/加载指示（token/请求计数） | ⏳ |
-| `ai_onboarding` | AI 首次配置引导 | ⏳ |
+| `ai_onboarding`（已移除 · 历史） | AI 首次配置引导 | ⏳ |
 
 ## 11. 模型 Provider 与云 API
 | Crate | 职责 | 覆盖 |
@@ -167,10 +167,10 @@
 | `language_model_core` | 模型基础类型（事件/用量/工具调用） | ✅ [Agent-and-AI](Agent-and-AI.md) |
 | `language_models` | 各 provider 装配 | ✅ [Agent-and-AI](Agent-and-AI.md) |
 | `language_models_cloud` | Zed 云托管模型目录 | 🔧 [Agent-and-AI](Agent-and-AI.md) |
-| `anthropic`/`open_ai`/`openai_subscribed`（已移除）/`codestral`（已移除）/`mistral`（已移除）/`deepseek`/`google_ai`/`bedrock`（已移除）/`x_ai`（已移除）/`ollama`/`open_router`（已移除）/`llama_cpp`/`lmstudio`/`opencode`（已移除） | 各厂商 HTTP 客户端 | ✅ [Agent-and-AI](Agent-and-AI.md) / **📘[Deep](Model-Providers-Deep-Dive.md)** |
+| `anthropic`（已移除 · 历史）/`open_ai`/`openai_subscribed`（已移除）/`codestral`（已移除）/`mistral`（已移除）/`deepseek`/`google_ai`（已移除 · 历史）/`bedrock`（已移除）/`x_ai`（已移除）/`ollama`/`open_router`（已移除）/`llama_cpp`/`lmstudio`/`opencode`（已移除） | 各厂商 HTTP 客户端 | ✅ [Agent-and-AI](Agent-and-AI.md) / **📘[Deep](Model-Providers-Deep-Dive.md)** |
 | `aws_http_client`（已移除 · 历史） | 原 AWS SigV4 签名 HTTP（Bedrock）；该 crate 仅适配传输，SigV4 由 aws-config/aws-sigv4 完成 | **📘[Deep](Model-Providers-Deep-Dive.md)** |
-| `cloud_llm_client` / `cloud_api_client` / `cloud_api_types` | Zed 云 LLM/API 协议 | **📘[Deep](Model-Providers-Deep-Dive.md)** |
-| `web_search` / `web_search_providers` | 联网搜索工具（Agent 用） | **📘[Deep](Web-Search-Deep-Dive.md)** |
+| `cloud_llm_client` / `cloud_api_client` / `cloud_api_types`（已移除 · 历史） | Zed 云 LLM/API 协议 | **📘[Deep](Model-Providers-Deep-Dive.md)** |
+| `web_search` / `web_search_providers`（已移除 · 历史） | 联网搜索工具（Agent 用）；随 batch-1 整体删除 | |
 
 ## 12. Copilot
 | Crate | 职责 | 覆盖 |
@@ -194,12 +194,12 @@
 | `client` | `Client`/用户/项目 RPC | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `collab`（已移除） | 协作服务器（独立二进制） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `collab_ui`（已移除） | 协作面板/频道视图/通知 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
-| `channel` | 频道存储/共享笔记 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
+| `channel`（已移除 · 历史） | 频道存储/共享笔记 | ✅ [Channels-and-Collab-UI](Channels-and-Collab-UI.md) / **📘[Deep](Collab-Deep-Dive.md)** |
 | `proto` | protobuf 消息定义 | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) |
 | `call`（已移除） | 通话/房间（`ActiveCall`/`Room`/`toggle_mute`/`share_screen`） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
 | `livekit_api` / `livekit_client`（已移除） | 音视频 SFU（含 mock 路径） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
 | `audio` | 音效/音频管线（cpal/rodio） | ✅ [Collaboration-and-Call](Collaboration-and-Call.md) / **📘[Deep](Call-and-Voice-Deep-Dive.md)** |
-| `notifications` | 系统通知 | 🔧 [Channels-and-Collab-UI](Channels-and-Collab-UI.md) |
+| `notifications` | 系统通知（仅 `status_toast`；`notification_store` 已移除 · 历史） | 🔧 [Channels-and-Collab-UI](Channels-and-Collab-UI.md) |
 | `askpass` | 凭据口令弹窗（AskPassSession/PasswordProxy/EncryptedPassword） | ⏳ |
 | `credentials_provider` / `zed_credentials_provider` | 凭据存储抽象与实现 | ⏳ |
 | `oauth_callback_server` | OAuth 回调本地服务 | ⏳ |
@@ -304,6 +304,6 @@
 - ✅ G10 **工具/评测/基准/基础库** → [Tooling-Evals-Utilities.md](Tooling-Evals-Utilities.md)
 
 ### 仍可按需继续细分的方向（如后续需要）
-- 每个模型 provider crate（`anthropic`/`ollama`/`bedrock`（已移除）…）的**逐方法** HTTP 细节；
+- 每个模型 provider crate（`anthropic`（已移除 · 历史）/`ollama`/`bedrock`（已移除）…）的**逐方法** HTTP 细节；
 - `languages`/`grammars` 各内置语言的 config/queries 明细；
 - `extension_api` 的 wit ABI 与宿主 proxy 全方法表。

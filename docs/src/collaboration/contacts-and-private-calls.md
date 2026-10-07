@@ -5,6 +5,8 @@ description: "Add contacts and start private collaboration sessions in Zed."
 
 # Contacts and Private Calls {#contacts}
 
+> **Removed in this fork.** Contacts, private calls, and the collaboration server were removed. `UserStore` is a local stub that never signs in. This page is kept for historical reference.
+
 Private calls provide ad-hoc collaboration sessions outside of channels. Add contacts to your list and start calls with one or more people.
 
 ## Adding a Contact

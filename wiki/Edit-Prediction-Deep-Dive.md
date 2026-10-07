@@ -58,7 +58,7 @@ graph TB
 - `fim.rs`（11KB）：fill-in-middle prompt 格式化（`EditPredictionPromptFormat`）
 - `sweep_prompt.rs`（18KB）：sweep 实验 prompt 组装
 - `ollama.rs`（5KB）：本地 Ollama 推理后端
-- `open_ai_compatible.rs` / `open_ai_response.rs`：OpenAI 兼容端点
+- `open_ai_compatible.rs`：OpenAI 兼容端点（`open_ai_response.rs` 已移除 · 历史）
 - `udiff.rs`（31KB）：`edits_for_diff`(299) 把模型返回的 unified diff 解析为缓冲编辑；`OpenedBuffers`(28)
 - `cursor_excerpt.rs`（22KB）：光标周边摘录；`license_detection.rs`（31KB）：生成片段许可证/代码匹配检测；`data_collection.rs`（15KB）：训练数据同意与上报；`example_spec.rs`：评测样例
 
@@ -96,7 +96,7 @@ graph TB
 ## 7. 配置 / 集成
 
 - 设置：`EditPredictionSettings`（`crates/language/src/language_settings.rs:487`），`PredictEditsMode`。
-- 依赖：`zeta_prompt`（vendor prompt/事件）、`cloud_llm_client`/`telemetry`、`edit_prediction_context`、`gpui`/`language`/`editor`。
+- 依赖（`cloud_llm_client` 已移除 · 历史）：`zeta_prompt`（vendor prompt/事件）、`telemetry`、`edit_prediction_context`、`gpui`/`language`/`editor`。
 - 与 [Agent-Deep-Dive.md](Agent-Deep-Dive.md)（工具型编辑）、[Editor-Deep-Dive.md](Editor-Deep-Dive.md)（内联渲染宿主）协作。
 
 ## 8. 相关页

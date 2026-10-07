@@ -11,26 +11,29 @@ Some subscriptions work as Zed model providers. Others are used through an Exter
 
 | Subscription                  | Zed AI features                                      | External Agent via ACP                | Terminal Thread                | Notes                                                            |
 | ----------------------------- | ---------------------------------------------------- | ------------------------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| Zed Pro, Business, or Student | [Zed-hosted models](../account/zed-hosted-models.md) | No                                    | No                             | Billed through Zed                                               |
-| ChatGPT Plus / Pro            | ChatGPT Subscription                                 | Codex where supported                 | Codex CLI                      | Sign in with OpenAI in Zed; separate from OpenAI API keys        |
-| Claude Pro / Max              | No direct Zed LLM provider path                      | Claude Agent                          | Claude Code                    | Separate from Anthropic API keys                                 |
+| ChatGPT Plus / Pro            | Removed in this fork                                 | Codex where supported                 | Codex CLI                      | Use the Codex harness; it owns the auth                          |
+| Claude Pro / Max              | No direct Zed LLM provider path                      | Claude Agent                          | Claude Code                    | Anthropic provider removed from this fork                        |
 | GitHub Copilot                | No direct Zed LLM provider path                      | Copilot agent where available         | CLI where available            | Requires Copilot agent or CLI auth                               |
 | OpenCode Zen / Go             | No direct Zed LLM provider path                      | OpenCode agent where available        | `opencode` CLI                 | Requires OpenCode agent or CLI; Zed does not sign in to OpenCode |
 | Cursor subscription           | No Zed LLM provider path                             | Cursor External Agent where available | Cursor CLI/TUI where available | Use agent/CLI paths instead of Zed LLM provider settings         |
 
+Zed Pro, Business, and Student plans, and the Zed-hosted models they unlocked,
+were removed from this fork. So was the ChatGPT subscription provider: in this
+fork Zed does not sign in to OpenAI either.
+
 ## ChatGPT Plus / Pro {#chatgpt}
 
-ChatGPT Plus and Pro can be used through Zed's ChatGPT Subscription provider. Sign in with OpenAI in Zed; no separate OpenAI API key is required.
+ChatGPT Plus and Pro are only usable through the Codex harness (External Agent
+or CLI), which owns its own auth. There is no ChatGPT subscription provider in
+Zed in this fork.
 
 OpenAI API access is separate. If you have OpenAI API credits or API billing, use [Use API Access](./use-api-access.md#openai).
 
 ## Claude Pro / Max {#claude}
 
-Claude Pro and Max subscriptions are separate from Anthropic API credits. Use Claude Agent or Claude Code where supported if you want subscription-backed Claude behavior.
-
-For Anthropic API access, use [Use API Access](./use-api-access.md#anthropic).
-
-See [What Anthropic's New Claude Billing Means for Zed Users](https://zed.dev/blog/anthropic-subscription-changes) for more context.
+Claude Pro and Max subscriptions are separate from Anthropic API credits. The
+Anthropic provider was removed from this fork, so the only way to use Claude
+subscription limits is Claude Agent or Claude Code.
 
 ## GitHub Copilot {#github-copilot}
 

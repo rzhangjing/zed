@@ -172,8 +172,6 @@ impl Manager {
                                 } else {
                                     remaining_attempts -= 1;
                                 }
-                            } else if client_status.borrow().is_signed_out() {
-                                return false;
                             }
 
                             log::info!(

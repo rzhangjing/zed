@@ -1,6 +1,6 @@
 # Model Providers（模型 Provider 全厂商详解）
 
-本页深挖 [Agent-and-AI.md](Agent-and-AI.md) 中"模型接入"这一层的完整实现：核心 trait 在 [`language_model`](../crates/language_model)，各厂商 provider 在 [`language_models/src/provider`](../crates/language_models/src/provider)，具体 HTTP 客户端各自独立 crate（`anthropic`/`open_ai`/`ollama`…；`bedrock`、`mistral`、`x_ai`、`open_router`、`opencode`、`openai_subscribed` 已移除）。
+本页深挖 [Agent-and-AI.md](Agent-and-AI.md) 中"模型接入"这一层的完整实现：核心 trait 在 [`language_model`](../crates/language_model)，各厂商 provider 在 [`language_models/src/provider`](../crates/language_models/src/provider)，具体 HTTP 客户端各自独立 crate（`open_ai`/`ollama`/`deepseek`/`lmstudio`/`llama_cpp`/`*_compatible`；`anthropic`、`google_ai`、`cloud_llm_client`、`bedrock`、`mistral`、`x_ai`、`open_router`、`opencode`、`openai_subscribed`、`copilot_chat` 已移除）。
 
 ## 1. 两大抽象
 
@@ -37,14 +37,14 @@ graph TB
 
 | Provider 模块 | 文件 | 对应 HTTP crate | 鉴权 |
 |---|---|---|---|
-| Anthropic | [anthropic.rs](../crates/language_models/src/provider/anthropic.rs) | `anthropic` | API key |
-| Anthropic 兼容 | [anthropic_compatible.rs](../crates/language_models/src/provider/anthropic_compatible.rs) | `anthropic` | base_url + key |
+| Anthropic（已移除 · 历史） | ~~anthropic.rs~~ | `anthropic` | API key |
+| Anthropic 兼容（已移除 · 历史） | ~~anthropic_compatible.rs~~ | `anthropic` | base_url + key |
 | OpenAI | [open_ai.rs](../crates/language_models/src/provider/open_ai.rs) | `open_ai` | API key |
 | OpenAI 兼容 | [open_ai_compatible.rs](../crates/language_models/src/provider/open_ai_compatible.rs) | `open_ai` | base_url + key |
 | OpenAI 订阅（已移除 · 历史） | [openai_subscribed.rs](../crates/language_models/src/provider/openai_subscribed.rs) | `openai_subscribed` | ChatGPT 账户 OAuth |
 | Mistral（已移除 · 历史） | [mistral.rs](../crates/language_models/src/provider/mistral.rs) | `mistral` | API key |
 | DeepSeek | [deepseek.rs](../crates/language_models/src/provider/deepseek.rs) | `deepseek` | API key |
-| Google (Gemini) | [google.rs](../crates/language_models/src/provider/google.rs) | `google_ai` | API key |
+| Google (Gemini)（已移除 · 历史） | ~~google.rs~~ | `google_ai` | API key |
 | Bedrock（已移除 · 历史） | [bedrock.rs](../crates/language_models/src/provider/bedrock.rs) (~149KB) | `bedrock` + `aws_http_client` | SigV4/region |
 | xAI（已移除 · 历史） | [x_ai.rs](../crates/language_models/src/provider/x_ai.rs) | `x_ai` | API key |
 | Codestral（已移除 · 历史） | （mistral 系，`codestral` crate 已删除）| `codestral` | API key |
@@ -54,8 +54,8 @@ graph TB
 | OpenRouter（已移除 · 历史） | [open_router.rs](../crates/language_models/src/provider/open_router.rs) | `open_router` | API key |
 | Vercel AI Gateway（已移除 · 历史） | [vercel_ai_gateway.rs](../crates/language_models/src/provider/vercel_ai_gateway.rs) | — | API key |
 | opencode（已移除 · 历史） | [opencode.rs](../crates/language_models/src/provider/opencode.rs) | `opencode` | 账户 |
-| Copilot Chat | [copilot_chat.rs](../crates/language_models/src/provider/copilot_chat.rs) | `copilot_chat` | GitHub 授权 |
-| Zed Cloud | [cloud.rs](../crates/language_models/src/provider/cloud.rs) | `cloud_llm_client` | Zed 账号 |
+| Copilot Chat（已移除 · 历史） | ~~copilot_chat.rs~~ | `copilot_chat` | GitHub 授权 |
+| Zed Cloud（已移除 · 历史） | ~~cloud.rs~~ | `cloud_llm_client` | 原 Zed 账号 |
 | 通用 API 兼容 | [api_compatible.rs](../crates/language_models/src/provider/api_compatible.rs) | — | 自定义 |
 
 ## 4. 自定义请求头与兼容层

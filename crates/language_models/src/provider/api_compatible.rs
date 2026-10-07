@@ -189,9 +189,6 @@ impl<S: ApiCompatibleProviderSettings> ApiCompatibleProviderConfigurationView<S>
             if let Some(providers) = language_models.openai_compatible.as_mut() {
                 providers.remove(id.as_ref());
             }
-            if let Some(providers) = language_models.anthropic_compatible.as_mut() {
-                providers.remove(id.as_ref());
-            }
         });
     }
 

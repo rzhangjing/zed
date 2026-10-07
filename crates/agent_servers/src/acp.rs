@@ -3546,13 +3546,13 @@ mod tests {
         connection.defaults.set(
             None,
             HashMap::from_iter([(
-                "web_search".to_string(),
+                "example_toggle".to_string(),
                 AgentConfigOptionValue::Boolean(true),
             )]),
         );
         let config_options = Rc::new(RefCell::new(vec![acp::SessionConfigOption::boolean(
-            "web_search",
-            "Web Search",
+            "example_toggle",
+            "Example Toggle",
             false,
         )]));
 
@@ -3571,7 +3571,7 @@ mod tests {
         assert_eq!(requests.len(), 1);
         assert_eq!(
             requests[0].config_id,
-            acp::SessionConfigId::new("web_search")
+            acp::SessionConfigId::new("example_toggle")
         );
         assert_eq!(
             requests[0].value,

@@ -12,11 +12,10 @@ use editor::{
 };
 use futures::{AsyncReadExt as _, FutureExt as _, future::Shared};
 use gpui::{
-    AppContext, ClipboardEntry, Context, Empty, Entity, EntityId, Image, ImageFormat, Img,
+    AppContext, Context, Empty, Entity, EntityId, Image, ImageFormat, Img,
     SharedString, Task, WeakEntity,
 };
 use http_client::{AsyncBody, HttpClientWithUrl};
-use itertools::Either;
 use language::Buffer;
 use language_model::{LanguageModelImage, LanguageModelImageExt};
 use multi_buffer::MultiBufferRow;
@@ -179,10 +178,6 @@ impl MentionSet {
         self.recompute_disambiguation(cx);
     }
 
-    pub fn creases(&self) -> HashSet<CreaseId> {
-        self.mentions.keys().cloned().collect()
-    }
-
     pub fn is_empty(&self) -> bool {
         self.mentions.is_empty()
     }
@@ -203,12 +198,6 @@ impl MentionSet {
         let (uri, task) = self.mentions.get(crease_id)?;
         let mention = task.clone().now_or_never().and_then(|result| result.ok());
         Some((uri.clone(), mention))
-    }
-
-    pub fn set_mentions(&mut self, mentions: HashMap<CreaseId, (MentionUri, MentionTask)>) {
-        self.crease_entities
-            .retain(|id, _| mentions.contains_key(id));
-        self.mentions = mentions;
     }
 
     pub fn clear(&mut self) -> impl Iterator<Item = (CreaseId, (MentionUri, MentionTask))> {
@@ -1029,56 +1018,6 @@ pub(crate) fn load_external_image_from_path(
         .unwrap_or_else(|| default_name.clone());
 
     Some((Image::from_bytes(format, content), name))
-}
-
-pub(crate) fn paste_images_as_context(
-    editor: Entity<Editor>,
-    mention_set: Entity<MentionSet>,
-    workspace: WeakEntity<Workspace>,
-    window: &mut Window,
-    cx: &mut App,
-) -> Option<Task<()>> {
-    let clipboard = cx.read_from_clipboard()?;
-
-    // Only handle paste if the first clipboard entry is an image or file path.
-    // If text comes first, return None so the caller falls through to text paste.
-    // This respects the priority order set by the source application.
-    if matches!(
-        clipboard.entries().first(),
-        Some(ClipboardEntry::String(_)) | None
-    ) {
-        return None;
-    }
-
-    Some(window.spawn(cx, async move |mut cx| {
-        use itertools::Itertools;
-        let default_name: SharedString = "Image".into();
-        let (mut images, paths): (Vec<(gpui::Image, SharedString)>, Vec<_>) = clipboard
-            .into_entries()
-            .filter_map(|entry| match entry {
-                ClipboardEntry::Image(image) => Some(Either::Left((image, default_name.clone()))),
-                ClipboardEntry::ExternalPaths(paths) => Some(Either::Right(paths)),
-                _ => None,
-            })
-            .partition_map::<Vec<_>, Vec<_>, _, _, _>(std::convert::identity);
-
-        if !paths.is_empty() {
-            images.extend(
-                cx.background_spawn(async move {
-                    paths
-                        .into_iter()
-                        .flat_map(|paths| paths.paths().to_owned())
-                        .filter_map(|path| load_external_image_from_path(&path, &default_name))
-                        .collect::<Vec<_>>()
-                })
-                .await,
-            );
-        }
-
-        if !images.is_empty() {
-            insert_images_as_context(images, editor, mention_set, workspace, &mut cx).await;
-        }
-    }))
 }
 
 pub(crate) fn insert_crease_for_mention(

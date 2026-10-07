@@ -213,14 +213,11 @@ pub struct AgentSettings {
     pub max_content_width: Option<Pixels>,
     pub default_model: Option<LanguageModelSelection>,
     pub subagent_model: Option<LanguageModelSelection>,
-    pub inline_assistant_model: Option<LanguageModelSelection>,
-    pub inline_assistant_use_streaming_tools: bool,
     pub commit_message_model: Option<LanguageModelSelection>,
     pub commit_message_include_project_rules: bool,
     pub commit_message_instructions: Option<String>,
     pub thread_summary_model: Option<LanguageModelSelection>,
     pub compaction_model: Option<LanguageModelSelection>,
-    pub inline_alternatives: Vec<LanguageModelSelection>,
     pub favorite_models: Vec<LanguageModelSelection>,
     pub default_profile: AgentProfileId,
     pub profiles: IndexMap<AgentProfileId, AgentProfileSettings>,
@@ -769,10 +766,6 @@ impl Settings for AgentSettings {
             flexible: agent.flexible.unwrap(),
             default_model: Some(agent.default_model.unwrap()),
             subagent_model: agent.subagent_model,
-            inline_assistant_model: agent.inline_assistant_model,
-            inline_assistant_use_streaming_tools: agent
-                .inline_assistant_use_streaming_tools
-                .unwrap_or(true),
             commit_message_include_project_rules: agent
                 .commit_message_include_project_rules
                 .unwrap(),
@@ -780,7 +773,6 @@ impl Settings for AgentSettings {
             commit_message_instructions: agent.commit_message_instructions,
             thread_summary_model: agent.thread_summary_model,
             compaction_model: agent.compaction_model,
-            inline_alternatives: agent.inline_alternatives.unwrap_or_default(),
             favorite_models: agent.favorite_models,
             default_profile: AgentProfileId(agent.default_profile.unwrap()),
             profiles: agent

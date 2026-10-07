@@ -2,6 +2,7 @@ use std::{ops::Range, sync::Arc, time::Duration};
 
 use client::EditPredictionUsage;
 use gpui::{App, Context, Entity, SharedString};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditPredictionDiscardReason {
@@ -24,6 +25,55 @@ pub enum EditPredictionRequestTrigger {
     SettingsChanged,
     #[default]
     Other,
+}
+
+#[derive(
+    Default, Debug, Clone, Copy, Serialize, Deserialize, strum::AsRefStr, strum::EnumString,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum PredictEditsRequestTrigger {
+    Testing,
+    Diagnostics,
+    DiagnosticNavigation,
+    Cli,
+    Explicit,
+    BufferEdit,
+    LSPCompletionAccepted,
+    PredictionAccepted,
+    PredictionPartiallyAccepted,
+    EditorCreated,
+    ProviderChanged,
+    UserInfoChanged,
+    VimModeChanged,
+    SettingsChanged,
+    #[default]
+    Other,
+}
+
+#[derive(
+    Default, Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, strum::AsRefStr,
+)]
+#[strum(serialize_all = "snake_case")]
+pub enum EditPredictionRejectReason {
+    /// New requests were triggered before this one completed
+    Canceled,
+    /// No edits returned
+    Empty,
+    /// Edits returned, but none remained after interpolation
+    InterpolatedEmpty,
+    /// Edits returned, but could not be interpolated after buffer changes
+    InterpolateFailed,
+    /// A patch was returned, but could not be applied to the buffer
+    PatchApplyFailed,
+    /// The new prediction was preferred over the current one
+    Replaced,
+    /// The current prediction was preferred over the new one
+    CurrentPreferred,
+    /// The current prediction was discarded
+    #[default]
+    Discarded,
+    /// The current prediction was explicitly rejected by the user
+    Rejected,
 }
 
 use icons::IconName;

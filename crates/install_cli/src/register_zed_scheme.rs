@@ -1,5 +1,8 @@
-use client::ZED_URL_SCHEME;
 use gpui::{AsyncApp, actions};
+
+/// URL scheme handled by the `zed://` links this app registers itself for
+/// (for example `zed://agent/shared/<session-id>`).
+pub const ZED_URL_SCHEME: &str = "zed";
 
 actions!(
     cli,

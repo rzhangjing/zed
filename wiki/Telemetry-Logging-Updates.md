@@ -1,4 +1,5 @@
 # Telemetry, Logging & Updates（遥测 / 日志 / 追踪 / 自动更新 / 反馈）
+@@NL@> ⚠️ 已移除 · 历史：本 fork 删除了 `client` 的遥测批量上报（`Telemetry` 仅保留崩溃/安装 id 面）、事件去重器 `event_coalescer.rs`、遥测日志查看器（`zed::OpenTelemetryLog`）。`telemetry::event!` 现在只入队、无消费者，等同 no-op。
 
 覆盖诊断与运维类模块：[`telemetry`](../crates/telemetry) + [`telemetry_events`](../crates/telemetry_events)、[`zlog`](../crates/zlog) + `zlog_settings`、[`ztracing`](../crates/ztracing) + `ztracing_macro`、[`auto_update`](../crates/auto_update)(+helper/ui)、[`feedback`](../crates/feedback)、[`release_channel`](../crates/release_channel)、[`system_specs`](../crates/system_specs)、[`crashes`](../crates/crashes)、[`etw_tracing`](../crates/etw_tracing)。
 
@@ -7,7 +8,7 @@
 ```mermaid
 graph TB
     A[业务代码] -->|telemetry::event!| B[mpsc 队列]
-    B --> C[client::Telemetry 批量上报 HTTP]
+    B --> C["client::Telemetry 批量上报 HTTP（已移除 · 历史）"]
     A -->|log::info!/tracing| D[zlog subscriber]
     D --> E[按 scope 过滤 → 文件/stdout]
     A -->|ztracing span| F[PerformanceLayer → Reporter]
@@ -23,9 +24,9 @@ graph TB
 | `macro event!` | [L22](../crates/telemetry/src/telemetry.rs) | `telemetry::event!("Keymap Changed", version=..)` 构造并入队 |
 | `Event = telemetry_events::FlexibleEvent` | [L5](../crates/telemetry/src/telemetry.rs) | `{ event_type, event_properties: HashMap }` |
 | `send_event` | [L56](../crates/telemetry/src/telemetry.rs) | 投递到 `TELEMETRY_QUEUE`（`OnceLock`） |
-| `init(tx)` | [L62](../crates/telemetry/src/telemetry.rs) | 启动时注入发送端 |
+| `init(tx)` | [L62](../crates/telemetry/src/telemetry.rs) | 启动时注入发送端；本 fork 已无调用方（不再启动上传队列） |
 
-约定事件名 "Noun Verbed"；`event_properties` 走 `serde_json`。真正的批量上传、去重、`current_platform` 等在 `client` 的 `Telemetry`（[Collaboration-and-Call.md](Collaboration-and-Call.md)）。`telemetry_events` crate 定义各结构化事件类型。调试：`RUST_LOG=telemetry=trace`。
+约定事件名 "Noun Verbed"；`event_properties` 走 `serde_json`。真正的批量上传、去重、`current_platform` 原在 `client` 的 `Telemetry`（[Collaboration-and-Call.md](Collaboration-and-Call.md)）；本 fork 已移除 `report_event`/`flush_events`/`build_request`（`POST /telemetry/events` + `x-zed-checksum`）、`event_coalescer`、`report_discovered_project_type_events`、`report_assistant_event`/`log_edit_event` 与日志查看器，仅保留 `should_install_crash_handler`/`os_name`/`os_version`/`diagnostics_enabled`/`system_id`/`installation_id`。`telemetry_events` crate 定义各结构化事件类型。调试：`RUST_LOG=telemetry=trace`。
 
 ## 3. zlog：统一日志
 [`crates/zlog/src`](../crates/zlog/src) —— 自建轻量 `log::Log` 实现（非 env_logger）。

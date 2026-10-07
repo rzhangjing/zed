@@ -5,9 +5,11 @@ description: "Real-time collaboration in Zed: share projects, edit code together
 
 # Collaboration {#collaboration}
 
+> **Removed in this fork.** Channels, contacts, real-time collaboration, and the collaboration server were removed. There is no sign-in, and the Collaboration Panel is gone. This page is kept for historical reference.
+
 Zed supports real-time multiplayer editing. Multiple people can work in the same project simultaneously, seeing each other's cursors and edits as they happen.
 
-Open the Collaboration Panel with {#kb collab_panel::ToggleFocus}. You'll need to [sign in](../authentication.md#signing-in) to access collaboration features.
+Open the Collaboration Panel with {#kb collab_panel::ToggleFocus}.
 
 ## Collaboration Panel {#collaboration-panel}
 

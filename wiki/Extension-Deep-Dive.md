@@ -52,7 +52,7 @@ graph TB
 
 ## 6. dev 与分发
 - 本地开发：`zed --dev-extension` / `extensions_ui` 的 dev 卡片，`RebuildDevExtension` 触发 `extension-builder` 重编。
-- 发布：`crates/extension_cli`（打包/校验 manifest）、cloud 市场（`crates/cloud_api_*`，见 [Model-Providers.md](Model-Providers.md)）。
+- 发布：`crates/extension_cli`（打包/校验 manifest）、cloud 市场（原 `crates/cloud_api_*`，已移除 · 历史，见 [Model-Providers.md](Model-Providers.md)）。
 - 远程（历史）：原 remote server 经 `headless_host` + `ProtoClient` 同步扩展；本 fork 已随远程开发栈一并移除。
 
 ## 7. 相关页

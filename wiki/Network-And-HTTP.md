@@ -6,7 +6,7 @@
 
 ```mermaid
 graph TB
-    A[Model Provider / cloud_api / auto_update / telemetry] --> B[http_client::HttpClient trait]
+    A[Model Provider / auto_update / telemetry] --> B[http_client::HttpClient trait]
     B --> C[reqwest_client::ReqwestClient 生产实现]
     C --> D[reqwest + http_client_tls rustls]
     A --> E[proxy_handshake: CONNECT/认证]

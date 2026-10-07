@@ -1,6 +1,6 @@
 ---
 title: AI Code Completion in Zed - Zeta and Local Models
-description: Set up AI code completions in Zed with Zeta (built-in) or local and self-hosted models. Multi-line predictions as you type.
+description: Set up AI code completions in Zed with Ollama or any OpenAI-compatible endpoint. Multi-line predictions as you type.
 ---
 
 # Edit Prediction
@@ -8,36 +8,15 @@ description: Set up AI code completions in Zed with Zeta (built-in) or local and
 Edit Prediction is how Zed's AI code completions work: an LLM predicts the code you want to write.
 As you type, Zed requests predictions from the edit prediction provider, which returns individual or multi-line suggestions you accept by pressing `tab`.
 
-The default provider is [Zeta, an open source model developed by Zed](https://zed.dev/blog/zeta2), but you can also use [other providers](#other-providers) like Ollama or any server that implements the OpenAI completion API format.
+Prediction is off by default (`"provider": "none"`). Use [Ollama](#ollama) or any server that implements the OpenAI completion API format — see [Other Providers](#other-providers).
+
+This fork has no Zed-hosted edit prediction model, so `"provider": "zed"` (Zeta) and the plan limits that went with it were removed. Zeta survives only as a set of `prompt_format` values you can send to your own model.
 
 For privacy and training data details, see
 [AI Privacy](./privacy-and-security.md) and
 [Feedback and Training Data](./ai-improvement.md#edit-predictions).
 
-## Configuring Zeta
-
-To use Zeta, [sign in](../authentication.md#what-features-require-signing-in).
-Once signed in, predictions appear as you type.
-
-You can confirm that Zeta is properly configured by opening the [Settings Editor](zed://settings/edit_predictions.providers) (`Cmd+,` on macOS or `Ctrl+,` on Linux/Windows) and searching for `edit_predictions`. The `provider` field should be set to `Zed AI`.
-
-Or verify this in your settings.json:
-
-```json [settings]
-{
-  "edit_predictions": {
-    "provider": "zed"
-  }
-}
-```
-
-The Z icon in the status bar also indicates Zeta is active.
-
-### Pricing and Plans
-
-The free plan includes 2,000 Zeta predictions per month. The [Pro plan](../account/plans-and-pricing.md) removes this limit. See [Zed's pricing page](https://zed.dev/pricing) for details.
-
-### Switching Modes {#switching-modes}
+## Switching Modes {#switching-modes}
 
 Edit Prediction has two display modes:
 
@@ -165,7 +144,6 @@ The default debounce depends on the provider:
 
 | Provider              | Default |
 | --------------------- | ------: |
-| Zed                   |    0 ms |
 | Ollama                |    0 ms |
 | OpenAI-compatible API |    0 ms |
 
@@ -353,4 +331,3 @@ Your OpenAI-compatible server must implement the OpenAI `/v1/completions` endpoi
 ## See also
 
 - [Agent Panel](./agent-panel.md): Agentic editing with file read/write and terminal access
-- [Inline Assistant](./inline-assistant.md): Prompt-driven transformations on selected code

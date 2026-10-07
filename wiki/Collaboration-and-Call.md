@@ -2,7 +2,7 @@
 
 > ⚠️ 历史文档：本页描述的 `collab`（协作服务端）/ `call` / `collab_ui` / `livekit_client` / `livekit_api` 已从本 fork 移除（提交 `移除call和remote`）。以下内容仅作参考，代码已不存在。webrtc/LiveKit 轴及其配套的 `no_webrtc` 替身机制也已**彻底移除**：不再有 `--cfg no_webrtc`、没有任何 `libwebrtc` 依赖，也没有 fake AEC。仍在本 fork 的是 `proto` / `rpc` / `client` / `channel` / `audio`。
 
-Zed 的实时能力原有两条链路：**RPC（数据协同）** 走自研 `rpc`/`client`；**音视频/屏幕共享（Call）** 走 `livekit_client` + `audio`。前者仍在本 fork；后者连同用于绕开 webrtc/LiveKit 原生依赖的 `no_webrtc` 替身机制已在本 fork 一并移除。仍在本 fork 的相关 crate：[`proto`](../crates/proto)、[`rpc`](../crates/rpc)、[`client`](../crates/client)、[`channel`](../crates/channel)、[`audio`](../crates/audio)（其中 `audio` 已无 webrtc/AEC 依赖）。
+Zed 的实时能力原有两条链路：**RPC（数据协同）** 走自研 `rpc`/`client`；**音视频/屏幕共享（Call）** 走 `livekit_client` + `audio`。前者仍在本 fork；后者连同用于绕开 webrtc/LiveKit 原生依赖的 `no_webrtc` 替身机制已在本 fork 一并移除。仍在本 fork 的相关 crate：[`proto`](../crates/proto)、[`rpc`](../crates/rpc)、[`client`](../crates/client)、[`audio`](../crates/audio)（其中 `audio` 已无 webrtc/AEC 依赖）。原 `crates/channel` 已随本批删除。
 
 ## 1. 职责划分
 

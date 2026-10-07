@@ -8,7 +8,7 @@ Zed 的 AI 能力分三层：**Provider（厂商接入）** → **LanguageModel�
 |---|---|---|
 | `language_model_core` | 与 UI 无关的基础类型：请求/事件/错误/token 统计、ProviderId 常量 | `LanguageModelCompletionEvent`(`language_model_core.rs:36`)、`TokenUsage`(L511)、`LanguageModelToolUse`(L578)、`StopReason`(L503) |
 | `language_model` | **模型与 Provider 的 trait 抽象**、全局注册表 | `LanguageModel`(`language_model.rs:91`)、`LanguageModelProvider`(L366)、`LanguageModelRegistry`(`registry.rs:46`) |
-| `language_models` | 各厂商 **具体实现**（`provider/` 目录） | `provider/`：`anthropic.rs`、`open_ai.rs`、`ollama.rs`、`bedrock.rs`（已移除）、`cloud.rs`(Zed)、`google.rs`、`mistral.rs`（已移除）、`deepseek.rs`、`x_ai.rs`（已移除）、`open_router.rs`（已移除）、`opencode.rs`（已移除）、`openai_subscribed.rs`（已移除）、`vercel_ai_gateway.rs`（已移除）、`llama_cpp.rs`、`lmstudio.rs`、`copilot_chat.rs` … |
+| `language_models` | 各厂商 **具体实现**（`provider/` 目录） | `provider/`：`anthropic.rs`（已移除 · 历史）、`open_ai.rs`、`ollama.rs`、`bedrock.rs`（已移除）、`cloud.rs`(Zed)（已移除 · 历史）、`google.rs`（已移除 · 历史）、`mistral.rs`（已移除）、`deepseek.rs`、`x_ai.rs`（已移除）、`open_router.rs`（已移除）、`opencode.rs`（已移除）、`openai_subscribed.rs`（已移除）、`vercel_ai_gateway.rs`（已移除）、`llama_cpp.rs`、`lmstudio.rs`、`copilot_chat.rs`（已移除 · 历史）… |
 | `agent` | 对话线程、工具集、权限、沙箱 | `thread.rs`(AcpThread)、`tools/`、`tool_permissions.rs`、`sandboxing.rs` |
 | `acp_thread` | Agent Client Protocol 下的共享会话模型（UI 与后端解耦） | `AcpThread`、`ClientUserMessageId` |
 | `edit_prediction` | 内联编辑预测（next-edit / ghost text） | `EditPredictionStore`(`edit_prediction.rs:158`) |
@@ -71,7 +71,7 @@ graph TB
 | `WriteFileTool` / `ReadFileTool` | `tools/write_file_tool.rs` / `read_file_tool.rs` | 创建/覆盖、读取文件 |
 | `TerminalTool` | `tools/terminal_tool.rs` | 执行 shell 命令 |
 | `GrepTool` / `FindPathTool` / `ListDirectoryTool` | `tools/*` | 内容/路径检索、目录列举 |
-| `FetchTool` / `WebSearchTool` | `tools/fetch_tool.rs` / `web_search_tool.rs` | 抓 URL、联网搜索 |
+| `FetchTool` | `tools/fetch_tool.rs` | 抓 URL（`WebSearchTool` 已移除 · 历史） |
 | `DiagnosticsTool` / `GoToDefinitionTool` / `FindReferencesTool` | `tools/*` | LSP 诊断与代码导航 |
 | `SpawnAgentTool` / `CreateThreadTool` | `tools/spawn_agent_tool.rs` / `create_thread_tool.rs` | 派生子代理 / 兄弟会话 |
 | `SkillTool` | `tools/skill_tool.rs` | 激活 Agent Skills |

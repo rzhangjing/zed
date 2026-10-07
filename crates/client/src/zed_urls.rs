@@ -1,17 +1,16 @@
 //! Contains helper functions for constructing URLs to various Zed-related pages.
 //!
-//! These URLs will adapt to the configured server URL in order to construct
-//! links appropriate for the environment (e.g., by linking to a local copy of
-//! zed.dev in development).
+//! These pages are no longer reachable from this fork (the account, billing and
+//! server-backed surface has been removed), but the links are still opened in
+//! the user's browser, so they are built against [`DEFAULT_SERVER_URL`].
 
 use gpui::App;
 use release_channel::ReleaseChannel;
-use settings::Settings;
 
-use crate::ClientSettings;
+use crate::DEFAULT_SERVER_URL;
 
-fn server_url(cx: &App) -> &str {
-    &ClientSettings::get_global(cx).server_url
+fn server_url(_cx: &App) -> &str {
+    DEFAULT_SERVER_URL.as_str()
 }
 
 fn docs_url(cx: &App) -> String {
@@ -27,24 +26,6 @@ fn docs_url(cx: &App) -> String {
             format!("{server_url}/docs/nightly")
         }
     }
-}
-
-/// Returns the URL to the account page on zed.dev.
-pub fn account_url(cx: &App) -> String {
-    format!("{server_url}/account", server_url = server_url(cx))
-}
-
-/// Returns the URL to the start trial page on zed.dev.
-pub fn start_trial_url(cx: &App) -> String {
-    format!(
-        "{server_url}/account/start-trial",
-        server_url = server_url(cx)
-    )
-}
-
-/// Returns the URL to the upgrade page on zed.dev.
-pub fn upgrade_to_zed_pro_url(cx: &App) -> String {
-    format!("{server_url}/account/upgrade", server_url = server_url(cx))
 }
 
 /// Returns the URL to Zed's terms of service.

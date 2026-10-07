@@ -29,7 +29,7 @@
 - [Git](./git.md)
 - [Modelines](./modelines.md)
 
-# Collaboration
+# Collaboration (removed in this fork)
 
 - [Overview](./collaboration/overview.md)
   - [Channels](./collaboration/channels.md)
@@ -54,35 +54,19 @@
   - [Skills](./ai/skills.md)
   - [Instructions](./ai/instructions.md)
 - [Parallel Agents](./ai/parallel-agents.md)
-- [Inline Assistant](./ai/inline-assistant.md)
 - [LLM Providers](./ai/llm-providers.md)
   - [Use API Access](./ai/use-api-access.md)
   - [Use an Existing Subscription](./ai/use-an-existing-subscription.md)
   - [Use a Gateway](./ai/use-a-gateway.md)
   - [Use a Local Model](./ai/use-a-local-model.md)
+- [Authentication](./authentication.md)
 - [Edit Prediction](./ai/edit-prediction.md)
 - [AI Privacy](./ai/privacy-and-security.md)
   - [Feedback and Training Data](./ai/ai-improvement.md)
 
-# Account & Billing
-
-- [Authenticate](./authentication.md)
-- [Plans & Pricing](./account/plans-and-pricing.md)
-- [Zed-Hosted Models](./account/zed-hosted-models.md)
-- [Billing](./account/billing.md)
-
-# Zed Business
-
-- [Overview](./business/overview.md)
-- [Organizations](./business/organizations.md)
-- [Roles & Permissions](./roles.md)
-- [Admin Controls](./business/admin-controls.md)
-- [Business Support](./business/business-support.md)
-
 # Privacy & Security
 
 - [Worktree Trust](./worktree-trust.md)
-- [Privacy for Business](./business/privacy.md)
 - [Telemetry](./telemetry.md)
 - [SOC2](./soc2.md)
 

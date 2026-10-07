@@ -1160,7 +1160,7 @@ mod tests {
     fn cycling_boolean_config_option_saves_selected_value_as_default(cx: &mut TestAppContext) {
         let agent_server = Rc::new(TestAgentServer::default());
         let config_options = Rc::new(TestSessionConfigOptions::new(vec![
-            acp::SessionConfigOption::boolean("web_search", "Web Search", false)
+            acp::SessionConfigOption::boolean("example_toggle", "Example Toggle", false)
                 .category(acp::SessionConfigOptionCategory::ModelConfig),
         ]));
         let fs: Arc<dyn Fs> = FakeFs::new(cx.executor());
@@ -1186,14 +1186,14 @@ mod tests {
         assert_eq!(
             agent_server.saved_defaults.lock().as_slice(),
             &[(
-                "web_search".to_string(),
+                "example_toggle".to_string(),
                 Some(AgentConfigOptionValue::Boolean(true))
             )]
         );
         assert_eq!(
             config_options.set_values.borrow().as_slice(),
             &[(
-                "web_search".to_string(),
+                "example_toggle".to_string(),
                 acp::SessionConfigOptionValue::boolean(true)
             )]
         );
@@ -1203,7 +1203,7 @@ mod tests {
     fn cycling_category_cycles_boolean_config_option_first(cx: &mut TestAppContext) {
         let agent_server = Rc::new(TestAgentServer::default());
         let config_options = Rc::new(TestSessionConfigOptions::new(vec![
-            acp::SessionConfigOption::boolean("web_search", "Web Search", false)
+            acp::SessionConfigOption::boolean("example_toggle", "Example Toggle", false)
                 .category(acp::SessionConfigOptionCategory::Model),
             acp::SessionConfigOption::select(
                 "model",
@@ -1239,14 +1239,14 @@ mod tests {
         assert_eq!(
             agent_server.saved_defaults.lock().as_slice(),
             &[(
-                "web_search".to_string(),
+                "example_toggle".to_string(),
                 Some(AgentConfigOptionValue::Boolean(true))
             )]
         );
         assert_eq!(
             config_options.set_values.borrow().as_slice(),
             &[(
-                "web_search".to_string(),
+                "example_toggle".to_string(),
                 acp::SessionConfigOptionValue::boolean(true)
             )]
         );
@@ -1256,7 +1256,7 @@ mod tests {
     fn toggling_category_picker_without_select_config_option_is_unhandled(cx: &mut TestAppContext) {
         let agent_server = Rc::new(TestAgentServer::default());
         let config_options = Rc::new(TestSessionConfigOptions::new(vec![
-            acp::SessionConfigOption::boolean("web_search", "Web Search", false)
+            acp::SessionConfigOption::boolean("example_toggle", "Example Toggle", false)
                 .category(acp::SessionConfigOptionCategory::Model),
         ]));
         let fs: Arc<dyn Fs> = FakeFs::new(cx.executor());

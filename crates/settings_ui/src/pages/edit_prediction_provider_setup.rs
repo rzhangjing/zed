@@ -28,7 +28,6 @@ pub(crate) fn render_edit_prediction_setup_page(
 ) -> AnyElement {
     let providers = [
         Some(render_provider_dropdown(window, cx)),
-        Some(render_zed_provider(settings_window, window, cx).into_any_element()),
         Some(render_ollama_provider(settings_window, window, cx).into_any_element()),
         Some(
             render_api_key_provider(
@@ -297,7 +296,6 @@ fn ollama_settings() -> Box<[SettingsPageItem]> {
             title: "API URL",
             description: "The base URL of your Ollama server.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -331,7 +329,6 @@ fn ollama_settings() -> Box<[SettingsPageItem]> {
             title: "Model",
             description: "The Ollama model to use for edit predictions.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -365,7 +362,6 @@ fn ollama_settings() -> Box<[SettingsPageItem]> {
             title: "Prompt Format",
             description: "The prompt format to use when requesting predictions. Set to Infer to have the format inferred based on the model name.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -396,7 +392,6 @@ fn ollama_settings() -> Box<[SettingsPageItem]> {
             title: "Max Output Tokens",
             description: "The maximum number of tokens to generate.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -427,7 +422,6 @@ fn ollama_settings() -> Box<[SettingsPageItem]> {
             title: "Prediction Debounce",
             description: "Delay in milliseconds before automatically requesting a prediction after typing stops. Set to 0 to request predictions immediately.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -463,7 +457,6 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
             title: "API URL",
             description: "The URL of your OpenAI-compatible server's completions API.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -497,7 +490,6 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
             title: "Model",
             description: "The model string to pass to the OpenAI-compatible server.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -531,7 +523,6 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
             title: "Prompt Format",
             description: "The prompt format to use when requesting predictions. Set to Infer to have the format inferred based on the model name.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -562,7 +553,6 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
             title: "Max Output Tokens",
             description: "The maximum number of tokens to generate.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -593,7 +583,6 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
             title: "Prediction Debounce",
             description: "Delay in milliseconds before automatically requesting a prediction after typing stops. Set to 0 to request predictions immediately.",
             field: Box::new(SettingField {
-                organization_override: None,
                 pick: |settings| {
                     settings
                         .project
@@ -625,59 +614,3 @@ fn open_ai_compatible_settings() -> Box<[SettingsPageItem]> {
 
 
 
-fn zed_settings() -> Box<[SettingsPageItem]> {
-    Box::new([SettingsPageItem::SettingItem(SettingItem {
-        title: "Prediction Debounce",
-        description: "Delay in milliseconds before automatically requesting a prediction after typing stops. Set to 0 to request predictions immediately.",
-        field: Box::new(SettingField {
-            organization_override: None,
-            pick: |settings| {
-                settings
-                    .project
-                    .all_languages
-                    .edit_predictions
-                    .as_ref()?
-                    .zed
-                    .as_ref()?
-                    .prediction_debounce
-                    .as_ref()
-            },
-            write: |settings, value, _app: &App| {
-                settings
-                    .project
-                    .all_languages
-                    .edit_predictions
-                    .get_or_insert_default()
-                    .zed
-                    .get_or_insert_default()
-                    .prediction_debounce = value;
-            },
-            json_path: Some("edit_predictions.zed.prediction_debounce"),
-        }),
-        metadata: None,
-        files: USER,
-    })])
-}
-
-fn render_zed_provider(
-    settings_window: &SettingsWindow,
-    window: &mut Window,
-    cx: &mut Context<SettingsWindow>,
-) -> impl IntoElement {
-    let zed_settings = zed_settings();
-    let additional_fields = settings_window
-        .render_sub_page_items_section(zed_settings.iter().enumerate(), true, window, cx)
-        .into_any_element();
-
-    v_flex()
-        .id("zed")
-        .min_w_0()
-        .pt_8()
-        .gap_1p5()
-        .child(
-            SettingsSectionHeader::new("Zed Predictions")
-                .icon(IconName::ZedPredict)
-                .no_padding(true),
-        )
-        .child(div().px_neg_8().child(additional_fields))
-}

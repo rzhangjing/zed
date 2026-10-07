@@ -1,7 +1,7 @@
 use crate::{AgentTool, Template, Templates, TerminalTool, TerminalToolInput};
 use Role::*;
 use anyhow::{Context as _, Result};
-use client::{Client, RefreshLlmTokenListener, UserStore};
+use client::{Client, UserStore};
 use futures::{FutureExt as _, StreamExt};
 use gpui::{AppContext as _, AsyncApp, TestAppContext};
 use language_model::{
@@ -163,7 +163,6 @@ impl TerminalToolTest {
             let client = Client::production(cx);
             let user_store = cx.new(|cx| UserStore::new(client.clone(), cx));
             language_model::init(cx);
-            RefreshLlmTokenListener::register(client.clone(), user_store.clone(), cx);
             language_models::init(user_store, client, cx);
         });
 

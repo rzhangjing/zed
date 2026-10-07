@@ -17,12 +17,12 @@ graph TB
     ALM["XxxLanguageModel impl LanguageModel"]
     end
     subgraph client层 独立 crate
-    CLI["anthropic/open_ai/ollama… stream_completion + EventMapper（原含 bedrock，已移除）"]
+    CLI["open_ai/ollama/deepseek… stream_completion + EventMapper（anthropic/cloud/bedrock 已移除 · 历史）"]
     end
     LP --> ADP --> ALM --> LM
     ALM -->|调用| CLI
     CLI --> HTTP["http_client (SSE)"]
-    CLOUD["cloud.rs → cloud_llm_client (Zed 云)"] --> ALM
+    CLOUD["cloud.rs → cloud_llm_client (Zed 云，已移除 · 历史)"] --> ALM
 ```
 
 - **契约层**（`crates/language_model/src/language_model.rs`）：`trait LanguageModel`(91)——`id`(92)/`name`(93)/`provider_id`(94)/`stream_completion`/`count_tokens`；`trait LanguageModelProvider`(366)——`id`(367)/`name`(368)/`list_models`/`default_model`/`authenticate`(379)。
@@ -33,7 +33,7 @@ graph TB
 
 | 厂商 | client crate | 适配层 `provider/…`（`LanguageModelProvider` / `LanguageModel`） |
 | --- | --- | --- |
-| Anthropic | `anthropic` | `anthropic.rs`（`AnthropicLanguageModelProvider`）/ 兼容 `anthropic_compatible.rs` |
+| Anthropic（已移除 · 历史） | `anthropic` | ~~`anthropic.rs`~~（`AnthropicLanguageModelProvider`）/ 兼容 ~~`anthropic_compatible.rs`~~ |
 | OpenAI | `open_ai` | `open_ai.rs`:147 / 473 |
 | OpenAI 兼容 | —（复用 `open_ai`） | `open_ai_compatible.rs`:102 / 334；`api_compatible.rs` |
 | OpenAI 订阅（Codex）（已移除 · 历史） | `openai_subscribed` | `openai_subscribed.rs`:41（`impl LanguageModel` 在 client crate:745） |
@@ -45,13 +45,13 @@ graph TB
 | xAI（Grok）（已移除 · 历史） | `x_ai` | `x_ai.rs`:134 / 341 |
 | OpenRouter（已移除 · 历史） | `open_router` | `open_router.rs`:197 / 340 |
 | opencode（已移除 · 历史） | `opencode` | `opencode.rs`:192 / 539 |
-| Google Gemini | `google_ai` | `google.rs` |
+| Google Gemini（已移除 · 历史） | `google_ai` | ~~`google.rs`~~ |
 | AWS Bedrock（已移除 · 历史） | `bedrock`（+ `aws_http_client` SigV4） | `bedrock.rs`(149KB，适配最厚) |
 | Copilot Chat | `copilot_chat` | `copilot_chat.rs`:80 |
 | Vercel AI Gateway（已移除 · 历史） | — | `vercel_ai_gateway.rs`:198 / 378 |
-| **Zed 云托管** | `cloud_llm_client`/`cloud_api_*` | `cloud.rs`(40KB) |
+| **Zed 云托管**（已移除 · 历史） | `cloud_llm_client`/`cloud_api_*` | ~~`cloud.rs`(40KB)~~ |
 
-## 3. Anthropic（`crates/anthropic/src/`）
+## 3. Anthropic（已移除 · 历史 · 原 `crates/anthropic/src/`）
 
 | 符号 | 位置 | 角色 |
 | --- | --- | --- |
@@ -82,7 +82,7 @@ graph TB
 | `enum ConverseModel`（已移除） | models.rs:49 | 型号目录（`from_id`242/`max_token_count`436/`supports_tool_use`539…） |
 | `struct AwsHttpClient`（已移除 · 历史） | aws_http_client.rs:67 | 原描述为"**SigV4 签名**包装 `dyn HttpClient`"（不准确：该 crate 只适配传输，SigV4 由 aws-config/aws-sigv4 完成）；`convert_to_sdk_body`(95)/`convert_to_async_body`(99) |
 
-## 6. Zed 云托管（`crates/cloud_llm_client/src/`）
+## 6. Zed 云托管（已移除 · 历史 · 原 `crates/cloud_llm_client/src/`）
 
 Zed 自有多租户推理协议（`cloud.rs` provider 走此 client）：
 
@@ -91,7 +91,7 @@ Zed 自有多租户推理协议（`cloud.rs` provider 走此 client）：
 | `enum LanguageModelProvider` | cloud_llm_client.rs:92 | 云端支持的厂商枚举 |
 | `CompletionBody`(221)/`enum CompletionEvent<T>`(253)/`CompletionRequestStatus`(233) | cloud_llm_client.rs | 云补全请求/流式事件 |
 | `PredictEditsBody`(101)/`PredictEditsResponse`(158)/`Accept/Reject…Body`(164/173) | cloud_llm_client.rs | 编辑预测（Zeta）云协议（见 [Edit-Prediction-Deep-Dive](Edit-Prediction-Deep-Dive.md)） |
-| `WebSearchBody` | cloud_llm_client.rs:275 | 云联网搜索 |
+| `WebSearchBody`（已移除 · 历史） | cloud_llm_client.rs:275 | 云联网搜索；`web_search` 轴已于 batch-1 删除 |
 | `PredictEditsV3Request`/`RawCompletionRequest` | predict_edits_v3.rs:32/19 · v4.rs:4 | 预测协议版本迭代 |
 
 ## 7. 一次 `stream_completion` 的跨层流程

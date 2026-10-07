@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use client::Client;
 use gpui::profiler::hang::{HangDetector, SerializedHangIncident};
 use gpui::{AppContext, TasksIncluded, profiler};
 use parking_lot::Mutex;
@@ -28,7 +27,7 @@ gpui::actions!(
 
 const MAX_SERIALIZED_CONTRIBUTORS: usize = 8;
 
-pub(crate) fn start(client: Arc<Client>, cx: &mut App) {
+pub(crate) fn start(cx: &mut App) {
     let hang_time = if cfg!(debug_assertions) {
         if cfg!(windows) {
             // yes windows debug builds are horribly slow
@@ -56,7 +55,7 @@ pub(crate) fn start(client: Arc<Client>, cx: &mut App) {
         log::warn!("debug build, only reporting hangs longer then {hang_time:?}");
     }
 
-    start_hang_detection(hang_time, frame_budget, client, cx);
+    start_hang_detection(hang_time, frame_budget, cx);
 
     cx.on_action(move |_: &HangAction, _| {
         log::warn!(
@@ -94,7 +93,6 @@ pub(crate) fn start(client: Arc<Client>, cx: &mut App) {
 fn start_hang_detection(
     report_longer_then: Duration,
     frame_budget: Duration,
-    client: Arc<Client>,
     cx: &App,
 ) {
     let foreground_thread = thread::current().id();
@@ -129,7 +127,8 @@ fn start_hang_detection(
             }
             telemetry.send();
             drop(telemetry);
-            client.telemetry().flush_events()
+
+            async {}
         }
     })
     .detach();

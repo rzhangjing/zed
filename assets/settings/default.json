@@ -608,12 +608,8 @@
     "show_project_items": true,
     // Whether to show onboarding banners in the titlebar.
     "show_onboarding_banner": true,
-    // Whether to show user picture in the titlebar.
-    "show_user_picture": true,
     // Whether to show the user menu in the titlebar.
     "show_user_menu": true,
-    // Whether to show the sign in button in the titlebar.
-    "show_sign_in": true,
     // Whether to show the menus in the titlebar.
     "show_menus": false,
     // The layout of window control buttons in the title bar (Linux only).
@@ -1135,8 +1131,6 @@
     "entry_primary_click_action": "project_diff",
   },
   "agent": {
-    // Whether the inline assistant should use streaming tools, when available
-    "inline_assistant_use_streaming_tools": true,
     // Whether to include project rules files (AGENTS.md, CLAUDE.md, .rules, etc.)
     // in the prompt when generating git commit messages.
     "commit_message_include_project_rules": true,
@@ -1166,9 +1160,9 @@
     // The default model to use when creating new threads.
     "default_model": {
       // The provider to use.
-      "provider": "zed.dev",
+      "provider": "deepseek",
       // The model to use.
-      "model": "claude-sonnet-4",
+      "model": "deepseek-v4-flash",
       // Whether thinking is enabled.
       "enable_thinking": false,
     },
@@ -1189,8 +1183,8 @@
       //
       // To set parameters for a specific provider and model:
       // {
-      //   "provider": "zed.dev",
-      //   "model": "claude-sonnet-4",
+      //   "provider": "deepseek",
+      //   "model": "deepseek-v4-flash",
       //   "temperature": 1.0
       // }
     ],
@@ -1284,7 +1278,6 @@
           "skill": true,
           "spawn_agent": true,
           "terminal": true,
-          "search_web": true,
         },
       },
       "ask": {
@@ -1306,7 +1299,6 @@
           "grep": true,
           "skill": true,
           "spawn_agent": true,
-          "search_web": true,
         },
       },
       "minimal": {
@@ -1543,8 +1535,6 @@
     //   * "indexed": Use only the files Zed had indexed
     //   * "smart": Be smart and search for ignored when called from a gitignored worktree
     "include_ignored": "smart",
-    // Whether to include text channels in file finder results.
-    "include_channels": false,
   },
   // Whether or not to remove any trailing whitespace from lines of a buffer
   // before saving it.
@@ -1648,9 +1638,6 @@
     "diagnostics": true,
     // Send anonymized usage data like what languages you're using Zed with.
     "metrics": true,
-    // Allow sending requests to Anthropic models that cannot be offered with
-    // Zero Data Retention
-    "anthropic_retention": false,
   },
   // Whether to disable all AI features in Zed.
   //
@@ -1853,7 +1840,7 @@
   "load_direnv": "direct",
   "edit_predictions": {
     // Which edit prediction provider to use.
-    "provider": "zed",
+    "provider": "none",
     // A list of globs representing files that edit predictions should be disabled for.
     // There's a sensible default list of globs already included.
     // Any addition to this list will be merged with the default list.
@@ -1890,9 +1877,6 @@
       "model": "",
       "prompt_format": "infer",
       "max_output_tokens": 64,
-      "prediction_debounce": 0,
-    },
-    "zed": {
       "prediction_debounce": 0,
     },
     // Controls whether Zed may collect training data when using Zed's Edit Predictions.
@@ -2552,13 +2536,6 @@
   },
   // Different settings for specific language models.
   "language_models": {
-    "anthropic": {
-      "api_url": "https://api.anthropic.com",
-    },
-    "anthropic_compatible": {},
-    "google": {
-      "api_url": "https://generativelanguage.googleapis.com",
-    },
     "ollama": {
       "api_url": "http://localhost:11434",
     },
@@ -2575,7 +2552,7 @@
     "deepseek": {
       "api_url": "https://api.deepseek.com/v1",
     },
-    "zed.dev": {},
+
   },
   "session": {
     // Whether or not to restore unsaved buffers on restart.
@@ -2744,9 +2721,6 @@
     // Delay in milliseconds before showing the which-key popup.
     "delay_ms": 1000,
   },
-  // The server to connect to. If the environment variable
-  // ZED_SERVER_URL is set, it will override this setting.
-  "server_url": "https://zed.dev",
   // Settings overrides to use when using Zed Preview.
   // Mostly useful for developers who are managing multiple instances of Zed.
   "preview": {

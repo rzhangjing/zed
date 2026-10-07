@@ -1,42 +1,46 @@
 ---
-title: Authenticate with Zed
-description: "Sign in to Zed to access collaboration features and AI services."
+title: Authentication - Zed
+description: "Configure API keys for the AI providers supported by this fork."
 ---
 
-# Authenticate with Zed
+# Authentication
 
-Signing in to Zed is not required. You can use most features you'd expect in a code editor without ever doing so. We'll outline the few features that do require signing in, and how to do so, here.
+This fork does not have a Zed account, a sign-in flow, or a Zed-hosted model
+service. No feature requires an account, and there is no network connection to
+`zed.dev` or `collab.zed.dev`.
 
-## What Features Require Signing In?
+## AI Provider Keys {#ai-provider-keys}
 
-1. All real-time [collaboration features](./collaboration/overview.md).
-2. [LLM-powered features](./ai/overview.md), if you are using Zed as the provider of your LLM models. To use AI without signing in, you can [bring and configure your own API keys](./ai/use-api-access.md).
+Zed's AI features read credentials for the providers you configure:
 
-## Signing In
+- [OpenAI](./ai/use-api-access.md#openai)
+- [DeepSeek](./ai/use-api-access.md#deepseek)
+- [OpenAI-compatible endpoints](./ai/use-api-access.md#openai-compatible)
+- [Ollama](./ai/use-a-local-model.md#ollama)
+- [LM Studio](./ai/use-a-local-model.md#lm-studio)
+- [llama.cpp](./ai/use-a-local-model.md#llama-cpp)
 
-Zed uses GitHub's OAuth flow to authenticate users, requiring only the `read:user` GitHub scope, which grants read-only access to your GitHub profile information.
+Keys entered on the **Settings → AI → LLM Providers** page ({#action agent::OpenSettings}) are stored in your operating system keychain, not in `settings.json`.
 
-1. Open Zed and click the `Sign In` button in the top-right corner of the window, or run the {#action client::SignIn} command from the command palette (`cmd-shift-p` on macOS or `ctrl-shift-p` on Windows/Linux).
-2. Your default web browser will open to the Zed sign-in page.
-3. Authenticate with your GitHub account when prompted.
-4. After successful authentication, your browser will display a confirmation, and you'll be automatically signed in to Zed.
+Zed also reads provider-specific environment variables:
 
-**Note**: If you're behind a corporate firewall, ensure that connections to `zed.dev` and `collab.zed.dev` are allowed.
+| Provider  | Environment variable |
+| --------- | -------------------- |
+| OpenAI    | `OPENAI_API_KEY`     |
+| DeepSeek  | `DEEPSEEK_API_KEY`   |
+| Ollama    | `OLLAMA_API_KEY`     |
+| LM Studio | `LMSTUDIO_API_KEY`   |
 
-## Signing Out
+Environment variables take precedence over keychain values. If a key comes from an environment variable, unset the variable and restart Zed to stop using it.
 
-To sign out of Zed, you can use either of these methods:
+OpenAI-compatible provider environment variables are generated from the configured provider ID as upper snake case plus `_API_KEY`. For example, provider ID `my-gateway` uses `MY_GATEWAY_API_KEY`.
 
-- Click on the profile icon in the upper right corner and select `Sign Out` from the dropdown menu.
-- Open the command palette and run the {#action client::SignOut} command.
+## Where Credentials Live {#credentials}
 
-## Email Addresses {#email}
+Credentials are stored through your operating system's credential store (Keychain on macOS, Credential Manager on Windows, and Secret Service on Linux). They are never written to `settings.json`.
 
-Your Zed account's email address is the address provided by GitHub OAuth. If you have a public email address then it will be used, otherwise your primary GitHub email address will be used. Changes to your email address on GitHub can be synced to your Zed account by [signing in to zed.dev](https://zed.dev/sign_in).
+## See Also
 
-Stripe is used for billing, and will use your Zed account's email address when starting a subscription. Changes to your Zed account email address do not currently update the email address used in Stripe. See [Updating Billing Information](./account/billing.md#updating-billing-info) for how to change this email address.
-
-## Hiding Sign In button from the interface
-
-In case the Sign In feature is not used, it's possible to hide that from the interface by using the `show_sign_in` settings property.
-Refer to [Visual Customization page](./visual-customization.md) for more details.
+- [Use API Access](./ai/use-api-access.md)
+- [Use a Local Model](./ai/use-a-local-model.md)
+- [AI Privacy](./ai/privacy-and-security.md)

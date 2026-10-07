@@ -111,9 +111,6 @@ fn edit_prediction_provider_config_for_settings(cx: &App) -> Option<EditPredicti
     let provider = settings.provider;
     match provider {
         EditPredictionProvider::None => None,
-        EditPredictionProvider::Zed => {
-            Some(EditPredictionProviderConfig::Zed(EditPredictionModel::Zeta))
-        }
         EditPredictionProvider::Ollama | EditPredictionProvider::OpenAiCompatibleApi => {
             let custom_settings = if provider == EditPredictionProvider::Ollama {
                 settings.ollama.as_ref()?
@@ -132,13 +129,13 @@ fn edit_prediction_provider_config_for_settings(cx: &App) -> Option<EditPredicti
             }
 
             if matches!(format, EditPredictionPromptFormat::Zeta(_)) {
-                Some(EditPredictionProviderConfig::Zed(EditPredictionModel::Zeta))
+                None
             } else if format == EditPredictionPromptFormat::Sweep {
-                Some(EditPredictionProviderConfig::Zed(
+                Some(EditPredictionProviderConfig::Local(
                     EditPredictionModel::SweepPrompt,
                 ))
             } else {
-                Some(EditPredictionProviderConfig::Zed(
+                Some(EditPredictionProviderConfig::Local(
                     EditPredictionModel::Fim { format },
                 ))
             }
@@ -148,14 +145,13 @@ fn edit_prediction_provider_config_for_settings(cx: &App) -> Option<EditPredicti
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum EditPredictionProviderConfig {
-    Zed(EditPredictionModel),
+    Local(EditPredictionModel),
 }
 
 impl EditPredictionProviderConfig {
     fn name(&self) -> &'static str {
         match self {
-            EditPredictionProviderConfig::Zed(model) => match model {
-                EditPredictionModel::Zeta => "Zeta",
+            EditPredictionProviderConfig::Local(model) => match model {
                 EditPredictionModel::Fim { .. } => "FIM",
                 EditPredictionModel::SweepPrompt => "Sweep Prompt",
             },
@@ -212,20 +208,8 @@ fn assign_edit_prediction_provider(
                 None, trigger, window, cx,
             );
         }
-        Some(EditPredictionProviderConfig::Zed(model)) => {
+        Some(EditPredictionProviderConfig::Local(model)) => {
             let ep_store = edit_prediction::EditPredictionStore::global(client, &user_store, cx);
-
-            if let Some(organization_configuration) =
-                user_store.read(cx).current_organization_configuration()
-            {
-                if !organization_configuration.edit_prediction.is_enabled {
-                    editor.set_edit_prediction_provider::<ZedEditPredictionDelegate>(
-                        None, trigger, window, cx,
-                    );
-
-                    return;
-                }
-            }
 
             if let Some(project) = editor.project() {
                 ep_store.update(cx, |ep_store, cx| {
@@ -236,13 +220,7 @@ fn assign_edit_prediction_provider(
                 });
 
                 let provider = cx.new(|cx| {
-                    ZedEditPredictionDelegate::new(
-                        project.clone(),
-                        singleton_buffer,
-                        &client,
-                        &user_store,
-                        cx,
-                    )
+                    ZedEditPredictionDelegate::new(project.clone(), &client, &user_store, cx)
                 });
                 editor.set_edit_prediction_provider(Some(provider), trigger, window, cx);
             }
@@ -263,7 +241,6 @@ mod tests {
     async fn test_sweep_prompt_format_routes_to_sweep_prompt_model(cx: &mut TestAppContext) {
         let app_state = cx.update(|cx| {
             let app_state = AppState::test(cx);
-            client::init(&app_state.client, cx);
             language_model::init(cx);
             app_state
         });
@@ -294,7 +271,7 @@ mod tests {
         assert!(
             matches!(
                 config,
-                Some(EditPredictionProviderConfig::Zed(
+                Some(EditPredictionProviderConfig::Local(
                     EditPredictionModel::SweepPrompt,
                 ))
             ),
@@ -311,7 +288,6 @@ mod tests {
     async fn test_ollama_provider_routes_to_fim_model(cx: &mut TestAppContext) {
         let app_state = cx.update(|cx| {
             let app_state = AppState::test(cx);
-            client::init(&app_state.client, cx);
             language_model::init(cx);
             app_state
         });
@@ -338,7 +314,7 @@ mod tests {
         assert!(
             matches!(
                 config,
-                Some(EditPredictionProviderConfig::Zed(
+                Some(EditPredictionProviderConfig::Local(
                     EditPredictionModel::Fim {
                         format: EditPredictionPromptFormat::Qwen,
                     }
@@ -359,20 +335,13 @@ mod tests {
     ) {
         let app_state = cx.update(|cx| {
             let app_state = AppState::test(cx);
-            client::init(&app_state.client, cx);
             language_model::init(cx);
-            client::RefreshLlmTokenListener::register(
-                app_state.client.clone(),
-                app_state.user_store.clone(),
-                cx,
-            );
             editor::init(cx);
             app_state
         });
 
         // Override the default provider to None so the subscribe closure
-        // captures None at init time. (The test default is Zed/Zeta, which
-        // would otherwise mask the bug.)
+        // captures None at init time.
         cx.update(|cx| {
             cx.update_global::<SettingsStore, _>(|store: &mut SettingsStore, cx| {
                 store.update_user_settings(cx, |settings| {
@@ -390,7 +359,7 @@ mod tests {
         });
 
         // Create an editor in a window so observe_new registers it. The editor
-        // needs a project for the Zed provider to be assigned to it.
+        // needs a project for a provider to be assigned to it.
         let project = Project::test(app_state.fs.clone(), [], cx).await;
         let editor = cx.add_window(|window, cx| {
             let buffer = cx.new(|_cx| MultiBuffer::new(language::Capability::ReadWrite));
@@ -406,15 +375,21 @@ mod tests {
             })
             .unwrap();
 
-        // Change settings to Zed. The observe_global closure updates its
-        // own copy of provider_config and assigns the Zed provider to all
+        // Change settings to Ollama. The observe_global closure updates its
+        // own copy of provider_config and assigns the provider to all
         // editors that have a project.
         cx.update(|cx| {
             cx.update_global::<SettingsStore, _>(|store: &mut SettingsStore, cx| {
                 store.update_user_settings(cx, |settings| {
                     settings.project.all_languages.edit_predictions =
                         Some(settings::EditPredictionSettingsContent {
-                            provider: Some(EditPredictionProvider::Zed),
+                            provider: Some(EditPredictionProvider::Ollama),
+                            ollama: Some(settings::OllamaEditPredictionSettingsContent {
+                                api_url: Some("http://localhost:11434".to_string()),
+                                model: Some("qwen2.5-coder:3b".to_string().into()),
+                                prompt_format: Some(EditPredictionPromptFormatContent::Infer),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         });
                 });
@@ -425,13 +400,13 @@ mod tests {
             .update(cx, |editor, _window, _cx| {
                 assert!(
                     editor.edit_prediction_provider().is_some(),
-                    "editor should have a provider after changing settings to Zed"
+                    "editor should have a provider after changing settings to Ollama"
                 );
             })
             .unwrap();
 
         // Emit PrivateUserInfoUpdated. The subscribe closure should use the
-        // CURRENT provider config (Zed), but due to the bug it uses the
+        // CURRENT provider config (Ollama), but due to the bug it uses the
         // stale init-time value (None) and clears the provider.
         cx.update(|cx| {
             app_state.user_store.update(cx, |_, cx| {
@@ -444,7 +419,7 @@ mod tests {
             .update(cx, |editor, _window, _cx| {
                 assert!(
                     editor.edit_prediction_provider().is_some(),
-                    "BUG: subscribe closure used stale provider_config (None) instead of current (Zed)"
+                    "BUG: subscribe closure used stale provider_config (None) instead of current (Ollama)"
                 );
             })
             .unwrap();

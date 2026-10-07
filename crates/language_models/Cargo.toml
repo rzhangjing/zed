@@ -15,14 +15,10 @@ path = "src/language_models.rs"
 test-support = []
 
 [dependencies]
-ai_onboarding.workspace = true
 async-lock.workspace = true
-anthropic = { workspace = true, features = ["schemars"] }
 anyhow.workspace = true
 base64.workspace = true
 client.workspace = true
-cloud_api_client.workspace = true
-cloud_api_types.workspace = true
 collections.workspace = true
 component.workspace = true
 convert_case.workspace = true
@@ -30,13 +26,11 @@ credentials_provider.workspace = true
 deepseek = { workspace = true, features = ["schemars"] }
 fs.workspace = true
 futures.workspace = true
-google_ai = { workspace = true, features = ["schemars"] }
 gpui.workspace = true
 gpui_tokio.workspace = true
 http_client.workspace = true
 language.workspace = true
 language_model.workspace = true
-language_models_cloud.workspace = true
 llama_cpp = { workspace = true, features = ["schemars"] }
 lmstudio = { workspace = true, features = ["schemars"] }
 log.workspace = true
@@ -58,7 +52,6 @@ util.workspace = true
 [dev-dependencies]
 client = { workspace = true, features = ["test-support"] }
 clock = { workspace = true, features = ["test-support"] }
-cloud_llm_client.workspace = true
 db = { workspace = true, features = ["test-support"] }
 feature_flags.workspace = true
 gpui = { workspace = true, features = ["test-support"] }

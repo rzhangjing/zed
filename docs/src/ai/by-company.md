@@ -11,45 +11,55 @@ For detailed setup, follow the links in the `Setup` column. This page answers ro
 
 ## Zed {#zed}
 
-| Path                 | Support level  | What you get                      | Account / billing       | Setup                                                |
-| -------------------- | -------------- | --------------------------------- | ----------------------- | ---------------------------------------------------- |
-| Zed-hosted models    | Built into Zed | Hosted models for Zed AI features | Billed through Zed      | [Zed-Hosted Models](../account/zed-hosted-models.md) |
-| Zeta edit prediction | Built into Zed | Edit predictions while you type   | Included by plan limits | [Edit Prediction](./edit-prediction.md)              |
+Zed-hosted models and the Zed Pro/Business plans were removed from this fork.
+Zed's own built-in AI surface is edit prediction, which you point at a local or
+self-hosted model.
+
+| Path                 | Support level     | What you get                      | Account / billing | Setup                                   |
+| -------------------- | ----------------- | --------------------------------- | ----------------- | --------------------------------------- |
+| Edit prediction      | Configured in Zed | Edit predictions while you type   | Local/self-hosted | [Edit Prediction](./edit-prediction.md) |
 
 ## OpenAI / ChatGPT / Codex {#openai-chatgpt-codex}
 
 | Path                 | Support level     | What you get                                          | Account / billing     | Setup                                                                     |
 | -------------------- | ----------------- | ----------------------------------------------------- | --------------------- | ------------------------------------------------------------------------- |
-| ChatGPT Subscription | Configured in Zed | Subscription-backed OpenAI models for Zed AI features | ChatGPT Plus or Pro   | [Use an Existing Subscription](./use-an-existing-subscription.md#chatgpt) |
 | OpenAI API           | Configured in Zed | OpenAI models through API access                      | OpenAI API billing    | [Use API Access](./use-api-access.md#openai)                              |
 | Codex via ACP        | Hosted in Zed     | Codex in an External Agent thread                     | Owned by Codex/OpenAI | [External Agents](./external-agents.md#codex-cli)                         |
 | Codex CLI            | Run in terminal   | Native Codex CLI experience in a Terminal Thread      | Owned by Codex/OpenAI | [Terminal Threads](./terminal-threads.md)                                 |
+
+There is no ChatGPT subscription provider in this fork. ChatGPT Plus and Pro are
+only usable through the Codex harness.
 
 ## Anthropic / Claude / Claude Code {#anthropic-claude}
 
 | Path                 | Support level     | What you get                                       | Account / billing                       | Setup                                                |
 | -------------------- | ----------------- | -------------------------------------------------- | --------------------------------------- | ---------------------------------------------------- |
-| Anthropic API        | Configured in Zed | Claude models through API access                   | Anthropic API billing                   | [Use API Access](./use-api-access.md#anthropic)      |
 | Claude Agent via ACP | Hosted in Zed     | Claude in an External Agent thread                 | Owned by Claude/Anthropic               | [External Agents](./external-agents.md#claude-agent) |
 | Claude Code CLI      | Run in terminal   | Native Claude Code experience in a Terminal Thread | Claude subscription or Claude Code auth | [Terminal Threads](./terminal-threads.md)            |
 
-Claude Pro and Max subscriptions are separate from Anthropic API credits. If you want Claude subscription-limit behavior, use Claude Agent or Claude Code where supported. See [Use an Existing Subscription](./use-an-existing-subscription.md#claude).
+The Anthropic model provider was removed from this fork, so Claude is only
+available through the Claude Agent or Claude Code. Claude Pro and Max
+subscriptions are separate from Anthropic API credits.
 
 ## Google / Gemini / Gemini CLI {#google-gemini}
 
 | Path          | Support level                    | What you get                                      | Account / billing     | Setup                                                                                         |
 | ------------- | -------------------------------- | ------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
-| Google AI API | Configured in Zed                | Gemini models through API access                  | Google AI API billing | [Use API Access](./use-api-access.md#google-ai)                                               |
 | Gemini CLI    | Hosted in Zed or run in terminal | Gemini CLI as an External Agent or native CLI/TUI | Owned by Gemini CLI   | [External Agents](./external-agents.md#gemini-cli), [Terminal Threads](./terminal-threads.md) |
+
+The Google AI model provider was removed from this fork; Gemini models are only
+usable through the Gemini CLI harness.
 
 ## GitHub / Copilot {#github-copilot}
 
 | Path                    | Support level     | What you get                                          | Account / billing           | Setup                                                                            |
 | ----------------------- | ----------------- | ----------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| GitHub Copilot Chat     | Configured in Zed | Copilot Chat models for Zed AI features               | GitHub Copilot/Copilot Chat | [Use an Existing Subscription](./use-an-existing-subscription.md#github-copilot) |
 | Copilot edit prediction | Removed           | Edit prediction provider removed, no longer available | n/a                         | [Edit Prediction](./edit-prediction.md#github-copilot)                           |
 | Copilot External Agent  | Hosted in Zed     | Copilot in an External Agent thread, where available  | Owned by Copilot            | [External Agents](./external-agents.md#copilot)                                  |
 | Copilot CLI             | Run in terminal   | Native CLI experience, where available                | Owned by Copilot            | [Terminal Threads](./terminal-threads.md)                                        |
+
+GitHub Copilot is not a Zed model provider in this fork; it is only usable
+through the Copilot agent or CLI.
 
 ## OpenCode {#opencode}
 

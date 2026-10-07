@@ -16,7 +16,7 @@
 ---
 
 title: AI Agent Tools - Zed
-description: Built-in tools for Zed's AI agent including file editing, code search, terminal commands, web search, and diagnostics.
+description: Built-in tools for Zed's AI agent including file editing, code search, terminal commands, and diagnostics.
 
 ---
 
@@ -57,10 +57,6 @@ Lists files and directories in a given path, providing an overview of filesystem
 ### `read_file` {#read-file}
 
 Reads the content of a specified file in the project, allowing access to file contents.
-
-### `search_web` {#search-web}
-
-Searches the web for information, providing results with snippets and links from relevant web pages, useful for accessing real-time information.
 
 ## Edit Tools {#edit-tools}
 

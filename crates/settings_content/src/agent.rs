@@ -240,12 +240,6 @@ pub struct AgentSettingsContent {
     /// Favorite models to show at the top of the model selector.
     #[serde(default)]
     pub favorite_models: Vec<LanguageModelSelection>,
-    /// Model to use for the inline assistant. Defaults to default_model when not specified.
-    pub inline_assistant_model: Option<LanguageModelSelection>,
-    /// Model to use for the inline assistant when streaming tools are enabled.
-    ///
-    /// Default: true
-    pub inline_assistant_use_streaming_tools: Option<bool>,
     /// Model to use for generating git commit messages. Defaults to default_model when not specified.
     pub commit_message_model: Option<LanguageModelSelection>,
     /// Whether to include project rules files (AGENTS.md, CLAUDE.md, .rules, etc.)
@@ -263,8 +257,6 @@ pub struct AgentSettingsContent {
     /// If the configured model is unavailable (provider not registered, model
     /// not found), the thread's current model is used instead.
     pub compaction_model: Option<LanguageModelSelection>,
-    /// Additional models with which to generate alternatives when performing inline assists.
-    pub inline_alternatives: Option<Vec<LanguageModelSelection>>,
     /// The default profile to use in the Agent.
     ///
     /// Default: write
@@ -374,16 +366,6 @@ impl AgentSettingsContent {
 
     pub fn set_model(&mut self, language_model: LanguageModelSelection) {
         self.default_model = Some(language_model)
-    }
-
-    pub fn set_inline_assistant_model(&mut self, provider: String, model: String) {
-        self.inline_assistant_model = Some(LanguageModelSelection {
-            provider: provider.into(),
-            model,
-            enable_thinking: false,
-            effort: None,
-            speed: None,
-        });
     }
 
     pub fn set_profile(&mut self, profile_id: Arc<str>) {
@@ -626,13 +608,10 @@ impl JsonSchema for LanguageModelProviderSetting {
                 {
                     "type": "string",
                     "enum": [
-                        "anthropic",
                         "deepseek",
-                        "google",
                         "lmstudio",
                         "ollama",
-                        "openai",
-                        "zed.dev"
+                        "openai"
                     ]
                 },
                 {

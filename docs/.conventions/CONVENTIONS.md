@@ -243,7 +243,6 @@ End pages with related links when helpful:
 ## See also
 
 - [Agent Panel](./agent-panel.md): Agentic editing with file read/write
-- [Inline Assistant](./inline-assistant.md): Prompt-driven code transformations
 ```
 
 ### SEO Linking Guidelines

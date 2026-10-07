@@ -350,6 +350,8 @@ On licensing and telemetry:
 
 RustRover offers Code With Me as a separate feature for collaboration. Zed has collaboration built into the core experience.
 
+> **Removed in this fork.** Collaboration, channels, contacts, and the collaboration server were removed, so the steps in this section no longer apply.
+
 - Open the Collab Panel in the left dock
 - Create a channel and [invite your collaborators](https://zed.dev/docs/collaboration#inviting-a-collaborator) to join
 - [Share your screen or your codebase](https://zed.dev/docs/collaboration#share-a-project) directly
@@ -360,20 +362,15 @@ Once connected, you'll see each other's cursors, selections, and edits in real t
 
 Zed has built-in AI features. If you've used JetBrains AI Assistant, here's how to get set up.
 
-### Configuring GitHub Copilot
+### Configuring Edit Prediction
 
-1. Open Settings with `Cmd+,` (macOS) or `Ctrl+,` (Linux/Windows)
-2. Navigate to **AI → Edit Predictions**
-3. Click **Configure** next to "Configure Providers"
-4. Under **GitHub Copilot**, click **Sign in to GitHub**
-
-Once signed in, just start typing. Zed will offer suggestions inline for you to accept.
+GitHub Copilot is not available in this fork, and neither is a Zed-hosted model. Open Settings with `Cmd+,` (macOS) or `Ctrl+,` (Linux/Windows), go to **AI -> Edit Predictions**, and configure **Ollama** or an **OpenAI-compatible** endpoint. See [Edit Prediction](../ai/edit-prediction.md).
 
 ### Additional AI Options
 
 To use other AI models in Zed, you have several options:
 
-- Use Zed's hosted models, with higher rate limits. Requires [authentication](https://zed.dev/docs/authentication) and access through [Zed Pro](https://zed.dev/docs/account/zed-hosted-models.html).
+- Use a local model through [Ollama or an OpenAI-compatible endpoint](../ai/use-a-local-model.md)
 - Bring your own [API keys](https://zed.dev/docs/ai/use-api-access.html), no authentication needed
 - Use [External Agents like Claude Agent](https://zed.dev/docs/ai/external-agents.html)
 

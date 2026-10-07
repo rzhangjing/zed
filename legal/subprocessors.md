@@ -3,6 +3,8 @@ title: Subprocessor List
 slug: subprocessors
 ---
 
+> **Note for this fork.** This fork does not operate the Zed-hosted service: accounts, plans and billing, Zed-hosted models, collaboration/channels, and client-side telemetry upload have all been removed. The subprocessors below describe the upstream Zed service and are kept for reference only.
+
 Zed uses select third-party subprocessors to deliver core product functionality. Each subprocessor processes customer personal data only as necessary to provide its service, and all are subject to appropriate data protection agreements.
 
 ### How Zed Uses Subprocessors
