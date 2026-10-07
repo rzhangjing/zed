@@ -3743,7 +3743,6 @@ async fn remove_keybinding(
 fn collect_contexts_from_assets() -> Vec<SharedString> {
     let mut keymap_assets = vec![
         util::asset_str::<SettingsAssets>(settings::DEFAULT_KEYMAP_PATH),
-        util::asset_str::<SettingsAssets>(settings::VIM_KEYMAP_PATH),
     ];
     keymap_assets.extend(
         BaseKeymap::OPTIONS

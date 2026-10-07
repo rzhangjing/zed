@@ -18,8 +18,6 @@ extend-exclude = [
     "crates/json_schema_store/src/schemas/",
 
     # Not our typos.
-    # Vim makes heavy use of partial typing tables.
-    "crates/vim/",
     # Editor, file finder, and fuzzy matching rely on partial typing and custom in-string syntax.
     "crates/file_finder/src/file_finder_tests.rs",
     "crates/fuzzy_nucleo/src/strings.rs",

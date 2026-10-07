@@ -796,18 +796,6 @@ actions!(
     ]
 );
 
-pub mod vim {
-    use gpui::actions;
-
-    actions!(
-        vim,
-        [
-            /// Opens the default keymap file.
-            OpenDefaultKeymap
-        ]
-    );
-}
-
 pub mod preview {
     pub mod markdown {
         use gpui::actions;
