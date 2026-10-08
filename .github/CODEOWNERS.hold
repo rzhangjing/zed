@@ -137,7 +137,6 @@
 /extensions/html/ @zed-industries/ecosystem-team
 /extensions/proto/ @zed-industries/ecosystem-team
 /extensions/test-extension/ @zed-industries/ecosystem-team
-/extensions/workflows/ @zed-industries/ecosystem-team
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # infrastructure-team
@@ -228,7 +227,6 @@
 /script/update_top_ranking_issues/ @zed-industries/platform-team
 /tooling/ @zed-industries/platform-team
 /tooling/perf/ @zed-industries/platform-team
-/tooling/xtask/ @zed-industries/platform-team
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # project-team

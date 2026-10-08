@@ -12,7 +12,7 @@ Zed ships from two long-lived release branches that live on `origin`:
 
 The version numbers change with each release. **Never hardcode them — always discover the current mapping** (see [Finding the target branch](#finding-the-target-branch)).
 
-A merged PR on `main` gets ported to a release branch by `script/cherry-pick`, normally driven by the `cherry_pick` GitHub Actions workflow. When that workflow fails (almost always a merge conflict), use this skill to finish the job locally and open the cherry-pick PR by hand.
+A merged PR on `main` gets ported to a release branch by `script/cherry-pick`. This fork no longer ships the `cherry_pick` GitHub Actions workflow, so use this skill to do the whole job locally and open the cherry-pick PR by hand.
 
 ## When to use
 
@@ -21,7 +21,7 @@ Optionally, the user may specify whether to resolve merge conflicts; if unspecif
 
 ## The script you're emulating
 
-The canonical procedure lives in `script/cherry-pick` and the `cherry_pick` GitHub Actions workflow. Read the script first if anything looks off — your local steps must produce the same branch name, PR title, and PR body it would.
+The canonical procedure lives in `script/cherry-pick`. Read the script first if anything looks off — your local steps must produce the same branch name, PR title, and PR body it would.
 
 Signature: `script/cherry-pick <branch-name> <commit-sha> <channel>`
 
@@ -32,15 +32,15 @@ It creates a local branch named `cherry-pick-<branch-name>-<short-sha>` (the sho
 
 ## Finding the target branch
 
-The channel→branch mapping changes every release. Find the current one by inspecting the most recent `cherry_pick` workflow runs:
+The channel→branch mapping changes every release, so discover it from the remote instead of hardcoding it:
 
-```
-gh run list --workflow=cherry_pick.yml --limit 30 --json displayTitle,databaseId
-# pick a recent run for the channel you want, then:
-gh run view <id> --log 2>&1 | grep -E "BRANCH:|CHANNEL:"
-```
+```r
+git ls-remote --heads origin v* | sed 's#.*refs/heads/##' | sort -V | tail -20
+# then confirm which branch the channel currently ships from, e.g.:
+git --no-pager log -1 --format=%D origin/<candidate-branch>
+```r
 
-A successful run prints both `BRANCH:` and `CHANNEL:` env vars; that's your mapping.
+The highest `vX.Y.x` branch for a channel is the one the release tooling cuts from; when in doubt, ask the user which `vX.Y.x` branch the channel maps to before pushing anything.
 
 ## Procedure
 
@@ -54,14 +54,12 @@ If the user requested multiple PRs and/or commits, gather the metadata for all o
 gh pr view <PR_NUMBER> --json title,number,mergeCommit,mergedAt,url
 ```
 
-If the user said the workflow failed, fetch its log to see exactly which command failed and which file conflicted:
+If the user said a previous cherry-pick attempt failed, ask which branch and SHA it used, or look for a leftover branch and the in-progress cherry-pick state, to see exactly which file conflicted:
 
+```r
+git --no-pager branch --list cherry-pick-*
+git --no-pager status --short
 ```
-gh run list --workflow=cherry_pick.yml --limit 10 --json databaseId,displayTitle,status,conclusion
-gh run view <failed_run_id> --log-failed
-```
-
-The failed-run log also confirms the `BRANCH` and `COMMIT` the workflow used — handy if there's any ambiguity.
 
 ### 2. Reproduce the script's setup locally
 
@@ -79,9 +77,7 @@ The branch name **must** match `cherry-pick-<branch-name>-<short-sha>` exactly (
 
 If the cherry-pick conflicts, do not immediately resolve the conflicts manually.
 
-First determine whether the conflict is likely caused by other PRs or commits that are already on `main` but missing from the release branch. If so, point out those candidate prerequisite PRs/commits to the user, including PR links, and offer to either resolve the conflicts manually or let the user run the GitHub cherry-pick workflow for those commits first.
-
-If the user wants to run the workflow for the missing prerequisites, stop here. This often keeps cherry-picks clean and eligible for automatic approval.
+First determine whether the conflict is likely caused by other PRs or commits that are already on `main` but missing from the release branch. If so, point out those candidate prerequisite PRs/commits to the user, including PR links, and offer to either resolve the conflicts manually or cherry-pick those prerequisites into the release branch first. If the user wants to cherry-pick the missing prerequisites first, stop here and wait — doing them first often keeps the remaining cherry-picks clean.
 
 Only resolve conflicts manually if:
 - no likely missing prerequisites are found, or

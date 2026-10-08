@@ -19,7 +19,8 @@
 //! regression. Set `ZED_TEST_SANDBOX_REQUIRE_ENFORCED=1` to turn that skip into
 //! a failure once you've provisioned an environment that *should* enforce.
 //!
-//! Run it with `cargo xtask wsl-sandbox-tests` or `script/test-wsl-sandbox.ps1`.
+//! Run it with `script/test-wsl-sandbox.ps1`, or directly via
+//! `cargo run -p sandbox --features wsl-test --bin wsl_sandbox_test_helper`.
 
 #![allow(
     clippy::disallowed_methods,

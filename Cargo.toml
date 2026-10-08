@@ -220,9 +220,7 @@ members = [
     # Tooling
     #
 
-    "tooling/compliance",
     "tooling/perf",
-    "tooling/xtask",
 ]
 default-members = ["crates/zed"]
 
@@ -260,7 +258,6 @@ clock = { path = "crates/clock" }
 collections = { path = "crates/collections", version = "0.1.0" }
 command_palette = { path = "crates/command_palette" }
 command_palette_hooks = { path = "crates/command_palette_hooks" }
-compliance = { path = "tooling/compliance" }
 component = { path = "crates/component" }
 component_preview = { path = "crates/component_preview" }
 context_server = { path = "crates/context_server" }
@@ -478,7 +475,6 @@ block2 = "0.6"
 brush-parser = "0.3"
 bytes = "1.0"
 cargo_metadata = "0.19"
-cargo_toml = "0.21"
 cbindgen = { version = "0.28.0", default-features = false }
 chardetng = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
@@ -534,7 +530,6 @@ fork = "0.4.0"
 futures = "0.3.32"
 futures-concurrency = "7.7.1"
 futures-lite = "2"
-gh-workflow = { git = "https://github.com/zed-industries/gh-workflow", rev = "37f3c0575d379c218a9c455ee67585184e40d43f" }
 globset = "0.4"
 handlebars = "4.3"
 hdrhistogram = { version = "7", default-features = false }
@@ -576,7 +571,6 @@ itertools = "0.14.0"
 js-sys = "0.3"
 json_dotpath = "1.1"
 jsonschema = { version = "0.51", default-features = false }
-jsonwebtoken = "10.0"
 jupyter-protocol = "1.4.0"
 jupyter-websocket-client = "1.1.0"
 libc = "0.2"
@@ -714,7 +708,6 @@ serde_json_lenient = { version = "0.2", features = [
 ] }
 serde_path_to_error = "0.1.17"
 serde_urlencoded = "0.7"
-serde_yaml = "0.9.34"
 serde_yaml_ng = "0.10"
 sha2 = "0.10"
 shellexpand = "3.1"
@@ -746,11 +739,6 @@ time = { version = "0.3", features = [
 tiny_http = "0.12"
 tokio = { version = "1" }
 toml = "0.8"
-toml_edit = { version = "0.22", default-features = false, features = [
-    "display",
-    "parse",
-    "serde",
-] }
 tower-http = "0.4.4"
 tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter", rev = "43623ec9bf0eaaf7113285c46e8a09018f181b18" }
 tracing = "0.1.40"

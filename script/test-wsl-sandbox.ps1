@@ -1,6 +1,7 @@
 #!/usr/bin/env pwsh
 # Provision the default WSL distro for the Windows sandbox behavior tests and
-# run them. The Windows analog of running `cargo xtask sandbox-tests` on Linux.
+# run them. The Windows analog of the Linux sandbox behavior tests
+# (`bwrap_test_helper`, driven by the NixOS VM tests in `nix/tests/sandboxing`).
 #
 # What it does:
 #   1. Checks that WSL is installed.
@@ -10,8 +11,9 @@
 #      it can't verify a sandbox that was never set up. On Ubuntu 24.04 (the
 #      current default WSL distro) user namespaces are restricted by AppArmor by
 #      default, which is exactly why this step is needed.
-#   3. Runs `cargo xtask wsl-sandbox-tests`, which builds and runs
-#      `wsl_sandbox_test_helper` against the real WSL/Bubblewrap sandbox.
+#   3. Runs `cargo run -p sandbox --features wsl-test --bin wsl_sandbox_test_helper`,
+#      which builds and runs `wsl_sandbox_test_helper` against the real
+#      WSL/Bubblewrap sandbox.
 #
 # By default it requires the sandbox to actually be enforced (so a broken setup
 # fails loudly instead of silently skipping). Pass -AllowSkip to keep the
@@ -86,12 +88,20 @@ if ((Test-Wsl "command -v bwrap >/dev/null 2>&1") -ne 0) {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {
-    $xtaskArgs = @("xtask", "wsl-sandbox-tests")
-    if (-not $AllowSkip) { $xtaskArgs += "--require-enforced" }
-    if ($Release) { $xtaskArgs += "--release" }
+    $cargoArgs = @(
+        "run",
+        "-p", "sandbox",
+        "--features", "wsl-test",
+        "--bin", "wsl_sandbox_test_helper"
+    )
+    if ($Release) { $cargoArgs += "--release" }
+    # Without -AllowSkip, require the sandbox to actually be enforced. Setting
+    # `ZED_TEST_SANDBOX_REQUIRE_ENFORCED` is what the old `--require-enforced`
+    # flag did.
+    if (-not $AllowSkip) { $env:ZED_TEST_SANDBOX_REQUIRE_ENFORCED = "1" }
 
-    Write-Host "==> Running: cargo $($xtaskArgs -join ' ')"
-    & cargo @xtaskArgs
+    Write-Host "==> Running: cargo $($cargoArgs -join ' ')"
+    & cargo @cargoArgs
     $exitCode = $LASTEXITCODE
 }
 finally {
