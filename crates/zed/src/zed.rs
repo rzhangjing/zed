@@ -27,13 +27,6 @@ use feature_flags::{FeatureFlagAppExt as _, PanicFeatureFlag};
 use fs::Fs;
 use futures::FutureExt as _;
 use futures::{StreamExt, channel::mpsc, select_biased};
-use git_ui::branch_diff::BranchDiffToolbar;
-use git_ui::commit_view::CommitViewToolbar;
-use git_ui::git_panel::GitPanel;
-use git_ui::project_diff::ProjectDiffToolbar;
-use git_ui::solo_diff_view::{SoloDiffGitToolbar, SoloDiffStyleToolbar};
-use git_ui::staged_diff::StagedDiffToolbar;
-use git_ui::unstaged_diff::UnstagedDiffToolbar;
 use gpui::{
     Action, App, AppContext as _, AsyncWindowContext, ClipboardItem, Context, DismissEvent,
     Element, Entity, FocusHandle, Focusable, Image, ImageFormat, KeyBinding, ParentElement,
@@ -614,16 +607,11 @@ pub fn initialize_workspace(app_state: Arc<AppState>, cx: &mut App) {
             cx.new(|_| go_to_line::cursor_position::CursorPosition::new(workspace));
         let line_ending_indicator =
             cx.new(|_| line_ending_selector::LineEndingIndicator::default());
-        let git_blame_status = cx.new(|_| git_ui::GitBlameStatus::default());
-        let merge_conflict_indicator =
-            cx.new(|cx| git_ui::MergeConflictIndicator::new(workspace, cx));
         workspace.status_bar().update(cx, |status_bar, cx| {
             status_bar.add_left_item(search_button, window, cx);
             status_bar.add_left_item(lsp_button, window, cx);
             status_bar.add_left_item(diagnostic_summary, window, cx);
             status_bar.add_left_item(active_file_name, window, cx);
-            status_bar.add_left_item(git_blame_status, window, cx);
-            status_bar.add_left_item(merge_conflict_indicator, window, cx);
             status_bar.add_left_item(activity_indicator, window, cx);
             status_bar.add_right_item(edit_prediction_ui, window, cx);
             status_bar.add_right_item(active_buffer_encoding, window, cx);
@@ -764,7 +752,6 @@ fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<a
         let project_panel = ProjectPanel::load(workspace_handle.clone(), cx.clone());
         let outline_panel = OutlinePanel::load(workspace_handle.clone(), cx.clone());
         let terminal_panel = TerminalPanel::load(workspace_handle.clone(), cx.clone());
-        let git_panel = GitPanel::load(workspace_handle.clone(), cx.clone());
         let debug_panel = DebugPanel::load(workspace_handle.clone(), cx);
 
         async fn add_panel_when_ready(
@@ -786,7 +773,6 @@ fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<a
             add_panel_when_ready(project_panel, workspace_handle.clone(), cx.clone()),
             add_panel_when_ready(outline_panel, workspace_handle.clone(), cx.clone()),
             add_panel_when_ready(terminal_panel, workspace_handle.clone(), cx.clone()),
-            add_panel_when_ready(git_panel, workspace_handle.clone(), cx.clone()),
             add_panel_when_ready(debug_panel, workspace_handle.clone(), cx.clone()),
             initialize_agent_panel(workspace_handle.clone(), cx.clone()).map(|r| r.log_err()),
         );
@@ -1358,8 +1344,6 @@ fn initialize_pane(
         pane.toolbar().update(cx, |toolbar, cx| {
             let multibuffer_hint = cx.new(|_| MultibufferHint::new());
             toolbar.add_item(multibuffer_hint, window, cx);
-            let solo_diff_style_toolbar = cx.new(SoloDiffStyleToolbar::new);
-            toolbar.add_item(solo_diff_style_toolbar, window, cx);
             let breadcrumbs = cx.new(|_| Breadcrumbs::new());
             toolbar.add_item(breadcrumbs, window, cx);
             let buffer_search_bar = cx.new(|cx| {
@@ -1391,18 +1375,6 @@ fn initialize_pane(
             let highlights_tree_item =
                 cx.new(|_| language_tools::HighlightsTreeToolbarItemView::new());
             toolbar.add_item(highlights_tree_item, window, cx);
-            let project_diff_toolbar = cx.new(|cx| ProjectDiffToolbar::new(workspace, cx));
-            toolbar.add_item(project_diff_toolbar, window, cx);
-            let staged_diff_toolbar = cx.new(|cx| StagedDiffToolbar::new(workspace, cx));
-            toolbar.add_item(staged_diff_toolbar, window, cx);
-            let unstaged_diff_toolbar = cx.new(|cx| UnstagedDiffToolbar::new(workspace, cx));
-            toolbar.add_item(unstaged_diff_toolbar, window, cx);
-            let branch_diff_toolbar = cx.new(BranchDiffToolbar::new);
-            toolbar.add_item(branch_diff_toolbar, window, cx);
-            let solo_diff_git_toolbar = cx.new(SoloDiffGitToolbar::new);
-            toolbar.add_item(solo_diff_git_toolbar, window, cx);
-            let commit_view_toolbar = cx.new(|_| CommitViewToolbar::new());
-            toolbar.add_item(commit_view_toolbar, window, cx);
             let agent_diff_toolbar = cx.new(AgentDiffToolbar::new);
             toolbar.add_item(agent_diff_toolbar, window, cx);
             let basedpyright_banner = cx.new(|cx| BasedPyrightBanner::new(workspace, cx));
@@ -2347,9 +2319,8 @@ fn open_worktree_setup_tasks_file(
     // Kept harmless on purpose: tasks with the `create_worktree` hook run automatically
     // when a worktree is created, so the example must be safe to save unedited.
     const WORKTREE_SETUP_TASK_EXAMPLE: &str = r#"  {
-    // Runs automatically after Zed creates a new git worktree.
-    // $ZED_WORKTREE_ROOT is the new worktree's root directory, and
-    // $ZED_MAIN_GIT_WORKTREE is the original repository's working directory.
+    // Runs automatically after Zed creates a new worktree.
+    // $ZED_WORKTREE_ROOT is the new worktree's root directory.
     "label": "Set up new worktree",
     "command": "echo \"Setting up $ZED_WORKTREE_ROOT — edit this command\"",
     "cwd": "$ZED_WORKTREE_ROOT",
@@ -5588,8 +5559,6 @@ mod tests {
                 "assistant",
                 "assistant2",
                 "auto_update",
-                "branch_picker",
-                "branches",
                 "buffer_search",
                 "call_hierarchy",
                 "cli",
@@ -5607,11 +5576,7 @@ mod tests {
                 "encoding_selector",
                 "feedback",
                 "file_finder",
-                "git",
-                "git_graph",
                 "git_onboarding",
-                "git_panel",
-                "git_picker",
                 "go_to_line",
                 "highlights_tree_view",
                 "icon_theme_selector",
@@ -5644,7 +5609,6 @@ mod tests {
                 "settings_profile_selector",
                 "skill_creator",
                 "snippets",
-                "stash_picker",
                 "svg",
                 "syntax_tree_view",
                 "tab_switcher",
@@ -5660,7 +5624,6 @@ mod tests {
                 "variable_list",
                 "window",
                 "workspace",
-                "worktree_picker",
                 "zed",
                 "zed_actions",
                 "zed_predict_onboarding",
@@ -5849,7 +5812,6 @@ mod tests {
             command_palette::init(cx);
             editor::init(cx);
             title_bar::init(cx);
-            git_ui::init(cx);
             project_panel::init(cx);
             outline_panel::init(cx);
             terminal_view::init(cx);
@@ -5941,8 +5903,7 @@ mod tests {
         eprintln!("Running test_opening_project_settings_when_excluded");
 
         // 1. Set up a project with some project settings
-        let settings_init =
-            r#"{ "UNIQUEVALUE": true, "git": { "inline_blame": { "enabled": false } } }"#;
+        let settings_init = r#"{ "UNIQUEVALUE": true }"#;
         app_state
             .fs
             .as_fake()

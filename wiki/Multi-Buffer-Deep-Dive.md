@@ -73,14 +73,14 @@ ExcerptAnchor { text_anchor: text::Anchor, path: PathKeyIndex, diff_base_anchor:
 
 ## 5. `Event`：订阅契约（[L99](../crates/multi_buffer/src/multi_buffer.rs)）
 `BufferRangesUpdated{buffer,path_key,ranges}`（excerpt 区间变）、`BuffersRemoved{ids}`、`BuffersEdited{ids}`、`DiffHunksToggled`、`Edited{edited_buffer,source}`、`TransactionUndone{id}`、`Reloaded`、`CapabilityChanged`（只读↔可编辑）、`LanguageChanged(id,bool)`、`SettingsChanged`、`Reparsed(id)`、`Saved`、`FileHandleChanged`、`DirtyChanged`、`DiagnosticsUpdated`、`BufferDiffChanged`。
-> editor 订阅 `MultiBuffer`，据这些事件驱动重绘、语法重解析、diagnostic、git diff。
+> editor 订阅 `MultiBuffer`，据这些事件驱动重绘、语法重解析、diagnostic、diff 装饰。
 
 ## 6. 关键查询 / 快照方法
 `text_for_range::<T:ToOffset>(range)`(L3437) 跨 excerpt 拼接取文本、`clip_point(point,bias)`(L4263)、`is_empty`(L1399/L4165)、`excerpts()`(L5561)、`summary()`/`text_summary()`、`point_for_offset`/`offset_for_point`（MultiBufferPoint↔MultiBufferOffset，内部走 excerpt 树维度）。
 
 ## 7. 典型用法（真实映射）
 - 普通文件编辑：`Editor` → `MultiBuffer`（单 excerpt，`Anchor::Max/Min` 或整文件 range）。
-- Git/Conflict diff：一 buffer + `base` buffer 合成多 excerpt，`MultiBufferDiffHunk` 标注增删改（见 [Git-Integration.md](Git-Integration.md)）。
+- Diff 对比：一 buffer + `base` buffer 合成多 excerpt，`MultiBufferDiffHunk` 标注增删改。
 - Project search / outline / diagnostics：把命中行作为多个 `ExcerptRange{primary=匹配,context=上下文}` 拼进一个 `MultiBuffer` 展示（见 [Search.md](Search.md)）。
 - Agent / ACP：AI 生成内容以 excerpt 形式并入可编辑多 buffer（见 [Agent-and-AI.md](Agent-and-AI.md)）。
 

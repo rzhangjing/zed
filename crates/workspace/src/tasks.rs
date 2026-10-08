@@ -229,8 +229,6 @@ impl Workspace {
                 return;
             };
 
-            let git_store = project.git_store().read(cx);
-
             let mut worktree_tasks = Vec::new();
             for worktree in project.worktrees(cx) {
                 let worktree = worktree.read(cx);
@@ -253,13 +251,6 @@ impl Workspace {
                     VariableName::WorktreeRoot,
                     worktree_abs_path.to_string_lossy().into_owned(),
                 );
-
-                if let Some(path) = git_store.original_repo_path_for_worktree(worktree_id, cx) {
-                    task_variables.insert(
-                        VariableName::MainGitWorktree,
-                        path.to_string_lossy().into_owned(),
-                    );
-                }
 
                 let task_context = TaskContext {
                     cwd: Some(worktree_abs_path.to_path_buf()),

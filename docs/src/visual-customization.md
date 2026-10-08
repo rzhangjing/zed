@@ -121,7 +121,6 @@ To disable this behavior use:
   // "project_panel": {"button": false },
   // "outline_panel": {"button": false },
   // "collaboration_panel": {"button": false },
-  // "git_panel": {"button": false },
 
   // "agent": {"button": false },
   // "debugger": {"button": false },
@@ -578,19 +577,6 @@ See [Terminal settings](./reference/all-settings.md#terminal) for additional non
 ### Other Panels
 
 ```json [settings]
-  // Git Panel
-  "git_panel": {
-    "button": true,               // Show/hide status bar icon
-    "dock": "left",               // Where to dock: left, right
-    "default_width": 360,         // Default width of the git panel.
-    "status_style": "icon",       // label_color, icon
-    "sort_by": "path",            // path, name
-    "group_by": "status",         // none, status, staging
-    "scrollbar": {
-      "show": null                // Show/hide: (auto, system, always, never)
-    }
-  },
-
   // Debugger Panel
   "debugger": {
     "dock": "bottom",             // Where to dock: left, right, bottom
@@ -600,11 +586,10 @@ See [Terminal settings](./reference/all-settings.md#terminal) for additional non
   // Outline Panel
   "outline_panel": {
     "button": true,               // Show/hide status bar icon
-    "default_width": 300,         // Default width of the git panel
+    "default_width": 300,         // Default width of the outline panel
     "dock": "left",               // Where to dock: left, right
     "file_icons": true,           // Show/hide file_icons
     "folder_indicator": "icon",   // Dir glyph: icon, chevron, both
-    "git_status": true,           // Show git status
     "indent_size": 20,            // Indentation for nested items (pixels)
     "indent_guides": {
       "show": "always"            // Show indent guides (always, never)

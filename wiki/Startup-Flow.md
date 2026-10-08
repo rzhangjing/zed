@@ -46,7 +46,7 @@ let app = build_application()
 
 ### 阶段 D：崩溃处理 / 文件系统 / keymap 监视（L382–450）
 - `crashes::init(InitCrashHandler { .. }, ...)`（按发布渠道决定是否安装）。
-- `RealFs::new(git_binary_path, app.background_executor())`：文件系统实现。
+- `RealFs::new(app.background_executor())`：文件系统实现。
 - `watch_config_file(&executor, fs.clone(), paths::keymap_file())`：热监视 `keymap.json`。
 - 非 PTY 启动时后台 `load_login_shell_environment()`：继承登录 shell 环境变量（找 PATH 里的工具）。
 
@@ -72,8 +72,6 @@ app.run(move |cx| {
     // 构造 ReqwestClient 并设为全局 HTTP client
     cx.set_http_client(Arc::new(http));
     <dyn Fs>::set_global(fs.clone(), cx);
-    GitHostingProviderRegistry::set_global(git_hosting_provider_registry, cx);
-    git_hosting_providers::init(cx);
     OpenListener::set_global(cx, open_listener.clone());
     extension::init(cx);
     // ... 继续注册 client / UserStore / LanguageRegistry / Theme / AppState 等

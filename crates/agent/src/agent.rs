@@ -88,7 +88,6 @@ pub(crate) fn maximum_retry_delay_with_jitter(delay: Duration) -> Duration {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProjectSnapshot {
-    pub worktree_snapshots: Vec<project::telemetry_snapshot::TelemetryWorktreeSnapshot>,
     pub timestamp: DateTime<Utc>,
 }
 
@@ -3895,7 +3894,7 @@ mod internal_tests {
         });
 
         let temp_dir = tempfile::tempdir().expect("create terminal working directory");
-        let fs = fs::RealFs::new(None, cx.executor());
+        let fs = fs::RealFs::new(cx.executor());
         let project = Project::test(fs.clone(), [temp_dir.path()], cx).await;
         let thread_store = cx.new(|cx| ThreadStore::new(cx));
         let agent = cx.update(|cx| NativeAgent::new(thread_store, Templates::new(), fs, cx));

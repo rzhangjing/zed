@@ -421,8 +421,6 @@ actions!(
         ApplyDiffHunk,
         /// Deletes the character before the cursor.
         Backspace,
-        /// Shows git blame information for the current line.
-        BlameHover,
         /// Cancels the current operation.
         Cancel,
         /// Cancels the running flycheck operation.
@@ -487,8 +485,6 @@ actions!(
         CopyFileName,
         /// Copies the file name without extension to the clipboard.
         CopyFileNameWithoutExtension,
-        /// Copies a permalink to the current line or selection.
-        CopyPermalinkToLine,
         /// Cuts selected text to the clipboard.
         Cut,
         /// Deletes the character after the cursor.
@@ -711,8 +707,6 @@ actions!(
         OpenProposedChangesEditor,
         /// Opens documentation for the symbol at cursor.
         OpenDocs,
-        /// Opens a permalink to the current line or selection.
-        OpenPermalinkToLine,
         /// Opens the file whose name is selected in the editor.
         #[action(deprecated_aliases = ["editor::OpenFile"])]
         OpenSelectedFilename,
@@ -868,14 +862,6 @@ actions!(
         EditLogBreakpoint,
         /// Toggles automatic signature help.
         ToggleAutoSignatureHelp,
-        /// Toggles inline git blame display.
-        ToggleGitBlameInline,
-        /// Opens the git commit for the blame at cursor.
-        OpenGitBlameCommit,
-        /// Opens a blame of the file at the revision of the blame entry at cursor.
-        BlameRevision,
-        /// Opens a blame of the file at the revision preceding the blame entry at cursor.
-        BlamePreviousRevision,
         /// Toggles the diagnostics panel.
         ToggleDiagnostics,
         /// Toggles indent guides display.

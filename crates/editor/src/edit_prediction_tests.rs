@@ -25,8 +25,10 @@ use std::{
 use text::{Point, ToOffset};
 use ui::prelude::*;
 
+use crate::edit_prediction::{EditDisplayMode, EditPrediction};
+
 use crate::{
-    AcceptEditPrediction, CodeContextMenu, CompletionContext, CompletionProvider, EditPrediction,
+    AcceptEditPrediction, CodeContextMenu, CompletionContext, CompletionProvider,
     EditPredictionKeybindAction, EditPredictionKeybindSurface, MenuEditPredictionsPolicy,
     MultiBuffer, ShowCompletions,
     editor_tests::{init_test, update_test_language_settings},
@@ -126,7 +128,7 @@ async fn assert_edit_prediction_diff_popover_avoids_right_occluders(
                 .as_ref()
                 .map(|state| &state.completion),
             Some(EditPrediction::Edit {
-                display_mode: crate::EditDisplayMode::DiffPopover,
+                display_mode: EditDisplayMode::DiffPopover,
                 ..
             })
         ));

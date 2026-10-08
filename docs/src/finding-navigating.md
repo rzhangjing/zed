@@ -15,7 +15,7 @@ The Command Palette ({#kb command_palette::Toggle}) is your gateway to almost ev
 
 ## Project Panel
 
-The Project Panel ({#kb project_panel::ToggleFocus}) shows a tree view of your workspace's files and directories. Browse, create, rename, move, and delete files without leaving the editor. It also surfaces git status and diagnostics at a glance.
+The Project Panel ({#kb project_panel::ToggleFocus}) shows a tree view of your workspace's files and directories. Browse, create, rename, move, and delete files without leaving the editor. It also surfaces diagnostics at a glance.
 
 [Learn more about the Project Panel →](./project-panel.md)
 

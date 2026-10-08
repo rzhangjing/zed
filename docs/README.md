@@ -112,7 +112,7 @@ Replace `<version>` with the new version of `c15t` you are installing. Then upda
 
 A postprocessor is implemented as a sub-command of `docs_preprocessor` that wraps the built-in HTML renderer and applies post-processing to the HTML files, to add support for page-specific title and `meta` tag description values.
 
-An example of the syntax can be found in `git.md`, as well as below:
+An example of the syntax can be found below:
 
 ```md
 ---

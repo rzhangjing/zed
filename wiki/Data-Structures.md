@@ -10,7 +10,7 @@ graph TB
     C[text::Buffer 文本] --> D[rope::Rope]
     D --> B
     B --> E[Arc&lt;Node&gt; 持久化树 + Summary 增量]
-    F[buffer_diff::BufferDiff] --> G[git diff / Delta]
+    F[buffer_diff::BufferDiff] --> G[变更装饰 / review pane]
     H[streaming_diff::StreamingDiff] --> I[AI 逐 token 应用编辑]
 ```
 
@@ -49,7 +49,7 @@ graph TB
 
 | 符号 | 位置 | 作用 |
 |---|---|---|
-| `struct BufferDiff` | [L22](../crates/buffer_diff/src/buffer_diff.rs) | 编辑 buffer 与基线（git HEAD/旧版本）的活差异 |
+| `struct BufferDiff` | [L22](../crates/buffer_diff/src/buffer_diff.rs) | 编辑 buffer 与基线（保存点/对照文本）的活差异 |
 | `trait DiffOperations` | [L31](../crates/buffer_diff/src/buffer_diff.rs) | 如何把 hunk 应用到目标（接受/还原） |
 | `struct RestoreDiffOperations` | [L53](../crates/buffer_diff/src/buffer_diff.rs) | "还原"语义实现 |
 | `set_base_text_snapshot` | [L116](../crates/buffer_diff/src/buffer_diff.rs) | 换基线文本 |
@@ -58,7 +58,7 @@ graph TB
 | `enum DiffHunkSecondaryStatus` | [L142](../crates/buffer_diff/src/buffer_diff.rs) | hunk 是否已处理 |
 | `struct PendingHunk` / `enum PendingSense` | [L182](../crates/buffer_diff/src/buffer_diff.rs) / [L206](../crates/buffer_diff/src/buffer_diff.rs) | 待计算 hunk |
 
-`BufferDiff` 是 `MultiBuffer` 折叠 diff、git gutter、`buffer_diff` UI 与"接受/回退 AI 编辑"的共同数据源。
+`BufferDiff` 是 `MultiBuffer` 折叠 diff、`buffer_diff` UI 与"接受/回退 AI 编辑"的共同数据源。
 
 ## 5. streaming_diff：AI 边生成边应用
 [`crates/streaming_diff/src/streaming_diff.rs`](../crates/streaming_diff/src/streaming_diff.rs)

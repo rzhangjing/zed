@@ -6,8 +6,7 @@ description: Understand how this fork handles AI prompts, code context, provider
 # AI Privacy
 
 This page explains the privacy and trust boundaries for AI features, including
-[Zed Agent](./zed-agent.md), [Edit Prediction](./edit-prediction.md), and
-[Git commit generation](../git.md#ai-support-in-git).
+[Zed Agent](./zed-agent.md) and [Edit Prediction](./edit-prediction.md).
 
 This fork does not route AI requests through Zed-hosted services. There are no
 Zed-hosted models, and Zed has no model provider agreements to describe, because

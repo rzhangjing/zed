@@ -9,14 +9,11 @@ use editor::{
     Editor, EditorEvent, MultiBufferOffset,
     items::{
         entry_diagnostic_aware_icon_decoration_and_color,
-        entry_diagnostic_aware_icon_name_and_color, entry_git_aware_label_color,
+        entry_diagnostic_aware_icon_name_and_color, entry_ignored_aware_label_color,
     },
 };
 use file_icons::FileIcons;
 use fs::TrashId;
-use git;
-use git::status::GitSummary;
-use git_ui_core::file_diff_view::FileDiffView;
 use gpui::{
     Action, AnyElement, App, AsyncWindowContext, Bounds, ClipboardEntry as GpuiClipboardEntry,
     ClipboardItem, Context, CursorStyle, DismissEvent, Div, DragMoveEvent, Entity, EventEmitter,
@@ -33,9 +30,7 @@ use markdown_preview::markdown_preview_view::MarkdownPreviewView;
 use menu::{Confirm, SelectFirst, SelectLast, SelectNext, SelectPrevious};
 use notifications::status_toast::StatusToast;
 use project::{
-    Entry, EntryKind, Fs, GitEntry, GitEntryRef, GitTraversal, Project, ProjectEntryId,
-    ProjectPath, Worktree, WorktreeId,
-    git_store::{GitStoreEvent, RepositoryEvent, git_traversal::ChildEntriesGitIter},
+    Entry, EntryKind, Fs, Project, ProjectEntryId, ProjectPath, Worktree, WorktreeId,
     project_settings::GoToDiagnosticSeverityFilter,
 };
 use project_panel_settings::ProjectPanelSettings;
@@ -48,7 +43,6 @@ use settings::{
 };
 use smallvec::SmallVec;
 use std::{
-    any::TypeId,
     cell::OnceCell,
     cmp,
     collections::HashSet,
@@ -60,7 +54,7 @@ use std::{
 use theme_settings::ThemeSettings;
 use ui::{
     ContextMenu, DecoratedIcon, IconDecoration, IconDecorationKind, IndentGuideColors,
-    IndentGuideLayout, Indicator, KeyBinding, ListItem, ListItemSpacing, ProjectEmptyState,
+    IndentGuideLayout, KeyBinding, ListItem, ListItemSpacing, ProjectEmptyState,
     ScrollAxes, ScrollableHandle, Scrollbars, StickyCandidate, Tooltip, WithScrollbar, prelude::*,
 };
 use util::{
@@ -72,11 +66,10 @@ use util::{
 };
 use workspace::{
     DraggedSelection, OpenInTerminal, OpenMode, OpenOptions, OpenVisible, PreviewTabsSettings,
-    SelectedEntry, SplitDirection, Workspace, WorkspaceSettings, copy_file_permalink,
+    SelectedEntry, SplitDirection, Workspace, WorkspaceSettings,
     dock::{DockPosition, Panel, PanelEvent},
     focus_follows_mouse::FocusFollowsMouse as _,
     notifications::{DetachAndPromptErr, NotifyResultExt, NotifyTaskExt},
-    open_file_permalink,
 };
 use worktree::CreatedEntry;
 use zed_actions::{
@@ -94,7 +87,7 @@ const NEW_ENTRY_ID: ProjectEntryId = ProjectEntryId::MAX;
 
 struct VisibleEntriesForWorktree {
     worktree_id: WorktreeId,
-    entries: Vec<GitEntry>,
+    entries: Vec<Entry>,
     index: OnceCell<HashSet<Arc<RelPath>>>,
 }
 
@@ -286,7 +279,6 @@ struct EntryDetails {
     diagnostic_mark: Option<DiagnosticMark>,
     reserves_chevron_slot: bool,
     diagnostic_count: Option<DiagnosticCount>,
-    git_status: GitSummary,
     is_private: bool,
     worktree_id: WorktreeId,
     canonical_path: Option<Arc<Path>>,
@@ -408,16 +400,10 @@ actions!(
         ScrollCursorBottom,
         /// Selects the parent directory.
         SelectParent,
-        /// Selects the next entry with git changes.
-        SelectNextGitEntry,
-        /// Selects the previous entry with git changes.
-        SelectPrevGitEntry,
         /// Selects the next directory.
         SelectNextDirectory,
         /// Selects the previous directory.
         SelectPrevDirectory,
-        /// Opens a diff view to compare two marked files.
-        CompareMarkedFiles,
         /// Undoes the last file operation.
         Undo,
         /// Redoes the last undone file operation.
@@ -554,38 +540,6 @@ pub fn init(cx: &mut App) {
                 panel.update(cx, |panel, cx| panel.delete(action, window, cx));
             }
         });
-
-        // Forwards `git::FileHistory` to the file history opener installed by
-        // `git_ui` when the project panel is the focused source of selection.
-        // Lives here (and not in `git_ui`) so that `git_ui` does not need to
-        // depend on `project_panel`, which would create a dependency cycle.
-        workspace.register_action_renderer(|div, workspace, window, cx| {
-            let Some(panel) = workspace.panel::<ProjectPanel>(cx) else {
-                return div;
-            };
-            if !panel.read(cx).focus_handle(cx).contains_focused(window, cx) {
-                return div;
-            }
-            if panel.read(cx).selected_entry_project_path(cx).is_none() {
-                return div;
-            }
-            let workspace = workspace.weak_handle();
-            div.capture_action(move |_: &git::FileHistory, window, cx| {
-                workspace
-                    .update(cx, |workspace, cx| {
-                        let Some(panel) = workspace.panel::<ProjectPanel>(cx) else {
-                            return;
-                        };
-                        let Some(project_path) = panel.read(cx).selected_entry_project_path(cx)
-                        else {
-                            return;
-                        };
-                        git_ui_core::open_file_history(workspace, &project_path, window, cx);
-                    })
-                    .log_err();
-                cx.stop_propagation();
-            })
-        });
     })
     .detach();
 }
@@ -681,27 +635,10 @@ impl ProjectPanel {
         cx: &mut Context<Workspace>,
     ) -> Entity<Self> {
         let project = workspace.project().clone();
-        let git_store = project.read(cx).git_store().clone();
         let path_style = project.read(cx).path_style(cx);
         let project_panel = cx.new(|cx| {
             let focus_handle = cx.focus_handle();
             cx.on_focus(&focus_handle, window, Self::focus_in).detach();
-
-            cx.subscribe_in(
-                &git_store,
-                window,
-                |this, _, event, window, cx| match event {
-                    GitStoreEvent::RepositoryUpdated(_, RepositoryEvent::StatusesChanged, _)
-                    | GitStoreEvent::RepositoryAdded
-                    | GitStoreEvent::DiffBaseChanged(_)
-                    | GitStoreEvent::RepositoryRemoved(_) => {
-                        this.update_visible_entries(None, false, false, window, cx);
-                        cx.notify();
-                    }
-                    _ => {}
-                },
-            )
-            .detach();
 
             cx.subscribe_in(
                 &project,
@@ -714,17 +651,7 @@ impl ProjectPanel {
                         }
                     }
                     project::Event::ActiveEntryChanged(None) => {
-                        let is_active_item_file_diff_view = this
-                            .workspace
-                            .upgrade()
-                            .and_then(|ws| ws.read(cx).active_item(cx))
-                            .map(|item| {
-                                item.act_as_type(TypeId::of::<FileDiffView>(), cx).is_some()
-                            })
-                            .unwrap_or(false);
-                        if !is_active_item_file_diff_view {
-                            this.marked_entries.clear();
-                        }
+                        this.marked_entries.clear();
                     }
                     project::Event::RevealInProjectPanel(entry_id) => {
                         if let Some(()) = this
@@ -1111,23 +1038,6 @@ impl ProjectPanel {
             let should_hide_rename = is_root
                 && (cfg!(target_os = "windows")
                     || (settings.hide_root && visible_worktrees_count == 1));
-            let should_show_compare = !is_dir && self.file_abs_paths_to_diff(cx).is_some();
-
-            let (has_git_repo, has_history) = {
-                let project_path = project::ProjectPath {
-                    worktree_id,
-                    path: entry.path.clone(),
-                };
-                let git_store = project.git_store().read(cx);
-                let has_git_repo = git_store
-                    .repository_and_path_for_project_path(&project_path, cx)
-                    .is_some();
-                let has_history = has_git_repo
-                    && !git_store
-                        .project_path_git_status(&project_path, cx)
-                        .is_some_and(|status| status.is_created());
-                (has_git_repo, has_history)
-            };
 
             let has_pasteable_content = self.has_pasteable_content(cx);
             let context_menu = ContextMenu::build(window, cx, |menu, _, _| {
@@ -1166,10 +1076,6 @@ impl ProjectPanel {
                             .when(is_foldable, |menu| {
                                 menu.action("Fold Directory", Box::new(FoldDirectory))
                             })
-                            .when(should_show_compare, |menu| {
-                                menu.separator()
-                                    .action("Compare Marked Files", Box::new(CompareMarkedFiles))
-                            })
                             .separator()
                             .action("Cut", Box::new(Cut))
                             .action("Copy", Box::new(Copy))
@@ -1188,33 +1094,6 @@ impl ProjectPanel {
                                 "Copy Relative Path",
                                 Box::new(zed_actions::workspace::CopyRelativePath),
                             )
-                            .when(has_git_repo, |menu| {
-                                menu.separator()
-                                    .when(!is_dir && self.has_git_changes(entry_id), |menu| {
-                                        menu.action(
-                                            "Restore File",
-                                            Box::new(git::RestoreFile { skip_prompt: false }),
-                                        )
-                                    })
-                                    .action("Add to .gitignore", Box::new(git::AddToGitignore))
-                                    .action(
-                                        "Add to .git/info/exclude",
-                                        Box::new(git::AddToGitInfoExclude),
-                                    )
-                                    .when(has_history, |menu| {
-                                        menu.action("View History", Box::new(git::FileHistory))
-                                    })
-                                    .when(!is_dir, |menu| {
-                                        menu.action(
-                                            "Open File Permalink",
-                                            git::OpenFilePermalink.boxed_clone(),
-                                        )
-                                        .action(
-                                            "Copy File Permalink",
-                                            git::CopyFilePermalink.boxed_clone(),
-                                        )
-                                    })
-                            })
                             .when(!should_hide_rename, |menu| {
                                 menu.separator().action("Rename", Box::new(Rename))
                             })
@@ -1258,19 +1137,6 @@ impl ProjectPanel {
         }
 
         cx.notify();
-    }
-
-    fn has_git_changes(&self, entry_id: ProjectEntryId) -> bool {
-        for visible in &self.state.visible_entries {
-            if let Some(git_entry) = visible.entries.iter().find(|e| e.id == entry_id) {
-                let total_modified =
-                    git_entry.git_summary.index.modified + git_entry.git_summary.worktree.modified;
-                let total_deleted =
-                    git_entry.git_summary.index.deleted + git_entry.git_summary.worktree.deleted;
-                return total_modified > 0 || total_deleted > 0;
-            }
-        }
-        false
     }
 
     fn is_unfoldable(&self, entry: &Entry, worktree: &Worktree) -> bool {
@@ -2404,197 +2270,6 @@ impl ProjectPanel {
         self.remove(false, action.skip_prompt, window, cx);
     }
 
-    fn restore_file(
-        &mut self,
-        action: &git::RestoreFile,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        maybe!({
-            let selection = self.selection?;
-            let project = self.project.read(cx);
-
-            let (_worktree, entry) = self.selected_sub_entry(cx)?;
-            if entry.is_dir() {
-                return None;
-            }
-
-            let project_path = project.path_for_entry(selection.entry_id, cx)?;
-
-            let git_store = project.git_store();
-            let (repository, repo_path) = git_store
-                .read(cx)
-                .repository_and_path_for_project_path(&project_path, cx)?;
-
-            let snapshot = repository.read(cx).snapshot();
-            let status = snapshot.status_for_path(&repo_path)?;
-            if !status.status.is_modified() && !status.status.is_deleted() {
-                return None;
-            }
-
-            let file_name = entry.path.file_name()?.to_string();
-
-            let answer = if !action.skip_prompt {
-                let prompt = format!("Discard changes to {}?", MarkdownInlineCode(&file_name));
-                Some(window.prompt(PromptLevel::Info, &prompt, None, &["Restore", "Cancel"], cx))
-            } else {
-                None
-            };
-
-            cx.spawn_in(window, async move |panel, cx| {
-                if let Some(answer) = answer
-                    && answer.await != Ok(0)
-                {
-                    return anyhow::Ok(());
-                }
-
-                let task = panel.update(cx, |_panel, cx| {
-                    repository.update(cx, |repo, cx| {
-                        repo.checkout_files("HEAD", vec![repo_path], cx)
-                    })
-                })?;
-
-                if let Err(e) = task.await {
-                    panel
-                        .update(cx, |panel, cx| {
-                            let message = format!("Failed to restore {}: {}", file_name, e);
-                            let toast = StatusToast::new(message, cx, |this, _| {
-                                this.icon(
-                                    Icon::new(IconName::XCircle)
-                                        .size(IconSize::Small)
-                                        .color(Color::Error),
-                                )
-                                .dismiss_button(true)
-                            });
-                            panel
-                                .workspace
-                                .update(cx, |workspace, cx| {
-                                    workspace.toggle_status_toast(toast, cx);
-                                })
-                                .ok();
-                        })
-                        .ok();
-                }
-
-                panel
-                    .update(cx, |panel, cx| {
-                        panel.project.update(cx, |project, cx| {
-                            if let Some(buffer_id) = project
-                                .buffer_store()
-                                .read(cx)
-                                .buffer_id_for_project_path(&project_path)
-                            {
-                                if let Some(buffer) = project.buffer_for_id(*buffer_id, cx) {
-                                    buffer.update(cx, |buffer, cx| {
-                                        let _ = buffer.reload(cx);
-                                    });
-                                }
-                            }
-                        })
-                    })
-                    .ok();
-
-                anyhow::Ok(())
-            })
-            .detach_and_log_err(cx);
-
-            Some(())
-        });
-    }
-
-    fn add_to_gitignore(
-        &mut self,
-        _: &git::AddToGitignore,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        maybe!({
-            let selection = self.selection?;
-            let (_, entry) = self.selected_sub_entry(cx)?;
-            let is_dir = entry.is_dir();
-            let project = self.project.read(cx);
-
-            let project_path = project.path_for_entry(selection.entry_id, cx)?;
-
-            let git_store = project.git_store();
-            let (repository, repo_path) = git_store
-                .read(cx)
-                .repository_and_path_for_project_path(&project_path, cx)?;
-
-            let workspace = self.workspace.clone();
-            let receiver =
-                repository.update(cx, |repo, _| repo.add_path_to_gitignore(&repo_path, is_dir));
-
-            cx.spawn(async move |_, cx| {
-                if let Err(e) = receiver.await? {
-                    if let Some(workspace) = workspace.upgrade() {
-                        cx.update(|cx| {
-                            let message = format!("Failed to add to .gitignore: {}", e);
-                            let toast = StatusToast::new(message, cx, |this, _| {
-                                this.icon(Icon::new(IconName::XCircle).color(Color::Error))
-                                    .dismiss_button(true)
-                            });
-                            workspace.update(cx, |workspace, cx| {
-                                workspace.toggle_status_toast(toast, cx);
-                            });
-                        });
-                    }
-                }
-                anyhow::Ok(())
-            })
-            .detach_and_log_err(cx);
-
-            Some(())
-        });
-    }
-
-    fn add_to_git_info_exclude(
-        &mut self,
-        _: &git::AddToGitInfoExclude,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        maybe!({
-            let selection = self.selection?;
-            let (_, entry) = self.selected_sub_entry(cx)?;
-            let is_dir = entry.is_dir();
-            let project = self.project.read(cx);
-
-            let project_path = project.path_for_entry(selection.entry_id, cx)?;
-
-            let git_store = project.git_store();
-            let (repository, repo_path) = git_store
-                .read(cx)
-                .repository_and_path_for_project_path(&project_path, cx)?;
-
-            let workspace = self.workspace.clone();
-            let receiver = repository.update(cx, |repo, _| {
-                repo.add_path_to_git_info_exclude(&repo_path, is_dir)
-            });
-
-            cx.spawn(async move |_, cx| {
-                if let Err(e) = receiver.await? {
-                    if let Some(workspace) = workspace.upgrade() {
-                        cx.update(|cx| {
-                            let message = format!("Failed to add to .git/info/exclude: {}", e);
-                            let toast = StatusToast::new(message, cx, |this, _| {
-                                this.icon(Icon::new(IconName::XCircle).color(Color::Error))
-                                    .dismiss_button(true)
-                            });
-                            workspace.update(cx, |workspace, cx| {
-                                workspace.toggle_status_toast(toast, cx);
-                            });
-                        });
-                    }
-                }
-                anyhow::Ok(())
-            })
-            .detach_and_log_err(cx);
-
-            Some(())
-        });
-    }
-
     /// Builds the confirmation prompt shared by direct removal and undo/redo.
     ///
     /// The `names` slice must contain every path being removed, and this
@@ -2840,7 +2515,6 @@ impl ProjectPanel {
             .map(|entry| entry.worktree_id)
             .filter_map(|id| project.worktree_for_id(id, cx).map(|w| (id, w.read(cx))))
             .max_by(|(_, a), (_, b)| a.root_name().cmp(b.root_name()))?;
-        let git_store = project.git_store().read(cx);
 
         let marked_entries_in_worktree = sanitized_entries
             .iter()
@@ -2866,20 +2540,25 @@ impl ProjectPanel {
         let parent_entry = worktree.entry_for_path(parent_path)?;
 
         // Remove all siblings that are being deleted except the last marked entry
-        let repo_snapshots = git_store.display_repo_snapshots(cx);
         let worktree_snapshot = worktree.snapshot();
         let hide_gitignore = ProjectPanelSettings::get_global(cx).hide_gitignore;
-        let mut siblings: Vec<_> =
-            ChildEntriesGitIter::new(&repo_snapshots, &worktree_snapshot, parent_path)
-                .filter(|sibling| {
-                    (sibling.id == latest_entry.id)
-                        || (!marked_entries_in_worktree.contains(&&SelectedEntry {
-                            worktree_id,
-                            entry_id: sibling.id,
-                        }) && (!hide_gitignore || !sibling.is_ignored))
-                })
-                .map(|entry| entry.to_owned())
-                .collect();
+        let mut traversal = worktree_snapshot.traverse_from_path(true, true, true, parent_path);
+        traversal.advance();
+        let mut siblings: Vec<Entry> = Vec::new();
+        while let Some(sibling) = traversal.entry() {
+            if !sibling.path.starts_with(parent_path) {
+                break;
+            }
+            traversal.advance_to_sibling();
+            if sibling.id == latest_entry.id
+                || (!marked_entries_in_worktree.contains(&&SelectedEntry {
+                    worktree_id,
+                    entry_id: sibling.id,
+                }) && (!hide_gitignore || !sibling.is_ignored))
+            {
+                siblings.push(sibling.clone());
+            }
+        }
 
         let sort_mode = ProjectPanelSettings::get_global(cx).sort_mode;
         let sort_order = ProjectPanelSettings::get_global(cx).sort_order;
@@ -3080,7 +2759,7 @@ impl ProjectPanel {
         let selection = self.find_entry(
             self.selection.as_ref(),
             true,
-            &|entry: GitEntryRef, worktree_id: WorktreeId| {
+            &|entry: &Entry, worktree_id: WorktreeId| {
                 self.selection.is_none_or(|selection| {
                     if selection.worktree_id == worktree_id {
                         selection.entry_id != entry.id
@@ -3119,7 +2798,7 @@ impl ProjectPanel {
         let selection = self.find_entry(
             self.selection.as_ref(),
             false,
-            &|entry: GitEntryRef, worktree_id: WorktreeId| {
+            &|entry: &Entry, worktree_id: WorktreeId| {
                 self.selection.is_none_or(|selection| {
                     if selection.worktree_id == worktree_id {
                         selection.entry_id != entry.id
@@ -3149,44 +2828,6 @@ impl ProjectPanel {
         }
     }
 
-    fn select_prev_git_entry(
-        &mut self,
-        _: &SelectPrevGitEntry,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let selection = self.find_entry(
-            self.selection.as_ref(),
-            true,
-            &|entry: GitEntryRef, worktree_id: WorktreeId| {
-                (self.selection.is_none()
-                    || self.selection.is_some_and(|selection| {
-                        if selection.worktree_id == worktree_id {
-                            selection.entry_id != entry.id
-                        } else {
-                            true
-                        }
-                    }))
-                    && entry.is_file()
-                    && entry.git_summary.index.modified + entry.git_summary.worktree.modified > 0
-            },
-            cx,
-        );
-
-        if let Some(selection) = selection {
-            self.selection = Some(selection);
-            self.expand_entry(selection.worktree_id, selection.entry_id, cx);
-            self.update_visible_entries(
-                Some((selection.worktree_id, selection.entry_id)),
-                false,
-                true,
-                window,
-                cx,
-            );
-            cx.notify();
-        }
-    }
-
     fn select_prev_directory(
         &mut self,
         _: &SelectPrevDirectory,
@@ -3196,7 +2837,7 @@ impl ProjectPanel {
         let selection = self.find_visible_entry(
             self.selection.as_ref(),
             true,
-            &|entry: GitEntryRef, worktree_id: WorktreeId| {
+            &|entry: &Entry, worktree_id: WorktreeId| {
                 self.selection.is_none_or(|selection| {
                     if selection.worktree_id == worktree_id {
                         selection.entry_id != entry.id
@@ -3224,7 +2865,7 @@ impl ProjectPanel {
         let selection = self.find_visible_entry(
             self.selection.as_ref(),
             false,
-            &|entry: GitEntryRef, worktree_id: WorktreeId| {
+            &|entry: &Entry, worktree_id: WorktreeId| {
                 self.selection.is_none_or(|selection| {
                     if selection.worktree_id == worktree_id {
                         selection.entry_id != entry.id
@@ -3239,42 +2880,6 @@ impl ProjectPanel {
         if let Some(selection) = selection {
             self.selection = Some(selection);
             self.autoscroll(cx);
-            cx.notify();
-        }
-    }
-
-    fn select_next_git_entry(
-        &mut self,
-        _: &SelectNextGitEntry,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let selection = self.find_entry(
-            self.selection.as_ref(),
-            false,
-            &|entry: GitEntryRef, worktree_id: WorktreeId| {
-                self.selection.is_none_or(|selection| {
-                    if selection.worktree_id == worktree_id {
-                        selection.entry_id != entry.id
-                    } else {
-                        true
-                    }
-                }) && entry.is_file()
-                    && entry.git_summary.index.modified + entry.git_summary.worktree.modified > 0
-            },
-            cx,
-        );
-
-        if let Some(selection) = selection {
-            self.selection = Some(selection);
-            self.expand_entry(selection.worktree_id, selection.entry_id, cx);
-            self.update_visible_entries(
-                Some((selection.worktree_id, selection.entry_id)),
-                false,
-                true,
-                window,
-                cx,
-            );
             cx.notify();
         }
     }
@@ -3639,53 +3244,6 @@ impl ProjectPanel {
         }
     }
 
-    fn open_file_permalink(
-        &mut self,
-        _: &git::OpenFilePermalink,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(project_path) = self.selected_file_project_path(cx) else {
-            return;
-        };
-        open_file_permalink(
-            self.project.clone(),
-            project_path,
-            self.workspace.clone(),
-            window,
-            cx,
-        );
-    }
-
-    fn copy_file_permalink(
-        &mut self,
-        _: &git::CopyFilePermalink,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(project_path) = self.selected_file_project_path(cx) else {
-            return;
-        };
-        copy_file_permalink(
-            self.project.clone(),
-            project_path,
-            self.workspace.clone(),
-            window,
-            cx,
-        );
-    }
-
-    fn selected_file_project_path(&self, cx: &App) -> Option<ProjectPath> {
-        let (worktree, entry) = self.selected_sub_entry(cx)?;
-        if entry.is_dir() {
-            return None;
-        }
-        Some(ProjectPath {
-            worktree_id: worktree.read(cx).id(),
-            path: entry.path.clone(),
-        })
-    }
-
     fn reveal_in_finder(
         &mut self,
         _: &RevealInFileManager,
@@ -3708,50 +3266,6 @@ impl ProjectPanel {
             let worktree_id = entry.worktree_id;
             self.project
                 .update(cx, |project, cx| project.remove_worktree(worktree_id, cx));
-        }
-    }
-
-    fn file_abs_paths_to_diff(&self, cx: &Context<Self>) -> Option<(PathBuf, PathBuf)> {
-        let mut selections_abs_path = self
-            .marked_entries
-            .iter()
-            .filter_map(|entry| {
-                let project = self.project.read(cx);
-                let worktree = project.worktree_for_id(entry.worktree_id, cx)?;
-                let entry = worktree.read(cx).entry_for_id(entry.entry_id)?;
-                if !entry.is_file() {
-                    return None;
-                }
-                Some(worktree.read(cx).absolutize(&entry.path))
-            })
-            .rev();
-
-        let last_path = selections_abs_path.next()?;
-        let previous_to_last = selections_abs_path.next()?;
-        Some((previous_to_last, last_path))
-    }
-
-    fn compare_marked_files(
-        &mut self,
-        _: &CompareMarkedFiles,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let selected_files = self.file_abs_paths_to_diff(cx);
-        if let Some((file_path1, file_path2)) = selected_files {
-            self.workspace
-                .update(cx, |workspace, cx| {
-                    FileDiffView::open(
-                        file_path1,
-                        file_path2,
-                        None,
-                        workspace.weak_handle(),
-                        window,
-                        cx,
-                    )
-                    .detach_and_log_err(cx);
-                })
-                .ok();
         }
     }
 
@@ -4136,32 +3650,25 @@ impl ProjectPanel {
         Some(())
     }
 
-    fn create_new_git_entry(
-        parent_entry: &Entry,
-        git_summary: GitSummary,
-        new_entry_kind: EntryKind,
-    ) -> GitEntry {
-        GitEntry {
-            entry: Entry {
-                id: NEW_ENTRY_ID,
-                kind: new_entry_kind,
-                path: parent_entry
-                    .path
-                    .join(RelPath::from_unix_str("\0").unwrap())
-                    .into(),
-                inode: 0,
-                mtime: parent_entry.mtime,
-                size: parent_entry.size,
-                is_ignored: parent_entry.is_ignored,
-                is_hidden: parent_entry.is_hidden,
-                is_external: false,
-                is_private: false,
-                is_always_included: parent_entry.is_always_included,
-                canonical_path: parent_entry.canonical_path.clone(),
-                char_bag: parent_entry.char_bag,
-                is_fifo: parent_entry.is_fifo,
-            },
-            git_summary,
+    fn create_new_entry(parent_entry: &Entry, new_entry_kind: EntryKind) -> Entry {
+        Entry {
+            id: NEW_ENTRY_ID,
+            kind: new_entry_kind,
+            path: parent_entry
+                .path
+                .join(RelPath::from_unix_str("\0").unwrap())
+                .into(),
+            inode: 0,
+            mtime: parent_entry.mtime,
+            size: parent_entry.size,
+            is_ignored: parent_entry.is_ignored,
+            is_hidden: parent_entry.is_hidden,
+            is_external: false,
+            is_private: false,
+            is_always_included: parent_entry.is_always_included,
+            canonical_path: parent_entry.canonical_path.clone(),
+            char_bag: parent_entry.char_bag,
+            is_fifo: parent_entry.is_fifo,
         }
     }
 
@@ -4180,7 +3687,6 @@ impl ProjectPanel {
         let sort_mode = settings.sort_mode;
         let sort_order = settings.sort_order;
         let project = self.project.read(cx);
-        let repo_snapshots = project.git_store().read(cx).display_repo_snapshots(cx);
 
         let old_ancestors = self.state.ancestors.clone();
         let temporary_unfolded_pending_state = self.state.temporarily_unfolded_pending_state.take();
@@ -4220,18 +3726,14 @@ impl ProjectPanel {
                         }
 
                         let mut visible_worktree_entries = Vec::new();
-                        let mut entry_iter =
-                            GitTraversal::new(&repo_snapshots, worktree_snapshot.entries(true, 0));
+                        let mut entry_iter = worktree_snapshot.entries(true, 0);
                         let mut auto_folded_ancestors = vec![];
                         let worktree_abs_path = worktree_snapshot.abs_path();
                         while let Some(entry) = entry_iter.entry() {
-                            if hide_root && Some(entry.entry) == worktree_snapshot.root_entry() {
+                            if hide_root && Some(entry) == worktree_snapshot.root_entry() {
                                 if new_entry_parent_id == Some(entry.id) {
-                                    visible_worktree_entries.push(Self::create_new_git_entry(
-                                        entry.entry,
-                                        entry.git_summary,
-                                        new_entry_kind,
-                                    ));
+                                    visible_worktree_entries
+                                        .push(Self::create_new_entry(entry, new_entry_kind));
                                     new_entry_parent_id = None;
                                 }
                                 entry_iter.advance();
@@ -4297,7 +3799,7 @@ impl ProjectPanel {
                             if (!hide_gitignore || !entry.is_ignored)
                                 && (!hide_hidden || !entry.is_hidden)
                             {
-                                visible_worktree_entries.push(entry.to_owned());
+                                visible_worktree_entries.push(entry.clone());
                             }
                             let precedes_new_entry = if let Some(new_entry_id) = new_entry_parent_id
                             {
@@ -4313,16 +3815,11 @@ impl ProjectPanel {
                                 && (!hide_gitignore || !entry.is_ignored)
                                 && (!hide_hidden || !entry.is_hidden)
                             {
-                                visible_worktree_entries.push(Self::create_new_git_entry(
-                                    entry.entry,
-                                    entry.git_summary,
-                                    new_entry_kind,
-                                ));
+                                visible_worktree_entries
+                                    .push(Self::create_new_entry(entry, new_entry_kind));
                             }
 
-                            let (depth, chars) = if Some(entry.entry)
-                                == worktree_snapshot.root_entry()
-                            {
+                            let (depth, chars) = if Some(entry) == worktree_snapshot.root_entry() {
                                 let Some(path_name) = worktree_abs_path.file_name() else {
                                     entry_iter.advance();
                                     continue;
@@ -5013,7 +4510,7 @@ impl ProjectPanel {
         None
     }
 
-    fn entry_at_index(&self, index: usize) -> Option<(WorktreeId, GitEntryRef<'_>)> {
+    fn entry_at_index(&self, index: usize) -> Option<(WorktreeId, &Entry)> {
         let mut offset = 0;
         for worktree in &self.state.visible_entries {
             let current_len = worktree.entries.len();
@@ -5021,7 +4518,7 @@ impl ProjectPanel {
                 return worktree
                     .entries
                     .get(index - offset)
-                    .map(|entry| (worktree.worktree_id, entry.to_ref()));
+                    .map(|entry| (worktree.worktree_id, entry));
             }
             offset += current_len;
         }
@@ -5090,10 +4587,6 @@ impl ProjectPanel {
             }
 
             let end_ix = range.end.min(ix + visible.entries.len());
-            let git_status_setting = {
-                let settings = ProjectPanelSettings::get_global(cx);
-                settings.git_status
-            };
             if let Some(worktree) = self
                 .project
                 .read(cx)
@@ -5107,16 +4600,11 @@ impl ProjectPanel {
                     .index
                     .get_or_init(|| visible.entries.iter().map(|e| e.path.clone()).collect());
                 for entry in visible.entries[entry_range].iter() {
-                    let status = git_status_setting
-                        .then_some(entry.git_summary)
-                        .unwrap_or_default();
-
                     let mut details = self.details_for_entry(
                         entry,
                         visible.worktree_id,
                         root_name,
                         entries,
-                        status,
                         None,
                         window,
                         cx,
@@ -5191,9 +4679,9 @@ impl ProjectPanel {
         worktree_id: WorktreeId,
         reverse_search: bool,
         only_visible_entries: bool,
-        predicate: &dyn Fn(GitEntryRef, WorktreeId) -> bool,
+        predicate: &dyn Fn(&Entry, WorktreeId) -> bool,
         cx: &mut Context<Self>,
-    ) -> Option<GitEntry> {
+    ) -> Option<Entry> {
         if only_visible_entries {
             let entries = self
                 .state
@@ -5209,24 +4697,15 @@ impl ProjectPanel {
                 .clone();
 
             return utils::ReversibleIterable::new(entries.iter(), reverse_search)
-                .find(|ele| predicate(ele.to_ref(), worktree_id))
+                .find(|ele| predicate(ele, worktree_id))
                 .cloned();
         }
 
-        let repo_snapshots = self
-            .project
-            .read(cx)
-            .git_store()
-            .read(cx)
-            .display_repo_snapshots(cx);
         let worktree = self.project.read(cx).worktree_for_id(worktree_id, cx)?;
         worktree.read_with(cx, |tree, _| {
-            utils::ReversibleIterable::new(
-                GitTraversal::new(&repo_snapshots, tree.entries(true, 0usize)),
-                reverse_search,
-            )
-            .find_single_ended(|ele| predicate(*ele, worktree_id))
-            .map(|ele| ele.to_owned())
+            utils::ReversibleIterable::new(tree.entries(true, 0usize), reverse_search)
+                .find_single_ended(|ele| predicate(ele, worktree_id))
+                .cloned()
         })
     }
 
@@ -5234,7 +4713,7 @@ impl ProjectPanel {
         &self,
         start: Option<&SelectedEntry>,
         reverse_search: bool,
-        predicate: &dyn Fn(GitEntryRef, WorktreeId) -> bool,
+        predicate: &dyn Fn(&Entry, WorktreeId) -> bool,
         cx: &mut Context<Self>,
     ) -> Option<SelectedEntry> {
         let mut worktree_ids: Vec<_> = self
@@ -5243,12 +4722,6 @@ impl ProjectPanel {
             .iter()
             .map(|worktree| worktree.worktree_id)
             .collect();
-        let repo_snapshots = self
-            .project
-            .read(cx)
-            .git_store()
-            .read(cx)
-            .display_repo_snapshots(cx);
 
         let mut last_found: Option<SelectedEntry> = None;
 
@@ -5264,10 +4737,8 @@ impl ProjectPanel {
                 let root_entry = worktree.root_entry()?;
                 let tree_id = worktree.id();
 
-                let mut first_iter = GitTraversal::new(
-                    &repo_snapshots,
-                    worktree.traverse_from_path(true, true, true, entry.path.as_ref()),
-                );
+                let mut first_iter =
+                    worktree.traverse_from_path(true, true, true, entry.path.as_ref());
 
                 if reverse_search {
                     first_iter.next();
@@ -5275,26 +4746,25 @@ impl ProjectPanel {
 
                 let first = first_iter
                     .enumerate()
-                    .take_until(|(count, entry)| entry.entry == root_entry && *count != 0usize)
+                    .take_until(|(count, entry)| *entry == root_entry && *count != 0usize)
                     .map(|(_, entry)| entry)
-                    .find(|ele| predicate(*ele, tree_id))
-                    .map(|ele| ele.to_owned());
+                    .find(|ele| predicate(ele, tree_id))
+                    .cloned();
 
-                let second_iter =
-                    GitTraversal::new(&repo_snapshots, worktree.entries(true, 0usize));
+                let second_iter = worktree.entries(true, 0usize);
 
                 let second = if reverse_search {
                     second_iter
                         .take_until(|ele| ele.id == start.entry_id)
-                        .filter(|ele| predicate(*ele, tree_id))
+                        .filter(|ele| predicate(ele, tree_id))
                         .last()
-                        .map(|ele| ele.to_owned())
+                        .cloned()
                 } else {
                     second_iter
                         .take_while(|ele| ele.id != start.entry_id)
-                        .filter(|ele| predicate(*ele, tree_id))
+                        .filter(|ele| predicate(ele, tree_id))
                         .last()
-                        .map(|ele| ele.to_owned())
+                        .cloned()
                 };
 
                 if reverse_search {
@@ -5351,7 +4821,7 @@ impl ProjectPanel {
         &self,
         start: Option<&SelectedEntry>,
         reverse_search: bool,
-        predicate: &dyn Fn(GitEntryRef, WorktreeId) -> bool,
+        predicate: &dyn Fn(&Entry, WorktreeId) -> bool,
         cx: &mut Context<Self>,
     ) -> Option<SelectedEntry> {
         let mut worktree_ids: Vec<_> = self
@@ -5395,8 +4865,8 @@ impl ProjectPanel {
                 )
             };
 
-            let first_search = first_iter.find(|ele| predicate(ele.to_ref(), start.worktree_id));
-            let second_search = second_iter.find(|ele| predicate(ele.to_ref(), start.worktree_id));
+            let first_search = first_iter.find(|ele| predicate(ele, start.worktree_id));
+            let second_search = second_iter.find(|ele| predicate(ele, start.worktree_id));
 
             if first_search.is_some() {
                 return first_search.map(|entry| SelectedEntry {
@@ -5686,11 +5156,6 @@ impl ProjectPanel {
                 false
             }
         };
-        let git_indicator = settings
-            .git_status_indicator
-            .then(|| git_status_indicator(details.git_status))
-            .flatten();
-
         let id: ElementId = if is_sticky {
             SharedString::from(format!("project_panel_sticky_item_{}", entry_id.to_usize())).into()
         } else {
@@ -6087,9 +5552,7 @@ impl ProjectPanel {
                     })
                     .selectable(false)
                     .when(
-                        canonical_path.is_some()
-                            || diagnostic_count.is_some()
-                            || git_indicator.is_some(),
+                        canonical_path.is_some() || diagnostic_count.is_some(),
                         |this| {
                             let symlink_element = canonical_path.map(|path| {
                                 div()
@@ -6131,20 +5594,6 @@ impl ProjectPanel {
                                                 )
                                             },
                                         )
-                                    })
-                                    .when_some(git_indicator, |this, (label, color)| {
-                                        let git_indicator = if kind.is_dir() {
-                                            Indicator::dot()
-                                                .color(Color::Custom(color.color(cx).opacity(0.5)))
-                                                .into_any_element()
-                                        } else {
-                                            Label::new(label)
-                                                .size(LabelSize::Small)
-                                                .color(color)
-                                                .into_any_element()
-                                        };
-
-                                        this.child(git_indicator)
                                     })
                                     .when_some(symlink_element, |this, el| this.child(el))
                                     .into_any_element(),
@@ -6523,7 +5972,6 @@ impl ProjectPanel {
         worktree_id: WorktreeId,
         root_name: &RelPath,
         entries_paths: &HashSet<Arc<RelPath>>,
-        git_status: GitSummary,
         sticky: Option<StickyDetails>,
         _window: &mut Window,
         cx: &mut Context<Self>,
@@ -6623,7 +6071,7 @@ impl ProjectPanel {
             chevron.is_none() && folder_indicator.shows_chevron() && folder_indicator.shows_icon();
 
         let filename_text_color =
-            entry_git_aware_label_color(git_status, entry.is_ignored, is_marked);
+            entry_ignored_aware_label_color(entry.is_ignored, is_marked);
 
         let is_cut = self
             .clipboard
@@ -6650,7 +6098,6 @@ impl ProjectPanel {
             diagnostic_mark,
             reserves_chevron_slot,
             diagnostic_count,
-            git_status,
             is_private: entry.is_private,
             worktree_id,
             canonical_path: entry.canonical_path.clone(),
@@ -6707,16 +6154,6 @@ impl ProjectPanel {
             cx.notify();
             return Ok(());
         }
-        let is_active_item_file_diff_view = self
-            .workspace
-            .upgrade()
-            .and_then(|ws| ws.read(cx).active_item(cx))
-            .map(|item| item.act_as_type(TypeId::of::<FileDiffView>(), cx).is_some())
-            .unwrap_or(false);
-        if is_active_item_file_diff_view {
-            return Ok(());
-        }
-
         self.expand_entry(worktree_id, entry_id, cx);
         self.update_visible_entries(Some((worktree_id, entry_id)), false, true, window, cx);
         self.marked_entries.clear();
@@ -6852,19 +6289,7 @@ impl ProjectPanel {
 
         sticky_parents.reverse();
 
-        let panel_settings = ProjectPanelSettings::get_global(cx);
-        let git_status_enabled = panel_settings.git_status;
         let root_name = worktree.root_name();
-
-        let git_summaries_by_id = if git_status_enabled {
-            visible
-                .entries
-                .iter()
-                .map(|e| (e.id, e.git_summary))
-                .collect::<HashMap<_, _>>()
-        } else {
-            Default::default()
-        };
 
         // already checked if non empty above
         let last_item_index = sticky_parents.len() - 1;
@@ -6873,10 +6298,6 @@ impl ProjectPanel {
             .iter()
             .enumerate()
             .map(|(index, entry)| {
-                let git_status = git_summaries_by_id
-                    .get(&entry.id)
-                    .copied()
-                    .unwrap_or_default();
                 let sticky_details = Some(StickyDetails {
                     sticky_index: index,
                 });
@@ -6885,7 +6306,6 @@ impl ProjectPanel {
                     worktree_id,
                     root_name,
                     paths,
-                    git_status,
                     sticky_details,
                     window,
                     cx,
@@ -7073,8 +6493,6 @@ impl Render for ProjectPanel {
                 .on_action(cx.listener(Self::select_first))
                 .on_action(cx.listener(Self::select_last))
                 .on_action(cx.listener(Self::select_parent))
-                .on_action(cx.listener(Self::select_next_git_entry))
-                .on_action(cx.listener(Self::select_prev_git_entry))
                 .on_action(cx.listener(Self::select_next_diagnostic))
                 .on_action(cx.listener(Self::select_prev_diagnostic))
                 .on_action(cx.listener(Self::select_next_directory))
@@ -7094,13 +6512,10 @@ impl Render for ProjectPanel {
                 .on_action(cx.listener(Self::cancel))
                 .on_action(cx.listener(Self::copy_path))
                 .on_action(cx.listener(Self::copy_relative_path))
-                .on_action(cx.listener(Self::open_file_permalink))
-                .on_action(cx.listener(Self::copy_file_permalink))
                 .on_action(cx.listener(Self::new_search_in_directory))
                 .on_action(cx.listener(Self::unfold_directory))
                 .on_action(cx.listener(Self::fold_directory))
                 .on_action(cx.listener(Self::remove_from_project))
-                .on_action(cx.listener(Self::compare_marked_files))
                 .when(!project.is_read_only(cx), |el| {
                     el.on_action(cx.listener(Self::new_file))
                         .on_action(cx.listener(Self::new_directory))
@@ -7110,9 +6525,6 @@ impl Render for ProjectPanel {
                         .on_action(cx.listener(Self::copy))
                         .on_action(cx.listener(Self::paste))
                         .on_action(cx.listener(Self::duplicate))
-                        .on_action(cx.listener(Self::restore_file))
-                        .on_action(cx.listener(Self::add_to_gitignore))
-                        .on_action(cx.listener(Self::add_to_git_info_exclude))
                         .when(!is_collab, |el| el.on_action(cx.listener(Self::trash)))
                         .when(!is_collab, |el| {
                             el.on_action(cx.listener(Self::undo))
@@ -7548,7 +6960,6 @@ impl Render for ProjectPanel {
         } else {
             let focus_handle = self.focus_handle(cx);
             let workspace = self.workspace.clone();
-            let workspace_clone = self.workspace.clone();
 
             v_flex()
                 .id("empty-project_panel-wrapper")
@@ -7565,14 +6976,6 @@ impl Render for ProjectPanel {
                             .update(cx, |_, cx| {
                                 window
                                     .dispatch_action(workspace::Open::default().boxed_clone(), cx);
-                            })
-                            .log_err();
-                    })
-                    .on_clone_repo(move |_, window, cx| {
-                        telemetry::event!("Project Panel Clone Repo Clicked");
-                        workspace_clone
-                            .update(cx, |_, cx| {
-                                window.dispatch_action(git::Clone.boxed_clone(), cx);
                             })
                             .log_err();
                     }),
@@ -7778,44 +7181,19 @@ fn cmp_worktree_entries(
 }
 
 pub fn sort_worktree_entries(
-    entries: &mut [impl AsRef<Entry>],
+    entries: &mut [Entry],
     mode: settings::ProjectPanelSortMode,
     order: settings::ProjectPanelSortOrder,
 ) {
-    entries.sort_by(|lhs, rhs| cmp_worktree_entries(lhs.as_ref(), rhs.as_ref(), &mode, &order));
+    entries.sort_by(|lhs, rhs| cmp_worktree_entries(lhs, rhs, &mode, &order));
 }
 
 pub fn par_sort_worktree_entries(
-    entries: &mut Vec<GitEntry>,
+    entries: &mut Vec<Entry>,
     mode: settings::ProjectPanelSortMode,
     order: settings::ProjectPanelSortOrder,
 ) {
     entries.par_sort_by(|lhs, rhs| cmp_worktree_entries(lhs, rhs, &mode, &order));
-}
-
-fn git_status_indicator(git_status: GitSummary) -> Option<(&'static str, Color)> {
-    if git_status.conflict > 0 {
-        return Some(("!", Color::Conflict));
-    }
-    if git_status.untracked > 0 {
-        return Some(("U", Color::Created));
-    }
-    if git_status.worktree.deleted > 0 {
-        return Some(("D", Color::Deleted));
-    }
-    if git_status.worktree.modified > 0 {
-        return Some(("M", Color::Modified));
-    }
-    if git_status.index.deleted > 0 {
-        return Some(("D", Color::Deleted));
-    }
-    if git_status.index.modified > 0 {
-        return Some(("M", Color::Modified));
-    }
-    if git_status.index.added > 0 {
-        return Some(("A", Color::Created));
-    }
-    None
 }
 
 #[cfg(test)]

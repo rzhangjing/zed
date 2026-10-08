@@ -22,7 +22,6 @@ use picker::{
     Picker, PickerDelegate, ScrollBehavior,
     highlighted_match_with_paths::{HighlightedMatch, HighlightedMatchWithPaths},
 };
-use project::{Worktree, git_store::Repository};
 use settings::{DefaultOpenBehavior, Settings, WorktreeId};
 
 use ui::{
@@ -56,7 +55,6 @@ struct OpenFolderEntry {
     worktree_id: WorktreeId,
     name: SharedString,
     path: PathBuf,
-    branch: Option<SharedString>,
     is_active: bool,
 }
 
@@ -183,20 +181,10 @@ fn get_open_folders(workspace: &Workspace, cx: &App) -> Vec<OpenFolderEntry> {
         return Vec::new();
     }
 
-    let active_worktree_id = if let Some(repo) = project.active_repository(cx) {
-        let repo = repo.read(cx);
-        let repo_path = &repo.work_directory_abs_path;
-        project.visible_worktrees(cx).find_map(|worktree| {
-            let worktree_path = worktree.read(cx).abs_path();
-            (worktree_path == *repo_path || worktree_path.starts_with(repo_path.as_ref()))
-                .then(|| worktree.read(cx).id())
-        })
-    } else {
-        project
-            .visible_worktrees(cx)
-            .next()
-            .map(|wt| wt.read(cx).id())
-    };
+    let active_worktree_id = project
+        .visible_worktrees(cx)
+        .next()
+        .map(|wt| wt.read(cx).id());
 
     let mut all_paths: Vec<PathBuf> = visible_worktrees
         .iter()
@@ -211,9 +199,6 @@ fn get_open_folders(workspace: &Workspace, cx: &App) -> Vec<OpenFolderEntry> {
     let path_detail_map: std::collections::HashMap<PathBuf, usize> =
         all_paths.into_iter().zip(path_details).collect();
 
-    let git_store = project.git_store().read(cx);
-    let repositories: Vec<_> = git_store.repositories().values().cloned().collect();
-
     let mut entries: Vec<OpenFolderEntry> = visible_worktrees
         .into_iter()
         .map(|worktree| {
@@ -222,13 +207,11 @@ fn get_open_folders(workspace: &Workspace, cx: &App) -> Vec<OpenFolderEntry> {
             let path = worktree_ref.abs_path().to_path_buf();
             let detail = path_detail_map.get(&path).copied().unwrap_or(0);
             let name = SharedString::from(project::path_suffix(&path, detail));
-            let branch = get_branch_for_worktree(worktree_ref, &repositories, cx);
             let is_active = active_worktree_id == Some(worktree_id);
             OpenFolderEntry {
                 worktree_id,
                 name,
                 path,
-                branch,
                 is_active,
             }
         })
@@ -236,27 +219,6 @@ fn get_open_folders(workspace: &Workspace, cx: &App) -> Vec<OpenFolderEntry> {
 
     entries.sort_by_key(|entry| entry.name.to_lowercase());
     entries
-}
-
-fn get_branch_for_worktree(
-    worktree: &Worktree,
-    repositories: &[Entity<Repository>],
-    cx: &App,
-) -> Option<SharedString> {
-    let worktree_abs_path = worktree.abs_path();
-    repositories
-        .iter()
-        .filter(|repo| {
-            let repo_path = &repo.read(cx).work_directory_abs_path;
-            *repo_path == worktree_abs_path || worktree_abs_path.starts_with(repo_path.as_ref())
-        })
-        .max_by_key(|repo| repo.read(cx).work_directory_abs_path.as_os_str().len())
-        .and_then(|repo| {
-            repo.read(cx)
-                .branch
-                .as_ref()
-                .map(|branch| SharedString::from(branch.name().to_string()))
-        })
 }
 
 pub(crate) fn default_open_in_new_window(cx: &App) -> bool {
@@ -829,17 +791,8 @@ impl PickerDelegate for RecentProjectsDelegate {
     fn confirm(&mut self, secondary: bool, window: &mut Window, cx: &mut Context<Picker<Self>>) {
         match self.filtered_entries.get(self.selected_index) {
             Some(ProjectPickerEntry::OpenFolder { index, .. }) => {
-                let Some(folder) = self.open_folders.get(*index) else {
+                if self.open_folders.get(*index).is_none() {
                     return;
-                };
-                let worktree_id = folder.worktree_id;
-                if let Some(workspace) = self.workspace.upgrade() {
-                    workspace.update(cx, |workspace, cx| {
-                        let git_store = workspace.project().read(cx).git_store().clone();
-                        git_store.update(cx, |git_store, cx| {
-                            git_store.set_active_repo_for_worktree(worktree_id, cx);
-                        });
-                    });
                 }
                 cx.emit(DismissEvent);
             }
@@ -934,7 +887,6 @@ impl PickerDelegate for RecentProjectsDelegate {
                 let folder = self.open_folders.get(*index)?;
                 let name = folder.name.clone();
                 let path = folder.path.compact();
-                let branch = folder.branch.clone();
                 let is_active = folder.is_active;
                 let worktree_id = folder.worktree_id;
                 let positions = positions.clone();
@@ -968,7 +920,6 @@ impl PickerDelegate for RecentProjectsDelegate {
                     .into_any_element();
 
                 let tooltip_path: SharedString = path.to_string_lossy().to_string().into();
-                let tooltip_branch = branch.clone();
 
                 Some(
                     ListItem::new(ix)
@@ -991,13 +942,6 @@ impl PickerDelegate for RecentProjectsDelegate {
                                                     name.to_string(),
                                                     positions,
                                                 ))
-                                                .when_some(branch, |this, branch| {
-                                                    this.child(
-                                                        Label::new(branch)
-                                                            .color(Color::Muted)
-                                                            .truncate(),
-                                                    )
-                                                })
                                                 .when(is_active, |this| {
                                                     this.child(
                                                         Icon::new(IconName::Check)
@@ -1016,16 +960,7 @@ impl PickerDelegate for RecentProjectsDelegate {
                                 )
                                 .when(!show_path, |this| {
                                     this.tooltip(move |_, cx| {
-                                        if let Some(branch) = tooltip_branch.clone() {
-                                            Tooltip::with_meta(
-                                                format!("{}/{}", name, branch),
-                                                None,
-                                                tooltip_path.clone(),
-                                                cx,
-                                            )
-                                        } else {
-                                            Tooltip::simple(tooltip_path.clone(), cx)
-                                        }
+                                        Tooltip::simple(tooltip_path.clone(), cx)
                                     })
                                 }),
                         )
@@ -2084,7 +2019,6 @@ mod tests {
             worktree_id: WorktreeId::from_usize(index),
             name: format!("project-folder-{index}").into(),
             path: PathBuf::from(format!("/current/project-folder-{index}")),
-            branch: None,
             is_active: false,
         }
     }

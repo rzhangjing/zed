@@ -58,7 +58,7 @@ tree-sitter 的**分层解析**：一个 buffer 可含嵌入语言（HTML 内 JS
 | `struct Outline<T>` / `struct OutlineItem<T>` | [outline.rs](../crates/language/src/outline.rs) | 语法符号树（T=Anchor/Point），供 outline 面板与选择 |
 | `struct Runnable` / `RunnableCapture` | [runnable.rs](../crates/language/src/runnable.rs) | code lens 可运行标记（来自 query） |
 | `struct Toolchain` | [toolchain.rs](../crates/language/src/toolchain.rs) | 版本化运行时（rust/ruby…）选择 |
-| `FileContent` | [file_content.rs](../crates/language/src/file_content.rs) | 打开文件内容（bytes + git 状态） |
+| `FileContent` | [file_content.rs](../crates/language/src/file_content.rs) | 打开文件内容（bytes + 编码/行尾元数据） |
 | `struct Modeline` | [modeline.rs](../crates/language/src/modeline.rs) | vim `// vim:` modeline 解析 |
 
 ## 6. 设置 / 协议

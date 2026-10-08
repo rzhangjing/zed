@@ -2353,7 +2353,7 @@ async fn resolve_local_workspace_identity(fs: &dyn Fs, paths: &PathList) -> Opti
     let resolved_paths = futures::future::join_all(
         raw_paths
             .iter()
-            .map(|path| project::git_store::resolve_git_worktree_to_main_repo(fs, path)),
+            .map(|path| project::resolve_git_worktree_to_main_repo(fs, path)),
     )
     .await;
 

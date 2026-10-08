@@ -58,7 +58,7 @@ graph TB
 
 ## 4. Dock 与 Panel（侧栏 / 底部栏）
 
-- 每个 `Dock` 有一个 `position`（L509 `position()`），内含当前 `Panel`（如 `ProjectPanel`、`GitPanel`、`DebugPanel`、终端面板）。
+- 每个 `Dock` 有一个 `position`（L509 `position()`），内含当前 `Panel`（如 `ProjectPanel`、`DebugPanel`、终端面板）。
 - 折叠/展开：`toggle_panel_flexible_size`（L1056）等；`toggle_action()`（L1212）按位置返回对应 Action（如 `project_panel::ToggleFocus`）。
 - Panel 本身也是可 focus 的视图，参与 GPUI 焦点环；`is_open`（L513）控制显隐。
 

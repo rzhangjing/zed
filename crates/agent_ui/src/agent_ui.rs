@@ -23,7 +23,6 @@ pub mod terminal_thread_metadata_store;
 pub mod test_support;
 mod thread_import;
 pub mod thread_metadata_store;
-pub mod thread_worktree_archive;
 
 pub mod threads_archive_view;
 mod ui;

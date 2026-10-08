@@ -100,7 +100,7 @@ h_flex()
 - `Editor`: The text editor type. Most editable surfaces in Zed are an `Editor`, including single-line inputs. Each pane in the image above contains one or more `Editor` instances.
 - `Workspace`: The root of the window
 - `Entry`: A file, dir, pending dir or unloaded dir.
-- `Buffer`: The in-memory representation of a 'file' together with relevant data such as syntax trees, git status and diagnostics.
+- `Buffer`: The in-memory representation of a 'file' together with relevant data such as syntax trees and diagnostics.
 - `pending selection`: You have mouse down and you're dragging but you have not yet released.
 
 ## Collab

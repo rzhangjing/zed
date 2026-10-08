@@ -134,16 +134,12 @@ The following VS Code settings are automatically imported when you use **Import 
 | `explorer.autoReveal`          | `project_panel.auto_reveal_entries` |
 | `explorer.excludeGitIgnore`    | `project_panel.hide_gitignore`      |
 | `problems.decorations.enabled` | `project_panel.show_diagnostics`    |
-| `explorer.decorations.badges`  | `project_panel.git_status`          |
 
 **Git**
 
-| VS Code Setting                      | Zed Setting                                    |
-| ------------------------------------ | ---------------------------------------------- |
-| `git.enabled`                        | `git_panel.button`                             |
-| `git.defaultBranchName`              | `git_panel.fallback_branch_name`               |
-| `git.decorations.enabled`            | `git.inline_blame`, `project_panel.git_status` |
-| `git.blame.editorDecoration.enabled` | `git.inline_blame.enabled`                     |
+| VS Code Setting                      | Zed Setting                |
+| ------------------------------------ | -------------------------- |
+| `git.blame.editorDecoration.enabled` | `git.inline_blame.enabled` |
 
 **Window & Behavior**
 
@@ -196,7 +192,7 @@ You can also launch Zed from the terminal inside any folder with:
 
 Once inside a project, use `Cmd+P` to jump between files quickly. `Cmd+Shift+P` (`Ctrl+Shift+P` on Linux) opens the command palette for running actions / tasks, toggling settings, or starting a collaboration session.
 
-Open buffers appear as tabs across the top. The Project Panel shows your file tree and Git status. Collapse it with `Cmd+B` for a distraction-free view.
+Open buffers appear as tabs across the top. The Project Panel shows your file tree. Collapse it with `Cmd+B` for a distraction-free view.
 
 ## Differences in Keybindings
 

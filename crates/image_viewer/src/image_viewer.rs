@@ -6,7 +6,7 @@ use std::{path::Path, sync::Arc};
 use anyhow::Context as _;
 use editor::{
     Editor, EditorEvent, EditorSettings, RevealInFileManager, actions::SelectAll,
-    items::entry_git_aware_label_color,
+    items::entry_ignored_aware_label_color,
 };
 use file_icons::FileIcons;
 use gpui::{
@@ -19,9 +19,7 @@ use gpui::{
 };
 use language::File as _;
 use persistence::ImageViewerDb;
-use project::{
-    ImageItem, Project, ProjectPath, git_store::GitStoreEvent, image_store::ImageItemEvent,
-};
+use project::{ImageItem, Project, ProjectPath, image_store::ImageItemEvent};
 use settings::Settings;
 use theme_settings::ThemeSettings;
 use ui::{Tooltip, prelude::*};
@@ -150,13 +148,6 @@ impl ImageView {
         let _render_image = pending_image.clone().get_render_image(window, cx);
 
         cx.subscribe(&image_item, Self::on_image_event).detach();
-        let git_store = project.read(cx).git_store().clone();
-        cx.subscribe(&git_store, |_, _, event, cx| {
-            if matches!(event, GitStoreEvent::DiffBaseChanged(_)) {
-                cx.emit(ImageViewEvent::TitleChanged);
-            }
-        })
-        .detach();
         cx.on_release_in(window, |this, window, cx| {
             let image_data = this.image_item.read(cx).image.clone();
             if let Some(image) = image_data.clone().get_render_image(window, cx) {
@@ -566,26 +557,12 @@ impl Item for ImageView {
     fn tab_content(&self, params: TabContentParams, _window: &Window, cx: &App) -> AnyElement {
         let project_path = self.image_item.read(cx).project_path(cx);
 
-        let label_color = if ItemSettings::get_global(cx).git_status {
-            let git_status = self
-                .project
-                .read(cx)
-                .git_store()
-                .read(cx)
-                .display_status_for_project_path(&project_path, cx)
-                .map(|status| status.summary())
-                .unwrap_or_default();
-
-            self.project
-                .read(cx)
-                .entry_for_path(&project_path, cx)
-                .map(|entry| {
-                    entry_git_aware_label_color(git_status, entry.is_ignored, params.selected)
-                })
-                .unwrap_or_else(|| params.text_color())
-        } else {
-            params.text_color()
-        };
+        let label_color = self
+            .project
+            .read(cx)
+            .entry_for_path(&project_path, cx)
+            .map(|entry| entry_ignored_aware_label_color(entry.is_ignored, params.selected))
+            .unwrap_or_else(|| params.text_color());
 
         Label::new(self.tab_content_text(params.detail.unwrap_or_default(), cx))
             .single_line()

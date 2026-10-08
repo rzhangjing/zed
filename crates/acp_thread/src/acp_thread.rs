@@ -12,8 +12,7 @@ pub use diff::*;
 use feature_flags::{AcpBetaFeatureFlag, FeatureFlagAppExt as _};
 use futures::{FutureExt, channel::oneshot, future::BoxFuture};
 use gpui::{
-    AppContext, AsyncApp, Context, Entity, EventEmitter, SharedString, Subscription, Task,
-    WeakEntity,
+    AppContext, AsyncApp, Context, Entity, EventEmitter, SharedString, Task, WeakEntity,
 };
 use itertools::Itertools;
 use language::language_settings::FormatOnSave;
@@ -23,10 +22,7 @@ use language::{
 use markdown::{Markdown, MarkdownOptions};
 pub use mention::*;
 use project::lsp_store::{FormatTrigger, LspFormatTarget};
-use project::{
-    AgentLocation, Project,
-    git_store::{GitStoreCheckpoint, GitStoreEvent, RepositoryEvent},
-};
+use project::{AgentLocation, Project};
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
 use std::collections::HashMap;
@@ -297,28 +293,13 @@ pub struct UserMessage {
     pub is_optimistic: bool,
     pub content: ContentBlock,
     pub chunks: Vec<acp::ContentBlock>,
-    pub checkpoint: Option<Checkpoint>,
     pub indented: bool,
-}
-
-#[derive(Debug)]
-pub struct Checkpoint {
-    git_checkpoint: GitStoreCheckpoint,
-    pub show: bool,
 }
 
 impl UserMessage {
     fn to_markdown(&self, cx: &App) -> String {
         let mut markdown = String::new();
-        if self
-            .checkpoint
-            .as_ref()
-            .is_some_and(|checkpoint| checkpoint.show)
-        {
-            writeln!(markdown, "## User (checkpoint)").unwrap();
-        } else {
-            writeln!(markdown, "## User").unwrap();
-        }
+        writeln!(markdown, "## User").unwrap();
         writeln!(markdown).unwrap();
         writeln!(markdown, "{}", self.content.to_markdown(cx)).unwrap();
         writeln!(markdown).unwrap();
@@ -2097,8 +2078,6 @@ pub struct AcpThread {
     plan: Plan,
     project: Entity<Project>,
     action_log: Entity<ActionLog>,
-    _git_store_subscription: Subscription,
-    update_last_checkpoint_if_changed_task: Option<Task<Result<()>>>,
     shared_buffers: HashMap<Entity<Buffer>, BufferSnapshot>,
     turn_id: u32,
     running_turn: Option<RunningTurn>,
@@ -2284,27 +2263,10 @@ impl AcpThread {
             }
         });
 
-        let git_store = project.read(cx).git_store().clone();
-        let _git_store_subscription = cx.subscribe(&git_store, |this, _, event, cx| {
-            if matches!(
-                event,
-                GitStoreEvent::RepositoryUpdated(
-                    _,
-                    RepositoryEvent::StatusesChanged | RepositoryEvent::HeadChanged,
-                    _
-                )
-            ) {
-                this.update_last_checkpoint_if_changed_task =
-                    Some(this.update_last_checkpoint_if_changed(cx));
-            }
-        });
-
         Self {
             parent_session_id,
             work_dirs,
             action_log,
-            _git_store_subscription,
-            update_last_checkpoint_if_changed_task: None,
             shared_buffers: Default::default(),
             entries: Default::default(),
             elicitations: ElicitationStore::default(),
@@ -2740,7 +2702,6 @@ impl AcpThread {
                     is_optimistic,
                     content,
                     chunks: vec![chunk],
-                    checkpoint: None,
                     indented,
                 }),
                 cx,
@@ -3660,7 +3621,6 @@ impl AcpThread {
             cx,
         );
         let request = acp::PromptRequest::new(self.session_id.clone(), message.clone());
-        let git_store = self.project.read(cx).git_store().clone();
 
         let client_user_message_ids = self.connection.client_user_message_ids(cx);
         let client_id = client_user_message_ids
@@ -3677,26 +3637,10 @@ impl AcpThread {
                             is_optimistic: true,
                             content: block,
                             chunks: message,
-                            checkpoint: None,
                             indented: false,
                         }),
                         cx,
                     );
-                })
-                .ok();
-
-                let old_checkpoint = git_store
-                    .update(cx, |git, cx| git.checkpoint(cx))
-                    .await
-                    .context("failed to get old checkpoint")
-                    .log_err();
-                this.update(cx, |this, _cx| {
-                    if let Some((_ix, message)) = this.last_user_message() {
-                        message.checkpoint = old_checkpoint.map(|git_checkpoint| Checkpoint {
-                            git_checkpoint,
-                            show: false,
-                        });
-                    }
                 })
                 .ok();
             }
@@ -3755,9 +3699,6 @@ impl AcpThread {
 
         cx.spawn(async move |this, cx| {
             let response = rx.await;
-
-            this.update(cx, |this, cx| this.update_last_checkpoint(cx))?
-                .await?;
 
             this.update(cx, |this, cx| {
                 if this.parent_session_id.is_none() {
@@ -3979,42 +3920,8 @@ impl AcpThread {
         }
     }
 
-    /// Restores the git working tree to the state at the given checkpoint (if one exists)
-    pub fn restore_checkpoint(
-        &mut self,
-        client_id: ClientUserMessageId,
-        cx: &mut Context<Self>,
-    ) -> Task<Result<()>> {
-        let Some((_, message)) = self.user_message_mut(&client_id) else {
-            return Task::ready(Err(anyhow!("message not found")));
-        };
-
-        let checkpoint = message
-            .checkpoint
-            .as_ref()
-            .map(|c| c.git_checkpoint.clone());
-
-        // Cancel any in-progress generation before restoring
-        let cancel_task = self.cancel(cx);
-        let rewind = self.rewind(client_id.clone(), cx);
-        let git_store = self.project.read(cx).git_store().clone();
-
-        cx.spawn(async move |_, cx| {
-            cancel_task.await;
-            rewind.await?;
-            if let Some(checkpoint) = checkpoint {
-                git_store
-                    .update(cx, |git, cx| git.restore_checkpoint(checkpoint, cx))
-                    .await?;
-            }
-
-            Ok(())
-        })
-    }
-
     /// Rewinds this thread to before the entry at `index`, removing it and all
     /// subsequent entries while rejecting any action_log changes made from that point.
-    /// Unlike `restore_checkpoint`, this method does not restore from git.
     pub fn rewind(
         &mut self,
         client_id: ClientUserMessageId,
@@ -4055,125 +3962,6 @@ impl AcpThread {
                 })
             })?
             .await;
-            Ok(())
-        })
-    }
-
-    fn update_last_checkpoint_if_changed(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
-        let Some(turn_id) = self.running_turn.as_ref().map(|turn| turn.id) else {
-            return Task::ready(Ok(()));
-        };
-
-        let git_store = self.project.read(cx).git_store().clone();
-
-        let Some((client_id, checkpoint)) = self.last_user_message().and_then(|(_, message)| {
-            let id = message.client_id.clone()?;
-            let checkpoint = message.checkpoint.as_ref()?;
-            Some((id, checkpoint))
-        }) else {
-            return Task::ready(Ok(()));
-        };
-        if checkpoint.show {
-            return Task::ready(Ok(()));
-        }
-        let old_checkpoint = checkpoint.git_checkpoint.clone();
-
-        let new_checkpoint = git_store.update(cx, |git, cx| git.checkpoint(cx));
-        cx.spawn(async move |this, cx| {
-            let Some(new_checkpoint) = new_checkpoint
-                .await
-                .context("failed to get new checkpoint")
-                .log_err()
-            else {
-                return Ok(());
-            };
-
-            let Some(equal) = git_store
-                .update(cx, |git, cx| {
-                    git.compare_checkpoints(old_checkpoint.clone(), new_checkpoint, cx)
-                })
-                .await
-                .context("failed to compare checkpoints")
-                .log_err()
-            else {
-                return Ok(());
-            };
-
-            if equal {
-                return Ok(());
-            }
-
-            this.update(cx, |this, cx| {
-                if !this
-                    .running_turn
-                    .as_ref()
-                    .is_some_and(|turn| turn.id == turn_id)
-                {
-                    return;
-                }
-
-                let Some((ix, message)) = this.last_user_message() else {
-                    return;
-                };
-                if message.client_id.as_ref() != Some(&client_id) {
-                    return;
-                }
-                if let Some(checkpoint) = message.checkpoint.as_mut()
-                    && !checkpoint.show
-                {
-                    checkpoint.show = true;
-                    cx.emit(AcpThreadEvent::EntryUpdated(ix));
-                }
-            })?;
-
-            Ok(())
-        })
-    }
-
-    fn update_last_checkpoint(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
-        let git_store = self.project.read(cx).git_store().clone();
-
-        let Some((_, message)) = self.last_user_message() else {
-            return Task::ready(Ok(()));
-        };
-        let Some(client_id) = message.client_id.clone() else {
-            return Task::ready(Ok(()));
-        };
-        let Some(checkpoint) = message.checkpoint.as_ref() else {
-            return Task::ready(Ok(()));
-        };
-        let old_checkpoint = checkpoint.git_checkpoint.clone();
-
-        let new_checkpoint = git_store.update(cx, |git, cx| git.checkpoint(cx));
-        cx.spawn(async move |this, cx| {
-            let Some(new_checkpoint) = new_checkpoint
-                .await
-                .context("failed to get new checkpoint")
-                .log_err()
-            else {
-                return Ok(());
-            };
-
-            let Some(equal) = git_store
-                .update(cx, |git, cx| {
-                    git.compare_checkpoints(old_checkpoint.clone(), new_checkpoint, cx)
-                })
-                .await
-                .context("failed to compare checkpoints")
-                .log_err()
-            else {
-                return Ok(());
-            };
-
-            this.update(cx, |this, cx| {
-                if let Some((ix, message)) = this.user_message_mut(&client_id) {
-                    if let Some(checkpoint) = message.checkpoint.as_mut() {
-                        checkpoint.show = !equal;
-                        cx.emit(AcpThreadEvent::EntryUpdated(ix));
-                    }
-                }
-            })?;
-
             Ok(())
         })
     }
@@ -4766,7 +4554,7 @@ mod tests {
     use gpui::UpdateGlobal as _;
     use gpui::{App, AsyncApp, TestAppContext, WeakEntity};
     use indoc::indoc;
-    use project::{AgentId, FakeFs, Fs, RemoveOptions};
+    use project::{AgentId, FakeFs};
     use rand::{distr, prelude::*};
     use serde_json::json;
     use settings::SettingsStore;
@@ -4775,7 +4563,7 @@ mod tests {
         cell::RefCell,
         path::Path,
         rc::Rc,
-        sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst},
+        sync::atomic::{AtomicBool, Ordering::SeqCst},
         time::Duration,
     };
     use util::{path, path_list::PathList};
@@ -6873,299 +6661,6 @@ mod tests {
         assert!(cx.read(|cx| !thread.read(cx).has_pending_edit_tool_calls()));
     }
 
-    #[gpui::test(iterations = 10)]
-    async fn test_checkpoints(cx: &mut TestAppContext) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.background_executor.clone());
-        fs.insert_tree(
-            path!("/test"),
-            json!({
-                ".git": {}
-            }),
-        )
-        .await;
-        let project = Project::test(fs.clone(), [path!("/test").as_ref()], cx).await;
-
-        let simulate_changes = Arc::new(AtomicBool::new(true));
-        let next_filename = Arc::new(AtomicUsize::new(0));
-        let connection = Rc::new(FakeAgentConnection::new().on_user_message({
-            let simulate_changes = simulate_changes.clone();
-            let next_filename = next_filename.clone();
-            let fs = fs.clone();
-            move |request, thread, mut cx| {
-                let fs = fs.clone();
-                let simulate_changes = simulate_changes.clone();
-                let next_filename = next_filename.clone();
-                async move {
-                    if simulate_changes.load(SeqCst) {
-                        let filename = format!("/test/file-{}", next_filename.fetch_add(1, SeqCst));
-                        fs.write(Path::new(&filename), b"").await?;
-                    }
-
-                    let acp::ContentBlock::Text(content) = &request.prompt[0] else {
-                        panic!("expected text content block");
-                    };
-                    thread.update(&mut cx, |thread, cx| {
-                        thread
-                            .handle_session_update(
-                                acp::SessionUpdate::AgentMessageChunk(acp::ContentChunk::new(
-                                    content.text.to_uppercase().into(),
-                                )),
-                                cx,
-                            )
-                            .unwrap();
-                    })?;
-                    Ok(acp::PromptResponse::new(acp::StopReason::EndTurn))
-                }
-                .boxed_local()
-            }
-        }));
-        let thread = cx
-            .update(|cx| {
-                connection.new_session(project, PathList::new(&[Path::new(path!("/test"))]), cx)
-            })
-            .await
-            .unwrap();
-
-        cx.update(|cx| thread.update(cx, |thread, cx| thread.send(vec!["Lorem".into()], cx)))
-            .await
-            .unwrap();
-        thread.read_with(cx, |thread, cx| {
-            assert_eq!(
-                thread.to_markdown(cx),
-                indoc! {"
-                    ## User (checkpoint)
-
-                    Lorem
-
-                    ## Assistant
-
-                    LOREM
-
-                "}
-            );
-        });
-        assert_eq!(fs.files(), vec![Path::new(path!("/test/file-0"))]);
-
-        cx.update(|cx| thread.update(cx, |thread, cx| thread.send(vec!["ipsum".into()], cx)))
-            .await
-            .unwrap();
-        thread.read_with(cx, |thread, cx| {
-            assert_eq!(
-                thread.to_markdown(cx),
-                indoc! {"
-                    ## User (checkpoint)
-
-                    Lorem
-
-                    ## Assistant
-
-                    LOREM
-
-                    ## User (checkpoint)
-
-                    ipsum
-
-                    ## Assistant
-
-                    IPSUM
-
-                "}
-            );
-        });
-        assert_eq!(
-            fs.files(),
-            vec![
-                Path::new(path!("/test/file-0")),
-                Path::new(path!("/test/file-1"))
-            ]
-        );
-
-        // Checkpoint isn't stored when there are no changes.
-        simulate_changes.store(false, SeqCst);
-        cx.update(|cx| thread.update(cx, |thread, cx| thread.send(vec!["dolor".into()], cx)))
-            .await
-            .unwrap();
-        thread.read_with(cx, |thread, cx| {
-            assert_eq!(
-                thread.to_markdown(cx),
-                indoc! {"
-                    ## User (checkpoint)
-
-                    Lorem
-
-                    ## Assistant
-
-                    LOREM
-
-                    ## User (checkpoint)
-
-                    ipsum
-
-                    ## Assistant
-
-                    IPSUM
-
-                    ## User
-
-                    dolor
-
-                    ## Assistant
-
-                    DOLOR
-
-                "}
-            );
-        });
-        assert_eq!(
-            fs.files(),
-            vec![
-                Path::new(path!("/test/file-0")),
-                Path::new(path!("/test/file-1"))
-            ]
-        );
-
-        // Rewinding the conversation truncates the history and restores the checkpoint.
-        thread
-            .update(cx, |thread, cx| {
-                let AgentThreadEntry::UserMessage(message) = &thread.entries[2] else {
-                    panic!("unexpected entries {:?}", thread.entries)
-                };
-                thread.restore_checkpoint(message.client_id.clone().unwrap(), cx)
-            })
-            .await
-            .unwrap();
-        thread.read_with(cx, |thread, cx| {
-            assert_eq!(
-                thread.to_markdown(cx),
-                indoc! {"
-                    ## User (checkpoint)
-
-                    Lorem
-
-                    ## Assistant
-
-                    LOREM
-
-                "}
-            );
-        });
-        assert_eq!(fs.files(), vec![Path::new(path!("/test/file-0"))]);
-    }
-
-    #[gpui::test(iterations = 10)]
-    async fn test_checkpoint_shows_when_file_changes_during_pending_message(
-        cx: &mut TestAppContext,
-    ) {
-        init_test(cx);
-        let fs = FakeFs::new(cx.background_executor.clone());
-        fs.insert_tree(
-            path!("/test"),
-            json!({
-                ".git": {}
-            }),
-        )
-        .await;
-        let project = Project::test(fs, [path!("/test").as_ref()], cx).await;
-
-        let (request_started_tx, request_started_rx) = oneshot::channel::<()>();
-        let request_started_tx = Rc::new(RefCell::new(Some(request_started_tx)));
-        let (write_file_tx, write_file_rx) = oneshot::channel::<()>();
-        let write_file_rx = Rc::new(RefCell::new(Some(write_file_rx)));
-        let (file_written_tx, file_written_rx) = oneshot::channel::<()>();
-        let file_written_tx = Rc::new(RefCell::new(Some(file_written_tx)));
-        let (finish_response_tx, finish_response_rx) = oneshot::channel::<()>();
-        let finish_response_tx = Rc::new(RefCell::new(Some(finish_response_tx)));
-        let finish_response_rx = Rc::new(RefCell::new(Some(finish_response_rx)));
-        let connection = Rc::new(FakeAgentConnection::new().on_user_message({
-            let request_started_tx = request_started_tx.clone();
-            let write_file_rx = write_file_rx.clone();
-            let file_written_tx = file_written_tx.clone();
-            let finish_response_rx = finish_response_rx.clone();
-            move |_request, thread, mut cx| {
-                let write_file_rx = write_file_rx.borrow_mut().take();
-                let finish_response_rx = finish_response_rx.borrow_mut().take();
-                let request_started_tx = request_started_tx.borrow_mut().take();
-                let file_written_tx = file_written_tx.borrow_mut().take();
-                async move {
-                    if let Some(request_started_tx) = request_started_tx {
-                        request_started_tx.send(()).ok();
-                    }
-                    if let Some(write_file_rx) = write_file_rx {
-                        write_file_rx.await.ok();
-                    }
-
-                    thread
-                        .update(&mut cx, |thread, cx| {
-                            thread.write_text_file(
-                                PathBuf::from(path!("/test/file")),
-                                String::new(),
-                                cx,
-                            )
-                        })?
-                        .await?;
-
-                    if let Some(file_written_tx) = file_written_tx {
-                        file_written_tx.send(()).ok();
-                    }
-                    if let Some(finish_response_rx) = finish_response_rx {
-                        finish_response_rx.await.ok();
-                    }
-
-                    Ok(acp::PromptResponse::new(acp::StopReason::EndTurn))
-                }
-                .boxed_local()
-            }
-        }));
-        let thread = cx
-            .update(|cx| {
-                connection.new_session(project, PathList::new(&[Path::new(path!("/test"))]), cx)
-            })
-            .await
-            .unwrap();
-
-        let send = thread.update(cx, |thread, cx| thread.send(vec!["hello".into()], cx));
-        let send_task = cx.background_executor.spawn(send);
-        request_started_rx.await.unwrap();
-        cx.run_until_parked();
-
-        thread.read_with(cx, |thread, cx| {
-            assert_eq!(
-                thread.to_markdown(cx),
-                indoc! {"
-                    ## User
-
-                    hello
-
-                "}
-            );
-        });
-
-        write_file_tx.send(()).ok();
-        file_written_rx.await.unwrap();
-        cx.run_until_parked();
-
-        thread.read_with(cx, |thread, cx| {
-            assert_eq!(
-                thread.to_markdown(cx),
-                indoc! {"
-                    ## User (checkpoint)
-
-                    hello
-
-                "}
-            );
-        });
-
-        finish_response_tx
-            .borrow_mut()
-            .take()
-            .unwrap()
-            .send(())
-            .ok();
-        send_task.await.unwrap();
-    }
-
     #[gpui::test]
     async fn test_tool_result_refusal(cx: &mut TestAppContext) {
         use std::sync::atomic::AtomicUsize;
@@ -9015,14 +8510,13 @@ mod tests {
         });
     }
 
-    /// Tests that restoring a checkpoint properly cleans up terminals that were
-    /// created after that checkpoint, and cancels any in-progress generation.
+    /// Tests that rewinding a thread properly cleans up terminals that were
+    /// created after the rewind point.
     ///
-    /// Reproduces issue #35142: When a checkpoint is restored, any terminal processes
-    /// that were started after that checkpoint should be terminated, and any in-progress
-    /// AI generation should be canceled.
+    /// Reproduces issue #35142: When a thread is rewound, any terminal processes
+    /// that were started after the rewind point should be terminated.
     #[gpui::test]
-    async fn test_restore_checkpoint_kills_terminal(cx: &mut TestAppContext) {
+    async fn test_rewind_kills_terminal(cx: &mut TestAppContext) {
         init_test(cx);
 
         let fs = FakeFs::new(cx.executor());
@@ -9035,7 +8529,7 @@ mod tests {
             .await
             .unwrap();
 
-        // Send first user message to create a checkpoint
+        // Send first user message
         cx.update(|cx| {
             thread.update(cx, |thread, cx| {
                 thread.send(vec!["first message".into()], cx)
@@ -9044,7 +8538,7 @@ mod tests {
         .await
         .unwrap();
 
-        // Send second message (creates another checkpoint) - we'll restore to this one
+        // Send second message - we'll rewind to before this one
         cx.update(|cx| {
             thread.update(cx, |thread, cx| {
                 thread.send(vec!["second message".into()], cx)
@@ -9053,7 +8547,7 @@ mod tests {
         .await
         .unwrap();
 
-        // Create 2 terminals BEFORE the checkpoint that have completed running
+        // Create 2 terminals BEFORE the rewind point that have completed running
         let terminal_id_1 = acp::TerminalId::new(uuid::Uuid::new_v4().to_string());
         let mock_terminal_1 = cx.new(|cx| {
             let builder = ::terminal::TerminalBuilder::new_display_only(
@@ -9146,11 +8640,11 @@ mod tests {
             );
         });
 
-        // Get the second message ID to restore to
+        // Get the second message ID to rewind to before
         let second_message_id = thread.read_with(cx, |thread, _| {
             // At this point we have:
-            // - Index 0: First user message (with checkpoint)
-            // - Index 1: Second user message (with checkpoint)
+            // - Index 0: First user message
+            // - Index 1: Second user message
             // No assistant responses because FakeAgentConnection just returns EndTurn
             let AgentThreadEntry::UserMessage(message) = &thread.entries[1] else {
                 panic!("expected user message at index 1");
@@ -9158,7 +8652,7 @@ mod tests {
             message.client_id.clone().unwrap()
         });
 
-        // Create a terminal AFTER the checkpoint we'll restore to.
+        // Create a terminal AFTER the rewind point.
         // This simulates the AI agent starting a long-running terminal command.
         let terminal_id = acp::TerminalId::new(uuid::Uuid::new_v4().to_string());
         let mock_terminal = cx.new(|cx| {
@@ -9222,7 +8716,7 @@ mod tests {
             thread.read_with(cx, |thread, _| thread.terminals.contains_key(&terminal_id));
         assert!(
             terminal_exists_before,
-            "Terminal should exist before checkpoint restore"
+            "Terminal should exist before rewind"
         );
 
         // Verify the terminal's underlying task is still running (not completed)
@@ -9234,49 +8728,44 @@ mod tests {
         });
         assert!(
             terminal_running_before,
-            "Terminal should be running before checkpoint restore"
+            "Terminal should be running before rewind"
         );
 
-        // Verify we have the expected entries before restore
+        // Verify we have the expected entries before rewind
         let entry_count_before = thread.read_with(cx, |thread, _| thread.entries.len());
         assert!(
             entry_count_before > 1,
-            "Should have multiple entries before restore"
+            "Should have multiple entries before rewind"
         );
 
-        // Restore the checkpoint to the second message.
-        // This should:
-        // 1. Cancel any in-progress generation (via the cancel() call)
-        // 2. Remove the terminal that was created after that point
+        // Rewind the thread to before the second message.
+        // This should remove the terminal that was created after that point.
         thread
-            .update(cx, |thread, cx| {
-                thread.restore_checkpoint(second_message_id, cx)
-            })
+            .update(cx, |thread, cx| thread.rewind(second_message_id, cx))
             .await
             .unwrap();
 
-        // Verify that no send_task is in progress after restore
-        // (cancel() clears the send_task)
+        // Verify that no send_task is in progress after rewinding.
         let has_send_task_after = thread.read_with(cx, |thread, _| thread.running_turn.is_some());
         assert!(
             !has_send_task_after,
-            "Should not have a send_task after restore (cancel should have cleared it)"
+            "Should not have a send_task after rewind"
         );
 
-        // Verify the entries were truncated (restoring to index 1 truncates at 1, keeping only index 0)
+        // Verify the entries were truncated (rewinding to index 1 truncates at 1, keeping only index 0)
         let entry_count = thread.read_with(cx, |thread, _| thread.entries.len());
         assert_eq!(
             entry_count, 1,
-            "Should have 1 entry after restore (only the first user message)"
+            "Should have 1 entry after rewind (only the first user message)"
         );
 
-        // Verify the 2 completed terminals from before the checkpoint still exist
+        // Verify the 2 completed terminals from before the rewind point still exist
         let terminal_1_exists = thread.read_with(cx, |thread, _| {
             thread.terminals.contains_key(&terminal_id_1)
         });
         assert!(
             terminal_1_exists,
-            "Terminal 1 (from before checkpoint) should still exist"
+            "Terminal 1 (from before rewind) should still exist"
         );
 
         let terminal_2_exists = thread.read_with(cx, |thread, _| {
@@ -9284,7 +8773,7 @@ mod tests {
         });
         assert!(
             terminal_2_exists,
-            "Terminal 2 (from before checkpoint) should still exist"
+            "Terminal 2 (from before rewind) should still exist"
         );
 
         // Verify they're still in completed state
@@ -9300,165 +8789,20 @@ mod tests {
         });
         assert!(terminal_2_completed, "Terminal 2 should still be completed");
 
-        // Verify the running terminal (created after checkpoint) was removed
+        // Verify the running terminal (created after the rewind point) was removed
         let terminal_3_exists =
             thread.read_with(cx, |thread, _| thread.terminals.contains_key(&terminal_id));
         assert!(
             !terminal_3_exists,
-            "Terminal 3 (created after checkpoint) should have been removed"
+            "Terminal 3 (created after the rewind point) should have been removed"
         );
 
-        // Verify total count is 2 (the two from before the checkpoint)
+        // Verify total count is 2 (the two from before the rewind point)
         let terminal_count = thread.read_with(cx, |thread, _| thread.terminals.len());
         assert_eq!(
             terminal_count, 2,
-            "Should have exactly 2 terminals (the completed ones from before checkpoint)"
+            "Should have exactly 2 terminals (the completed ones from before the rewind point)"
         );
-    }
-
-    /// Tests that update_last_checkpoint correctly updates the original message's checkpoint
-    /// even when a new user message is added while the async checkpoint comparison is in progress.
-    ///
-    /// This is a regression test for a bug where update_last_checkpoint would fail with
-    /// "no checkpoint" if a new user message (without a checkpoint) was added between when
-    /// update_last_checkpoint started and when its async closure ran.
-    #[gpui::test]
-    async fn test_update_last_checkpoint_with_new_message_added(cx: &mut TestAppContext) {
-        init_test(cx);
-
-        let fs = FakeFs::new(cx.executor());
-        fs.insert_tree(path!("/test"), json!({".git": {}, "file.txt": "content"}))
-            .await;
-        let project = Project::test(fs.clone(), [Path::new(path!("/test"))], cx).await;
-
-        let handler_done = Arc::new(AtomicBool::new(false));
-        let handler_done_clone = handler_done.clone();
-        let connection = Rc::new(FakeAgentConnection::new().on_user_message(
-            move |_, _thread, _cx| {
-                handler_done_clone.store(true, SeqCst);
-                async move { Ok(acp::PromptResponse::new(acp::StopReason::EndTurn)) }.boxed_local()
-            },
-        ));
-
-        let thread = cx
-            .update(|cx| {
-                connection.new_session(project, PathList::new(&[Path::new(path!("/test"))]), cx)
-            })
-            .await
-            .unwrap();
-
-        let send_future = thread.update(cx, |thread, cx| thread.send_raw("First message", cx));
-        let send_task = cx.background_executor.spawn(send_future);
-
-        // Tick until handler completes, then a few more to let update_last_checkpoint start
-        while !handler_done.load(SeqCst) {
-            cx.executor().tick();
-        }
-        for _ in 0..5 {
-            cx.executor().tick();
-        }
-
-        thread.update(cx, |thread, cx| {
-            thread.push_entry(
-                AgentThreadEntry::UserMessage(UserMessage {
-                    protocol_id: None,
-                    client_id: Some(ClientUserMessageId::new()),
-                    is_optimistic: true,
-                    content: ContentBlock::Empty,
-                    chunks: vec!["Injected message (no checkpoint)".into()],
-                    checkpoint: None,
-                    indented: false,
-                }),
-                cx,
-            );
-        });
-
-        cx.run_until_parked();
-        let result = send_task.await;
-
-        assert!(
-            result.is_ok(),
-            "send should succeed even when new message added during update_last_checkpoint: {:?}",
-            result.err()
-        );
-    }
-
-    /// This is a regression test for a bug where update_last_checkpoint would
-    /// swallow a checkpoint comparison error and hide an already-visible
-    /// "Restore checkpoint" button without logging anything.
-    #[gpui::test]
-    async fn test_update_last_checkpoint_compare_error_keeps_checkpoint_visible(
-        cx: &mut TestAppContext,
-    ) {
-        init_test(cx);
-
-        let fs = FakeFs::new(cx.executor());
-        fs.insert_tree(path!("/test"), json!({".git": {}, "file.txt": "content"}))
-            .await;
-        let project = Project::test(fs.clone(), [Path::new(path!("/test"))], cx).await;
-
-        // The handler waits for this signal so the repository can be swapped
-        // out while the turn is still running.
-        let (complete_tx, complete_rx) = futures::channel::oneshot::channel::<()>();
-        let complete_rx = RefCell::new(Some(complete_rx));
-        let connection = Rc::new(FakeAgentConnection::new().on_user_message(
-            move |_, _thread, _cx| {
-                let complete_rx = complete_rx.borrow_mut().take();
-                async move {
-                    if let Some(rx) = complete_rx {
-                        rx.await.ok();
-                    }
-                    Ok(acp::PromptResponse::new(acp::StopReason::EndTurn))
-                }
-                .boxed_local()
-            },
-        ));
-
-        let thread = cx
-            .update(|cx| {
-                connection.new_session(project, PathList::new(&[Path::new(path!("/test"))]), cx)
-            })
-            .await
-            .unwrap();
-
-        let send_future = thread.update(cx, |thread, cx| thread.send_raw("message", cx));
-        let send_task = cx.background_executor.spawn(send_future);
-        cx.run_until_parked();
-
-        // Show the checkpoint, as update_last_checkpoint_if_changed does when
-        // files change during the turn.
-        thread.update(cx, |thread, _| {
-            let (_, message) = thread.last_user_message().unwrap();
-            message.checkpoint.as_mut().unwrap().show = true;
-        });
-
-        // Recreate `.git` so the git store reopens the repository. The fresh
-        // fake repository doesn't contain the checkpoint recorded at send
-        // time, so the end-of-turn comparison fails.
-        fs.remove_dir(
-            Path::new(path!("/test/.git")),
-            RemoveOptions {
-                recursive: true,
-                ignore_if_not_exists: false,
-            },
-        )
-        .await
-        .unwrap();
-        cx.run_until_parked();
-        fs.create_dir(Path::new(path!("/test/.git"))).await.unwrap();
-        cx.run_until_parked();
-
-        complete_tx.send(()).unwrap();
-        send_task.await.unwrap();
-        cx.run_until_parked();
-
-        thread.update(cx, |thread, _| {
-            let (_, message) = thread.last_user_message().unwrap();
-            assert!(
-                message.checkpoint.as_ref().unwrap().show,
-                "a checkpoint comparison failure must not hide the restore checkpoint button"
-            );
-        });
     }
 
     /// Tests that when a follow-up message is sent during generation,

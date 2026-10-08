@@ -194,8 +194,6 @@ impl VsCodeSettings {
             extension: ExtensionSettingsContent::default(),
             call_hierarchy: None,
             file_finder: None,
-            git: self.git_settings_content(),
-            git_panel: self.git_panel_settings_content(),
             global_lsp_settings: skip_default(GlobalLspSettingsContent {
                 semantic_token_rules: self.semantic_token_rules(),
                 ..GlobalLspSettingsContent::default()
@@ -356,7 +354,6 @@ impl VsCodeSettings {
                 "never" => Some(false),
                 _ => None,
             }),
-            git_gutter_width: None,
         })
     }
 
@@ -510,14 +507,6 @@ impl VsCodeSettings {
         })
     }
 
-    fn git_panel_settings_content(&self) -> Option<GitPanelSettingsContent> {
-        skip_default(GitPanelSettingsContent {
-            button: self.read_bool("git.enabled"),
-            fallback_branch_name: self.read_string("git.defaultBranchName"),
-            ..Default::default()
-        })
-    }
-
     fn project_settings_content(&self) -> ProjectSettingsContent {
         ProjectSettingsContent {
             all_languages: AllLanguageSettingsContent {
@@ -533,7 +522,6 @@ impl VsCodeSettings {
             context_servers: self.context_servers(),
             context_server_timeout: None,
             load_direnv: None,
-            git_hosting_providers: None,
             disable_ai: None,
         }
     }
@@ -692,7 +680,6 @@ impl VsCodeSettings {
                     FolderIndicator::Chevron
                 }
             }),
-            git_status: self.read_bool("git.decorations.enabled"),
             ..Default::default()
         })
     }
@@ -704,17 +691,6 @@ impl VsCodeSettings {
             npm_path: self.read_enum("npm.packageManager", |s| match s {
                 v @ ("npm" | "yarn" | "bun" | "pnpm") => Some(v.to_owned()),
                 _ => None,
-            }),
-            ..Default::default()
-        })
-    }
-
-    fn git_settings_content(&self) -> Option<GitSettings> {
-        let inline_blame = self.read_bool("git.blame.editorDecoration.enabled")?;
-        skip_default(GitSettings {
-            inline_blame: Some(InlineBlameSettings {
-                enabled: Some(inline_blame),
-                ..Default::default()
             }),
             ..Default::default()
         })
@@ -753,7 +729,6 @@ impl VsCodeSettings {
 
     fn item_settings_content(&self) -> Option<ItemSettingsContent> {
         skip_default(ItemSettingsContent {
-            git_status: self.read_bool("git.decorations.enabled"),
             close_position: self.read_enum("workbench.editor.tabActionLocation", |s| match s {
                 "right" => Some(ClosePosition::Right),
                 "left" => Some(ClosePosition::Left),
@@ -836,7 +811,6 @@ impl VsCodeSettings {
             entry_spacing: None,
             file_icons: None,
             folder_indicator: None,
-            git_status: self.read_bool("git.decorations.enabled"),
             hide_gitignore: self.read_bool("explorer.excludeGitIgnore"),
             hide_hidden: None,
             hide_root: None,
@@ -868,14 +842,12 @@ impl VsCodeSettings {
             sticky_scroll: None,
             auto_open: None,
             diagnostic_badges: None,
-            git_status_indicator: None,
         };
 
         if let (Some(false), Some(false)) = (
             self.read_bool("explorer.decorations.badges"),
             self.read_bool("explorer.decorations.colors"),
         ) {
-            project_panel_settings.git_status = Some(false);
             project_panel_settings.show_diagnostics = Some(ShowDiagnostics::Off);
         }
 
@@ -1012,7 +984,6 @@ impl VsCodeSettings {
             agent_ui_font_size: None,
             agent_buffer_font_family: None,
             agent_buffer_font_size: None,
-            git_commit_buffer_font_size: None,
             theme: None,
             icon_theme: None,
             ui_density: None,

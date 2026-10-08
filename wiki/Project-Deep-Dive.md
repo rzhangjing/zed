@@ -1,6 +1,6 @@
 # Deep Reference: project & worktree
 
-> 参考手册级：`crates/project`（"打开的项目"聚合根，`project.rs` 248KB + `lsp_store.rs` 683KB + `git_store.rs` 487KB + `lsp_command.rs` 216KB）与 `crates/worktree`（文件系统树）。`Project` 把语言、LSP、Git、Buffer、任务、调试、Agent、终端、协作全部**编排成一个 Entity**，是编辑器功能的中枢。
+> 参考手册级：`crates/project`（"打开的项目"聚合根，`project.rs` 248KB + `lsp_store.rs` 683KB + `lsp_command.rs` 216KB）与 `crates/worktree`（文件系统树）。`Project` 把语言、LSP、Buffer、任务、调试、Agent、终端、协作全部**编排成一个 Entity**，是编辑器功能的中枢。
 
 ## 1. `struct Project`（[project.rs:216](../crates/project/src/project.rs)）——字段全景
 | 字段 | 类型 | 子 store / 职责 |
@@ -9,7 +9,6 @@
 | `worktree_store` | `Entity<WorktreeStore>` | 所有 `Worktree` |
 | `buffer_store` | `Entity<BufferStore>` | buffer ↔ worktree 关联（`buffer_store.rs` 70KB） |
 | `lsp_store` | `Entity<LspStore>` | **LSP 全部逻辑**（683KB：server 生命周期、请求路由、编辑操作） |
-| `git_store` | `Entity<GitStore>` | 仓库、hunk、blame（487KB） |
 | `dap_store` | `Entity<DapStore>` | 调试（[Debugger.md](Debugger.md)） |
 | `task_store` | `Entity<TaskStore>` | 任务（enum，[Tasks-and-Tooling.md](Tasks-and-Tooling.md)） |
 | `context_server_store` | `Entity<ContextServerStore>` | MCP/context server（[Agent-and-AI.md](Agent-and-AI.md)） |
@@ -60,18 +59,16 @@ pub enum Worktree {
 }
 ```
 - 核心数据结构是 `SumTree<Entry>`（按路径 key 排序），见 [Sum-Tree-Deep-Dive.md](Sum-Tree-Deep-Dive.md)。
-- `struct Entry`（[worktree.rs:3959](../crates/worktree/src/worktree.rs)）：一个文件/目录条目（`is_dir`、`path`、`id: ProjectEntryId`(L7095)、`git_status: GitFileStatus`、`inode`、`mtime`）。
+- `struct Entry`（[worktree.rs:3959](../crates/worktree/src/worktree.rs)）：一个文件/目录条目（`is_dir`、`path`、`id: ProjectEntryId`(L7095)、`inode`、`mtime`）。
 - `struct ProjectEntryId(usize)`（[L7095](../crates/worktree/src/worktree.rs)）：条目稳定 id（跨刷新定位）。
 - `WorktreeScanProgress`/background `Scanner`：异步遍历 + fs watcher 增量更新，发 `Event::Updated{entries}`。
-- `GitState`/`GitFileStatus`：git 状态徽章来源（与 `git_store` 协同）。
 - `entry_for_path`/`entry_for_id`/`paths_of_entries`/`prefixes_of_path`、`write`/`create_entry`/`rename`/`delete`（文件操作）。
 - `WorktreeStore`（[worktree_store.rs](../crates/project/src/worktree_store.rs)，58KB）：管理多 worktree、worktree_id 分配、协作同步。
 
-## 6. 搜索 / Git / 其它子 store（真实文件）
+## 6. 搜索 / 其它子 store（真实文件）
 | 子模块 | 文件(大小) | 要点 |
 |---|---|---|
 | project search | [project_search.rs](../crates/project/src/project_search.rs)(47KB)+[search.rs](../crates/project/src/search.rs)(23KB) | `SearchQuery`/`SearchResult`/`SearchMatch`，ripgrep 后端流式匹配，产 `MultiBuffer` excerpts |
-| git | [git_store.rs](../crates/project/src/git_store.rs)(487KB)+`git_store/` | `Repository`(enum 本地/远端)、hunk、blame、`GitHostingProviderRegistry`。→ [Git-Integration.md](Git-Integration.md) |
 | 任务 | [task_store.rs](../crates/project/src/task_store.rs)/[task_inventory.rs](../crates/project/src/task_inventory.rs) | `TaskStore`(enum)、`TaskTemplates` |
 | agent | [agent_server_store.rs](../crates/project/src/agent_server_store.rs)(85KB)/[agent_registry_store.rs](../crates/project/src/agent_registry_store.rs) | ACP agent。→ [Agent-and-AI.md](Agent-and-AI.md) |
 | context server | [context_server_store.rs](../crates/project/src/context_server_store.rs)(75KB) | MCP servers。→ [Agent-and-AI.md](Agent-and-AI.md) |
@@ -89,9 +86,9 @@ graph TB
     C --> D[BufferStore: File::open -> language::Buffer]
     D --> E[LanguageRegistry::language_for_file]
     E --> F[LspStore: 匹配 adapter -> 启动/复用 server -> didOpen]
-    F --> G[GitStore: 计算 diff base]
+    F --> G[project: 计算 diff base]
     G --> H[Editor 订阅 Buffer/Project 事件渲染]
 ```
 
 ## 8. 相关页
-[Language-Deep-Dive.md](Language-Deep-Dive.md)、[Editor-Deep-Dive.md](Editor-Deep-Dive.md)、[LSP-Features.md](LSP-Features.md)、[Git-Integration.md](Git-Integration.md)、[Project-Panel-and-FS.md](Project-Panel-and-FS.md)、[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)。
+[Language-Deep-Dive.md](Language-Deep-Dive.md)、[Editor-Deep-Dive.md](Editor-Deep-Dive.md)、[LSP-Features.md](LSP-Features.md)、[Project-Panel-and-FS.md](Project-Panel-and-FS.md)、[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)。

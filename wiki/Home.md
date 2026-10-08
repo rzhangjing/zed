@@ -43,7 +43,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Rope-Deep-Dive（Chunk/TextSummary/坐标互转全 API）](Rope-Deep-Dive.md)
 - [Sum-Tree-Deep-Dive（Item/Summary/Dimension/Cursor/TreeMap）](Sum-Tree-Deep-Dive.md)
 - [Language-Deep-Dive（Buffer/Language/Registry/SyntaxMap）](Language-Deep-Dive.md)
-- [Project-Deep-Dive（Project/LspStore/GitStore/Worktree 全子 store）](Project-Deep-Dive.md)
+- [Project-Deep-Dive（Project/LspStore/Worktree 全子 store）](Project-Deep-Dive.md)
 - [Workspace-Deep-Dive（Workspace/Pane/Dock/Item 契约/持久化）](Workspace-Deep-Dive.md)
 - [Terminal-Deep-Dive（PTY/Alacritty 适配/TerminalElement 渲染）](Terminal-Deep-Dive.md)
 - [Debugger-Deep-Dive（dap 传输/Session 状态机/debugger_ui 面板）](Debugger-Deep-Dive.md)
@@ -52,7 +52,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Collab-Deep-Dive（历史：Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
 - [Panels-Deep-Dive（project_panel/outline_panel/call_hierarchy）](Panels-Deep-Dive.md)
 - [Search-Deep-Dive（BufferSearchBar/ProjectSearch/TextFinder/registrar）](Search-Deep-Dive.md)
-- [Git-Deep-Dive（git 状态/GitStore·Repository/GitPanel·图/冲突）](Git-Deep-Dive.md)
 - [Extension-Deep-Dive（extension_api/宿主类型/ExtensionStore·WasmHost/市场页）](Extension-Deep-Dive.md)
 - [Edit-Prediction-Deep-Dive（EditPredictionStore/Delegate 双抽象/zeta・fim・ollama/context）](Edit-Prediction-Deep-Dive.md)
 - [GPUI-Platform-Backends-Deep-Dive（Platform/PlatformWindow 抽象 + macOS・Windows・Linux・wgpu・Web 后端）](GPUI-Platform-Backends-Deep-Dive.md)
@@ -98,7 +97,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Language & Project（LSP / worktree / 语言检测）](Language-and-Project.md)
 - [LSP-Features（语言服务器 / 诊断 / 大纲 / 调用层次）](LSP-Features.md)
 - [Project-Panel-and-FS（文件系统 / Worktree / 项目树）](Project-Panel-and-FS.md)
-- [Git-Integration（GitRepository / GitStore / git_ui）](Git-Integration.md)
 - [Terminal（PTY / Alacritty / GPUI 渲染）](Terminal.md)
 
 ### 智能与协作

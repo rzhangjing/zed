@@ -1423,12 +1423,10 @@ impl Thread {
             cumulative_token_usage: TokenUsage::default(),
             current_request_token_usage: TokenUsage::default(),
             pending_compaction_telemetry: None,
-            initial_project_snapshot: {
-                let project_snapshot = Self::project_snapshot(project.clone(), cx);
-                cx.foreground_executor()
-                    .spawn(async move { Some(project_snapshot.await) })
-                    .shared()
-            },
+            initial_project_snapshot: Task::ready(Some(Arc::new(ProjectSnapshot {
+                timestamp: Utc::now(),
+            })))
+            .shared(),
             context_server_registry,
             profile_id,
             profile_downgraded_for_restricted_workspace,
@@ -1936,22 +1934,6 @@ impl Thread {
             let initial_project_snapshot = initial_project_snapshot.await;
             thread.initial_project_snapshot = initial_project_snapshot;
             thread
-        })
-    }
-
-    /// Create a snapshot of the current project state including git information and unsaved buffers.
-    fn project_snapshot(
-        project: Entity<Project>,
-        cx: &mut Context<Self>,
-    ) -> Task<Arc<ProjectSnapshot>> {
-        let task = project::telemetry_snapshot::TelemetrySnapshot::new(&project, cx);
-        cx.spawn(async move |_, _| {
-            let snapshot = task.await;
-
-            Arc::new(ProjectSnapshot {
-                worktree_snapshots: snapshot.worktree_snapshots,
-                timestamp: Utc::now(),
-            })
         })
     }
 

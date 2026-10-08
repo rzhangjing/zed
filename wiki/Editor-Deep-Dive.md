@@ -32,7 +32,7 @@ Buffer text (MultiBuffer)
 
 ## 4. 渲染：`element.rs`（GPUI Element 实现）
 [`element.rs`](../crates/editor/src/element.rs)（517KB，Zed 最大文件之一）：`struct EditorElement` 实现 `RenderOnce`/`Element`。职责：
-- `layout`：按 `EditorMode` 计算尺寸；`paint`：绘制文本 runs（`ShapedLine`/`LineWithInvisibles`）、光标、选区背景、gutter、行号、缩进引导、高亮括号、diagnostic下划线、inlays、git hunks、ghost text。
+- `layout`：按 `EditorMode` 计算尺寸；`paint`：绘制文本 runs（`ShapedLine`/`LineWithInvisibles`）、光标、选区背景、gutter、行号、缩进引导、高亮括号、diagnostic下划线、inlays、diff hunks、ghost text。
 - 命中测试：`point_for_position`/`coordinates_for_position`（像素→`DisplayPoint`）。
 - 子模块目录 [`element/`](../crates/editor/src/element)。光标闪烁由 [`blink_manager.rs`](../crates/editor/src/blink_manager.rs)（`BlinkManager`）驱动。
 
@@ -68,8 +68,7 @@ Buffer text (MultiBuffer)
 | 语言特定 | [rust_analyzer_ext.rs](../crates/editor/src/rust_analyzer_ext.rs)/[clangd_ext.rs](../crates/editor/src/clangd_ext.rs)/[jsx_tag_auto_close.rs](../crates/editor/src/jsx_tag_auto_close.rs) | 特定 LSP 行为 |
 详见 [LSP-Features.md](LSP-Features.md)。
 
-## 8. Git / 协作 / 预测
-- [git.rs](../crates/editor/src/git.rs)(117KB)：`git::blame`、`hunks`（uncommitted changes 侧栏 gutter）、`GitState`。→ [Git-Integration.md](Git-Integration.md)。
+## 8. 协作 / 预测
 - [`edit_prediction.rs`](../crates/editor/src/edit_prediction.rs)(98KB)：ghost text 的 editor 侧接线（`EditPredictionButton`、accept/reject、pending state）。→ [Edit-Prediction.md](Edit-Prediction.md)。
 - 协作：`set_collaboration_hub(Box<dyn CollaborationHub>)`(L3160)、多光标他人选区渲染。→ [Collaboration-and-Call.md](Collaboration-and-Call.md)。
 - [bookmarks.rs](../crates/editor/src/bookmarks.rs)(23KB)：文件内书签跳转。
@@ -85,7 +84,7 @@ graph TB
     D --> E[MultiBuffer/Buffer CRDT edit + Operation]
     E --> F[BufferSnapshot 变 -> DisplayMap 重算 fold/wrap]
     F --> G[EditorElement layout/paint 重绘]
-    E --> H[订阅者: LSP didChange / git diff / edit_prediction]
+    E --> H[订阅者: LSP didChange / buffer diff / edit_prediction]
 ```
 
 ## 10. 相关页

@@ -1,6 +1,6 @@
 use acp_thread::{
     AcpThread, AcpThreadEvent, AgentThreadEntry, AssistantMessage, AssistantMessageChunk,
-    AuthRequired, ClientUserMessageId, ElicitationEntryId, ElicitationStatus, ElicitationStore,
+    AuthRequired, ElicitationEntryId, ElicitationStatus, ElicitationStore,
     LoadError, MaxOutputTokensError, MentionUri, PermissionOptionChoice, PermissionOptions,
     PermissionPattern, RetryStatus, SelectedPermissionOutcome, ThreadStatus, ToolCall,
     ToolCallContent, ToolCallStatus,

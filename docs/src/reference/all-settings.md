@@ -597,7 +597,6 @@ When enabled, this setting will automatically close tabs for files that have bee
 - `"unified"`: Show changes inline with added and deleted lines stacked vertically
 - `"split"`: Display old and new versions side by side in separate panes (default)
 
-See [Git documentation](../git.md#diff-view-styles) for more details.
 
 ## Disable AI
 
@@ -870,7 +869,6 @@ List of `string` values
     "breakpoints": true,
     "folds": true,
     "min_line_number_digits": 4,
-    "git_gutter_width": "default"
   }
 }
 ```
@@ -882,7 +880,6 @@ List of `string` values
 - `breakpoints`: Whether to show breakpoints in the gutter
 - `folds`: Whether to show fold buttons in the gutter
 - `min_line_number_digits`: Minimum number of characters to reserve space for in the gutter
-- `git_gutter_width`: The width, in pixels, of the git diff hunk indicators in the gutter. When `default`, the width scales with the buffer font size
 
 ## Hide Mouse
 
@@ -990,7 +987,6 @@ List of `string` values
   "scrollbar": {
     "show": "auto",
     "cursors": true,
-    "git_diff": true,
     "search_results": true,
     "selected_text": true,
     "selected_symbol": true,
@@ -1058,18 +1054,6 @@ List of `string` values
 - Default: `true`
 
 Cursor indicators appear as small marks on the scrollbar showing where other collaborators' cursors are positioned in the file.
-
-**Options**
-
-`boolean` values
-
-### Git Diff Indicators
-
-- Description: Whether to show git diff indicators in the scrollbar.
-- Setting: `git_diff`
-- Default: `true`
-
-Git diff indicators appear as colored marks showing lines that have been added, modified, or deleted compared to the git HEAD.
 
 **Options**
 
@@ -1464,7 +1448,6 @@ or
   "tabs": {
     "close_position": "right",
     "file_icons": false,
-    "git_status": false,
     "activate_on_close": "history",
     "show_close_button": "hover",
     "show_diagnostics": "off"
@@ -1504,12 +1487,6 @@ or
 
 - Description: Whether to show the file icon for a tab.
 - Setting: `file_icons`
-- Default: `false`
-
-### Git Status
-
-- Description: Whether or not to show Git file status in tab.
-- Setting: `git_status`
 - Default: `false`
 
 ### Activate on close
@@ -2288,7 +2265,7 @@ How the limit applies, case by case:
 
 Directories loaded on demand stay indexed, but are deferred again after a restart or after a settings change triggers a worktree rescan.
 
-`file_scan_depth` bounds where git repositories can be discovered; [repository activation](../git.md#repository-activation) decides what a discovered repository costs.
+`file_scan_depth` bounds where git repositories can be discovered; repository activation decides what a discovered repository costs.
 Note that any non-zero value defers git activation for repositories that are not directly inside a project root folder, no matter how large the value is; raising the limit indexes more directories eagerly but does not activate deeper repositories any earlier.
 In multi-folder projects, depth is measured from each root folder separately.
 
@@ -2457,268 +2434,6 @@ To interpret all `.c` files as C++, files called `MyLockFile` as TOML and files 
       "enabled": true,
       "max_severity": "warning"
     }
-  }
-}
-```
-
-## Git
-
-- Description: Configuration for git-related features.
-- Setting: `git`
-- Default:
-
-```json [settings]
-{
-  "git": {
-    "git_gutter": "tracked_files",
-    "inline_blame": {
-      "enabled": true
-    },
-    "branch_picker": {
-      "show_author_name": true
-    },
-    "hunk_style": "staged_hollow"
-  }
-}
-```
-
-### Git Gutter
-
-- Description: Whether or not to show the git gutter.
-- Setting: `git_gutter`
-- Default: `tracked_files`
-
-**Options**
-
-1. Show git gutter in tracked files
-
-```json [settings]
-{
-  "git": {
-    "git_gutter": "tracked_files"
-  }
-}
-```
-
-2. Hide git gutter
-
-```json [settings]
-{
-  "git": {
-    "git_gutter": "hide"
-  }
-}
-```
-
-### Gutter Debounce
-
-- Description: Sets the debounce threshold (in milliseconds) after which changes are reflected in the git gutter.
-- Setting: `gutter_debounce`
-- Default: `null`
-
-**Options**
-
-`integer` values representing milliseconds
-
-Example:
-
-```json [settings]
-{
-  "git": {
-    "gutter_debounce": 100
-  }
-}
-```
-
-### Inline Git Blame
-
-- Description: Whether or not to show git blame information inline, on the currently focused line.
-- Setting: `inline_blame`
-- Default:
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "enabled": true,
-      "location": "inline"
-    }
-  }
-}
-```
-
-**Options**
-
-1. Disable inline git blame:
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "enabled": false
-    }
-  }
-}
-```
-
-2. Only show inline git blame after a delay (that starts after cursor stops moving):
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "delay_ms": 500
-    }
-  }
-}
-```
-
-3. Show git blame in the status bar at the bottom of the window:
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "location": "status_bar"
-    }
-  }
-}
-```
-
-4. Show a commit summary next to the commit date and author:
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "show_commit_summary": true
-    }
-  }
-}
-```
-
-5. Use this as the minimum column at which to display inline blame information:
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "min_column": 80
-    }
-  }
-}
-```
-
-6. Set the padding between the end of the line and the inline blame hint, in ems:
-
-```json [settings]
-{
-  "git": {
-    "inline_blame": {
-      "padding": 10
-    }
-  }
-}
-```
-
-### Branch Picker
-
-- Description: Configuration related to the branch picker.
-- Setting: `branch_picker`
-- Default:
-
-```json [settings]
-{
-  "git": {
-    "branch_picker": {
-      "show_author_name": false
-    }
-  }
-}
-```
-
-**Options**
-
-1. Show the author name in the branch picker:
-
-```json [settings]
-{
-  "git": {
-    "branch_picker": {
-      "show_author_name": true
-    }
-  }
-}
-```
-
-### Hunk Style
-
-- Description: What styling we should use for the diff hunks.
-- Setting: `hunk_style`
-- Default:
-
-```json [settings]
-{
-  "git": {
-    "hunk_style": "staged_hollow"
-  }
-}
-```
-
-**Options**
-
-1. Show the staged hunks faded out and with a border:
-
-```json [settings]
-{
-  "git": {
-    "hunk_style": "staged_hollow"
-  }
-}
-```
-
-2. Show unstaged hunks faded out and with a border:
-
-```json [settings]
-{
-  "git": {
-    "hunk_style": "unstaged_hollow"
-  }
-}
-```
-
-### Diff Base
-
-- Description: Whether git features show changes relative to HEAD (uncommitted changes) or to the default branch (all changes on the current branch). Also available in the editor controls menu as "Diff Against Default Branch".
-- Setting: `diff_base`
-- Default:
-
-```json [settings]
-{
-  "git": {
-    "diff_base": "head"
-  }
-}
-```
-
-**Options**
-
-1. Show working changes relative to HEAD:
-
-```json [settings]
-{
-  "git": {
-    "diff_base": "head"
-  }
-}
-```
-
-2. Show all branch changes relative to the merge base with the repository's default branch:
-
-```json [settings]
-{
-  "git": {
-    "diff_base": "default_branch"
   }
 }
 ```
@@ -5374,7 +5089,6 @@ Available variables:
     "entry_spacing": "comfortable",
     "file_icons": true,
     "folder_indicator": "icon",
-    "git_status": true,
     "indent_size": 20,
     "auto_reveal_entries": true,
     "auto_fold_dirs": true,
@@ -5454,34 +5168,6 @@ Available variables:
 {
   "project_panel": {
     "entry_spacing": "standard"
-  }
-}
-```
-
-### Git Status
-
-- Description: Indicates newly created and updated files
-- Setting: `git_status`
-- Default: `true`
-
-**Options**
-
-1. Default enable git status
-
-```json [settings]
-{
-  "project_panel": {
-    "git_status": true
-  }
-}
-```
-
-2. Default disable git status
-
-```json [settings]
-{
-  "project_panel": {
-    "git_status": false
   }
 }
 ```
@@ -5805,98 +5491,6 @@ Visit [AI Quick Start](../ai/quick-start.md) under the AI section to learn more 
 
 See the [debugger page](../debugger.md) for more information about debugging support within Zed.
 
-## Git Panel
-
-- Description: Setting to customize the behavior of the git panel.
-- Setting: `git_panel`
-- Default:
-
-```json [settings]
-{
-  "git_panel": {
-    "button": true,
-    "dock": "left",
-    "default_width": 360,
-    "status_style": "icon",
-    "fallback_branch_name": "main",
-    "sort_by": "path",
-    "group_by": "status",
-    "collapse_untracked_diff": false,
-    "scrollbar": {
-      "show": null
-    },
-    "starts_open": false
-  }
-}
-```
-
-**Options**
-
-- `button`: Whether to show the git panel button in the status bar
-- `dock`: Where to dock the git panel. Can be `left` or `right`
-- `default_width`: Default width of the git panel
-- `status_style`: How to display git status. Can be `label_color` or `icon`
-- `fallback_branch_name`: What branch name to use if `init.defaultBranch` is not set
-- `sort_by`: How to sort entries in the git panel. Can be `path` or `name`
-- `group_by`: How to group entries in the git panel. Can be `none` or `status`
-- `collapse_untracked_diff`: Whether to collapse untracked files in the diff panel
-- `scrollbar`: When to show the scrollbar in the git panel
-- `starts_open`: Whether the git panel should open on startup
-
-## Git Worktree Directory
-
-- Description: Directory where git worktrees are created, relative to the repository working directory.
-- Setting: `git.worktree_directory`
-- Default: `"../worktrees"`
-
-When the resolved directory falls outside the project root, the project's directory name is automatically appended so that sibling repos don't collide. For example, with the default `"../worktrees"` and a project at `~/code/zed`, worktrees are created under `~/code/worktrees/zed/`.
-
-When the resolved directory is inside the project root, no extra component is added (it's already project-scoped).
-
-**Examples**:
-
-- `"../worktrees"` — `~/code/worktrees/<project>/` (default)
-- `".git/zed-worktrees"` — `<project>/.git/zed-worktrees/`
-- `"my-worktrees"` — `<project>/my-worktrees/`
-
-Trailing slashes are ignored.
-
-```json [settings]
-{
-  "git": {
-    "worktree_directory": "../worktrees"
-  }
-}
-```
-
-## Git Hosting Providers
-
-- Description: Register self-hosted GitHub, GitLab, or Bitbucket instances so commit hashes, issue references, and permalinks resolve to the right host.
-- Setting: `git_hosting_providers`
-- Default: `[]`
-
-**Options**
-
-Each entry accepts:
-
-- `provider`: One of `github`, `gitlab`, or `bitbucket`
-- `name`: Display name for the instance
-- `base_url`: Base URL, e.g. `https://git.example.corp`
-
-You can define these in user or project settings; project settings are merged on top of user settings.
-
-```json [settings]
-{
-  "git_hosting_providers": [
-    {
-      "provider": "github",
-      "name": "BigCorp GitHub",
-      "base_url": "https://git.example.corp"
-    }
-  ]
-}
-```
-
 ## Outline Panel
 
 - Description: Customize outline Panel
@@ -5911,7 +5505,6 @@ You can define these in user or project settings; project settings are merged on
     "dock": "left",
     "file_icons": true,
     "folder_indicator": "icon",
-    "git_status": true,
     "indent_size": 20,
     "auto_reveal_entries": true,
     "auto_fold_dirs": true,

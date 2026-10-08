@@ -12,8 +12,6 @@ use futures::channel::{mpsc, oneshot};
 use futures::future;
 
 use futures::{FutureExt, StreamExt};
-use git_ui::multi_diff_view::MultiDiffView;
-use git_ui_core::file_diff_view::FileDiffView;
 use gpui::{App, AsyncApp, Global, TaskExt, WindowHandle};
 use onboarding::FIRST_OPEN;
 use onboarding::show_onboarding_view;
@@ -23,7 +21,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use ui::SharedString;
 use util::ResultExt;
 use util::debug_panic;
 use util::paths::PathWithPosition;
@@ -68,12 +65,6 @@ pub enum OpenRequestKind {
         /// `None` opens settings without navigating to a specific path.
         setting_path: Option<String>,
     },
-    GitClone {
-        repo_url: SharedString,
-    },
-    GitCommit {
-        sha: String,
-    },
 }
 
 impl std::fmt::Debug for OpenRequestKind {
@@ -107,11 +98,6 @@ impl std::fmt::Debug for OpenRequestKind {
                 .debug_struct("Setting")
                 .field("setting_path", setting_path)
                 .finish(),
-            Self::GitClone { repo_url } => f
-                .debug_struct("GitClone")
-                .field("repo_url", repo_url)
-                .finish(),
-            Self::GitCommit { sha } => f.debug_struct("GitCommit").field("sha", sha).finish(),
         }
     }
 }
@@ -161,10 +147,6 @@ impl OpenRequest {
                 this.kind = Some(OpenRequestKind::Setting {
                     setting_path: Some(setting_path.to_string()),
                 });
-            } else if let Some(clone_path) = url.strip_prefix("zed://git/clone") {
-                this.parse_git_clone_url(clone_path)?
-            } else if let Some(commit_path) = url.strip_prefix("zed://git/commit/") {
-                this.parse_git_commit_url(commit_path)?
             } else {
                 log::error!("unhandled url: {}", url);
             }
@@ -196,48 +178,6 @@ impl OpenRequest {
         // Format: zed://skill?data=<base64url of SKILL.md contents>
         let content = agent_skills::decode_skill_share_link(url)?;
         self.kind = Some(OpenRequestKind::InstallSkill { content });
-        Ok(())
-    }
-
-    fn parse_git_clone_url(&mut self, clone_path: &str) -> Result<()> {
-        // Format: /?repo=<url> or ?repo=<url>
-        let clone_path = clone_path.strip_prefix('/').unwrap_or(clone_path);
-
-        let query = clone_path
-            .strip_prefix('?')
-            .context("invalid git clone url: missing query string")?;
-
-        let repo_url = url::form_urlencoded::parse(query.as_bytes())
-            .find_map(|(key, value)| (key == "repo").then_some(value))
-            .filter(|s| !s.is_empty())
-            .context("invalid git clone url: missing repo query parameter")?
-            .to_string()
-            .into();
-
-        self.kind = Some(OpenRequestKind::GitClone { repo_url });
-
-        Ok(())
-    }
-
-    fn parse_git_commit_url(&mut self, commit_path: &str) -> Result<()> {
-        // Format: <sha>?repo=<path>
-        let (sha, query) = commit_path
-            .split_once('?')
-            .context("invalid git commit url: missing query string")?;
-        anyhow::ensure!(!sha.is_empty(), "invalid git commit url: missing sha");
-
-        let repo = url::form_urlencoded::parse(query.as_bytes())
-            .find_map(|(key, value)| (key == "repo").then_some(value))
-            .filter(|s| !s.is_empty())
-            .context("invalid git commit url: missing repo query parameter")?
-            .to_string();
-
-        self.open_paths.push(repo);
-
-        self.kind = Some(OpenRequestKind::GitCommit {
-            sha: sha.to_string(),
-        });
-
         Ok(())
     }
 }
@@ -327,8 +267,8 @@ fn connect_to_cli(
 
 pub async fn open_paths_with_positions(
     path_positions: &[PathWithPosition],
-    diff_paths: &[[String; 2]],
-    diff_all: bool,
+    _diff_paths: &[[String; 2]],
+    _diff_all: bool,
     app_state: Arc<AppState>,
     open_options: workspace::OpenOptions,
     cx: &mut AsyncApp,
@@ -348,78 +288,6 @@ pub async fn open_paths_with_positions(
     } = cx
         .update(|cx| workspace::open_paths(&paths, app_state.clone(), open_options, cx))
         .await?;
-
-    if diff_all && !diff_paths.is_empty() {
-        let mut diff_pairs = Vec::with_capacity(diff_paths.len());
-        for diff_pair in diff_paths {
-            let parsed = derive_paths_with_position(app_state.fs.as_ref(), diff_pair).await;
-            let (Some(old_parsed), Some(new_parsed)) = (parsed.first(), parsed.get(1)) else {
-                continue;
-            };
-            diff_pairs.push([
-                old_parsed.path.to_string_lossy().into_owned(),
-                new_parsed.path.to_string_lossy().into_owned(),
-            ]);
-        }
-        if let Ok(diff_view) = multi_workspace.update(cx, |multi_workspace, window, cx| {
-            multi_workspace.workspace().update(cx, |workspace, cx| {
-                MultiDiffView::open(diff_pairs, workspace, window, cx)
-            })
-        }) {
-            if let Some(diff_view) = diff_view.await.log_err() {
-                items.push(Some(Ok(Box::new(diff_view))));
-            }
-        }
-    } else {
-        let workspace_weak = multi_workspace.read_with(cx, |multi_workspace, _cx| {
-            multi_workspace.workspace().downgrade()
-        })?;
-        let canonicalize = async |parsed: &PathWithPosition| {
-            app_state
-                .fs
-                .canonicalize(&parsed.path)
-                .await
-                .with_context(|| format!("opening --diff path {:?}", parsed.path))
-        };
-        for diff_pair in diff_paths {
-            let parsed = derive_paths_with_position(app_state.fs.as_ref(), diff_pair).await;
-            let (Some(old_parsed), Some(new_parsed)) = (parsed.first(), parsed.get(1)) else {
-                continue;
-            };
-            let (old_path, new_path) =
-                match futures::join!(canonicalize(old_parsed), canonicalize(new_parsed)) {
-                    (Ok(old), Ok(new)) => (old, new),
-                    (old, new) => {
-                        for result in [old, new] {
-                            if let Err(err) = result {
-                                items.push(Some(Err(err)));
-                            }
-                        }
-                        continue;
-                    }
-                };
-            let target_position = new_parsed.row.map(|row| {
-                language::Point::new(
-                    row.saturating_sub(1),
-                    new_parsed.column.unwrap_or(0).saturating_sub(1),
-                )
-            });
-            if let Ok(diff_view) = multi_workspace.update(cx, |_multi_workspace, window, cx| {
-                FileDiffView::open(
-                    old_path,
-                    new_path,
-                    target_position,
-                    workspace_weak.clone(),
-                    window,
-                    cx,
-                )
-            }) {
-                if let Some(diff_view) = diff_view.await.log_err() {
-                    items.push(Some(Ok(Box::new(diff_view))))
-                }
-            }
-        }
-    }
 
     for (item, path) in items.iter_mut().zip(&paths) {
         if let Some(Err(error)) = item {
@@ -1333,86 +1201,6 @@ mod tests {
     }
 
     #[gpui::test]
-    fn test_parse_git_commit_url(cx: &mut TestAppContext) {
-        let _app_state = init_test(cx);
-
-        // Test basic git commit URL
-        let request = cx.update(|cx| {
-            OpenRequest::parse(
-                RawOpenRequest {
-                    urls: vec!["zed://git/commit/abc123?repo=path/to/repo".into()],
-                    ..Default::default()
-                },
-                cx,
-            )
-            .unwrap()
-        });
-
-        match request.kind.unwrap() {
-            OpenRequestKind::GitCommit { sha } => {
-                assert_eq!(sha, "abc123");
-            }
-            _ => panic!("expected GitCommit variant"),
-        }
-        // Verify path was added to open_paths for workspace routing
-        assert_eq!(request.open_paths, vec!["path/to/repo"]);
-
-        // Test with URL encoded path
-        let request = cx.update(|cx| {
-            OpenRequest::parse(
-                RawOpenRequest {
-                    urls: vec!["zed://git/commit/def456?repo=path%20with%20spaces".into()],
-                    ..Default::default()
-                },
-                cx,
-            )
-            .unwrap()
-        });
-
-        match request.kind.unwrap() {
-            OpenRequestKind::GitCommit { sha } => {
-                assert_eq!(sha, "def456");
-            }
-            _ => panic!("expected GitCommit variant"),
-        }
-        assert_eq!(request.open_paths, vec!["path with spaces"]);
-
-        // Test with empty path
-        cx.update(|cx| {
-            assert!(
-                OpenRequest::parse(
-                    RawOpenRequest {
-                        urls: vec!["zed://git/commit/abc123?repo=".into()],
-                        ..Default::default()
-                    },
-                    cx,
-                )
-                .unwrap_err()
-                .to_string()
-                .contains("missing repo")
-            );
-        });
-
-        // Test error case: missing SHA
-        let result = cx.update(|cx| {
-            OpenRequest::parse(
-                RawOpenRequest {
-                    urls: vec!["zed://git/commit/abc123?foo=bar".into()],
-                    ..Default::default()
-                },
-                cx,
-            )
-        });
-        assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("missing repo query parameter")
-        );
-    }
-
-    #[gpui::test]
     async fn test_open_workspace_with_directory(cx: &mut TestAppContext) {
         let app_state = init_test(cx);
 
@@ -1749,82 +1537,6 @@ mod tests {
             .await;
 
         assert!(!errored_reuse);
-    }
-
-    #[gpui::test]
-    fn test_parse_git_clone_url(cx: &mut TestAppContext) {
-        let _app_state = init_test(cx);
-
-        let request = cx.update(|cx| {
-            OpenRequest::parse(
-                RawOpenRequest {
-                    urls: vec![
-                        "zed://git/clone/?repo=https://github.com/zed-industries/zed.git".into(),
-                    ],
-                    ..Default::default()
-                },
-                cx,
-            )
-            .unwrap()
-        });
-
-        match request.kind {
-            Some(OpenRequestKind::GitClone { repo_url }) => {
-                assert_eq!(repo_url, "https://github.com/zed-industries/zed.git");
-            }
-            _ => panic!("Expected GitClone kind"),
-        }
-    }
-
-    #[gpui::test]
-    fn test_parse_git_clone_url_without_slash(cx: &mut TestAppContext) {
-        let _app_state = init_test(cx);
-
-        let request = cx.update(|cx| {
-            OpenRequest::parse(
-                RawOpenRequest {
-                    urls: vec![
-                        "zed://git/clone?repo=https://github.com/zed-industries/zed.git".into(),
-                    ],
-                    ..Default::default()
-                },
-                cx,
-            )
-            .unwrap()
-        });
-
-        match request.kind {
-            Some(OpenRequestKind::GitClone { repo_url }) => {
-                assert_eq!(repo_url, "https://github.com/zed-industries/zed.git");
-            }
-            _ => panic!("Expected GitClone kind"),
-        }
-    }
-
-    #[gpui::test]
-    fn test_parse_git_clone_url_with_encoding(cx: &mut TestAppContext) {
-        let _app_state = init_test(cx);
-
-        let request = cx.update(|cx| {
-            OpenRequest::parse(
-                RawOpenRequest {
-                    urls: vec![
-                        "zed://git/clone/?repo=https%3A%2F%2Fgithub.com%2Fzed-industries%2Fzed.git"
-                            .into(),
-                    ],
-                    ..Default::default()
-                },
-                cx,
-            )
-            .unwrap()
-        });
-
-        match request.kind {
-            Some(OpenRequestKind::GitClone { repo_url }) => {
-                assert_eq!(repo_url, "https://github.com/zed-industries/zed.git");
-            }
-            _ => panic!("Expected GitClone kind"),
-        }
     }
 
     #[gpui::test]

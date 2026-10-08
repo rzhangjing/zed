@@ -67,7 +67,6 @@
   {
     "context": "Editor && !agent_diff",
     "bindings": {
-      "ctrl-k ctrl-z": "git::Restore",
     },
   },
   {

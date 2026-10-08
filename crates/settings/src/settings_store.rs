@@ -1647,7 +1647,7 @@ mod tests {
     use std::{cell::RefCell, num::NonZeroU32};
 
     use crate::{
-        ClosePosition, ItemSettingsContent, VsCodeSettingsSource, default_settings,
+        ClosePosition, VsCodeSettingsSource, default_settings,
         settings_content::LanguageSettingsContent, test_settings,
     };
 
@@ -1672,7 +1672,6 @@ mod tests {
     #[derive(Debug, PartialEq)]
     struct ItemSettings {
         close_position: ClosePosition,
-        git_status: bool,
     }
 
     impl Settings for ItemSettings {
@@ -1680,7 +1679,6 @@ mod tests {
             let content = content.tabs.clone().unwrap();
             ItemSettings {
                 close_position: content.close_position.unwrap(),
-                git_status: content.git_status.unwrap(),
             }
         }
     }
@@ -2105,26 +2103,6 @@ mod tests {
             cx,
         );
 
-        // no content
-        check_settings_update(
-            &mut store,
-            r#""#.unindent(),
-            |settings| {
-                settings.tabs = Some(ItemSettingsContent {
-                    git_status: Some(true),
-                    ..Default::default()
-                })
-            },
-            r#"{
-              "tabs": {
-                "git_status": true
-              }
-            }
-            "#
-            .unindent(),
-            cx,
-        );
-
         check_settings_update(
             &mut store,
             r#"{
@@ -2243,34 +2221,6 @@ mod tests {
                 },
                 "preferred_line_length": 99,
                 "tab_size": 42
-            }
-            "#
-            .unindent(),
-            cx,
-        );
-
-        // custom enum
-        check_vscode_import(
-            &mut store,
-            r#"{
-            }
-            "#
-            .unindent(),
-            r#"{ "git.decorations.enabled": true }"#.to_owned(),
-            r#"{
-              "project_panel": {
-                "git_status": true
-              },
-              "outline_panel": {
-                "git_status": true
-              },
-              "base_keymap": "VSCode",
-              "tabs": {
-                "git_status": true
-              },
-              "minimap": {
-                "show": "always"
-              }
             }
             "#
             .unindent(),
@@ -2700,34 +2650,6 @@ mod tests {
     }
 
     #[gpui::test]
-    fn test_update_git_settings(cx: &mut App) {
-        let store = SettingsStore::new(cx, &test_settings());
-
-        let actual = store
-            .new_text_for_update("{}".to_string(), |current| {
-                current
-                    .git
-                    .get_or_insert_default()
-                    .inline_blame
-                    .get_or_insert_default()
-                    .enabled = Some(true);
-            })
-            .unwrap();
-        pretty_assertions::assert_str_eq!(
-            actual,
-            r#"{
-              "git": {
-                "inline_blame": {
-                  "enabled": true
-                }
-              }
-            }
-            "#
-            .unindent()
-        );
-    }
-
-    #[gpui::test]
     fn test_global_settings(cx: &mut App) {
         let mut store = SettingsStore::new(cx, &test_settings());
         store.register_setting::<ItemSettings>();
@@ -2737,8 +2659,7 @@ mod tests {
             .set_global_settings(
                 r#"{
                     "tabs": {
-                        "close_position": "right",
-                        "git_status": true,
+                        "close_position": "right"
                     }
                 }"#,
                 cx,
@@ -2750,7 +2671,6 @@ mod tests {
             store.get::<ItemSettings>(None),
             &ItemSettings {
                 close_position: ClosePosition::Right,
-                git_status: true,
             }
         );
 
@@ -2771,7 +2691,6 @@ mod tests {
             store.get::<ItemSettings>(None),
             &ItemSettings {
                 close_position: ClosePosition::Left,
-                git_status: true, // Staff from global settings
             }
         );
     }

@@ -21,7 +21,7 @@ use agent_ui::{
     NewThread, RenameSelectedThread, TerminalId, ThreadId, ThreadImportModal,
     ThreadTitleRegenerationResult, channels_with_threads, import_threads_from_other_channels,
 };
-use agent_ui::{MessageEditorEvent, StateChange, thread_worktree_archive};
+use agent_ui::{MessageEditorEvent, StateChange};
 use chrono::{DateTime, Utc};
 use editor::Editor;
 use feature_flags::{
@@ -39,9 +39,7 @@ use menu::{
     Cancel, Confirm, SelectChild, SelectFirst, SelectLast, SelectNext, SelectParent, SelectPrevious,
 };
 use notifications::status_toast::StatusToast;
-use project::{
-    AgentId, AgentRegistryStore, Event as ProjectEvent, WorktreeId, repo_identity_path_if_local,
-};
+use project::{AgentId, AgentRegistryStore, Event as ProjectEvent, WorktreeId};
 use recent_projects::sidebar_recent_projects::SidebarRecentProjects;
 use ui::utils::platform_title_bar_height;
 
@@ -66,13 +64,12 @@ use util::path_list::PathList;
 use workspace::{
     CloseWindow, FocusWorkspaceSidebar, MoveProjectDown, MoveProjectUp, MultiWorkspace,
     MultiWorkspaceEvent, NextProject, NextThread, Open, OpenMode, PreviousProject, PreviousThread,
-    ProjectGroupKey, RemovalIntent, SaveIntent, Sidebar as WorkspaceSidebar, SidebarSide, Toast,
-    ToggleWorkspaceSidebar, Workspace, notifications::NotificationId, sidebar_side_context_menu,
+    ProjectGroupKey, RemovalIntent, SaveIntent, Sidebar as WorkspaceSidebar, SidebarSide,
+    ToggleWorkspaceSidebar, Workspace, sidebar_side_context_menu,
 };
 
-use git_ui_core::worktree_service::{RemoteBranchName, worktree_create_targets};
 use zed_actions::editor::{MoveDown, MoveUp};
-use zed_actions::{CreateWorktree, NewWorktreeBranchTarget, OpenRecent};
+use zed_actions::OpenRecent;
 
 use zed_actions::agents_sidebar::{FocusSidebarFilter, ToggleThreadSwitcher};
 
@@ -133,11 +130,6 @@ enum SidebarView {
     #[default]
     ThreadList,
     Archive(Entity<ThreadsArchiveView>),
-}
-
-enum ArchiveWorktreeOutcome {
-    Success,
-    Cancelled,
 }
 
 #[derive(Clone, Debug)]
@@ -529,52 +521,8 @@ impl SidebarContents {
     }
 }
 
-// TODO: The mapping from workspace root paths to git repositories needs a
-// unified approach across the codebase: this function, `AgentPanel::classify_worktrees`,
-// thread persistence (which PathList is saved to the database), and thread
-// querying (which PathList is used to read threads back). All of these need
-// to agree on how repos are resolved for a given workspace, especially in
-// multi-root and nested-repo configurations.
-fn root_repository_snapshots(
-    workspace: &Entity<Workspace>,
-    cx: &App,
-) -> impl Iterator<Item = project::git_store::RepositorySnapshot> {
-    let path_list = workspace_path_list(workspace, cx);
-    let project = workspace.read(cx).project().read(cx);
-    project.repositories(cx).values().filter_map(move |repo| {
-        let snapshot = repo.read(cx).snapshot();
-        let is_root = path_list
-            .paths()
-            .iter()
-            .any(|p| p.as_path() == snapshot.work_directory_abs_path.as_ref());
-        is_root.then_some(snapshot)
-    })
-}
-
 fn workspace_path_list(workspace: &Entity<Workspace>, cx: &App) -> PathList {
     PathList::new(&workspace.read(cx).root_paths(cx))
-}
-
-fn linked_worktree_path_lists_for_workspaces(
-    workspaces: &[Entity<Workspace>],
-    cx: &App,
-) -> Vec<PathList> {
-    let mut linked_worktree_paths = Vec::new();
-    for workspace in workspaces {
-        if workspace.read(cx).visible_worktrees(cx).count() != 1 {
-            continue;
-        }
-        for snapshot in root_repository_snapshots(workspace, cx) {
-            linked_worktree_paths.extend(
-                snapshot.linked_worktrees().iter().map(|linked_worktree| {
-                    PathList::new(std::slice::from_ref(&linked_worktree.path))
-                }),
-            );
-        }
-    }
-
-    linked_worktree_paths.sort_by(|a, b| a.paths()[0].cmp(&b.paths()[0]));
-    linked_worktree_paths
 }
 
 fn workspace_has_terminal_metadata_except(
@@ -619,64 +567,21 @@ fn workspace_menu_worktree_labels(
     workspace: &Entity<Workspace>,
     cx: &App,
 ) -> Vec<WorkspaceMenuWorktreeLabel> {
-    let root_paths = workspace.read(cx).root_paths(cx);
-    let show_folder_name = root_paths.len() > 1;
-    let project = workspace.read(cx).project().clone();
-    let repository_snapshots: Vec<_> = project
+    workspace
         .read(cx)
-        .repositories(cx)
-        .values()
-        .map(|repo| repo.read(cx).snapshot())
-        .collect();
-
-    root_paths
+        .root_paths(cx)
         .into_iter()
         .map(|root_path| {
-            let root_path = root_path.as_ref();
             let folder_name = root_path
+                .as_ref()
                 .file_name()
                 .map(|name| SharedString::from(name.to_string_lossy().to_string()))
                 .unwrap_or_default();
-            let repository_snapshot = repository_snapshots
-                .iter()
-                .find(|snapshot| snapshot.work_directory_abs_path.as_ref() == root_path);
 
-            if let Some(snapshot) = repository_snapshot {
-                let worktree_name = if snapshot.is_linked_worktree() {
-                    let identity_fallback = repo_identity_path_if_local(
-                        &snapshot.common_dir_abs_path,
-                        snapshot.path_style,
-                    );
-                    snapshot
-                        .main_worktree_abs_path()
-                        .or(identity_fallback)
-                        .and_then(|name_anchor_path| {
-                            project::linked_worktree_short_name(name_anchor_path, root_path)
-                        })
-                        .unwrap_or_else(|| folder_name.clone())
-                } else {
-                    "main".into()
-                };
-
-                if show_folder_name {
-                    WorkspaceMenuWorktreeLabel {
-                        icon: Some(IconName::GitWorktree),
-                        primary_name: folder_name,
-                        secondary_name: Some(worktree_name),
-                    }
-                } else {
-                    WorkspaceMenuWorktreeLabel {
-                        icon: Some(IconName::GitWorktree),
-                        primary_name: worktree_name,
-                        secondary_name: None,
-                    }
-                }
-            } else {
-                WorkspaceMenuWorktreeLabel {
-                    icon: None,
-                    primary_name: folder_name,
-                    secondary_name: None,
-                }
+            WorkspaceMenuWorktreeLabel {
+                icon: None,
+                primary_name: folder_name,
+                secondary_name: None,
             }
         })
         .collect()
@@ -704,35 +609,6 @@ fn apply_worktree_label_mode(
         }
     }
     worktrees
-}
-
-// Per-project-group cache of the remote default branch, used to populate the
-// "Create New Worktree" submenu without doing git I/O while the menu is open.
-enum DefaultBranchCache {
-    Pending,
-    Resolved(Option<RemoteBranchName>),
-}
-
-// Mirrors the behavior of the worktree picker's "Create new worktree" entries.
-fn create_worktree_in_workspace(
-    workspace: &Entity<Workspace>,
-    branch_target: NewWorktreeBranchTarget,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    workspace.update(cx, |workspace, cx| {
-        let focused_dock = workspace.focused_dock_position(window, cx);
-        git_ui_core::worktree_service::handle_create_worktree(
-            workspace,
-            &CreateWorktree {
-                worktree_name: None,
-                branch_target,
-            },
-            window,
-            focused_dock,
-            cx,
-        );
-    });
 }
 
 /// The sidebar re-derives its entire entry list from scratch on every
@@ -779,12 +655,10 @@ pub struct Sidebar {
     /// its interaction time.
     draft_kinds: HashMap<ThreadId, DraftKind>,
     view: SidebarView,
-    restoring_tasks: HashMap<agent_ui::ThreadId, Task<()>>,
     recent_projects_popover_handle: PopoverMenuHandle<SidebarRecentProjects>,
     project_header_menu_handles: HashMap<usize, PopoverMenuHandle<ContextMenu>>,
     project_header_new_thread_menu_handles: HashMap<usize, PopoverMenuHandle<ContextMenu>>,
     project_header_menu_ix: Option<usize>,
-    worktree_default_branches: HashMap<ProjectGroupKey, DefaultBranchCache>,
     _subscriptions: Vec<gpui::Subscription>,
     _draft_editor_observations: Vec<gpui::Subscription>,
     update_task: Option<Task<()>>,
@@ -917,12 +791,10 @@ impl Sidebar {
             live_thread_statuses: HashMap::new(),
             draft_kinds: HashMap::new(),
             view: SidebarView::default(),
-            restoring_tasks: HashMap::new(),
             recent_projects_popover_handle: PopoverMenuHandle::default(),
             project_header_menu_handles: HashMap::new(),
             project_header_new_thread_menu_handles: HashMap::new(),
             project_header_menu_ix: None,
-            worktree_default_branches: HashMap::new(),
             _subscriptions: Vec::new(),
             _draft_editor_observations: Vec::new(),
             update_task: None,
@@ -988,26 +860,6 @@ impl Sidebar {
                     this.schedule_update_entries(false, cx);
                 }
                 _ => {}
-            },
-        )
-        .detach();
-
-        let git_store = workspace.read(cx).project().read(cx).git_store().clone();
-        cx.subscribe_in(
-            &git_store,
-            window,
-            |this, _, event: &project::git_store::GitStoreEvent, _window, cx| {
-                if matches!(
-                    event,
-                    project::git_store::GitStoreEvent::RepositoryUpdated(
-                        _,
-                        project::git_store::RepositoryEvent::GitWorktreeListChanged
-                            | project::git_store::RepositoryEvent::HeadChanged,
-                        _,
-                    )
-                ) {
-                    this.schedule_update_entries(false, cx);
-                }
             },
         )
         .detach();
@@ -1396,27 +1248,9 @@ impl Sidebar {
         let path_detail_map: HashMap<PathBuf, usize> =
             all_paths.into_iter().zip(path_details).collect();
 
-        let mut branch_by_path: HashMap<PathBuf, SharedString> = HashMap::new();
-        for ws in &workspaces {
-            let project = ws.read(cx).project().read(cx);
-            for repo in project.repositories(cx).values() {
-                let snapshot = repo.read(cx).snapshot();
-                if let Some(branch) = &snapshot.branch {
-                    branch_by_path.insert(
-                        snapshot.work_directory_abs_path.to_path_buf(),
-                        SharedString::from(Arc::<str>::from(branch.name())),
-                    );
-                }
-                for linked_wt in snapshot.linked_worktrees() {
-                    if let Some(branch) = linked_wt.branch_name() {
-                        branch_by_path.insert(
-                            linked_wt.path.clone(),
-                            SharedString::from(Arc::<str>::from(branch)),
-                        );
-                    }
-                }
-            }
-        }
+        // Branch labels for thread/terminal worktree entries used to come from the
+        // git store, which no longer exists.
+        let branch_by_path: HashMap<PathBuf, SharedString> = HashMap::new();
 
         for group in &groups {
             let group_key = &group.key;
@@ -1435,8 +1269,6 @@ impl Sidebar {
                         project_group_key: group_key.clone(),
                     })
             };
-            let linked_worktree_path_lists =
-                linked_worktree_path_lists_for_workspaces(group_workspaces, cx);
             let make_terminal_entry =
                 |metadata: TerminalThreadMetadata, workspace: ThreadEntryWorkspace| {
                     let worktrees =
@@ -1484,21 +1316,6 @@ impl Sidebar {
                 }
                 for row in terminal_store.read(cx).entries_for_path(&ws_paths).cloned() {
                     push_terminal_metadata(row, ThreadEntryWorkspace::Open(ws.clone()));
-                }
-            }
-            for worktree_path_list in &linked_worktree_path_lists {
-                for row in terminal_store
-                    .read(cx)
-                    .entries_for_path(worktree_path_list)
-                    .cloned()
-                {
-                    push_terminal_metadata(
-                        row,
-                        ThreadEntryWorkspace::Closed {
-                            folder_paths: worktree_path_list.clone(),
-                            project_group_key: group_key.clone(),
-                        },
-                    );
                 }
             }
             current_terminal_ids.extend(
@@ -1620,25 +1437,9 @@ impl Sidebar {
                     }
                 }
 
-                // Load any legacy threads for any single linked worktree of this project group.
-                for worktree_path_list in &linked_worktree_path_lists {
-                    for row in thread_store
-                        .read(cx)
-                        .entries_for_path(worktree_path_list)
-                        .cloned()
-                    {
-                        if !seen_thread_ids.insert(row.thread_id) {
-                            continue;
-                        }
-                        threads.push(make_thread_entry(
-                            row,
-                            ThreadEntryWorkspace::Closed {
-                                folder_paths: worktree_path_list.clone(),
-                                project_group_key: group_key.clone(),
-                            },
-                        ));
-                    }
-                }
+                // Threads belonging to a linked worktree of this project group used to be
+                // loaded here. Linked worktrees came from the git store, which no longer
+                // exists, so there is nothing to load.
 
                 for thread in &mut threads {
                     if thread.draft.is_none() {
@@ -1980,8 +1781,6 @@ impl Sidebar {
 
         // Preserve measurements for unchanged entries so sticky headers do not flicker.
         self.apply_list_state_diff(&previous_shapes, multi_workspace.read(cx));
-
-        self.prefetch_worktree_default_branches(cx);
 
         if had_notifications != self.has_notifications(cx) {
             multi_workspace.update(cx, |_, cx| {
@@ -2511,7 +2310,7 @@ impl Sidebar {
             Some(ContextMenu::build(
                 window,
                 cx,
-                move |mut menu, _window, cx| {
+                move |mut menu, _window, _cx| {
                     menu = menu.header("New Thread In…");
 
                     for (workspace, labels) in open_workspaces
@@ -2562,77 +2361,6 @@ impl Sidebar {
                         );
                     }
 
-                    let base_workspace = active_workspace
-                        .as_ref()
-                        .filter(|workspace| open_workspaces.contains(workspace))
-                        .cloned()
-                        .or_else(|| open_workspaces.first().cloned());
-
-                    // Only offer worktree creation when the base project can
-                    // actually create one; otherwise the submenu would expand to
-                    // nothing. Mirrors the picker's `creation_blocked_reason`.
-                    let creation_blocked = base_workspace.as_ref().is_none_or(|base_workspace| {
-                        let project = base_workspace.read(cx).project().read(cx);
-                        project.is_via_collab() || project.repositories(cx).is_empty()
-                    });
-
-                    if let Some(base_workspace) = base_workspace.filter(|_| !creation_blocked) {
-                        menu = menu.separator().submenu("Create New Worktree…", {
-                            let this = this.clone();
-                            move |mut submenu, _window, submenu_cx| {
-                                let project = base_workspace.read(submenu_cx).project().clone();
-                                let project_ref = project.read(submenu_cx);
-                                let has_multiple_repositories =
-                                    project_ref.repositories(submenu_cx).len() > 1;
-                                let current_branch =
-                                    project_ref.active_repository(submenu_cx).and_then(|repo| {
-                                        repo.read(submenu_cx)
-                                            .branch
-                                            .as_ref()
-                                            .map(|branch| branch.name().to_string())
-                                    });
-                                let default_branch = this
-                                    .read_with(submenu_cx, |sidebar, _| {
-                                        match sidebar.worktree_default_branches.get(&key) {
-                                            Some(DefaultBranchCache::Resolved(branch)) => {
-                                                branch.clone()
-                                            }
-                                            _ => None,
-                                        }
-                                    })
-                                    .ok()
-                                    .flatten();
-
-                                let targets = worktree_create_targets(
-                                    has_multiple_repositories,
-                                    default_branch,
-                                    current_branch.as_deref(),
-                                );
-                                for target in targets {
-                                    let label = format!(
-                                        "Based on {}",
-                                        target.branch_label(
-                                            has_multiple_repositories,
-                                            current_branch.as_deref(),
-                                        )
-                                    );
-                                    let branch_target = target.branch_target();
-                                    let workspace = base_workspace.clone();
-                                    submenu = submenu.entry(label, None, move |window, cx| {
-                                        create_worktree_in_workspace(
-                                            &workspace,
-                                            branch_target.clone(),
-                                            window,
-                                            cx,
-                                        );
-                                    });
-                                }
-
-                                submenu
-                            }
-                        });
-                    }
-
                     menu
                 },
             ))
@@ -2643,72 +2371,6 @@ impl Sidebar {
             y: px(1.),
         })
         .into_any_element()
-    }
-
-    // Warms `worktree_default_branches` for every project group with at least one
-    // open workspace. The git query runs off the menu path so the submenu can read
-    // the result synchronously when it opens. Worktrees of a repository share the
-    // same default branch, so any workspace in the group yields the same answer.
-    fn prefetch_worktree_default_branches(&mut self, cx: &mut Context<Self>) {
-        let Some(multi_workspace) = self.multi_workspace.upgrade() else {
-            return;
-        };
-        let keys: Vec<ProjectGroupKey> = self
-            .contents
-            .entries
-            .iter()
-            .filter_map(|entry| match entry {
-                ListEntry::ProjectHeader { key, .. } => Some(key.clone()),
-                _ => None,
-            })
-            .collect();
-        for key in keys {
-            if self.worktree_default_branches.contains_key(&key) {
-                continue;
-            }
-            let Some(base) = multi_workspace
-                .read(cx)
-                .workspaces_for_project_group(&key, cx)
-                .first()
-                .cloned()
-            else {
-                continue;
-            };
-            self.prefetch_worktree_default_branch(&key, &base, cx);
-        }
-    }
-
-    fn prefetch_worktree_default_branch(
-        &mut self,
-        key: &ProjectGroupKey,
-        workspace: &Entity<Workspace>,
-        cx: &mut Context<Self>,
-    ) {
-        // Presence of the key means the group is already pending or resolved. The
-        // no-repository case is deliberately not inserted so it retries on a
-        // later rebuild once the repository has finished loading.
-        if self.worktree_default_branches.contains_key(key) {
-            return;
-        }
-        let Some(repository) = workspace.read(cx).project().read(cx).active_repository(cx) else {
-            return;
-        };
-        let request = repository.update(cx, |repository, _| repository.default_branch(true));
-        self.worktree_default_branches
-            .insert(key.clone(), DefaultBranchCache::Pending);
-        let key = key.clone();
-        cx.spawn(async move |this, cx| {
-            let default_branch = request.await.ok().and_then(Result::ok).flatten();
-            let parsed = default_branch.as_deref().and_then(RemoteBranchName::parse);
-            this.update(cx, |sidebar, cx| {
-                sidebar
-                    .worktree_default_branches
-                    .insert(key, DefaultBranchCache::Resolved(parsed));
-                cx.notify();
-            })
-            .ok();
-        })
-        .detach();
     }
 
     fn render_project_header_ellipsis_menu(
@@ -4013,11 +3675,6 @@ impl Sidebar {
         cx: &mut Context<Self>,
     ) {
         let thread_id = metadata.thread_id;
-        let weak_archive_view = match &self.view {
-            SidebarView::Archive(view) => Some(view.downgrade()),
-            _ => None,
-        };
-
         if metadata.folder_paths().paths().is_empty() {
             ThreadMetadataStore::global(cx).update(cx, |store, cx| store.unarchive(thread_id, cx));
 
@@ -4043,140 +3700,25 @@ impl Sidebar {
             return;
         }
 
-        let store = ThreadMetadataStore::global(cx);
-        let task = if metadata.archived {
-            store
-                .read(cx)
-                .get_archived_worktrees_for_thread(thread_id, cx)
-        } else {
-            Task::ready(Ok(Vec::new()))
-        };
+        if metadata.archived {
+            ThreadMetadataStore::global(cx).update(cx, |store, cx| store.unarchive(thread_id, cx));
+        }
+
         let path_list = metadata.folder_paths().clone();
 
-        let restore_task = cx.spawn_in(window, async move |this, cx| {
-            let result: anyhow::Result<()> = async {
-                let archived_worktrees = task.await?;
-
-                if archived_worktrees.is_empty() {
-                    this.update_in(cx, |this, window, cx| {
-                        this.restoring_tasks.remove(&thread_id);
-                        if metadata.archived {
-                            ThreadMetadataStore::global(cx)
-                                .update(cx, |store, cx| store.unarchive(thread_id, cx));
-                        }
-
-                        if let Some(workspace) =
-                            this.find_current_workspace_for_path_list(&path_list, cx)
-                        {
-                            this.activate_thread_locally(&metadata, &workspace, false, window, cx);
-                        } else if let Some((target_window, workspace)) =
-                            this.find_open_workspace_for_path_list(&path_list, cx)
-                        {
-                            this.activate_thread_in_other_window(
-                                metadata,
-                                workspace,
-                                target_window,
-                                cx,
-                            );
-                        } else {
-                            let key =
-                                ProjectGroupKey::from_worktree_paths(&metadata.worktree_paths);
-                            this.open_workspace_and_activate_thread(
-                                metadata, path_list, &key, window, cx,
-                            );
-                        }
-                        this.show_thread_list(window, cx);
-                    })?;
-                    return anyhow::Ok(());
-                }
-
-                let mut path_replacements: Vec<(PathBuf, PathBuf)> = Vec::new();
-                for row in &archived_worktrees {
-                    match thread_worktree_archive::restore_worktree_via_git(row, &mut *cx).await {
-                        Ok(restored_path) => {
-                            thread_worktree_archive::cleanup_archived_worktree_record(
-                                row, &mut *cx,
-                            )
-                            .await;
-                            path_replacements.push((row.worktree_path.clone(), restored_path));
-                        }
-                        Err(error) => {
-                            log::error!("Failed to restore worktree: {error:#}");
-                            this.update_in(cx, |this, _window, cx| {
-                                this.restoring_tasks.remove(&thread_id);
-                                if let Some(weak_archive_view) = &weak_archive_view {
-                                    weak_archive_view
-                                        .update(cx, |view, cx| {
-                                            view.clear_restoring(&thread_id, cx);
-                                        })
-                                        .ok();
-                                }
-
-                                if let Some(multi_workspace) = this.multi_workspace.upgrade() {
-                                    let workspace = multi_workspace.read(cx).workspace().clone();
-                                    workspace.update(cx, |workspace, cx| {
-                                        struct RestoreWorktreeErrorToast;
-                                        workspace.show_toast(
-                                            Toast::new(
-                                                NotificationId::unique::<RestoreWorktreeErrorToast>(
-                                                ),
-                                                format!("Failed to restore worktree: {error:#}"),
-                                            )
-                                            .autohide(),
-                                            cx,
-                                        );
-                                    });
-                                }
-                            })
-                            .ok();
-                            return anyhow::Ok(());
-                        }
-                    }
-                }
-
-                if !path_replacements.is_empty() {
-                    cx.update(|_window, cx| {
-                        store.update(cx, |store, cx| {
-                            store.update_restored_worktree_paths(thread_id, &path_replacements, cx);
-                        });
-                    })?;
-
-                    let updated_metadata =
-                        cx.update(|_window, cx| store.read(cx).entry(thread_id).cloned())?;
-
-                    if let Some(updated_metadata) = updated_metadata {
-                        let new_paths = updated_metadata.folder_paths().clone();
-                        let key =
-                            ProjectGroupKey::from_worktree_paths(&updated_metadata.worktree_paths);
-
-                        cx.update(|_window, cx| {
-                            store.update(cx, |store, cx| {
-                                store.unarchive(updated_metadata.thread_id, cx);
-                            });
-                        })?;
-
-                        this.update_in(cx, |this, window, cx| {
-                            this.restoring_tasks.remove(&thread_id);
-                            this.open_workspace_and_activate_thread(
-                                updated_metadata,
-                                new_paths,
-                                &key,
-                                window,
-                                cx,
-                            );
-                            this.show_thread_list(window, cx);
-                        })?;
-                    }
-                }
-
-                anyhow::Ok(())
-            }
-            .await;
-            if let Err(error) = result {
-                log::error!("{error:#}");
-            }
-        });
-        self.restoring_tasks.insert(thread_id, restore_task);
+        // Reuse a workspace that already has these paths open instead of
+        // adding a duplicate workspace to this window.
+        if let Some(workspace) = self.find_current_workspace_for_path_list(&path_list, cx) {
+            self.activate_thread_locally(&metadata, &workspace, false, window, cx);
+        } else if let Some((target_window, workspace)) =
+            self.find_open_workspace_for_path_list(&path_list, cx)
+        {
+            self.activate_thread_in_other_window(metadata, workspace, target_window, cx);
+        } else {
+            let key = ProjectGroupKey::from_worktree_paths(&metadata.worktree_paths);
+            self.open_workspace_and_activate_thread(metadata, path_list, &key, window, cx);
+        }
+        self.show_thread_list(window, cx);
     }
 
     fn expand_selected_entry(
@@ -4608,8 +4150,36 @@ impl Sidebar {
     }
 
     fn archive_workspaces(&self, cx: &App) -> Vec<Entity<Workspace>> {
-        let multi_workspace = self.multi_workspace.upgrade();
-        thread_worktree_archive::workspaces_for_archive(multi_workspace.as_ref(), cx)
+        let mut workspaces = self
+            .multi_workspace
+            .upgrade()
+            .map(|multi_workspace| {
+                multi_workspace
+                    .read(cx)
+                    .workspaces()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        for workspace in Self::all_open_workspaces(cx) {
+            if !workspaces.contains(&workspace) {
+                workspaces.push(workspace);
+            }
+        }
+        workspaces
+    }
+
+    fn all_open_workspaces(cx: &App) -> Vec<Entity<Workspace>> {
+        cx.windows()
+            .into_iter()
+            .filter_map(|window| window.downcast::<MultiWorkspace>())
+            .flat_map(|multi_workspace| {
+                multi_workspace
+                    .read(cx)
+                    .map(|multi_workspace| multi_workspace.workspaces().cloned().collect::<Vec<_>>())
+                    .unwrap_or_default()
+            })
+            .collect()
     }
 
     fn count_threads_blocking_worktree_archive(
@@ -4627,37 +4197,23 @@ impl Sidebar {
             .count()
     }
 
+    /// Paths that should be removed from the workspace set when archiving the
+    /// thread/terminal that references them.
+    ///
+    /// This used to plan the on-disk archiving of Zed-managed *linked git
+    /// worktrees* (`thread_worktree_archive::build_root_plan`), which required
+    /// inspecting repositories to prove a path was a linked worktree created by
+    /// Zed. Worktree archiving is gone, so nothing is ever archived from disk
+    /// and there are no archive roots: archiving a thread must not close or
+    /// remove any workspace.
     fn roots_to_archive_for_paths(
         &self,
-        folder_paths: &PathList,
-        except_thread_id: Option<ThreadId>,
-        except_terminal_id: Option<TerminalId>,
-        cx: &App,
-    ) -> Vec<thread_worktree_archive::RootPlan> {
-        let workspaces = self.archive_workspaces(cx);
-        folder_paths
-            .ordered_paths()
-            .filter_map(|path| thread_worktree_archive::build_root_plan(path, &workspaces, cx))
-            .filter(|plan| {
-                let store = ThreadMetadataStore::global(cx);
-                let store = store.read(cx);
-                !Self::path_is_referenced_by_unarchived_threads_for_archive(
-                    &store,
-                    except_thread_id,
-                    plan.root_path.as_path(),
-                    &workspaces,
-                    cx,
-                )
-            })
-            .filter(|root| {
-                TerminalThreadMetadataStore::try_global(cx).is_none_or(|terminal_store| {
-                    !terminal_store.read(cx).path_is_referenced_by_terminal(
-                        except_terminal_id,
-                        root.root_path.as_path(),
-                    )
-                })
-            })
-            .collect()
+        _folder_paths: &PathList,
+        _except_thread_id: Option<ThreadId>,
+        _except_terminal_id: Option<TerminalId>,
+        _cx: &App,
+    ) -> Vec<PathBuf> {
+        Vec::new()
     }
 
     fn linked_worktree_workspace_to_remove(
@@ -4665,7 +4221,7 @@ impl Sidebar {
         folder_paths: &PathList,
         except_thread_id: Option<ThreadId>,
         except_terminal_id: Option<TerminalId>,
-        roots_to_archive: &[thread_worktree_archive::RootPlan],
+        roots_to_archive: &[PathBuf],
         cx: &App,
     ) -> Option<Entity<Workspace>> {
         if folder_paths.is_empty() {
@@ -4691,7 +4247,7 @@ impl Sidebar {
         if !roots_to_archive.is_empty() {
             let archive_paths: HashSet<&Path> = roots_to_archive
                 .iter()
-                .map(|root| root.root_path.as_path())
+                .map(|root| root.as_path())
                 .collect();
             let project = workspace.read(cx).project().clone();
             let visible_worktree_paths = project
@@ -4712,11 +4268,11 @@ impl Sidebar {
 
     fn delete_empty_drafts_for_archive_roots(
         &self,
-        roots: &[thread_worktree_archive::RootPlan],
+        roots: &[PathBuf],
         cx: &mut Context<Self>,
     ) {
         self.delete_empty_drafts_for_archive_targets(
-            roots.iter().map(|root| root.root_path.as_path()),
+            roots.iter().map(|root| root.as_path()),
             cx,
         );
     }
@@ -4779,25 +4335,6 @@ impl Sidebar {
         let scans_complete =
             workspace.read_with(cx, |workspace, cx| workspace.worktree_scans_complete(cx));
         scans_complete.await;
-
-        let project = workspace.read_with(cx, |workspace, _| workspace.project().clone());
-        let barriers = project.update(cx, |project, cx| {
-            let repositories = project
-                .repositories(cx)
-                .values()
-                .cloned()
-                .collect::<Vec<_>>();
-            repositories
-                .into_iter()
-                .map(|repository| repository.update(cx, |repository, _| repository.barrier()))
-                .collect::<Vec<_>>()
-        });
-        for barrier in barriers {
-            let result: anyhow::Result<()> = barrier.await.map_err(|_| {
-                anyhow::anyhow!("git repository barrier canceled while archiving worktree")
-            });
-            result.log_err();
-        }
     }
 
     /// Closed linked-worktree entries need an open workspace so archive root
@@ -4937,7 +4474,6 @@ impl Sidebar {
                     is_active,
                     neighbor.as_ref(),
                     !terminal_workspace_removed,
-                    roots_to_archive,
                     window,
                     cx,
                 );
@@ -4952,7 +4488,6 @@ impl Sidebar {
         is_active: bool,
         neighbor: Option<&ActivatableEntry>,
         activate_panel_draft: bool,
-        roots_to_archive: Vec<thread_worktree_archive::RootPlan>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -4979,8 +4514,6 @@ impl Sidebar {
                 store.delete(terminal_id, cx);
             });
         }
-
-        self.start_detached_archive_worktree_task(roots_to_archive, cx);
 
         if is_active {
             self.active_entry = None;
@@ -5048,7 +4581,7 @@ impl Sidebar {
 
     fn close_items_for_archived_worktrees(
         &self,
-        roots_to_archive: &[thread_worktree_archive::RootPlan],
+        roots_to_archive: &[PathBuf],
         workspaces_to_remove: &mut Vec<Entity<Workspace>>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -5059,7 +4592,7 @@ impl Sidebar {
 
         let archive_paths: HashSet<&Path> = roots_to_archive
             .iter()
-            .map(|root| root.root_path.as_path())
+            .map(|root| root.as_path())
             .collect();
 
         let mut mixed_workspaces: Vec<(Entity<Workspace>, Vec<WorktreeId>)> = Vec::new();
@@ -5200,11 +4733,10 @@ impl Sidebar {
             return;
         }
 
-        // Compute which linked worktree roots should be archived from disk if
-        // this thread is archived. This must happen before we remove any
-        // workspace from the MultiWorkspace, because `build_root_plan` needs
-        // the currently open workspaces in order to find the affected projects
-        // and repository handles for each linked worktree.
+        // Compute which workspace roots should be cleaned up if this thread is
+        // archived. This must happen before we remove any workspace from the
+        // MultiWorkspace, because the roots are resolved against the currently
+        // open workspaces.
         let roots_to_archive = metadata
             .as_ref()
             .map(|metadata| {
@@ -5263,14 +4795,13 @@ impl Sidebar {
                 {
                     this.delete_empty_drafts_for_archive_paths(thread_folder_paths, cx);
                 }
-                let in_flight = thread_id
-                    .and_then(|tid| this.start_archive_worktree_task(tid, roots_to_archive, cx));
+                this.delete_empty_drafts_for_archive_roots(&roots_to_archive, cx);
                 this.archive_and_activate(
                     &session_id,
                     thread_id,
                     neighbor.as_ref(),
                     thread_folder_paths.as_ref(),
-                    in_flight,
+                    None,
                     window,
                     cx,
                 );
@@ -5289,11 +4820,8 @@ impl Sidebar {
     /// "+ New Thread" entry with the worktree chip — keeping the worktree
     /// alive and preventing disk cleanup.
     ///
-    /// When `in_flight_archive` is present, it is the background task that
-    /// persists the linked worktree's git state and deletes it from disk.
-    /// We attach it to the metadata store at the same time we mark the thread
-    /// archived so failures can automatically unarchive the thread and user-
-    /// initiated unarchive can cancel the task.
+    /// Any in-flight archive task supplied by the caller is attached to the
+    /// metadata store at the same time we mark the thread archived.
     fn archive_and_activate(
         &mut self,
         _session_id: &acp::SessionId,
@@ -5367,119 +4895,6 @@ impl Sidebar {
                 }
             }
         }
-    }
-
-    fn start_archive_worktree_task(
-        &self,
-        thread_id: ThreadId,
-        roots: Vec<thread_worktree_archive::RootPlan>,
-        cx: &mut Context<Self>,
-    ) -> Option<(Task<()>, async_channel::Sender<()>)> {
-        if roots.is_empty() {
-            return None;
-        }
-
-        self.delete_empty_drafts_for_archive_roots(&roots, cx);
-
-        let (cancel_tx, cancel_rx) = async_channel::bounded::<()>(1);
-        let task = cx.spawn(async move |_this, cx| {
-            match Self::archive_worktree_roots(roots, cancel_rx, cx).await {
-                Ok(ArchiveWorktreeOutcome::Success) => {
-                    cx.update(|cx| {
-                        ThreadMetadataStore::global(cx).update(cx, |store, _cx| {
-                            store.cleanup_completed_archive(thread_id);
-                        });
-                    });
-                }
-                Ok(ArchiveWorktreeOutcome::Cancelled) => {}
-                Err(error) => {
-                    log::error!("Failed to archive worktree: {error:#}");
-                    cx.update(|cx| {
-                        ThreadMetadataStore::global(cx).update(cx, |store, cx| {
-                            store.unarchive(thread_id, cx);
-                        });
-                    });
-                }
-            }
-        });
-
-        Some((task, cancel_tx))
-    }
-
-    fn start_detached_archive_worktree_task(
-        &self,
-        roots: Vec<thread_worktree_archive::RootPlan>,
-        cx: &mut Context<Self>,
-    ) {
-        if roots.is_empty() {
-            return;
-        }
-
-        self.delete_empty_drafts_for_archive_roots(&roots, cx);
-
-        let (cancel_tx, cancel_rx) = async_channel::bounded::<()>(1);
-        cx.spawn(async move |_this, cx| {
-            let outcome = Self::archive_worktree_roots(roots, cancel_rx, cx).await;
-            drop(cancel_tx);
-            match outcome {
-                Ok(ArchiveWorktreeOutcome::Success | ArchiveWorktreeOutcome::Cancelled) => {}
-                Err(error) => {
-                    log::error!("Failed to archive worktree after closing sidebar item: {error:#}");
-                }
-            }
-        })
-        .detach();
-    }
-
-    async fn archive_worktree_roots(
-        roots: Vec<thread_worktree_archive::RootPlan>,
-        cancel_rx: async_channel::Receiver<()>,
-        cx: &mut gpui::AsyncApp,
-    ) -> anyhow::Result<ArchiveWorktreeOutcome> {
-        let mut completed_persists: Vec<(i64, thread_worktree_archive::RootPlan)> = Vec::new();
-
-        for root in &roots {
-            if cancel_rx.is_closed() {
-                for &(id, ref completed_root) in completed_persists.iter().rev() {
-                    thread_worktree_archive::rollback_persist(id, completed_root, cx).await;
-                }
-                return Ok(ArchiveWorktreeOutcome::Cancelled);
-            }
-
-            match thread_worktree_archive::persist_worktree_state(root, cx).await {
-                Ok(id) => {
-                    completed_persists.push((id, root.clone()));
-                }
-                Err(error) => {
-                    for &(id, ref completed_root) in completed_persists.iter().rev() {
-                        thread_worktree_archive::rollback_persist(id, completed_root, cx).await;
-                    }
-                    return Err(error);
-                }
-            }
-
-            if cancel_rx.is_closed() {
-                for &(id, ref completed_root) in completed_persists.iter().rev() {
-                    thread_worktree_archive::rollback_persist(id, completed_root, cx).await;
-                }
-                return Ok(ArchiveWorktreeOutcome::Cancelled);
-            }
-
-            if let Err(error) = thread_worktree_archive::remove_root(root.clone(), cx).await {
-                if let Some(&(id, ref completed_root)) = completed_persists.last() {
-                    if completed_root.root_path == root.root_path {
-                        thread_worktree_archive::rollback_persist(id, completed_root, cx).await;
-                        completed_persists.pop();
-                    }
-                }
-                for &(id, ref completed_root) in completed_persists.iter().rev() {
-                    thread_worktree_archive::rollback_persist(id, completed_root, cx).await;
-                }
-                return Err(error);
-            }
-        }
-
-        Ok(ArchiveWorktreeOutcome::Success)
     }
 
     fn activate_workspace(
@@ -6659,7 +6074,6 @@ impl Sidebar {
                     was_active,
                     neighbor.as_ref(),
                     !draft_workspace_removed,
-                    roots_to_archive,
                     window,
                     cx,
                 );
@@ -6674,7 +6088,6 @@ impl Sidebar {
         was_active: bool,
         neighbor: Option<&ActivatableEntry>,
         activate_panel_draft: bool,
-        roots_to_archive: Vec<thread_worktree_archive::RootPlan>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -6706,8 +6119,6 @@ impl Sidebar {
                 store.delete(draft_id, cx);
             });
         }
-
-        self.start_detached_archive_worktree_task(roots_to_archive, cx);
 
         if was_active {
             self.active_entry = None;
@@ -7069,9 +6480,6 @@ impl Sidebar {
                 .boxed_clone(),
                 cx,
             );
-        })
-        .on_clone_repo(|_, window, cx| {
-            window.dispatch_action(git::Clone.boxed_clone(), cx);
         })
     }
 
@@ -7458,9 +6866,7 @@ impl Sidebar {
                 ThreadsArchiveViewEvent::Activate { thread } => {
                     this.open_thread_from_archive(thread.clone(), window, cx);
                 }
-                ThreadsArchiveViewEvent::CancelRestore { thread_id } => {
-                    this.restoring_tasks.remove(thread_id);
-                }
+                ThreadsArchiveViewEvent::CancelRestore { .. } => {}
                 ThreadsArchiveViewEvent::Import => {
                     this.show_thread_import_modal("thread_history", window, cx);
                 }
@@ -7970,44 +7376,15 @@ fn dump_single_workspace(workspace: &Workspace, output: &mut String, cx: &gpui::
 
     let project = workspace.project().read(cx);
 
-    let repos: Vec<_> = project
-        .repositories(cx)
-        .values()
-        .map(|repo| repo.read(cx).snapshot())
-        .collect();
-
     writeln!(output, "Worktrees:").ok();
     for worktree in project.worktrees(cx) {
         let worktree = worktree.read(cx);
         let abs_path = worktree.abs_path();
         let visible = worktree.is_visible();
 
-        let repo_info = repos
-            .iter()
-            .find(|snapshot| abs_path.starts_with(&*snapshot.work_directory_abs_path));
-
-        let is_linked = repo_info.map(|s| s.is_linked_worktree()).unwrap_or(false);
-        let main_worktree_path = repo_info.and_then(|s| s.main_worktree_abs_path());
-        let branch = repo_info.and_then(|s| s.branch.as_ref().map(|b| b.ref_name.clone()));
-
         write!(output, "  - {}", abs_path.display()).ok();
         if !visible {
             write!(output, " (hidden)").ok();
-        }
-        if let Some(branch) = &branch {
-            write!(output, " [branch: {branch}]").ok();
-        }
-        if is_linked {
-            if let Some(main_worktree_path) = main_worktree_path {
-                write!(
-                    output,
-                    " [linked worktree -> {}]",
-                    main_worktree_path.display()
-                )
-                .ok();
-            } else {
-                write!(output, " [linked worktree]").ok();
-            }
         }
         writeln!(output).ok();
     }

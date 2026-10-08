@@ -7,7 +7,7 @@ use editor::{
     AnchorRangeExt, Bias, DisplayPoint, Editor, EditorEvent, ExcerptRange, MultiBufferSnapshot,
     RangeToAnchorExt, SelectionEffects,
     display_map::ToDisplayPoint,
-    items::{entry_git_aware_label_color, entry_label_color},
+    items::{entry_ignored_aware_label_color, entry_label_color},
     scroll::{Autoscroll, ScrollAnchor},
 };
 use file_icons::FileIcons;
@@ -42,7 +42,7 @@ use std::{
 };
 
 use outline_panel_settings::{DockSide, FolderIndicator, OutlinePanelSettings, ShowIndentGuides};
-use project::{File, Fs, GitEntry, GitTraversal, Project, ProjectItem};
+use project::{File, Fs, Project, ProjectItem};
 use search::{BufferSearchBar, ProjectSearchView};
 use serde::{Deserialize, Serialize};
 use settings::{Settings, SettingsStore};
@@ -386,7 +386,7 @@ enum OutlineState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct FoldedDirsEntry {
     worktree_id: WorktreeId,
-    entries: Vec<GitEntry>,
+    entries: Vec<Entry>,
 }
 
 // TODO: collapse the inner enums into panel entry
@@ -575,7 +575,7 @@ impl OutlineEntry {
 #[derive(Debug, Clone, Eq)]
 struct FsEntryFile {
     worktree_id: WorktreeId,
-    entry: GitEntry,
+    entry: Entry,
     buffer_id: BufferId,
     excerpts: Vec<ExcerptRange<language::Anchor>>,
 }
@@ -597,7 +597,7 @@ impl Hash for FsEntryFile {
 #[derive(Debug, Clone, Eq)]
 struct FsEntryDirectory {
     worktree_id: WorktreeId,
-    entry: GitEntry,
+    entry: Entry,
 }
 
 impl PartialEq for FsEntryDirectory {
@@ -2388,7 +2388,7 @@ impl OutlinePanel {
             }) => {
                 let name = self.entry_name(worktree_id, entry, cx);
                 let color =
-                    entry_git_aware_label_color(entry.git_summary, entry.is_ignored, is_active);
+                    entry_ignored_aware_label_color(entry.is_ignored, is_active);
                 let icon = if settings.file_icons {
                     FileIcons::get_icon(Path::new(&name), cx)
                         .map(|icon_path| Icon::from_path(icon_path).color(color).into_any_element())
@@ -2418,11 +2418,8 @@ impl OutlinePanel {
                     directory.worktree_id,
                     directory.entry.id,
                 ));
-                let color = entry_git_aware_label_color(
-                    directory.entry.git_summary,
-                    directory.entry.is_ignored,
-                    is_active,
-                );
+                let color =
+                    entry_ignored_aware_label_color(directory.entry.is_ignored, is_active);
                 let icon = folder_indicator_element(
                     settings.folder_indicator,
                     is_expanded,
@@ -2517,12 +2514,7 @@ impl OutlinePanel {
                     .contains(&CollapsedEntry::Dir(folded_dir.worktree_id, dir.id))
             });
             let is_ignored = folded_dir.entries.iter().any(|entry| entry.is_ignored);
-            let git_status = folded_dir
-                .entries
-                .first()
-                .map(|entry| entry.git_summary)
-                .unwrap_or_default();
-            let color = entry_git_aware_label_color(git_status, is_ignored, is_active);
+            let color = entry_ignored_aware_label_color(is_ignored, is_active);
             let icon = folder_indicator_element(
                 settings.folder_indicator,
                 is_expanded,
@@ -2800,16 +2792,12 @@ impl OutlinePanel {
             let mut new_unfolded_dirs = HashMap::default();
             let mut root_entries = HashSet::default();
             let mut new_buffers = HashMap::<BufferId, BufferOutlines>::default();
-            let Ok((buffer_excerpts, auto_fold_dirs, repo_snapshots)) =
+            let Ok((buffer_excerpts, auto_fold_dirs)) =
                 outline_panel.update(cx, |outline_panel, cx| {
                     outline_panel.fs_entries_update_pending = false;
                     let auto_fold_dirs = OutlinePanelSettings::get_global(cx).auto_fold_dirs;
                     let active_multi_buffer = active_editor.read(cx).buffer().clone();
                     let new_entries = outline_panel.new_entries_for_fs_update.clone();
-                    let repo_snapshots = outline_panel.project.update(cx, |project, cx| {
-                        project.git_store().read(cx).display_repo_snapshots(cx)
-                    });
-                    let git_store = outline_panel.project.read(cx).git_store().clone();
                     new_collapsed_entries = outline_panel.collapsed_entries.clone();
                     new_unfolded_dirs = outline_panel.unfolded_dirs.clone();
                     let multi_buffer_snapshot = active_multi_buffer.read(cx).snapshot(cx);
@@ -2829,13 +2817,10 @@ impl OutlinePanel {
                             let is_new = new_entries.contains(&buffer_id)
                                 || !outline_panel.buffers.contains_key(&buffer_id);
                             let is_folded = active_editor.read(cx).is_buffer_folded(buffer_id, cx);
-                            let status = git_store
-                                .read(cx)
-                                .display_status_for_buffer_id(buffer_id, cx);
                             buffer_excerpts
                                 .entry(buffer_id)
                                 .or_insert_with(|| {
-                                    (is_new, is_folded, Vec::new(), entry_id, worktree, status)
+                                    (is_new, is_folded, Vec::new(), entry_id, worktree)
                                 })
                                 .2
                                 .push(excerpt_range.clone());
@@ -2865,7 +2850,7 @@ impl OutlinePanel {
                             buffer_excerpts
                         },
                     );
-                    (buffer_excerpts, auto_fold_dirs, repo_snapshots)
+                    (buffer_excerpts, auto_fold_dirs)
                 })
             else {
                 return;
@@ -2881,14 +2866,14 @@ impl OutlinePanel {
                 .background_spawn(async move {
                     let mut processed_external_buffers = HashSet::default();
                     let mut new_worktree_entries =
-                        BTreeMap::<WorktreeId, HashMap<ProjectEntryId, GitEntry>>::default();
+                        BTreeMap::<WorktreeId, HashMap<ProjectEntryId, Entry>>::default();
                     let mut worktree_excerpts = HashMap::<
                         WorktreeId,
                         HashMap<ProjectEntryId, (BufferId, Vec<ExcerptRange<Anchor>>)>,
                     >::default();
                     let mut external_excerpts = HashMap::default();
 
-                    for (buffer_id, (is_new, is_folded, excerpts, entry_id, worktree, status)) in
+                    for (buffer_id, (is_new, is_folded, excerpts, entry_id, worktree)) in
                         buffer_excerpts
                     {
                         if is_folded {
@@ -2921,20 +2906,11 @@ impl OutlinePanel {
 
                             match entry_id.and_then(|id| worktree.entry_for_id(id)).cloned() {
                                 Some(entry) => {
-                                    let entry = GitEntry {
-                                        git_summary: status
-                                            .map(|status| status.summary())
-                                            .unwrap_or_default(),
-                                        entry,
-                                    };
-                                    let mut traversal = GitTraversal::new(
-                                        &repo_snapshots,
-                                        worktree.traverse_from_path(
-                                            true,
-                                            true,
-                                            true,
-                                            entry.path.as_ref(),
-                                        ),
+                                    let mut traversal = worktree.traverse_from_path(
+                                        true,
+                                        true,
+                                        true,
+                                        entry.path.as_ref(),
                                     );
 
                                     let mut entries_to_add = HashMap::default();
@@ -2969,7 +2945,7 @@ impl OutlinePanel {
                                             && traversal.back_to_parent()
                                             && let Some(parent_entry) = traversal.entry()
                                         {
-                                            current_entry = parent_entry.to_owned();
+                                            current_entry = parent_entry.clone();
                                             continue;
                                         }
                                         break;
@@ -4306,7 +4282,7 @@ impl OutlinePanel {
         });
     }
 
-    fn dir_names_string(&self, entries: &[GitEntry], worktree_id: WorktreeId, cx: &App) -> String {
+    fn dir_names_string(&self, entries: &[Entry], worktree_id: WorktreeId, cx: &App) -> String {
         let dir_names_segment = entries
             .iter()
             .map(|entry| self.entry_name(&worktree_id, entry, cx))
@@ -5049,7 +5025,7 @@ impl OutlinePanel {
     fn buffers_inside_directory(
         &self,
         dir_worktree: WorktreeId,
-        dir_entry: &GitEntry,
+        dir_entry: &Entry,
     ) -> HashSet<BufferId> {
         if !dir_entry.is_dir() {
             debug_panic!("buffers_inside_directory called on a non-directory entry {dir_entry:?}");
@@ -7098,7 +7074,7 @@ outline: struct OutlineEntryExcerpt
                         let path = if let Some(worktree) = project
                             .worktree_for_id(directory.worktree_id, cx)
                             .filter(|worktree| {
-                                worktree.read(cx).root_entry() == Some(&directory.entry.entry)
+                                worktree.read(cx).root_entry() == Some(&directory.entry)
                             }) {
                             worktree
                                 .read(cx)

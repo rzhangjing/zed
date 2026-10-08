@@ -787,18 +787,6 @@ pub fn theme_colors_refinement(
             .version_control_word_deleted
             .as_ref()
             .and_then(|color| try_parse_color(color).ok()),
-        #[allow(deprecated)]
-        version_control_conflict_marker_ours: this
-            .version_control_conflict_marker_ours
-            .as_ref()
-            .or(this.version_control_conflict_ours_background.as_ref())
-            .and_then(|color| try_parse_color(color).ok()),
-        #[allow(deprecated)]
-        version_control_conflict_marker_theirs: this
-            .version_control_conflict_marker_theirs
-            .as_ref()
-            .or(this.version_control_conflict_theirs_background.as_ref())
-            .and_then(|color| try_parse_color(color).ok()),
         vim_normal_background: this
             .vim_normal_background
             .as_ref()

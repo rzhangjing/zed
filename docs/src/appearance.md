@@ -118,9 +118,9 @@ Adjust line spacing with `buffer_line_height`:
 
 Zed provides extensive control over UI elements including:
 
-- **Tab bar** — Show/hide, navigation buttons, file icons, git status
+- **Tab bar** — Show/hide, navigation buttons, file icons
 - **Status bar** — Language selector, cursor position, line endings
-- **Scrollbar** — Visibility, git diff indicators, search results
+- **Scrollbar** — Visibility, search results
 - **Minimap** — Code overview display
 - **Gutter** — Line numbers, fold indicators, breakpoints
 - **Panels** — Project Panel, Terminal, Agent Panel sizing and docking

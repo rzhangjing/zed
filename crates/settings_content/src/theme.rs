@@ -213,7 +213,6 @@ pub struct ThemeSettingsContent {
     pub agent_buffer_font_family: Option<FontFamilyName>,
     /// The font size for user messages in the agent panel.
     pub agent_buffer_font_size: Option<FontSize>,
-    pub git_commit_buffer_font_size: Option<FontSize>,
     /// The name of the Zed theme to use.
     pub theme: Option<ThemeSelection>,
     /// The name of the icon theme to use.
@@ -1087,22 +1086,6 @@ pub struct ThemeColorsContent {
     /// Color for deleted words in word diffs.
     #[serde(rename = "version_control.word_deleted")]
     pub version_control_word_deleted: Option<ThemeColor>,
-
-    /// Background color for row highlights of "ours" regions in merge conflicts.
-    #[serde(rename = "version_control.conflict_marker.ours")]
-    pub version_control_conflict_marker_ours: Option<ThemeColor>,
-
-    /// Background color for row highlights of "theirs" regions in merge conflicts.
-    #[serde(rename = "version_control.conflict_marker.theirs")]
-    pub version_control_conflict_marker_theirs: Option<ThemeColor>,
-
-    /// Deprecated in favor of `version_control_conflict_marker_ours`.
-    #[deprecated]
-    pub version_control_conflict_ours_background: Option<ThemeColor>,
-
-    /// Deprecated in favor of `version_control_conflict_marker_theirs`.
-    #[deprecated]
-    pub version_control_conflict_theirs_background: Option<ThemeColor>,
 
     /// Background color for Vim Normal mode indicator.
     #[serde(rename = "vim.normal.background")]

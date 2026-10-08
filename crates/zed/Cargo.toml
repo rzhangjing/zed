@@ -79,7 +79,6 @@ agent_settings.workspace = true
 agent_skills.workspace = true
 agent_ui = { workspace = true, features = ["audio"] }
 anyhow.workspace = true
-askpass.workspace = true
 assets.workspace = true
 audio.workspace = true
 auto_update.workspace = true
@@ -108,10 +107,6 @@ feedback.workspace = true
 file_finder.workspace = true
 fs.workspace = true
 futures.workspace = true
-git.workspace = true
-git_hosting_providers.workspace = true
-git_ui.workspace = true
-git_ui_core.workspace = true
 go_to_line.workspace = true
 gpui = { workspace = true, features = ["profiler", "stacker"] }
 gpui_platform = { workspace = true, features = [

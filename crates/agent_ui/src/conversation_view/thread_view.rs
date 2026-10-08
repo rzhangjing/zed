@@ -2887,14 +2887,6 @@ impl ThreadView {
 
     // thread stuff
 
-    pub fn restore_checkpoint(&mut self, client_id: &ClientUserMessageId, cx: &mut Context<Self>) {
-        self.thread
-            .update(cx, |thread, cx| {
-                thread.restore_checkpoint(client_id.clone(), cx)
-            })
-            .detach_and_log_err(cx);
-    }
-
     pub fn clear_thread_error(&mut self, cx: &mut Context<Self>) {
         self.thread_error = None;
         self.thread_error_markdown = None;
@@ -5440,7 +5432,6 @@ impl ThreadView {
         let workspace = self.workspace.clone();
         let session_capabilities = self.session_capabilities.read();
         let supports_images = session_capabilities.supports_images();
-        let supports_embedded_context = session_capabilities.supports_embedded_context();
         let available_skills = session_capabilities.completion_skills();
         drop(session_capabilities);
 
@@ -5552,20 +5543,6 @@ impl ThreadView {
                                     zed_actions::agent::AddSelectionToThread.boxed_clone(),
                                     cx,
                                 );
-                            }
-                        }),
-                )
-                .item(
-                    ContextMenuEntry::new("Branch Diff")
-                        .icon(IconName::GitBranch)
-                        .icon_color(Color::Muted)
-                        .icon_size(IconSize::XSmall)
-                        .disabled(!supports_embedded_context)
-                        .handler({
-                            move |window, cx| {
-                                message_editor.update(cx, |editor, cx| {
-                                    editor.insert_branch_diff_crease(window, cx);
-                                });
                             }
                         }),
                 )
@@ -6077,11 +6054,6 @@ impl ThreadView {
                 let opaque_window = cx.theme().window_background_appearance()
                     == gpui::WindowBackgroundAppearance::Opaque;
 
-                let has_checkpoint_button = message
-                    .checkpoint
-                    .as_ref()
-                    .is_some_and(|checkpoint| checkpoint.show);
-
                 let is_subagent = self.is_subagent();
                 let can_rewind = self.thread.read(cx).supports_truncate(cx);
                 let is_editable = can_rewind && message.client_id.is_some() && !is_subagent;
@@ -6104,25 +6076,6 @@ impl ThreadView {
                     .px_2()
                     .gap_1p5()
                     .w_full()
-                    .when(is_editable && has_checkpoint_button, |this| {
-                        this.children(message.client_id.clone().map(|client_id| {
-                            h_flex()
-                                .px_3()
-                                .gap_2()
-                                .child(Divider::horizontal())
-                                .child(
-                                    Button::new("restore-checkpoint", "Restore Checkpoint")
-                                        .start_icon(Icon::new(IconName::Undo).size(IconSize::XSmall).color(Color::Muted))
-                                        .label_size(LabelSize::XSmall)
-                                        .color(Color::Muted)
-                                        .tooltip(Tooltip::text("Restores all files in the project to the content they had at this point in the conversation."))
-                                        .on_click(cx.listener(move |this, _, _window, cx| {
-                                            this.restore_checkpoint(&client_id, cx);
-                                        }))
-                                )
-                                .child(Divider::horizontal())
-                        }))
-                    })
                     .child(
                         div()
                             .relative()

@@ -2,9 +2,7 @@
 mod tab_switcher_tests;
 
 use collections::{HashMap, HashSet};
-use editor::items::{
-    entry_diagnostic_aware_icon_decoration_and_color, entry_git_aware_label_color,
-};
+use editor::items::entry_diagnostic_aware_icon_decoration_and_color;
 use fuzzy_nucleo::StringMatchCandidate;
 use gpui::{
     Action, AnyElement, App, Context, DismissEvent, Entity, EntityId, EventEmitter, FocusHandle,
@@ -293,26 +291,6 @@ impl TabMatch {
         let icon = self.item.tab_icon(window, cx)?;
         let item_settings = ItemSettings::get_global(cx);
         let show_diagnostics = item_settings.show_diagnostics;
-        let git_status_color = item_settings
-            .git_status
-            .then(|| {
-                let path = self.item.project_path(cx)?;
-                let project = project.read(cx);
-                let entry = project.entry_for_path(&path, cx)?;
-                let git_status = project
-                    .git_store()
-                    .read(cx)
-                    .display_status_for_project_path(&path, cx)
-                    .map(|status| status.summary())
-                    .unwrap_or_default();
-                Some(entry_git_aware_label_color(
-                    git_status,
-                    entry.is_ignored,
-                    selected,
-                ))
-            })
-            .flatten();
-        let colored_icon = icon.color(git_status_color.unwrap_or_default());
 
         let most_severe_diagnostic_level = if show_diagnostics == ShowDiagnostics::Off {
             None
@@ -351,7 +329,7 @@ impl TabMatch {
                             y: px(-2.),
                         })
                 });
-        Some(DecoratedIcon::new(colored_icon, decorations))
+        Some(DecoratedIcon::new(icon, decorations))
     }
 }
 

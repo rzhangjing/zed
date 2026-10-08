@@ -19,7 +19,7 @@
 | `struct UndoManager` | [undo.rs:350](../crates/project_panel/src/undo.rs) | 文件操作（新建/重命名/移动/删除）可撤销栈 |
 | `struct ProjectPanelSettings` | [project_panel_settings.rs:13](../crates/project_panel/src/project_panel_settings.rs) | `IndentGuidesSettings`(L43)/`ScrollbarSettings`(L48)/`AutoOpenSettings`(L61)、`file_icons`/`fold_single_child_dirs` |
 数据流：`Worktree` 的 `SumTree<Entry>`（[Sum-Tree-Deep-Dive.md](Sum-Tree-Deep-Dive.md)）经 `flatten` 成可见 `ProjectPanelEntry` 列表 → 折叠/展开维护 `expanded_dirs` → `ListCollection` 渲染。
-主要动作（actions.rs / project_panel.rs）：`NewFile`/`NewDirectory`/`Rename`/`Delete`/`Copy`/`Cut`/`Paste`、`ToggleCollapse`/`CollapseAll`、`ExpandDir`/`Open`/`RevealInFinder`、`CopyPath`/`CopyRelativePath`、git 相关（`GitStatus`徽标）、drag&drop 移动。
+主要动作（actions.rs / project_panel.rs）：`NewFile`/`NewDirectory`/`Rename`/`Delete`/`Copy`/`Cut`/`Paste`、`ToggleCollapse`/`CollapseAll`、`ExpandDir`/`Open`/`RevealInFinder`、`CopyPath`/`CopyRelativePath`、drag&drop 移动。
 辅助文件：`project_panel.rs` 内含 popup 菜单、`new_item`、`on_action`；另有 `items.rs`/`settings`。→ 概览 [Project-Panel-and-FS](Project-Panel-and-FS.md)。
 
 ## 2. `crates/outline_panel`：符号 + 文件混合树 [`outline_panel.rs`](../crates/outline_panel/src/outline_panel.rs)
@@ -53,4 +53,4 @@ graph TB
 ## 5. 相关页
 - `Item`/`Dock`/`PaneGroup` 布局根：[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)
 - GPui `ListCollection`/元素机制：[GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)
-- 其它同类面板（`project_symbols`/`search`/`git_panel`/`diagnostics`）见 [Module-Index.md](Module-Index.md) 与概览页 [Project-Panel-and-FS](Project-Panel-and-FS.md)、[Search](Search.md)。
+- 其它同类面板（`project_symbols`/`search`/`diagnostics`）见 [Module-Index.md](Module-Index.md) 与概览页 [Project-Panel-and-FS](Project-Panel-and-FS.md)、[Search](Search.md)。

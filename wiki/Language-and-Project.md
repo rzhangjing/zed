@@ -36,7 +36,7 @@ graph TB
 
 ## 3. Worktree（文件系统视图）
 
-- `Worktree`（`crates/project/src/worktree.rs`）递归扫描目录、维护 git 状态、忽略规则、entry 树；`Project` 持有若干 worktree。
+- `Worktree`（`crates/project/src/worktree.rs`）递归扫描目录、维护忽略规则、entry 树；`Project` 持有若干 worktree。
 - `project_panel` 直接渲染 `Worktree` 的 entry 树；文件监视复用启动阶段的 `watch_config_file`/FS 事件机制。
 - `project_search.rs` 提供全项目搜索（后台 worker + 主线程 `open_buffers` 协作，见 L557 注释）。
 
@@ -53,7 +53,7 @@ graph TB
 | `Buffer` / `BufferEvent` | `language/src/buffer.rs` | 文本缓冲与变更事件 |
 | `Language` | `language/src/language.rs` | 语言定义（grammar、配置、LSP adapter） |
 | `LspStore::language_servers_for_buffer` | `project/src/lsp_store.rs:1442` | 为某 buffer 选择语言服务器 |
-| `Worktree` | `project/src/worktree.rs` | 项目文件树 + git 状态 |
+| `Worktree` | `project/src/worktree.rs` | 项目文件树 + 忽略规则 |
 | `open_buffers` | `project/src/project_search.rs:558` | 搜索时由主线程代开缓冲 |
 
 ## 6. 与其他页面的关系

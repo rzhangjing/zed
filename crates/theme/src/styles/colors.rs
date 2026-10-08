@@ -335,10 +335,6 @@ pub struct ThemeColors {
     pub version_control_word_added: Hsla,
     /// Represents a deleted word in a word diff.
     pub version_control_word_deleted: Hsla,
-    /// Represents the "ours" region of a merge conflict.
-    pub version_control_conflict_marker_ours: Hsla,
-    /// Represents the "theirs" region of a merge conflict.
-    pub version_control_conflict_marker_theirs: Hsla,
 }
 
 #[derive(EnumIter, Debug, Clone, Copy, AsRefStr)]

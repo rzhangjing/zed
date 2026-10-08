@@ -1,6 +1,6 @@
 # Picker & Commands（选择器 / 命令面板 / 模糊匹配）
 
-Zed 里凡是"输入框 + 实时过滤列表"的界面（命令面板、文件查找、符号跳转、Git 分支选择……）都复用同一套 **Picker** 框架（[`picker`](../crates/picker)）与 **fuzzy** 匹配引擎（[`fuzzy`](../crates/fuzzy) + 内嵌 nucleo）。
+Zed 里凡是"输入框 + 实时过滤列表"的界面（命令面板、文件查找、符号跳转……）都复用同一套 **Picker** 框架（[`picker`](../crates/picker)）与 **fuzzy** 匹配引擎（[`fuzzy`](../crates/fuzzy) + 内嵌 nucleo）。
 
 ## 1. 三层结构
 
@@ -43,7 +43,7 @@ graph TB
 
 ## 4. 文件查找（file_finder）作为典型 Picker
 
-[`file_finder`](../crates/file_finder/src/file_finder.rs)（约 86KB）的 delegate 从 `Worktree` 拉候选路径（见 [Language-and-Project.md](Language-and-Project.md)），用 `PathMatcher` 做 `fuzzy` 路径匹配，`filter_matches` 在后台线程跑、结果回填 `Picker`；`preview`（`picker/src/preview.rs`）支持方向键预览文件内容。`project_symbols`、`outline`、`git_ui::branch_picker`、`recent_projects` 等都是同构用法。
+[`file_finder`](../crates/file_finder/src/file_finder.rs)（约 86KB）的 delegate 从 `Worktree` 拉候选路径（见 [Language-and-Project.md](Language-and-Project.md)），用 `PathMatcher` 做 `fuzzy` 路径匹配，`filter_matches` 在后台线程跑、结果回填 `Picker`；`preview`（`picker/src/preview.rs`）支持方向键预览文件内容。`project_symbols`、`outline`、`recent_projects` 等都是同构用法。
 
 ## 5. Picker 通用能力
 

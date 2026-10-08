@@ -25,8 +25,6 @@ use db::kvp::{GlobalKeyValueStore, KeyValueStore};
 use editor::Editor;
 use fs::{Fs, RealFs};
 use futures::{FutureExt, StreamExt, channel::oneshot};
-use git::GitHostingProviderRegistry;
-use git_ui::clone::clone_and_open;
 use gpui::{
     App, AppContext, Application, AsyncApp, QuitMode, Task, TaskExt, UpdateGlobal as _, block_on,
 };
@@ -35,7 +33,6 @@ use gpui_platform;
 use gpui_tokio::Tokio;
 use language::LanguageRegistry;
 use onboarding::{FIRST_OPEN, show_onboarding_view};
-use project_panel::ProjectPanel;
 use prompt_store::PromptBuilder;
 use reqwest_client::ReqwestClient;
 
@@ -207,13 +204,6 @@ fn main() {
 
     let args = Args::parse();
 
-    // `zed --askpass` Makes zed operate in nc/netcat mode for use with askpass
-    #[cfg(not(target_os = "windows"))]
-    if let Some(socket) = &args.askpass {
-        askpass::main(socket);
-        return;
-    }
-
     // `zed --crash-handler` Makes zed operate in minidump crash handler mode
     if let Some(socket) = &args.crash_handler {
         crashes::crash_server(socket.as_path(), paths::logs_dir().clone());
@@ -263,17 +253,6 @@ fn main() {
     } else {
         Vec::new()
     };
-
-    #[cfg(target_os = "windows")]
-    match util::get_zed_cli_path() {
-        Ok(path) => askpass::set_askpass_program(path),
-        Err(err) => {
-            eprintln!("Error: {}", err);
-            if std::option_env!("ZED_BUNDLE").is_some() {
-                process::exit(1);
-            }
-        }
-    }
 
     let file_errors = init_paths();
     if !file_errors.is_empty() {
@@ -412,20 +391,7 @@ fn main() {
         None
     };
 
-    let git_hosting_provider_registry = Arc::new(GitHostingProviderRegistry::new());
-    let git_binary_path =
-        if cfg!(target_os = "macos") && option_env!("ZED_BUNDLE").as_deref() == Some("true") {
-            app.path_for_auxiliary_executable("git")
-                .context("could not find git binary path")
-                .log_err()
-        } else {
-            None
-        };
-    if let Some(git_binary_path) = &git_binary_path {
-        log::info!("Using git binary path: {:?}", git_binary_path);
-    }
-
-    let fs = RealFs::new(git_binary_path, app.background_executor());
+    let fs = RealFs::new(app.background_executor());
     let (user_keymap_file_rx, user_keymap_watcher) = watch_config_file(
         &app.background_executor(),
         fs.clone(),
@@ -507,9 +473,6 @@ fn main() {
         cx.set_http_client(Arc::new(http));
 
         <dyn Fs>::set_global(fs.clone(), cx);
-
-        GitHostingProviderRegistry::set_global(git_hosting_provider_registry, cx);
-        git_hosting_providers::init(cx);
 
         OpenListener::set_global(cx, open_listener.clone());
 
@@ -683,7 +646,6 @@ fn main() {
         settings_profile_selector::init(cx);
         language_tools::init(cx);
         title_bar::init(cx);
-        git_ui::init(cx);
         feedback::init(cx);
         markdown_preview::init(cx);
         tabular_data_preview::init(cx);
@@ -1054,91 +1016,6 @@ fn handle_open_request(request: OpenRequest, app_state: Arc<AppState>, cx: &mut 
                 })
                 .detach_and_log_err(cx);
             }
-            OpenRequestKind::GitClone { repo_url } => {
-                workspace::with_active_or_new_workspace(cx, |_workspace, window, cx| {
-                    if window.is_window_active() {
-                        clone_and_open(
-                            repo_url,
-                            cx.weak_entity(),
-                            window,
-                            cx,
-                            Arc::new(|workspace: &mut workspace::Workspace, window, cx| {
-                                workspace.focus_panel::<ProjectPanel>(window, cx);
-                            }),
-                        );
-                        return;
-                    }
-
-                    let subscription = Rc::new(RefCell::new(None));
-                    subscription.replace(Some(cx.observe_in(&cx.entity(), window, {
-                        let subscription = subscription.clone();
-                        let repo_url = repo_url;
-                        move |_, workspace_entity, window, cx| {
-                            if window.is_window_active() && subscription.take().is_some() {
-                                clone_and_open(
-                                    repo_url.clone(),
-                                    workspace_entity.downgrade(),
-                                    window,
-                                    cx,
-                                    Arc::new(|workspace: &mut workspace::Workspace, window, cx| {
-                                        workspace.focus_panel::<ProjectPanel>(window, cx);
-                                    }),
-                                );
-                            }
-                        }
-                    })));
-                });
-            }
-            OpenRequestKind::GitCommit { sha } => {
-                let base_open_options = zed::open_options_for_request(
-                    request.open_behavior,
-                    &workspace::SerializedWorkspaceLocation::Local,
-                    cx,
-                );
-                cx.spawn(async move |cx| {
-                    let paths_with_position =
-                        derive_paths_with_position(app_state.fs.as_ref(), request.open_paths).await;
-                    let (workspace, _results) = open_paths_with_positions(
-                        &paths_with_position,
-                        &[],
-                        false,
-                        app_state,
-                        base_open_options,
-                        cx,
-                    )
-                    .await?;
-
-                    workspace
-                        .update(cx, |multi_workspace, window, cx| {
-                            multi_workspace
-                                .workspace()
-                                .clone()
-                                .update(cx, |workspace, cx| {
-                                    let Some(repo) =
-                                        workspace.project().read(cx).active_repository(cx)
-                                    else {
-                                        log::error!("no active repository found for commit view");
-                                        return Err(anyhow::anyhow!("no active repository found"));
-                                    };
-
-                                    git_ui::commit_view::CommitView::open(
-                                        sha,
-                                        repo.downgrade(),
-                                        workspace.weak_handle(),
-                                        None,
-                                        None,
-                                        window,
-                                        cx,
-                                    );
-                                    Ok(())
-                                })
-                        })
-                        .log_err();
-
-                    anyhow::Ok(())
-                })
-                .detach_and_log_err(cx);
-            }
         }
 
         return;
@@ -1503,13 +1380,6 @@ struct Args {
     #[cfg(target_os = "windows")]
     #[arg(hide = true)]
     dock_action: Option<usize>,
-
-    /// Used for SSH/Git password authentication, to remove the need for netcat as a dependency,
-    /// by having Zed act like netcat communicating over a Unix socket.
-    #[arg(long)]
-    #[cfg(not(target_os = "windows"))]
-    #[arg(hide = true)]
-    askpass: Option<String>,
 
     #[arg(long, hide = true)]
     dump_all_actions: bool,

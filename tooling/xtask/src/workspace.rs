@@ -21,18 +21,11 @@ mod tests {
     /// build, badly hurting incremental compile times. Dev-dependencies are
     /// exempt since they don't affect `cargo build`.
     const FORBIDDEN_DEPENDENCIES: &[(&str, &str)] = &[
-        ("agent_ui", "git_ui"),
         ("file_finder", "project_panel"),
-        ("git_ui", "agent_ui"),
-        ("git_ui", "search"),
         ("open_path_prompt", "project_panel"),
         ("picker", "editor"),
-        ("project_panel", "git_ui"),
         ("project_panel", "search"),
-        ("search", "git_ui"),
         ("search", "project_panel"),
-        ("sidebar", "git_ui"),
-        ("title_bar", "git_ui"),
     ];
 
     #[test]

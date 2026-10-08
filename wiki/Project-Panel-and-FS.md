@@ -1,6 +1,6 @@
 # Project Panel & File System（文件系统 / Worktree / 项目树）
 
-自底向上三层：**文件系统抽象**（[`fs`](../crates/fs)，trait + 监听）→ **工作区模型**（[`worktree`](../crates/worktree) 里的 `Worktree`，把目录扫描成内存树并同步 Git/LSP）→ **项目树 UI**（[`project_panel`](../crates/project_panel)）。`Worktree` 集合由 `project` 里的 [`WorktreeStore`](../crates/project/src/worktree_store.rs) 统一管理。
+自底向上三层：**文件系统抽象**（[`fs`](../crates/fs)，trait + 监听）→ **工作区模型**（[`worktree`](../crates/worktree) 里的 `Worktree`，把目录扫描成内存树并同步 LSP）→ **项目树 UI**（[`project_panel`](../crates/project_panel)）。`Worktree` 集合由 `project` 里的 [`WorktreeStore`](../crates/project/src/worktree_store.rs) 统一管理。
 
 ## 1. 分层职责
 
@@ -13,11 +13,11 @@
 | 工作区模型 | `enum Worktree` | [`worktree.rs:102`](../crates/worktree/src/worktree.rs) | `Local` 或 `Remote`（协作会话客座端） |
 | 本地工作区 | `LocalWorktree` | [`worktree.rs:140`](../crates/worktree/src/worktree.rs) | 后台扫描线程 + 快照 |
 | 远端工作区 | `RemoteWorktree` | [`worktree.rs:168`](../crates/worktree/src/worktree.rs) | 协作会话中被邀请方经 RPC 同步的目录树 |
-| 树节点 | `Entry` | [`worktree.rs:3959`](../crates/worktree/src/worktree.rs) | 文件/目录条目（含 git 状态、is_ignored） |
+| 树节点 | `Entry` | [`worktree.rs:3959`](../crates/worktree/src/worktree.rs) | 文件/目录条目（含 is_ignored） |
 | 工作区事件 | `Event` | [`worktree.rs:470`](../crates/worktree/src/worktree.rs) | 增删改/扫描进度通知 |
 | 工作区集合 | `WorktreeStore` | [`worktree_store.rs:207`](../crates/project/src/worktree_store.rs) | Project 持有多根 worktree |
 | 项目树 UI | `ProjectPanel` | [`project_panel.rs:137`](../crates/project_panel/src/project_panel.rs) | 左侧 Dock 的文件树视图 |
-| 面板设置 | `ProjectPanelSettings` | [`project_panel_settings.rs:13`](../crates/project_panel/src/project_panel_settings.rs) | 折叠/图标/git 状态显示等 |
+| 面板设置 | `ProjectPanelSettings` | [`project_panel_settings.rs:13`](../crates/project_panel/src/project_panel_settings.rs) | 折叠/图标/忽略规则显示等 |
 
 ## 2. fs：可替换的文件系统抽象
 
@@ -25,9 +25,9 @@
 
 ## 3. Worktree：把目录变成可订阅的内存树
 
-`Worktree` 现在是枚举（[worktree.rs:102](../crates/worktree/src/worktree.rs)）：`Local(LocalWorktree)`（L140）或 `Remote(RemoteWorktree)`（L168，协作会话客座端使用的 RPC 同步态），`impl EventEmitter<Event>`（L481）。它是 `Project`、`project_panel`、搜索、Git 共用的"目录真相"。
+`Worktree` 现在是枚举（[worktree.rs:102](../crates/worktree/src/worktree.rs)）：`Local(LocalWorktree)`（L140）或 `Remote(RemoteWorktree)`（L168，协作会话客座端使用的 RPC 同步态），`impl EventEmitter<Event>`（L481）。它是 `Project`、`project_panel`、搜索共用的"目录真相"。
 
-- **扫描**：`LocalWorktree` 起后台线程递归读目录，产出 `Entry`（L3959，携带 `is_ignored`/git 状态/symlink 等）。扫描进度经 `Event`（L470）流式上报，UI 据此显示 loading。忽略规则、`.gitignore` 在此解析。
+- **扫描**：`LocalWorktree` 起后台线程递归读目录，产出 `Entry`（L3959，携带 `is_ignored`/symlink 等）。扫描进度经 `Event`（L470）流式上报，UI 据此显示 loading。忽略规则、`.gitignore` 在此解析。
 - **变更**：`create_entry`（[L963](../crates/worktree/src/worktree.rs)）、`delete_entry`（L1031）、`rename`/`copy` 等改动树；本地直接落 `fs`（`RemoteWorktree` 侧另有 `handle_create_entry` L1142、`handle_delete_entry` L1192 等经 RPC 同步的路径，供协作会话客座端使用）。
 - **快照读**：UI/搜索不锁活树，而是取 `WorktreeSnapshot` 只读遍历，保证 GPUI 主线程不阻塞。
 
@@ -44,11 +44,11 @@
 
 ## 5. ProjectPanel：项目树 UI
 
-`ProjectPanel`（[project_panel.rs:137](../crates/project_panel/src/project_panel.rs)）是左侧 `Dock` 里的面板，`impl Render`（L7126）+ `impl Focusable`（L7930），`ProjectPanel::new`（L680）从 `workspace` 拿 `Project`/`Worktree`。它渲染虚拟化的树（只画可视区节点），把用户操作转成 `Worktree` 方法调用：新建/重命名/删除/拖拽移动/复制路径；`new_search_in_directory`（L3978）在某目录发起全局搜索（见 [Search.md](Search.md)）。git 状态色、文件图标（`file_icons` crate）、折叠箭头都由 `ProjectPanelSettings` 驱动。
+`ProjectPanel`（[project_panel.rs:137](../crates/project_panel/src/project_panel.rs)）是左侧 `Dock` 里的面板，`impl Render`（L7126）+ `impl Focusable`（L7930），`ProjectPanel::new`（L680）从 `workspace` 拿 `Project`/`Worktree`。它渲染虚拟化的树（只画可视区节点），把用户操作转成 `Worktree` 方法调用：新建/重命名/删除/拖拽移动/复制路径；`new_search_in_directory`（L3978）在某目录发起全局搜索（见 [Search.md](Search.md)）。文件图标（`file_icons` crate）、折叠箭头、忽略规则淡显都由 `ProjectPanelSettings` 驱动。
 
-## 6. 与 Git / LSP 的联动
+## 6. 与 LSP 的联动
 
-`Worktree` 与 `GitStore` 共享目录状态：`Entry` 上的 git 徽标来自 git 状态查询；被 `.gitignore` 忽略的文件在树中淡显且默认不参与搜索。语言服务器由 `Worktree` 事件驱动启动（文件出现/消失→LSP 注册/注销），细节见 [Language-and-Project.md](Language-and-Project.md)、[LSP-Features.md](LSP-Features.md)。点击树中文件 → 打开 `Buffer` → 建 `Editor`（见 [Editor.md](Editor.md)），作为 `Item` 进 `Pane`（见 [Workspace-Pane-Dock.md](Workspace-Pane-Dock.md)）。
+被 `.gitignore` 忽略的文件在树中淡显且默认不参与搜索。语言服务器由 `Worktree` 事件驱动启动（文件出现/消失→LSP 注册/注销），细节见 [Language-and-Project.md](Language-and-Project.md)、[LSP-Features.md](LSP-Features.md)。点击树中文件 → 打开 `Buffer` → 建 `Editor`（见 [Editor.md](Editor.md)），作为 `Item` 进 `Pane`（见 [Workspace-Pane-Dock.md](Workspace-Pane-Dock.md)）。
 
 ## 7. 关键符号速查
 
@@ -67,6 +67,5 @@
 
 ## 8. 与其他页面的关系
 - 全局搜索遍历 worktree：[Search.md](Search.md)。
-- Git 状态徽标来源：[Git-Integration.md](Git-Integration.md)。
 - LSP 随文件增删启停：[LSP-Features.md](LSP-Features.md)、[Language-and-Project.md](Language-and-Project.md)。
 - 面板停靠与 Item 体系：[Workspace-Pane-Dock.md](Workspace-Pane-Dock.md)。

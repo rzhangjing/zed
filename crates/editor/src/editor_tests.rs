@@ -11,11 +11,11 @@ use crate::{
     test::{
         assert_text_with_selections, build_editor, editor_content_with_blocks,
         editor_lsp_test_context::{EditorLspTestContext, git_commit_lang},
-        editor_test_context::EditorTestContext,
+        editor_test_context::{EditorTestContext, attach_base_text_diff},
         select_ranges,
     },
 };
-use buffer_diff::{BufferDiff, DiffHunkSecondaryStatus, DiffHunkStatus, DiffHunkStatusKind};
+use buffer_diff::BufferDiff;
 use collections::{HashMap, HashSet};
 use fs::Fs as _;
 use futures::{StreamExt, channel::oneshot};
@@ -17460,7 +17460,7 @@ async fn test_range_format_on_save_timeout(cx: &mut TestAppContext) {
 
 #[gpui::test]
 async fn test_modifications_format_on_save(cx: &mut TestAppContext) {
-    let (project, editor, cx, fake_server) = setup_range_format_test_with_git(cx, "", "").await;
+    let (project, editor, cx, fake_server) = setup_range_format_test_with_diff(cx, "", "").await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -17508,7 +17508,7 @@ async fn test_modifications_format_on_save(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-async fn test_modifications_format_skips_without_git_diff(cx: &mut TestAppContext) {
+async fn test_modifications_format_skips_without_diff(cx: &mut TestAppContext) {
     let (project, editor, cx, fake_server) = setup_range_format_test(cx).await;
 
     update_test_language_settings(cx, &|settings| {
@@ -17525,12 +17525,12 @@ async fn test_modifications_format_skips_without_git_diff(cx: &mut TestAppContex
 
     let _no_range_format_handler = fake_server
         .set_request_handler::<lsp::request::RangeFormatting, _, _>(move |_, _| async move {
-            panic!("rangeFormatting must not be called when no git diff is available");
+            panic!("rangeFormatting must not be called when no diff is available");
         })
         .next();
     let _no_format_handler = fake_server
         .set_request_handler::<lsp::request::Formatting, _, _>(move |_, _| async move {
-            panic!("full formatting must not be called for Modifications without a git diff");
+            panic!("full formatting must not be called for Modifications without a diff");
         })
         .next();
 
@@ -17602,14 +17602,11 @@ async fn test_modifications_format_lsp_no_range_support(cx: &mut TestAppContext)
         })
         .await
         .unwrap();
-    project
-        .update(cx, |project, cx| {
-            project.open_unstaged_diff(buffer.clone(), cx)
-        })
-        .await
-        .unwrap();
-
-    let buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
+    let buffer = cx.new(|cx| {
+        let mut multibuffer = MultiBuffer::singleton(buffer, cx);
+        attach_base_text_diff(&mut multibuffer, head_content, cx);
+        multibuffer
+    });
     let (editor, cx) = cx.add_window_view(|window, cx| {
         build_editor_with_project(project.clone(), buffer, window, cx)
     });
@@ -17662,7 +17659,7 @@ async fn test_modifications_format_lsp_no_range_support(cx: &mut TestAppContext)
 
 #[gpui::test]
 async fn test_modifications_format_lsp_returns_empty_edits(cx: &mut TestAppContext) {
-    let (project, editor, cx, fake_server) = setup_range_format_test_with_git(cx, "", "").await;
+    let (project, editor, cx, fake_server) = setup_range_format_test_with_diff(cx, "", "").await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -17710,7 +17707,7 @@ async fn test_modifications_format_lsp_returns_empty_edits(cx: &mut TestAppConte
 async fn test_modifications_format_multiple_hunks(cx: &mut TestAppContext) {
     let head_content = "line0\nline1\nline2\nline3\nline4\nline5\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, head_content).await;
+        setup_range_format_test_with_diff(cx, head_content, head_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -17900,7 +17897,7 @@ async fn test_modifications_format_excludes_staged_changes(cx: &mut TestAppConte
     let head_content = "line0\nline1\nline2\nline3\nline4\n";
     let staged_content = "line0\nLINE1\nline2\nline3\nline4\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, staged_content).await;
+        setup_range_format_test_with_diff(cx, head_content, staged_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -17953,7 +17950,7 @@ async fn test_modifications_format_range_excludes_staged_hunk(cx: &mut TestAppCo
     let head_content = "a\nb\nc\n";
     let staged_content = "A\nb\nc\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, staged_content).await;
+        setup_range_format_test_with_diff(cx, head_content, staged_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -18003,10 +18000,10 @@ async fn test_modifications_format_range_excludes_staged_hunk(cx: &mut TestAppCo
 }
 
 #[gpui::test]
-async fn test_modifications_format_pure_unstaged_with_git(cx: &mut TestAppContext) {
+async fn test_modifications_format_pure_unstaged(cx: &mut TestAppContext) {
     let head_content = "line0\nline1\nline2\nline3\nline4\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, head_content).await;
+        setup_range_format_test_with_diff(cx, head_content, head_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -18048,16 +18045,16 @@ async fn test_modifications_format_pure_unstaged_with_git(cx: &mut TestAppContex
     assert_eq!(
         request_count.load(atomic::Ordering::SeqCst),
         2,
-        "unstaged hunks (LINE1, LINE4) must be formatted via the git diff path"
+        "unstaged hunks (LINE1, LINE4) must be formatted via the diff path"
     );
 }
 
 #[gpui::test]
-async fn test_modifications_format_no_unstaged_changes_with_git(cx: &mut TestAppContext) {
+async fn test_modifications_format_no_unstaged_changes(cx: &mut TestAppContext) {
     let head_content = "line0\nline1\nline2\nline3\nline4\n";
     let staged_content = "line0\nLINE1\nline2\nline3\nLINE4\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, staged_content).await;
+        setup_range_format_test_with_diff(cx, head_content, staged_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -18093,10 +18090,10 @@ async fn test_modifications_format_no_unstaged_changes_with_git(cx: &mut TestApp
 }
 
 #[gpui::test]
-async fn test_modifications_format_no_changes_with_git(cx: &mut TestAppContext) {
+async fn test_modifications_format_no_changes(cx: &mut TestAppContext) {
     let head_content = "line0\nline1\nline2\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, head_content).await;
+        setup_range_format_test_with_diff(cx, head_content, head_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -18186,14 +18183,11 @@ async fn test_modifications_format_crlf_line_endings(cx: &mut TestAppContext) {
         );
     });
 
-    project
-        .update(cx, |project, cx| {
-            project.open_unstaged_diff(buffer.clone(), cx)
-        })
-        .await
-        .unwrap();
-
-    let buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
+    let buffer = cx.new(|cx| {
+        let mut multibuffer = MultiBuffer::singleton(buffer, cx);
+        attach_base_text_diff(&mut multibuffer, head_content, cx);
+        multibuffer
+    });
     let (editor, cx) = cx.add_window_view(|window, cx| {
         build_editor_with_project(project.clone(), buffer, window, cx)
     });
@@ -18250,7 +18244,7 @@ async fn test_modifications_format_crlf_line_endings(cx: &mut TestAppContext) {
 async fn test_modifications_format_merge_boundary_one_row_gap(cx: &mut TestAppContext) {
     let head_content = "line0\nline1\nline2\nline3\nline4\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, head_content).await;
+        setup_range_format_test_with_diff(cx, head_content, head_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);
@@ -18300,7 +18294,7 @@ async fn test_modifications_format_merge_boundary_one_row_gap(cx: &mut TestAppCo
 async fn test_modifications_if_available_empty_diff_skips_formatting(cx: &mut TestAppContext) {
     let head_content = "line0\nline1\nline2\n";
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, head_content).await;
+        setup_range_format_test_with_diff(cx, head_content, head_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::ModificationsIfAvailable);
@@ -18367,7 +18361,7 @@ async fn test_modifications_if_available_no_git_falls_back_to_full_format(cx: &m
 
     let _no_range_format = fake_server
         .set_request_handler::<lsp::request::RangeFormatting, _, _>(move |_, _| async move {
-            panic!("range formatting must not be called when no git diff is available");
+            panic!("range formatting must not be called when no diff is available");
         })
         .next();
 
@@ -18398,7 +18392,7 @@ async fn test_modifications_if_available_no_git_falls_back_to_full_format(cx: &m
 
     assert!(
         formatting_called.load(atomic::Ordering::SeqCst),
-        "ModificationsIfAvailable must fall back to full-buffer formatting when no git diff is available"
+        "ModificationsIfAvailable must fall back to full-buffer formatting when no diff is available"
     );
 }
 
@@ -18451,14 +18445,11 @@ async fn test_modifications_if_available_lsp_no_range_support_falls_back_to_full
         })
         .await
         .unwrap();
-    project
-        .update(cx, |project, cx| {
-            project.open_unstaged_diff(buffer.clone(), cx)
-        })
-        .await
-        .unwrap();
-
-    let buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
+    let buffer = cx.new(|cx| {
+        let mut multibuffer = MultiBuffer::singleton(buffer, cx);
+        attach_base_text_diff(&mut multibuffer, head_content, cx);
+        multibuffer
+    });
     let (editor, cx) = cx.add_window_view(|window, cx| {
         build_editor_with_project(project.clone(), buffer, window, cx)
     });
@@ -27369,549 +27360,6 @@ async fn test_range_format_with_prettier_explicit_language(cx: &mut TestAppConte
 }
 
 #[gpui::test]
-async fn test_addition_reverts(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-    let mut cx = EditorLspTestContext::new_rust(lsp::ServerCapabilities::default(), cx).await;
-    let base_text = indoc! {r#"
-        struct Row;
-        struct Row1;
-        struct Row2;
-
-        struct Row4;
-        struct Row5;
-        struct Row6;
-
-        struct Row8;
-        struct Row9;
-        struct Row10;"#};
-
-    // When addition hunks are not adjacent to carets, no hunk revert is performed
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row1.1;
-                   struct Row1.2;
-                   struct Row2;ˇ
-
-                   struct Row4;
-                   struct Row5;
-                   struct Row6;
-
-                   struct Row8;
-                   ˇstruct Row9;
-                   struct Row9.1;
-                   struct Row9.2;
-                   struct Row9.3;
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Added, DiffHunkStatusKind::Added],
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row1.1;
-                   struct Row1.2;
-                   struct Row2;ˇ
-
-                   struct Row4;
-                   struct Row5;
-                   struct Row6;
-
-                   struct Row8;
-                   ˇstruct Row9;
-                   struct Row9.1;
-                   struct Row9.2;
-                   struct Row9.3;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-    // Same for selections
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row2;
-                   struct Row2.1;
-                   struct Row2.2;
-                   «ˇ
-                   struct Row4;
-                   struct» Row5;
-                   «struct Row6;
-                   ˇ»
-                   struct Row9.1;
-                   struct Row9.2;
-                   struct Row9.3;
-                   struct Row8;
-                   struct Row9;
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Added, DiffHunkStatusKind::Added],
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row2;
-                   struct Row2.1;
-                   struct Row2.2;
-                   «ˇ
-                   struct Row4;
-                   struct» Row5;
-                   «struct Row6;
-                   ˇ»
-                   struct Row9.1;
-                   struct Row9.2;
-                   struct Row9.3;
-                   struct Row8;
-                   struct Row9;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-
-    // When carets and selections intersect the addition hunks, those are reverted.
-    // Adjacent carets got merged.
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   ˇ// something on the top
-                   struct Row1;
-                   struct Row2;
-                   struct Roˇw3.1;
-                   struct Row2.2;
-                   struct Row2.3;ˇ
-
-                   struct Row4;
-                   struct ˇRow5.1;
-                   struct Row5.2;
-                   struct «Rowˇ»5.3;
-                   struct Row5;
-                   struct Row6;
-                   ˇ
-                   struct Row9.1;
-                   struct «Rowˇ»9.2;
-                   struct «ˇRow»9.3;
-                   struct Row8;
-                   struct Row9;
-                   «ˇ// something on bottom»
-                   struct Row10;"#},
-        vec![
-            DiffHunkStatusKind::Added,
-            DiffHunkStatusKind::Added,
-            DiffHunkStatusKind::Added,
-            DiffHunkStatusKind::Added,
-            DiffHunkStatusKind::Added,
-        ],
-        indoc! {r#"struct Row;
-                   ˇstruct Row1;
-                   struct Row2;
-                   ˇ
-                   struct Row4;
-                   ˇstruct Row5;
-                   struct Row6;
-                   ˇ
-                   ˇstruct Row8;
-                   struct Row9;
-                   ˇstruct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-}
-
-#[gpui::test]
-async fn test_modification_reverts(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-    let mut cx = EditorLspTestContext::new_rust(lsp::ServerCapabilities::default(), cx).await;
-    let base_text = indoc! {r#"
-        struct Row;
-        struct Row1;
-        struct Row2;
-
-        struct Row4;
-        struct Row5;
-        struct Row6;
-
-        struct Row8;
-        struct Row9;
-        struct Row10;"#};
-
-    // Modification hunks behave the same as the addition ones.
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row33;
-                   ˇ
-                   struct Row4;
-                   struct Row5;
-                   struct Row6;
-                   ˇ
-                   struct Row99;
-                   struct Row9;
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Modified, DiffHunkStatusKind::Modified],
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row33;
-                   ˇ
-                   struct Row4;
-                   struct Row5;
-                   struct Row6;
-                   ˇ
-                   struct Row99;
-                   struct Row9;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row33;
-                   «ˇ
-                   struct Row4;
-                   struct» Row5;
-                   «struct Row6;
-                   ˇ»
-                   struct Row99;
-                   struct Row9;
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Modified, DiffHunkStatusKind::Modified],
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row33;
-                   «ˇ
-                   struct Row4;
-                   struct» Row5;
-                   «struct Row6;
-                   ˇ»
-                   struct Row99;
-                   struct Row9;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-
-    assert_hunk_revert(
-        indoc! {r#"ˇstruct Row1.1;
-                   struct Row1;
-                   «ˇstr»uct Row22;
-
-                   struct ˇRow44;
-                   struct Row5;
-                   struct «Rˇ»ow66;ˇ
-
-                   «struˇ»ct Row88;
-                   struct Row9;
-                   struct Row1011;ˇ"#},
-        vec![
-            DiffHunkStatusKind::Modified,
-            DiffHunkStatusKind::Modified,
-            DiffHunkStatusKind::Modified,
-            DiffHunkStatusKind::Modified,
-            DiffHunkStatusKind::Modified,
-            DiffHunkStatusKind::Modified,
-        ],
-        indoc! {r#"struct Row;
-                   ˇstruct Row1;
-                   struct Row2;
-                   ˇ
-                   struct Row4;
-                   ˇstruct Row5;
-                   struct Row6;
-                   ˇ
-                   struct Row8;
-                   ˇstruct Row9;
-                   struct Row10;ˇ"#},
-        base_text,
-        &mut cx,
-    );
-}
-
-#[gpui::test]
-async fn test_deleting_over_diff_hunk(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-    let mut cx = EditorLspTestContext::new_rust(lsp::ServerCapabilities::default(), cx).await;
-    let base_text = indoc! {r#"
-        one
-
-        two
-        three
-        "#};
-
-    cx.set_head_text(base_text);
-    cx.set_state("\nˇ\n");
-    cx.executor().run_until_parked();
-    cx.update_editor(|editor, _window, cx| {
-        editor.expand_selected_diff_hunks(cx);
-    });
-    cx.executor().run_until_parked();
-    cx.update_editor(|editor, window, cx| {
-        editor.backspace(&Default::default(), window, cx);
-    });
-    cx.run_until_parked();
-    cx.assert_state_with_diff(
-        indoc! {r#"
-
-        - two
-        - threeˇ
-        +
-        "#}
-        .to_string(),
-    );
-}
-
-#[gpui::test]
-async fn test_deletion_reverts(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-    let mut cx = EditorLspTestContext::new_rust(lsp::ServerCapabilities::default(), cx).await;
-    let base_text = indoc! {r#"struct Row;
-struct Row1;
-struct Row2;
-
-struct Row4;
-struct Row5;
-struct Row6;
-
-struct Row8;
-struct Row9;
-struct Row10;"#};
-
-    // Deletion hunks trigger with carets on adjacent rows, so carets and selections have to stay farther to avoid the revert
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row2;
-
-                   ˇstruct Row4;
-                   struct Row5;
-                   struct Row6;
-                   ˇ
-                   struct Row8;
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Deleted, DiffHunkStatusKind::Deleted],
-        indoc! {r#"struct Row;
-                   struct Row2;
-
-                   ˇstruct Row4;
-                   struct Row5;
-                   struct Row6;
-                   ˇ
-                   struct Row8;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row2;
-
-                   «ˇstruct Row4;
-                   struct» Row5;
-                   «struct Row6;
-                   ˇ»
-                   struct Row8;
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Deleted, DiffHunkStatusKind::Deleted],
-        indoc! {r#"struct Row;
-                   struct Row2;
-
-                   «ˇstruct Row4;
-                   struct» Row5;
-                   «struct Row6;
-                   ˇ»
-                   struct Row8;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-
-    // Deletion hunks are ephemeral, so it's impossible to place the caret into them — Zed triggers reverts for lines, adjacent to carets and selections.
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   ˇstruct Row2;
-
-                   struct Row4;
-                   struct Row5;
-                   struct Row6;
-
-                   struct Row8;ˇ
-                   struct Row10;"#},
-        vec![DiffHunkStatusKind::Deleted, DiffHunkStatusKind::Deleted],
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   ˇstruct Row2;
-
-                   struct Row4;
-                   struct Row5;
-                   struct Row6;
-
-                   struct Row8;ˇ
-                   struct Row9;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-    assert_hunk_revert(
-        indoc! {r#"struct Row;
-                   struct Row2«ˇ;
-                   struct Row4;
-                   struct» Row5;
-                   «struct Row6;
-
-                   struct Row8;ˇ»
-                   struct Row10;"#},
-        vec![
-            DiffHunkStatusKind::Deleted,
-            DiffHunkStatusKind::Deleted,
-            DiffHunkStatusKind::Deleted,
-        ],
-        indoc! {r#"struct Row;
-                   struct Row1;
-                   struct Row2«ˇ;
-
-                   struct Row4;
-                   struct» Row5;
-                   «struct Row6;
-
-                   struct Row8;ˇ»
-                   struct Row9;
-                   struct Row10;"#},
-        base_text,
-        &mut cx,
-    );
-}
-
-#[gpui::test]
-async fn test_multibuffer_reverts(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-
-    let base_text_1 = "aaaa\nbbbb\ncccc\ndddd\neeee\nffff\ngggg\nhhhh\niiii\njjjj";
-    let base_text_2 = "llll\nmmmm\nnnnn\noooo\npppp\nqqqq\nrrrr\nssss\ntttt\nuuuu";
-    let base_text_3 =
-        "vvvv\nwwww\nxxxx\nyyyy\nzzzz\n{{{{\n||||\n}}}}\n~~~~\n\u{7f}\u{7f}\u{7f}\u{7f}";
-
-    let text_1 = edit_first_char_of_every_line(base_text_1);
-    let text_2 = edit_first_char_of_every_line(base_text_2);
-    let text_3 = edit_first_char_of_every_line(base_text_3);
-
-    let buffer_1 = cx.new(|cx| Buffer::local(text_1.clone(), cx));
-    let buffer_2 = cx.new(|cx| Buffer::local(text_2.clone(), cx));
-    let buffer_3 = cx.new(|cx| Buffer::local(text_3.clone(), cx));
-
-    let multibuffer = cx.new(|cx| {
-        let mut multibuffer = MultiBuffer::new(ReadWrite);
-        multibuffer.set_excerpts_for_path(
-            PathKey::sorted(0),
-            buffer_1.clone(),
-            [
-                Point::new(0, 0)..Point::new(2, 0),
-                Point::new(5, 0)..Point::new(6, 0),
-                Point::new(9, 0)..Point::new(9, 4),
-            ],
-            0,
-            cx,
-        );
-        multibuffer.set_excerpts_for_path(
-            PathKey::sorted(1),
-            buffer_2.clone(),
-            [
-                Point::new(0, 0)..Point::new(2, 0),
-                Point::new(5, 0)..Point::new(6, 0),
-                Point::new(9, 0)..Point::new(9, 4),
-            ],
-            0,
-            cx,
-        );
-        multibuffer.set_excerpts_for_path(
-            PathKey::sorted(2),
-            buffer_3.clone(),
-            [
-                Point::new(0, 0)..Point::new(2, 0),
-                Point::new(5, 0)..Point::new(6, 0),
-                Point::new(9, 0)..Point::new(9, 4),
-            ],
-            0,
-            cx,
-        );
-        multibuffer
-    });
-
-    let fs = FakeFs::new(cx.executor());
-    let project = Project::test(fs, [path!("/").as_ref()], cx).await;
-    let (editor, cx) = cx
-        .add_window_view(|window, cx| build_editor_with_project(project, multibuffer, window, cx));
-    editor.update_in(cx, |editor, _window, cx| {
-        for (buffer, diff_base) in [
-            (buffer_1.clone(), base_text_1),
-            (buffer_2.clone(), base_text_2),
-            (buffer_3.clone(), base_text_3),
-        ] {
-            let diff = cx.new(|cx| {
-                BufferDiff::new_with_base_text(diff_base, &buffer.read(cx).text_snapshot(), cx)
-            });
-            editor
-                .buffer
-                .update(cx, |buffer, cx| buffer.add_diff(diff, cx));
-        }
-    });
-    cx.executor().run_until_parked();
-
-    editor.update_in(cx, |editor, window, cx| {
-        assert_eq!(editor.display_text(cx), "\n\nXaaa\nXbbb\nXccc\n\nXfff\nXggg\n\nXjjj\n\n\nXlll\nXmmm\nXnnn\n\nXqqq\nXrrr\n\nXuuu\n\n\nXvvv\nXwww\nXxxx\n\nX{{{\nX|||\n\nX\u{7f}\u{7f}\u{7f}");
-        editor.select_all(&SelectAll, window, cx);
-        editor.git_restore(&Default::default(), window, cx);
-    });
-    cx.executor().run_until_parked();
-
-    // When all ranges are selected, all buffer hunks are reverted.
-    editor.update(cx, |editor, cx| {
-        assert_eq!(editor.display_text(cx), "\n\naaaa\nbbbb\ncccc\ndddd\neeee\nffff\ngggg\nhhhh\niiii\njjjj\n\n\n\n\n\n\nllll\nmmmm\nnnnn\noooo\npppp\nqqqq\nrrrr\nssss\ntttt\nuuuu\n\n\n\n\n\n\nvvvv\nwwww\nxxxx\nyyyy\nzzzz\n{{{{\n||||\n}}}}\n~~~~\n\u{7f}\u{7f}\u{7f}\u{7f}\n\n\n\n");
-    });
-    buffer_1.update(cx, |buffer, _| {
-        assert_eq!(buffer.text(), base_text_1);
-    });
-    buffer_2.update(cx, |buffer, _| {
-        assert_eq!(buffer.text(), base_text_2);
-    });
-    buffer_3.update(cx, |buffer, _| {
-        assert_eq!(buffer.text(), base_text_3);
-    });
-
-    editor.update_in(cx, |editor, window, cx| {
-        editor.undo(&Default::default(), window, cx);
-    });
-
-    editor.update_in(cx, |editor, window, cx| {
-        editor.change_selections(SelectionEffects::no_scroll(), window, cx, |s| {
-            s.select_ranges(Some(Point::new(0, 0)..Point::new(5, 0)));
-        });
-        editor.git_restore(&Default::default(), window, cx);
-    });
-
-    // Now, when all ranges selected belong to buffer_1, the revert should succeed,
-    // but not affect buffer_2 and its related excerpts.
-    editor.update(cx, |editor, cx| {
-        assert_eq!(
-            editor.display_text(cx),
-            "\n\naaaa\nbbbb\ncccc\ndddd\neeee\nffff\ngggg\nhhhh\niiii\njjjj\n\n\n\n\n\n\nXlll\nXmmm\nXnnn\n\nXqqq\nXrrr\n\nXuuu\n\n\nXvvv\nXwww\nXxxx\n\nX{{{\nX|||\n\nX\u{7f}\u{7f}\u{7f}"
-        );
-    });
-    buffer_1.update(cx, |buffer, _| {
-        assert_eq!(buffer.text(), base_text_1);
-    });
-    buffer_2.update(cx, |buffer, _| {
-        assert_eq!(
-            buffer.text(),
-            "Xlll\nXmmm\nXnnn\nXooo\nXppp\nXqqq\nXrrr\nXsss\nXttt\nXuuu"
-        );
-    });
-    buffer_3.update(cx, |buffer, _| {
-        assert_eq!(
-            buffer.text(),
-            "Xvvv\nXwww\nXxxx\nXyyy\nXzzz\nX{{{\nX|||\nX}}}\nX~~~\nX\u{7f}\u{7f}\u{7f}"
-        );
-    });
-
-    fn edit_first_char_of_every_line(text: &str) -> String {
-        text.split('\n')
-            .map(|line| format!("X{}", &line[1..]))
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-}
-
-#[gpui::test]
 async fn test_multibuffer_in_navigation_history(cx: &mut TestAppContext) {
     init_test(cx, |_| {});
 
@@ -28187,88 +27635,6 @@ async fn test_multibuffer_in_navigation_history(cx: &mut TestAppContext) {
         );
         assert_eq!(active_item.buffer_kind(cx), ItemBufferKind::Multibuffer);
     });
-}
-
-#[gpui::test]
-async fn test_merge_base_diff_hunks_are_read_only(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-
-    let fs = FakeFs::new(cx.executor());
-    fs.insert_tree(
-        path!("/project"),
-        json!({
-            ".git": {},
-            "file.rs": "worktree\n",
-        }),
-    )
-    .await;
-    fs.set_head_and_index_for_repo(
-        std::path::Path::new(path!("/project/.git")),
-        &[("file.rs", "head\n".to_string())],
-    );
-    fs.set_merge_base_content_for_repo(
-        std::path::Path::new(path!("/project/.git")),
-        &[("file.rs", "base\n".to_string())],
-    );
-
-    let project = Project::test(fs.clone(), [path!("/project").as_ref()], cx).await;
-    project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-    let buffer = project
-        .update(cx, |project, cx| {
-            project.open_local_buffer(path!("/project/file.rs"), cx)
-        })
-        .await
-        .unwrap();
-    let buffer_id = buffer.read_with(cx, |buffer, _| buffer.remote_id());
-    let multi_buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
-    let (editor, cx) = cx.add_window_view(|window, cx| {
-        build_editor_with_project(project.clone(), multi_buffer, window, cx)
-    });
-
-    cx.update(|_window, cx| {
-        SettingsStore::update_global(cx, |settings, cx| {
-            settings.update_user_settings(cx, |settings| {
-                settings.git.get_or_insert_default().diff_base =
-                    Some(settings::GitDiffBaseSetting::DefaultBranch);
-            });
-        });
-    });
-    cx.run_until_parked();
-
-    editor.read_with(cx, |editor, cx| {
-        let diff = editor
-            .buffer()
-            .read(cx)
-            .diff_for(buffer_id)
-            .expect("buffer should have a display diff");
-        assert!(diff.read(cx).operations().is_none());
-    });
-    editor.update_in(cx, |editor, window, cx| {
-        editor.select_all(&SelectAll, window, cx);
-        editor.git_restore(&Default::default(), window, cx);
-        editor.toggle_staged_selected_diff_hunks(&Default::default(), window, cx);
-    });
-    cx.run_until_parked();
-
-    assert_eq!(
-        editor.read_with(cx, |editor, cx| editor.text(cx)),
-        "worktree\n"
-    );
-    let index_contents = fs
-        .with_git_state(
-            std::path::Path::new(path!("/project/.git")),
-            false,
-            |state| state.index_contents.clone(),
-        )
-        .unwrap();
-    assert_eq!(
-        index_contents,
-        [(::git::repository::repo_path("file.rs"), b"head\n".to_vec(),)]
-            .into_iter()
-            .collect::<HashMap<_, _>>()
-    );
 }
 
 #[gpui::test]
@@ -29400,59 +28766,6 @@ async fn test_edit_after_expanded_modification_hunk(
     );
 }
 
-#[gpui::test]
-async fn test_stage_and_unstage_added_file_hunk(
-    executor: BackgroundExecutor,
-    cx: &mut TestAppContext,
-) {
-    init_test(cx, |_| {});
-
-    let mut cx = EditorTestContext::new(cx).await;
-    cx.update_editor(|editor, _, cx| {
-        editor.set_expand_all_diff_hunks(cx);
-    });
-
-    let working_copy = r#"
-            ˇfn main() {
-                println!("hello, world!");
-            }
-        "#
-    .unindent();
-
-    cx.set_state(&working_copy);
-    executor.run_until_parked();
-
-    cx.assert_state_with_diff(
-        r#"
-            + ˇfn main() {
-            +     println!("hello, world!");
-            + }
-        "#
-        .unindent(),
-    );
-    cx.assert_index_text(None);
-
-    cx.update_editor(|editor, window, cx| {
-        editor.toggle_staged_selected_diff_hunks(&Default::default(), window, cx);
-    });
-    executor.run_until_parked();
-    cx.assert_index_text(Some(&working_copy.replace("ˇ", "")));
-    cx.assert_state_with_diff(
-        r#"
-            + ˇfn main() {
-            +     println!("hello, world!");
-            + }
-        "#
-        .unindent(),
-    );
-
-    cx.update_editor(|editor, window, cx| {
-        editor.toggle_staged_selected_diff_hunks(&Default::default(), window, cx);
-    });
-    executor.run_until_parked();
-    cx.assert_index_text(None);
-}
-
 async fn setup_indent_guides_editor(
     text: &str,
     cx: &mut TestAppContext,
@@ -30573,10 +29886,11 @@ async fn test_display_diff_hunks(cx: &mut TestAppContext) {
         buffers.push(buffer);
     }
 
+    let diff_base_texts = ["one\n", "two\n", "three\n"];
     let multibuffer = cx.new(|cx| {
         let mut multibuffer = MultiBuffer::new(Capability::ReadWrite);
         multibuffer.set_all_diff_hunks_expanded(cx);
-        for buffer in &buffers {
+        for (buffer, diff_base_text) in buffers.iter().zip(diff_base_texts) {
             let snapshot = buffer.read(cx).snapshot();
             multibuffer.set_excerpts_for_path(
                 PathKey::with_sort_prefix(0, buffer.read(cx).file().unwrap().path().clone()),
@@ -30585,6 +29899,8 @@ async fn test_display_diff_hunks(cx: &mut TestAppContext) {
                 2,
                 cx,
             );
+            let diff = cx.new(|cx| BufferDiff::new_with_base_text(diff_base_text, &snapshot, cx));
+            multibuffer.add_diff(diff, cx);
         }
         multibuffer
     });
@@ -30614,80 +29930,6 @@ async fn test_display_diff_hunks(cx: &mut TestAppContext) {
             DisplayRow(12)..DisplayRow(14),
         ]
     );
-}
-
-#[gpui::test]
-async fn test_partially_staged_hunk(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-
-    let mut cx = EditorTestContext::new(cx).await;
-    cx.set_head_text(indoc! { "
-        one
-        two
-        three
-        four
-        five
-        "
-    });
-    cx.set_index_text(indoc! { "
-        one
-        two
-        three
-        four
-        five
-        "
-    });
-    cx.set_state(indoc! {"
-        one
-        TWO
-        ˇTHREE
-        FOUR
-        five
-    "});
-    cx.run_until_parked();
-    cx.update_editor(|editor, window, cx| {
-        editor.toggle_staged_selected_diff_hunks(&Default::default(), window, cx);
-    });
-    cx.run_until_parked();
-    cx.assert_index_text(Some(indoc! {"
-        one
-        TWO
-        THREE
-        FOUR
-        five
-    "}));
-    cx.set_state(indoc! { "
-        one
-        TWO
-        ˇTHREE-HUNDRED
-        FOUR
-        five
-    "});
-    cx.run_until_parked();
-    cx.update_editor(|editor, window, cx| {
-        let snapshot = editor.snapshot(window, cx);
-        let hunks = editor
-            .diff_hunks_in_ranges(&[Anchor::Min..Anchor::Max], &snapshot.buffer_snapshot())
-            .collect::<Vec<_>>();
-        assert_eq!(hunks.len(), 1);
-        assert_eq!(
-            hunks[0].status(),
-            DiffHunkStatus {
-                kind: DiffHunkStatusKind::Modified,
-                secondary: DiffHunkSecondaryStatus::OverlapsWithSecondaryHunk
-            }
-        );
-
-        editor.toggle_staged_selected_diff_hunks(&Default::default(), window, cx);
-    });
-    cx.run_until_parked();
-    cx.assert_index_text(Some(indoc! {"
-        one
-        TWO
-        THREE-HUNDRED
-        FOUR
-        five
-    "}));
 }
 
 #[gpui::test]
@@ -36513,84 +35755,6 @@ async fn test_hide_mouse_context_menu_on_modal_opened(cx: &mut TestAppContext) {
     });
 }
 
-#[gpui::test]
-async fn test_hide_pending_blame_popover_when_modal_opens(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-
-    let fs = FakeFs::new(cx.executor());
-    let project = Project::test(fs, [], cx).await;
-    let window = cx.add_window(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
-    let workspace = window
-        .read_with(cx, |multi_workspace, _| multi_workspace.workspace().clone())
-        .unwrap();
-    let multi_buffer = cx.update(|cx| MultiBuffer::build_simple("Buffer Contents!", cx));
-    let buffer_id = multi_buffer.read_with(cx, |multi_buffer, cx| {
-        multi_buffer
-            .all_buffers_iter()
-            .next()
-            .expect("Should have at least one buffer")
-            .read(cx)
-            .remote_id()
-    });
-    let cx = &mut VisualTestContext::from_window(*window, cx);
-    let editor = cx.new_window_entity(|window, cx| {
-        Editor::new(
-            EditorMode::full(),
-            multi_buffer,
-            Some(project.clone()),
-            window,
-            cx,
-        )
-    });
-
-    workspace.update_in(cx, |workspace, window, cx| {
-        workspace.add_item_to_active_pane(Box::new(editor.clone()), None, true, window, cx);
-    });
-
-    editor.update_in(cx, |editor, _, cx| {
-        editor.blame = Some(
-            cx.new(|cx| GitBlame::new(editor.buffer.clone(), project.clone(), false, true, cx)),
-        );
-        editor.show_blame_popover(
-            buffer_id,
-            &::git::blame::BlameEntry {
-                sha: "1b1b1b".parse().unwrap(),
-                range: 0..1,
-                original_line_number: 0,
-                author: None,
-                author_mail: None,
-                author_time: None,
-                author_tz: None,
-                committer_name: None,
-                committer_email: None,
-                committer_time: None,
-                committer_tz: None,
-                summary: None,
-                previous: None,
-                filename: String::new(),
-                boundary: false,
-            },
-            gpui::point(gpui::px(0.), gpui::px(0.)),
-            false,
-            cx,
-        );
-
-        assert!(editor.inline_blame_popover_show_task.is_some());
-        assert!(editor.inline_blame_popover.is_none());
-    });
-
-    workspace.update_in(cx, |workspace, window, cx| {
-        workspace.toggle_modal(window, cx, |_, cx| EmptyModalView::new(cx));
-    });
-
-    // Toggling a modal while the blame popover task is still pending should
-    // clear both the task and any rendered popover.
-    editor.update_in(cx, |editor, _, _| {
-        assert!(editor.inline_blame_popover.is_none());
-        assert!(editor.inline_blame_popover_show_task.is_none());
-    });
-}
-
 fn set_linked_edit_ranges(
     opening: (Point, Point),
     closing: (Point, Point),
@@ -38436,34 +37600,6 @@ pub(crate) fn init_test(cx: &mut TestAppContext, f: fn(&mut AllLanguageSettingsC
     });
     zlog::init_test();
     update_test_language_settings(cx, &f);
-}
-
-#[track_caller]
-fn assert_hunk_revert(
-    not_reverted_text_with_selections: &str,
-    expected_hunk_statuses_before: Vec<DiffHunkStatusKind>,
-    expected_reverted_text_with_selections: &str,
-    base_text: &str,
-    cx: &mut EditorLspTestContext,
-) {
-    cx.set_state(not_reverted_text_with_selections);
-    cx.set_head_text(base_text);
-    cx.executor().run_until_parked();
-
-    let actual_hunk_statuses_before = cx.update_editor(|editor, window, cx| {
-        let snapshot = editor.snapshot(window, cx);
-        let reverted_hunk_statuses = snapshot
-            .buffer_snapshot()
-            .diff_hunks_in_range(MultiBufferOffset(0)..snapshot.buffer_snapshot().len())
-            .map(|hunk| hunk.status().kind)
-            .collect::<Vec<_>>();
-
-        editor.git_restore(&Default::default(), window, cx);
-        reverted_hunk_statuses
-    });
-    cx.executor().run_until_parked();
-    cx.assert_editor_state(expected_reverted_text_with_selections);
-    assert_eq!(actual_hunk_statuses_before, expected_hunk_statuses_before);
 }
 
 #[gpui::test(iterations = 10)]
@@ -44494,68 +43630,6 @@ comment */ˇ»;"#},
     });
 }
 
-#[gpui::test]
-async fn test_restore_and_next(cx: &mut TestAppContext) {
-    init_test(cx, |_| {});
-    let mut cx = EditorTestContext::new(cx).await;
-
-    let diff_base = r#"
-        one
-        two
-        three
-        four
-        five
-        "#
-    .unindent();
-
-    cx.set_state(
-        &r#"
-        ONE
-        two
-        ˇTHREE
-        four
-        FIVE
-        "#
-        .unindent(),
-    );
-    cx.set_head_text(&diff_base);
-
-    cx.update_editor(|editor, window, cx| {
-        editor.set_expand_all_diff_hunks(cx);
-        editor.restore_and_next(&Default::default(), window, cx);
-    });
-    cx.run_until_parked();
-
-    cx.assert_state_with_diff(
-        r#"
-        - one
-        + ONE
-          two
-          three
-          four
-        - ˇfive
-        + FIVE
-        "#
-        .unindent(),
-    );
-
-    cx.update_editor(|editor, window, cx| {
-        editor.restore_and_next(&Default::default(), window, cx);
-    });
-    cx.run_until_parked();
-
-    cx.assert_state_with_diff(
-        r#"
-        - one
-        + ONE
-          two
-          three
-          four
-          ˇfive
-        "#
-        .unindent(),
-    );
-}
 
 #[gpui::test]
 async fn test_align_selections(cx: &mut TestAppContext) {
@@ -45586,12 +44660,14 @@ async fn setup_range_format_test(
     .await
 }
 
-/// Like `setup_range_format_test`, but backs the buffer with a FakeFs git
-/// repository so that `GitStore::get_unstaged_diff` returns a real diff.
-/// `head_content` sets the HEAD base, `index_content` sets the staged base.
+
+/// Like `setup_range_format_test`, but attaches a base-text diff to the editor's
+/// multi buffer, so that `compute_format_target` can produce a range-based FormatTarget.
+/// `head_content` sets the repository HEAD, `index_content` is the diff's base text
+/// (the unstaged diff is taken against the index).
 /// The buffer starts empty; the caller must `editor.set_text(...)` to set the
 /// working-tree content (the diff recomputes from buffer changes).
-async fn setup_range_format_test_with_git<'a>(
+async fn setup_range_format_test_with_diff<'a>(
     cx: &'a mut TestAppContext,
     head_content: &str,
     index_content: &str,
@@ -45646,17 +44722,13 @@ async fn setup_range_format_test_with_git<'a>(
         .await
         .unwrap();
 
-    // Open the unstaged diff so GitStore tracks this buffer. Without this,
-    // `get_unstaged_diff` returns None and compute_format_target cannot
-    // produce range-based FormatTarget.
-    project
-        .update(cx, |project, cx| {
-            project.open_unstaged_diff(buffer.clone(), cx)
-        })
-        .await
-        .unwrap();
-
-    let buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx));
+    // With git removed from the editor, the only diff source `compute_format_target`
+    // can use is a diff attached to the multi buffer.
+    let buffer = cx.new(|cx| {
+        let mut multibuffer = MultiBuffer::singleton(buffer, cx);
+        attach_base_text_diff(&mut multibuffer, index_content, cx);
+        multibuffer
+    });
     let (editor, cx) = cx.add_window_view(|window, cx| {
         build_editor_with_project(project.clone(), buffer, window, cx)
     });
@@ -45696,7 +44768,7 @@ async fn assert_range_format_merge(
 ) {
     let expected_requests = responses.len();
     let (project, editor, cx, fake_server) =
-        setup_range_format_test_with_git(cx, head_content, head_content).await;
+        setup_range_format_test_with_diff(cx, head_content, head_content).await;
 
     update_test_language_settings(cx, &|settings| {
         settings.defaults.format_on_save = Some(FormatOnSave::Modifications);

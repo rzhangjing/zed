@@ -50,7 +50,7 @@
 
 ### 2.3 file_icons 查询方法
 
-`get`（[:22](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）取全局实例；`get_icon`（[:28](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）按路径匹配文件图标；`get_icon_for_type`（[:97](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）按语法类型；`get_folder_icon`（[:110](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）展开/折叠目录图标；`get_chevron_icon`（[:160](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）箭头；`get_folder_indicators`（[:177](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）Git 状态叠加。
+`get`（[:22](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）取全局实例；`get_icon`（[:28](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）按路径匹配文件图标；`get_icon_for_type`（[:97](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）按语法类型；`get_folder_icon`（[:110](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）展开/折叠目录图标；`get_chevron_icon`（[:160](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）箭头；`get_folder_indicators`（[:177](file:///e:/Rust/zed/crates/file_icons/src/file_icons.rs)）按 `FolderIndicator` 组合目录图标与展开箭头。
 
 ## 3. 核心流程
 

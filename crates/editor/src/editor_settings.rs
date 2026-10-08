@@ -5,7 +5,7 @@ use language::CursorShape;
 use project::project_settings::DiagnosticSeverity;
 pub use settings::{
     CodeLens, CompletionDetailAlignment, CompletionMenuItemKind, CurrentLineHighlight, DelayMs,
-    DiffViewStyle, DisplayIn, DocumentColorsRenderMode, DoubleClickInMultibuffer, GitGutterWidth,
+    DiffViewStyle, DisplayIn, DocumentColorsRenderMode, DoubleClickInMultibuffer,
     GoToDefinitionFallback, GoToDefinitionScrollStrategy, MinimapThumb, MinimapThumbBorder,
     MultiCursorModifier, OpenResultsIn, ScrollBeyondLastLine, ScrollbarDiagnostics,
     SeedQuerySetting, ShowMinimap, SnippetSortOrder,
@@ -71,7 +71,6 @@ pub struct EditorSettings {
     pub completion_menu_item_kind: CompletionMenuItemKind,
     pub diff_view_style: DiffViewStyle,
     pub minimum_split_diff_width: f32,
-    pub file_diff: FileDiffSettings,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -79,13 +78,6 @@ pub struct CursorAnimationSettings {
     pub enabled: bool,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct FileDiffSettings {
-    /// Whether newly opened file diffs show the full file instead of changes only.
-    ///
-    /// Default: true
-    pub show_full_file: bool,
-}
 #[derive(Debug, Clone)]
 pub struct Jupyter {
     /// Whether the Jupyter feature is enabled.
@@ -111,7 +103,6 @@ pub struct Toolbar {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Scrollbar {
     pub show: ShowScrollbar,
-    pub git_diff: bool,
     pub selected_text: bool,
     pub selected_symbol: bool,
     pub search_results: bool,
@@ -156,7 +147,6 @@ pub struct Gutter {
     pub breakpoints: bool,
     pub bookmarks: bool,
     pub folds: bool,
-    pub git_gutter_width: settings::GitGutterWidth,
 }
 
 /// Forcefully enable or disable the scrollbar for each axis
@@ -224,7 +214,6 @@ impl Settings for EditorSettings {
         let search = editor.search.unwrap();
         let drag_and_drop_selection = editor.drag_and_drop_selection.unwrap();
         let sticky_scroll = editor.sticky_scroll.unwrap();
-        let file_diff = content.git.as_ref().unwrap().file_diff.unwrap();
         Self {
             cursor_blink: editor.cursor_blink.unwrap(),
             cursor_shape: editor.cursor_shape.map(Into::into),
@@ -248,14 +237,6 @@ impl Settings for EditorSettings {
             },
             scrollbar: Scrollbar {
                 show: scrollbar.show.map(ui_scrollbar_settings_from_raw).unwrap(),
-                git_diff: scrollbar.git_diff.unwrap()
-                    && content
-                        .git
-                        .as_ref()
-                        .unwrap()
-                        .enabled
-                        .unwrap()
-                        .is_git_diff_enabled(),
                 selected_text: scrollbar.selected_text.unwrap(),
                 selected_symbol: scrollbar.selected_symbol.unwrap(),
                 search_results: scrollbar.search_results.unwrap(),
@@ -281,7 +262,6 @@ impl Settings for EditorSettings {
                 bookmarks: gutter.bookmarks.unwrap(),
                 breakpoints: gutter.breakpoints.unwrap(),
                 folds: gutter.folds.unwrap(),
-                git_gutter_width: gutter.git_gutter_width.unwrap(),
             },
             scroll_beyond_last_line: editor.scroll_beyond_last_line.unwrap(),
             vertical_scroll_margin: editor.vertical_scroll_margin.unwrap() as f64,
@@ -340,9 +320,6 @@ impl Settings for EditorSettings {
             completion_menu_item_kind: editor.completion_menu_item_kind.unwrap(),
             diff_view_style: editor.diff_view_style.unwrap(),
             minimum_split_diff_width: editor.minimum_split_diff_width.unwrap(),
-            file_diff: FileDiffSettings {
-                show_full_file: file_diff.show_full_file.unwrap(),
-            },
         }
     }
 }

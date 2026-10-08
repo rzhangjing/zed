@@ -359,12 +359,6 @@ pub(crate) mod m_2026_05_04 {
     pub(crate) use settings::SETTINGS_PATTERNS;
 }
 
-pub(crate) mod m_2026_08_17 {
-    mod settings;
-
-    pub(crate) use settings::make_git_gutter_width_an_enum;
-}
-
 pub(crate) mod m_2026_08_26 {
     mod settings;
 

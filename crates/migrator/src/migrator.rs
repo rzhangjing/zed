@@ -253,7 +253,6 @@ pub fn migrate_settings(text: &str) -> Result<Option<String>> {
             migrations::m_2026_05_04::SETTINGS_PATTERNS,
             &SETTINGS_QUERY_2026_05_04,
         ),
-        MigrationType::Json(migrations::m_2026_08_17::make_git_gutter_width_an_enum),
         MigrationType::Json(migrations::m_2026_08_26::rename_folder_icons_to_folder_indicator),
         MigrationType::Json(migrations::m_2026_08_30::nest_markdown_preview_settings),
     ];
@@ -5241,64 +5240,6 @@ mod tests {
     }
 
     #[test]
-    fn test_make_git_gutter_width_an_enum_from_number() {
-        assert_migrate_settings(
-            &r#"
-            {
-                "gutter": {
-                    "git_gutter_width": 4.0
-                }
-            }
-            "#
-            .unindent(),
-            Some(
-                &r#"
-                {
-                    "gutter": {
-                        "git_gutter_width": {
-                            "custom": 4.0
-                        }
-                    }
-                }
-                "#
-                .unindent(),
-            ),
-        );
-    }
-
-    #[test]
-    fn test_make_git_gutter_width_an_enum_no_change_when_already_migrated() {
-        // already "default" string — no change
-        assert_migrate_settings(
-            &r#"
-            {
-                "gutter": {
-                    "git_gutter_width": "default"
-                }
-            }
-            "#
-            .unindent(),
-            None,
-        );
-
-        // already custom object — no change
-        assert_migrate_settings(
-            &r#"
-            {
-                "gutter": {
-                    "git_gutter_width": { "custom": 4.0 }
-                }
-            }
-            "#
-            .unindent(),
-            None,
-        );
-
-        // no gutter key — no change
-        assert_migrate_settings(&r#"{ "theme": "One Dark" }"#.unindent(), None);
-    }
-
-    #[test]
     fn test_url_only_context_servers_are_left_alone() {
         assert_migrate_settings(
             indoc! {r#"
@@ -5339,7 +5280,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rename_folder_icons_to_folder_indicator_in_all_panels() {
+    fn test_rename_folder_icons_to_folder_indicator_in_both_panels() {
         assert_migrate_with_migrations(
             &[MigrationType::Json(
                 migrations::m_2026_08_26::rename_folder_icons_to_folder_indicator,
@@ -5351,9 +5292,6 @@ mod tests {
                 },
                 "outline_panel": {
                     "folder_icons": false
-                },
-                "git_panel": {
-                    "folder_icons": true
                 }
             }
             "#
@@ -5366,9 +5304,6 @@ mod tests {
                     },
                     "outline_panel": {
                         "folder_indicator": "chevron"
-                    },
-                    "git_panel": {
-                        "folder_indicator": "icon"
                     }
                 }
                 "#

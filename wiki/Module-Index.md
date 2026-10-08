@@ -5,7 +5,7 @@
 > 📘 **参考手册（Deep Dive）层**：针对最核心的 crate，已提供"逐类型/逐函数"的参考手册页（公开 API 全量 + 内部流程），与下方按族的概览页互补：
 > [Sum-Tree](Sum-Tree-Deep-Dive.md) · [Rope](Rope-Deep-Dive.md) · [Text](Text-Buffer-Deep-Dive.md) · [Multi-Buffer](Multi-Buffer-Deep-Dive.md) · [Editor](Editor-Deep-Dive.md) · [GPUI](GPUI-Deep-Dive.md) · [Language](Language-Deep-Dive.md) · [Project/Worktree](Project-Deep-Dive.md) · [Workspace](Workspace-Deep-Dive.md)
 > 📗 **第二批**：[Terminal](Terminal-Deep-Dive.md) · [Debugger/DAP](Debugger-Deep-Dive.md) · [Agent](Agent-Deep-Dive.md) · [Markdown](Markdown-Deep-Dive.md) · [Collab](Collab-Deep-Dive.md) · [Panels](Panels-Deep-Dive.md)
-> 📙 **第三批**：[Search](Search-Deep-Dive.md) · [Git](Git-Deep-Dive.md) · [Extension](Extension-Deep-Dive.md)
+> 📙 **第三批**：[Search](Search-Deep-Dive.md) · [Extension](Extension-Deep-Dive.md)
 > 📘 **第四批**：[Edit-Prediction](Edit-Prediction-Deep-Dive.md)
 > 🌐 **第五批**：[GPUI-Platform-Backends](GPUI-Platform-Backends-Deep-Dive.md)
 > 📚 **第六批**：[Picker-Family](Picker-Family-Deep-Dive.md) · [Diagnostics](Diagnostics-Deep-Dive.md) · [Settings&Onboarding](Settings-and-Onboarding-Deep-Dive.md)
@@ -117,18 +117,15 @@
 | `prettier` | Prettier 格式化桥 | ⏳ |
 | `language_onboarding` | 语言服务器安装引导 | ⏳ |
 
-## 7. 项目 / 文件 / Git
+## 7. 项目 / 文件
 | Crate | 职责 | 覆盖 |
 |---|---|---|
-| `project` | 项目核心：worktree/buffer/LSP/git/search 汇聚 | ✅ 多页 / **📘[Deep](Project-Deep-Dive.md)** |
+| `project` | 项目核心：worktree/buffer/LSP/search 汇聚 | ✅ 多页 / **📘[Deep](Project-Deep-Dive.md)** |
 | `worktree` | 目录树模型（`Worktree`/`Entry`） | ✅ [Project-Panel-and-FS](Project-Panel-and-FS.md) |
 | `fs` | 文件系统抽象与监听 | ✅ [Project-Panel-and-FS](Project-Panel-and-FS.md) |
 | `file_icons` | 文件类型→图标映射 | 🔧 [Project-Panel-and-FS](Project-Panel-and-FS.md) / **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `project_panel` | 项目树面板 | ✅ [Project-Panel-and-FS](Project-Panel-and-FS.md) / **📘[Deep](Panels-Deep-Dive.md)** |
 | `file_finder` | 模糊文件查找（`cmd-p`） | ✅ [Picker-and-Commands](Picker-and-Commands.md) / **📘[Deep](Picker-Family-Deep-Dive.md)** / **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
-| `git` | `GitRepository`/`Repository`（shell out git） | ✅ [Git-Integration](Git-Integration.md) / **📘[Deep](Git-Deep-Dive.md)** |
-| `git_ui` / `git_ui_core` | Git 面板/blame/冲突解决 UI | ✅ [Git-Integration](Git-Integration.md) / **📘[Deep](Git-Deep-Dive.md)** |
-| `git_hosting_providers` | GitHub/GitLab 远程与 PR 链接 | ✅ [Git-Integration](Git-Integration.md) |
 
 ## 8. 搜索与模糊匹配
 | Crate | 职责 | 覆盖 |

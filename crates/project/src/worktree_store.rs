@@ -25,8 +25,7 @@ use util::{
     rel_path::RelPath,
 };
 use worktree::{
-    CreatedEntry, Entry, ProjectEntryId, UpdatedEntriesSet, UpdatedGitRepositoriesSet, Worktree,
-    WorktreeId,
+    CreatedEntry, Entry, ProjectEntryId, UpdatedEntriesSet, Worktree, WorktreeId,
 };
 
 use crate::{ProjectPath, trusted_worktrees::TrustedWorktrees};
@@ -222,7 +221,6 @@ pub enum WorktreeStoreEvent {
     WorktreeOrderChanged,
     WorktreeUpdateSent(Entity<Worktree>),
     WorktreeUpdatedEntries(WorktreeId, UpdatedEntriesSet),
-    WorktreeUpdatedGitRepositories(WorktreeId, UpdatedGitRepositoriesSet),
     WorktreeDeletedEntry(WorktreeId, ProjectEntryId),
     WorktreeUpdatedRootRepoCommonDir(WorktreeId),
 }
@@ -876,12 +874,6 @@ impl WorktreeStore {
                         changes.clone(),
                     ));
                 }
-                worktree::Event::UpdatedGitRepositories(set) => {
-                    cx.emit(WorktreeStoreEvent::WorktreeUpdatedGitRepositories(
-                        worktree_id,
-                        set.clone(),
-                    ));
-                }
                 worktree::Event::DeletedEntry(id) => {
                     cx.emit(WorktreeStoreEvent::WorktreeDeletedEntry(worktree_id, *id))
                 }
@@ -1367,8 +1359,8 @@ impl WorktreeStore {
                 let folder_path = snapshot.abs_path().to_path_buf();
                 let main_path = snapshot
                     .root_repo_common_dir()
-                    .filter(|dir| !crate::git_store::is_submodule_git_dir(dir))
-                    .map(|dir| crate::git_store::repo_identity_path(dir, snapshot.path_style()))
+                    .filter(|dir| !crate::git_path::is_submodule_git_dir(dir))
+                    .map(|dir| crate::git_path::repo_identity_path(dir, snapshot.path_style()))
                     .filter(|repo_path| {
                         snapshot.root_repo_is_linked_worktree()
                             || *repo_path == folder_path.as_path()

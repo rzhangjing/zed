@@ -22,7 +22,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use util::{path_list::PathList, rel_path::rel_path};
+use util::path_list::PathList;
 
 fn use_unique_metadata_databases(cx: &mut TestAppContext) {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -155,35 +155,21 @@ async fn init_test_project(
 }
 
 #[gpui::test]
-async fn test_workspace_menu_uses_bare_repository_worktree_name(cx: &mut TestAppContext) {
+async fn test_workspace_menu_worktree_labels(cx: &mut TestAppContext) {
     init_test(cx);
     let fs = FakeFs::new(cx.executor());
     fs.insert_tree(
-        "/zed/.bare",
+        "/worktrees/zed",
         serde_json::json!({
-            "worktrees": {
-                "glossy-walrus": {
-                    "commondir": "../..",
-                    "HEAD": "ref: refs/heads/glossy-walrus",
-                },
-            },
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/worktrees/zed/glossy-walrus/zed",
-        serde_json::json!({
-            ".git": "gitdir: /zed/.bare/worktrees/glossy-walrus",
             "src": {},
         }),
     )
     .await;
     cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
 
-    let project =
-        project::Project::test(fs, [Path::new("/worktrees/zed/glossy-walrus/zed")], cx).await;
+    let project = project::Project::test(fs, [Path::new("/worktrees/zed")], cx).await;
     project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -194,7 +180,7 @@ async fn test_workspace_menu_uses_bare_repository_worktree_name(cx: &mut TestApp
     let labels = cx.update(|_window, cx| workspace_menu_worktree_labels(&workspace, cx));
 
     assert_eq!(labels.len(), 1);
-    assert_eq!(labels[0].primary_name.as_ref(), "glossy-walrus");
+    assert_eq!(labels[0].primary_name.as_ref(), "zed");
     assert_eq!(labels[0].secondary_name, None);
 }
 
@@ -1940,7 +1926,7 @@ async fn test_agent_panel_terminal_shows_project_and_linked_worktree(cx: &mut Te
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -1955,10 +1941,10 @@ async fn test_agent_panel_terminal_shows_project_and_linked_worktree(cx: &mut Te
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
 
     main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -1989,204 +1975,6 @@ async fn test_agent_panel_terminal_shows_project_and_linked_worktree(cx: &mut Te
 }
 
 #[gpui::test]
-async fn test_terminal_close_event_on_archived_linked_worktree_removes_workspace(
-    cx: &mut TestAppContext,
-) {
-    init_test(cx);
-
-    let fs = FakeFs::new(cx.executor());
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "aaa".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(
-        fs.clone(),
-        ["/worktrees/project/feature-a/project".as_ref()],
-        cx,
-    )
-    .await;
-
-    main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-    let worktree_workspace = multi_workspace.update_in(cx, |multi_workspace, window, cx| {
-        multi_workspace.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-    let worktree_panel = add_agent_panel(&worktree_workspace, cx);
-    let worktree_folder_paths =
-        PathList::new(&[PathBuf::from("/worktrees/project/feature-a/project")]);
-
-    let archived_session_id = acp::SessionId::new(Arc::from("archived-wt-thread"));
-    save_thread_metadata(
-        archived_session_id.clone(),
-        Some("Archived Worktree Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &worktree_project,
-        cx,
-    );
-    let archived_thread_id = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry_by_session(&archived_session_id)
-            .expect("archived thread metadata should exist")
-            .thread_id
-    });
-    cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx).update(cx, |store, cx| {
-            store.archive(archived_thread_id, None, cx);
-        });
-    });
-    save_thread_metadata(
-        acp::SessionId::new(Arc::from("main-thread")),
-        Some("Main Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &main_project,
-        cx,
-    );
-    let empty_draft_id = save_draft_metadata_with_main_paths(
-        None,
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 3, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.update(|_, cx| {
-        assert!(
-            agent_ui::draft_prompt_store::read(empty_draft_id, cx).is_none(),
-            "empty draft should not have persisted prompt content"
-        );
-    });
-
-    let terminal_id = worktree_panel
-        .update_in(cx, |panel, window, cx| {
-            panel.insert_test_terminal("Dev Server", true, window, cx)
-        })
-        .expect("test terminal should be inserted");
-    cx.run_until_parked();
-
-    assert_eq!(
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace
-            .workspaces()
-            .count()),
-        2,
-        "should start with main and linked worktree workspaces"
-    );
-    let entries_before = visible_entries_as_strings(&sidebar, cx);
-    assert!(
-        entries_before
-            .iter()
-            .any(|entry| entry.contains("Dev Server") && entry.contains('{')),
-        "expected linked worktree terminal before closing, got: {entries_before:?}"
-    );
-
-    worktree_panel.update(cx, |panel, cx| {
-        panel.emit_test_terminal_close(terminal_id, cx);
-    });
-    for _ in 0..4 {
-        cx.run_until_parked();
-    }
-
-    let terminal_metadata_deleted = cx.update(|_, cx| {
-        TerminalThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(terminal_id)
-            .is_none()
-    });
-    assert!(
-        terminal_metadata_deleted,
-        "terminal metadata should be deleted after close"
-    );
-    let empty_draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(empty_draft_id)
-            .is_none()
-    });
-    assert!(
-        empty_draft_metadata_deleted,
-        "empty draft metadata should be deleted before archiving the linked worktree"
-    );
-    let unarchived_worktree_threads = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entries_for_path(&worktree_folder_paths)
-            .count()
-    });
-    assert_eq!(
-        unarchived_worktree_threads, 0,
-        "closing the terminal must not create a fallback draft for the removed worktree"
-    );
-    assert_eq!(
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace
-            .workspaces()
-            .count()),
-        1,
-        "linked worktree workspace should be removed after closing its last terminal"
-    );
-    let entries_after = visible_entries_as_strings(&sidebar, cx);
-    assert!(
-        !entries_after.iter().any(|entry| entry.contains('{')),
-        "no sidebar entry should reference the archived worktree, got: {entries_after:?}"
-    );
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk after closing its last terminal"
-    );
-}
-
-#[gpui::test]
 async fn test_terminal_close_event_deletes_empty_draft_when_linked_worktree_has_no_archive_root(
     cx: &mut TestAppContext,
 ) {
@@ -2206,7 +1994,7 @@ async fn test_terminal_close_event_deletes_empty_draft_when_linked_worktree_has_
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/external-worktree"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -2222,10 +2010,10 @@ async fn test_terminal_close_event_deletes_empty_draft_when_linked_worktree_has_
         project::Project::test(fs.clone(), ["/external-worktree".as_ref()], cx).await;
 
     main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -2326,7 +2114,7 @@ async fn test_terminal_close_event_keeps_linked_worktree_workspace_with_live_edi
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/worktrees/project/feature-a/project"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -2346,10 +2134,10 @@ async fn test_terminal_close_event_keeps_linked_worktree_workspace_with_live_edi
     .await;
 
     main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -2477,390 +2265,6 @@ async fn test_terminal_close_event_keeps_linked_worktree_workspace_with_live_edi
         fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
             .await,
         "linked worktree directory should remain on disk while an edited draft references it"
-    );
-}
-
-#[gpui::test]
-async fn test_archive_selected_draft_archives_linked_worktree_after_last_draft(
-    cx: &mut TestAppContext,
-) {
-    init_test(cx);
-
-    let fs = FakeFs::new(cx.executor());
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "aaa".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(
-        fs.clone(),
-        ["/worktrees/project/feature-a/project".as_ref()],
-        cx,
-    )
-    .await;
-
-    main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-    let worktree_workspace = multi_workspace.update_in(cx, |multi_workspace, window, cx| {
-        multi_workspace.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-    add_agent_panel(&worktree_workspace, cx);
-
-    save_thread_metadata(
-        acp::SessionId::new(Arc::from("main-thread")),
-        Some("Main Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &main_project,
-        cx,
-    );
-
-    let worktree_folder_paths =
-        PathList::new(&[PathBuf::from("/worktrees/project/feature-a/project")]);
-    let first_draft_id = save_draft_metadata_with_main_paths(
-        Some("First Draft".into()),
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 3, 0, 0, 0).unwrap(),
-        cx,
-    );
-    let second_draft_id = save_draft_metadata_with_main_paths(
-        Some("Second Draft".into()),
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 4, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.update(|_, cx| {
-        agent_ui::draft_prompt_store::write(
-            first_draft_id,
-            &[acp::ContentBlock::Text(acp::TextContent::new(
-                "first draft",
-            ))],
-            cx,
-        )
-    })
-    .await
-    .expect("first draft prompt should persist");
-    cx.update(|_, cx| {
-        agent_ui::draft_prompt_store::write(
-            second_draft_id,
-            &[acp::ContentBlock::Text(acp::TextContent::new(
-                "second draft",
-            ))],
-            cx,
-        )
-    })
-    .await
-    .expect("second draft prompt should persist");
-    sidebar.update(cx, |sidebar, cx| sidebar.update_entries(cx));
-    cx.run_until_parked();
-
-    let first_draft_index = sidebar.read_with(cx, |sidebar, _cx| {
-        sidebar
-            .contents
-            .entries
-            .iter()
-            .position(|entry| {
-                matches!(
-                    entry,
-                    ListEntry::Thread(thread) if thread.metadata.thread_id == first_draft_id
-                )
-            })
-            .expect("first draft should be visible in sidebar")
-    });
-    focus_sidebar(&sidebar, cx);
-    sidebar.update_in(cx, |sidebar, _window, _cx| {
-        sidebar.selection = Some(first_draft_index);
-    });
-    cx.dispatch_action(ArchiveSelectedThread);
-    for _ in 0..4 {
-        cx.run_until_parked();
-    }
-
-    let first_draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(first_draft_id)
-            .is_none()
-    });
-    assert!(
-        first_draft_metadata_deleted,
-        "first discarded draft metadata should be deleted"
-    );
-    let second_draft_metadata_kept = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(second_draft_id)
-            .is_some()
-    });
-    assert!(
-        second_draft_metadata_kept,
-        "remaining contentful draft should still block worktree archival"
-    );
-    assert!(
-        multi_workspace
-            .read_with(cx, |multi_workspace, cx| {
-                multi_workspace.workspace_for_paths(&worktree_folder_paths, cx)
-            })
-            .is_some(),
-        "linked worktree workspace should remain while another draft references it"
-    );
-    assert!(
-        fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should remain while another draft references it"
-    );
-
-    let second_draft_index = sidebar.read_with(cx, |sidebar, _cx| {
-        sidebar
-            .contents
-            .entries
-            .iter()
-            .position(|entry| {
-                matches!(
-                    entry,
-                    ListEntry::Thread(thread) if thread.metadata.thread_id == second_draft_id
-                )
-            })
-            .expect("second draft should be visible in sidebar")
-    });
-    sidebar.update_in(cx, |sidebar, _window, _cx| {
-        sidebar.selection = Some(second_draft_index);
-    });
-    cx.dispatch_action(ArchiveSelectedThread);
-    for _ in 0..8 {
-        cx.run_until_parked();
-    }
-
-    let second_draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(second_draft_id)
-            .is_none()
-    });
-    assert!(
-        second_draft_metadata_deleted,
-        "last discarded draft metadata should be deleted"
-    );
-    assert!(
-        multi_workspace
-            .read_with(cx, |multi_workspace, cx| {
-                multi_workspace.workspace_for_paths(&worktree_folder_paths, cx)
-            })
-            .is_none(),
-        "linked worktree workspace should be removed after closing its last draft"
-    );
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk after closing its last draft"
-    );
-}
-
-#[gpui::test]
-async fn test_archive_selected_draft_archives_closed_linked_worktree(cx: &mut TestAppContext) {
-    init_test(cx);
-
-    let fs = FakeFs::new(cx.executor());
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "aaa".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-
-    save_thread_metadata(
-        acp::SessionId::new(Arc::from("main-thread")),
-        Some("Main Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &main_project,
-        cx,
-    );
-
-    let worktree_folder_paths =
-        PathList::new(&[PathBuf::from("/worktrees/project/feature-a/project")]);
-    let draft_id = save_draft_metadata_with_main_paths(
-        Some("Closed Worktree Draft".into()),
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 3, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.update(|_, cx| {
-        agent_ui::draft_prompt_store::write(
-            draft_id,
-            &[acp::ContentBlock::Text(acp::TextContent::new(
-                "closed draft",
-            ))],
-            cx,
-        )
-    })
-    .await
-    .expect("draft prompt should persist");
-    sidebar.update(cx, |sidebar, cx| sidebar.update_entries(cx));
-    cx.run_until_parked();
-
-    let draft_index = sidebar.read_with(cx, |sidebar, _cx| {
-        sidebar
-            .contents
-            .entries
-            .iter()
-            .position(|entry| {
-                matches!(
-                    entry,
-                    ListEntry::Thread(thread) if thread.metadata.thread_id == draft_id
-                )
-            })
-            .expect("closed worktree draft should be visible in sidebar")
-    });
-    sidebar.read_with(cx, |sidebar, _cx| {
-        match &sidebar.contents.entries[draft_index] {
-            ListEntry::Thread(thread) => match &thread.workspace {
-                ThreadEntryWorkspace::Closed { folder_paths, .. } => {
-                    assert_eq!(folder_paths, &worktree_folder_paths);
-                }
-                ThreadEntryWorkspace::Open(_) => {
-                    panic!("linked worktree draft should start closed")
-                }
-            },
-            _ => panic!("expected draft row"),
-        }
-    });
-
-    focus_sidebar(&sidebar, cx);
-    sidebar.update_in(cx, |sidebar, _window, _cx| {
-        sidebar.selection = Some(draft_index);
-    });
-    cx.dispatch_action(ArchiveSelectedThread);
-    for _ in 0..8 {
-        cx.run_until_parked();
-    }
-
-    let draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(draft_id)
-            .is_none()
-    });
-    assert!(
-        draft_metadata_deleted,
-        "discarded closed worktree draft metadata should be deleted"
-    );
-    assert!(
-        multi_workspace
-            .read_with(cx, |multi_workspace, cx| {
-                multi_workspace.workspace_for_paths(&worktree_folder_paths, cx)
-            })
-            .is_none(),
-        "temporary linked worktree workspace should be removed after discarding its last draft"
-    );
-    assert_eq!(
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace
-            .workspaces()
-            .count()),
-        1,
-        "discarding a closed linked worktree draft should leave only the main workspace"
-    );
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk after discarding its last draft"
     );
 }
 
@@ -3185,7 +2589,7 @@ async fn test_thread_switcher_preserves_closed_terminal_linked_worktree_workspac
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/worktrees/project/feature-a/project"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -3198,7 +2602,7 @@ async fn test_thread_switcher_preserves_closed_terminal_linked_worktree_workspac
 
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -3296,346 +2700,6 @@ async fn test_thread_switcher_preserves_closed_terminal_linked_worktree_workspac
 }
 
 #[gpui::test]
-async fn test_archive_selected_terminal_archives_closed_linked_worktree(cx: &mut TestAppContext) {
-    init_test(cx);
-
-    let fs = FakeFs::new(cx.executor());
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "aaa".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let (sidebar, panel) = setup_sidebar_with_agent_panel(&multi_workspace, cx);
-
-    let terminal_id = panel
-        .update_in(cx, |panel, window, cx| {
-            panel.insert_test_terminal("Feature Terminal", true, window, cx)
-        })
-        .expect("test terminal should be inserted");
-    panel.update_in(cx, |panel, window, cx| {
-        panel.close_terminal(terminal_id, window, cx);
-    });
-    let worktree_folder_paths =
-        PathList::new(&[PathBuf::from("/worktrees/project/feature-a/project")]);
-    let metadata = TerminalThreadMetadata {
-        terminal_id,
-        title: "Feature Terminal".into(),
-        custom_title: None,
-        created_at: chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        worktree_paths: WorktreePaths::from_path_lists(
-            PathList::new(&[PathBuf::from("/project")]),
-            worktree_folder_paths.clone(),
-        )
-        .unwrap(),
-        working_directory: None,
-    };
-    cx.update(|_, cx| {
-        TerminalThreadMetadataStore::global(cx).update(cx, |store, cx| {
-            store.save(metadata, cx);
-        });
-    });
-    let empty_draft_id = save_draft_metadata_with_main_paths(
-        None,
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.update(|_, cx| {
-        assert!(
-            agent_ui::draft_prompt_store::read(empty_draft_id, cx).is_none(),
-            "empty draft should not have persisted prompt content"
-        );
-    });
-    sidebar.update(cx, |sidebar, cx| sidebar.update_entries(cx));
-    cx.run_until_parked();
-
-    let terminal_index = sidebar.read_with(cx, |sidebar, _cx| {
-        sidebar
-            .contents
-            .entries
-            .iter()
-            .position(|entry| matches!(entry, ListEntry::Terminal(terminal) if terminal.metadata.terminal_id == terminal_id))
-            .expect("terminal should be visible in sidebar")
-    });
-    sidebar.read_with(cx, |sidebar, _cx| {
-        match &sidebar.contents.entries[terminal_index] {
-            ListEntry::Terminal(terminal) => match &terminal.workspace {
-                ThreadEntryWorkspace::Closed { folder_paths, .. } => {
-                    assert_eq!(folder_paths, &worktree_folder_paths);
-                }
-                ThreadEntryWorkspace::Open(_) => {
-                    panic!("linked worktree terminal should start closed")
-                }
-            },
-            _ => panic!("expected terminal row"),
-        }
-    });
-
-    focus_sidebar(&sidebar, cx);
-    sidebar.update_in(cx, |sidebar, _window, _cx| {
-        sidebar.selection = Some(terminal_index);
-    });
-    cx.dispatch_action(ArchiveSelectedThread);
-    for _ in 0..8 {
-        cx.run_until_parked();
-    }
-
-    let terminal_metadata_deleted = cx.update(|_, cx| {
-        TerminalThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(terminal_id)
-            .is_none()
-    });
-    assert!(
-        terminal_metadata_deleted,
-        "terminal metadata should be deleted after closing from the sidebar"
-    );
-    let empty_draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(empty_draft_id)
-            .is_none()
-    });
-    assert!(
-        empty_draft_metadata_deleted,
-        "empty draft metadata should be deleted before archiving the linked worktree"
-    );
-    assert!(
-        multi_workspace
-            .read_with(cx, |multi_workspace, cx| {
-                multi_workspace.workspace_for_paths(&worktree_folder_paths, cx)
-            })
-            .is_none(),
-        "temporary linked worktree workspace should be removed after archiving"
-    );
-    assert_eq!(
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace
-            .workspaces()
-            .count()),
-        1,
-        "closing a closed linked worktree terminal should leave only the main workspace"
-    );
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk after closing its terminal"
-    );
-}
-
-#[gpui::test]
-async fn test_archive_selected_thread_archives_closed_linked_worktree(cx: &mut TestAppContext) {
-    init_test(cx);
-
-    let fs = FakeFs::new(cx.executor());
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "aaa".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-
-    let worktree_session_id = acp::SessionId::new(Arc::from("worktree-thread"));
-    let worktree_folder_paths =
-        PathList::new(&[PathBuf::from("/worktrees/project/feature-a/project")]);
-    save_thread_metadata_with_main_paths(
-        "worktree-thread",
-        "Worktree Thread",
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        cx,
-    );
-    save_thread_metadata(
-        acp::SessionId::new(Arc::from("main-thread")),
-        Some("Main Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &main_project,
-        cx,
-    );
-    let empty_draft_id = save_draft_metadata_with_main_paths(
-        None,
-        worktree_folder_paths.clone(),
-        PathList::new(&[PathBuf::from("/project")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 3, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.update(|_, cx| {
-        assert!(
-            agent_ui::draft_prompt_store::read(empty_draft_id, cx).is_none(),
-            "empty draft should not have persisted prompt content"
-        );
-    });
-    sidebar.update(cx, |sidebar, cx| sidebar.update_entries(cx));
-    cx.run_until_parked();
-
-    let thread_index = sidebar.read_with(cx, |sidebar, _cx| {
-        sidebar
-            .contents
-            .entries
-            .iter()
-            .position(|entry| matches!(entry, ListEntry::Thread(thread) if thread.metadata.session_id.as_ref() == Some(&worktree_session_id)))
-            .expect("worktree thread should be visible in sidebar")
-    });
-    sidebar.read_with(cx, |sidebar, _cx| {
-        match &sidebar.contents.entries[thread_index] {
-            ListEntry::Thread(thread) => match &thread.workspace {
-                ThreadEntryWorkspace::Closed { folder_paths, .. } => {
-                    assert_eq!(folder_paths, &worktree_folder_paths);
-                }
-                ThreadEntryWorkspace::Open(_) => {
-                    panic!("linked worktree thread should start closed")
-                }
-            },
-            _ => panic!("expected thread row"),
-        }
-    });
-
-    focus_sidebar(&sidebar, cx);
-    sidebar.update_in(cx, |sidebar, _window, _cx| {
-        sidebar.selection = Some(thread_index);
-    });
-    cx.dispatch_action(ArchiveSelectedThread);
-    for _ in 0..8 {
-        cx.run_until_parked();
-    }
-
-    let thread_archived = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry_by_session(&worktree_session_id)
-            .map(|thread| thread.archived)
-    });
-    assert_eq!(
-        thread_archived,
-        Some(true),
-        "thread metadata should remain archived after worktree archival"
-    );
-    let empty_draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(empty_draft_id)
-            .is_none()
-    });
-    assert!(
-        empty_draft_metadata_deleted,
-        "empty draft metadata should be deleted before archiving the linked worktree"
-    );
-    assert!(
-        multi_workspace
-            .read_with(cx, |multi_workspace, cx| {
-                multi_workspace.workspace_for_paths(&worktree_folder_paths, cx)
-            })
-            .is_none(),
-        "temporary linked worktree workspace should be removed after archiving"
-    );
-    assert_eq!(
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace
-            .workspaces()
-            .count()),
-        1,
-        "archiving a closed linked worktree thread should leave only the main workspace"
-    );
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk after archiving its thread"
-    );
-}
-
-#[gpui::test]
 async fn test_archive_selected_thread_deletes_empty_draft_when_linked_worktree_has_no_archive_root(
     cx: &mut TestAppContext,
 ) {
@@ -3655,7 +2719,7 @@ async fn test_archive_selected_thread_deletes_empty_draft_when_linked_worktree_h
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/external-worktree"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -3668,7 +2732,7 @@ async fn test_archive_selected_thread_deletes_empty_draft_when_linked_worktree_h
 
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     main_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -6027,7 +5091,7 @@ async fn test_cmd_n_shows_new_thread_entry_in_absorbed_worktree(cx: &mut TestApp
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -6043,10 +5107,10 @@ async fn test_cmd_n_shows_new_thread_entry_in_absorbed_worktree(cx: &mut TestApp
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -6157,7 +5221,7 @@ async fn test_only_actively_viewed_empty_draft_is_visible_in_sidebar(cx: &mut Te
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -6171,10 +5235,10 @@ async fn test_only_actively_viewed_empty_draft_is_visible_in_sidebar(cx: &mut Te
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -6338,7 +5402,7 @@ async fn test_search_matches_worktree_name(cx: &mut TestAppContext) {
         .add_linked_worktree_for_repo(
             Path::new("/project/.git"),
             false,
-            git::repository::Worktree {
+            fs::Worktree {
                 path: std::path::PathBuf::from("/wt/rosewood"),
                 ref_name: Some("refs/heads/rosewood".into()),
                 sha: "abc".into(),
@@ -6349,12 +5413,12 @@ async fn test_search_matches_worktree_name(cx: &mut TestAppContext) {
         .await;
 
     project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let worktree_project = project::Project::test(fs.clone(), ["/wt/rosewood".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -6385,12 +5449,12 @@ async fn test_git_worktree_added_live_updates_sidebar(cx: &mut TestAppContext) {
     let (project, fs) = init_test_project_with_git("/project", cx).await;
 
     project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
+        .update(cx, |project, cx| project.wait_for_initial_scan(cx))
         .await;
 
     let worktree_project = project::Project::test(fs.clone(), ["/wt/rosewood".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -6423,7 +5487,7 @@ async fn test_git_worktree_added_live_updates_sidebar(cx: &mut TestAppContext) {
         .add_linked_worktree_for_repo(
             Path::new("/project/.git"),
             true,
-            git::repository::Worktree {
+            fs::Worktree {
                 path: std::path::PathBuf::from("/wt/rosewood"),
                 ref_name: Some("refs/heads/rosewood".into()),
                 sha: "abc".into(),
@@ -6465,7 +5529,7 @@ async fn test_two_worktree_workspaces_absorbed_when_main_added(cx: &mut TestAppC
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -6477,7 +5541,7 @@ async fn test_two_worktree_workspaces_absorbed_when_main_added(cx: &mut TestAppC
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-b"),
             ref_name: Some("refs/heads/feature-b".into()),
             sha: "bbb".into(),
@@ -6492,8 +5556,8 @@ async fn test_two_worktree_workspaces_absorbed_when_main_added(cx: &mut TestAppC
     let project_a = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     let project_b = project::Project::test(fs.clone(), ["/wt-feature-b".as_ref()], cx).await;
 
-    project_a.update(cx, |p, cx| p.git_scans_complete(cx)).await;
-    project_b.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project_a.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
+    project_b.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     // Open both worktrees as workspaces — no main repo yet.
     let (multi_workspace, cx) =
@@ -6538,7 +5602,7 @@ async fn test_two_worktree_workspaces_absorbed_when_main_added(cx: &mut TestAppC
 
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     multi_workspace.update_in(cx, |mw, window, cx| {
@@ -6579,7 +5643,7 @@ async fn test_threadless_workspace_shows_new_thread_with_worktree_chip(cx: &mut 
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -6591,7 +5655,7 @@ async fn test_threadless_workspace_shows_new_thread_with_worktree_chip(cx: &mut 
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-b"),
             ref_name: Some("refs/heads/feature-b".into()),
             sha: "bbb".into(),
@@ -6605,11 +5669,11 @@ async fn test_threadless_workspace_shows_new_thread_with_worktree_chip(cx: &mut 
 
     // Workspace A: worktree feature-a (has threads).
     let project_a = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
-    project_a.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project_a.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     // Workspace B: worktree feature-b (no threads).
     let project_b = project::Project::test(fs.clone(), ["/wt-feature-b".as_ref()], cx).await;
-    project_b.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project_b.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project_a.clone(), window, cx));
@@ -6664,7 +5728,7 @@ async fn test_multi_worktree_thread_shows_multiple_chips(cx: &mut TestAppContext
             fs.add_linked_worktree_for_repo(
                 Path::new(&git_path),
                 false,
-                git::repository::Worktree {
+                fs::Worktree {
                     path: std::path::PathBuf::from(format!("/worktrees/{repo}/{branch}/{repo}")),
                     ref_name: Some(format!("refs/heads/{branch}").into()),
                     sha: "aaa".into(),
@@ -6689,7 +5753,7 @@ async fn test_multi_worktree_thread_shows_multiple_chips(cx: &mut TestAppContext
         cx,
     )
     .await;
-    project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -6742,7 +5806,7 @@ async fn test_same_named_worktree_chips_are_deduplicated(cx: &mut TestAppContext
         fs.add_linked_worktree_for_repo(
             Path::new(&git_path),
             false,
-            git::repository::Worktree {
+            fs::Worktree {
                 path: std::path::PathBuf::from(format!("/worktrees/{repo}/olivetti/{repo}")),
                 ref_name: Some("refs/heads/olivetti".into()),
                 sha: "aaa".into(),
@@ -6764,7 +5828,7 @@ async fn test_same_named_worktree_chips_are_deduplicated(cx: &mut TestAppContext
         cx,
     )
     .await;
-    project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -6816,7 +5880,7 @@ async fn test_absorbed_worktree_running_thread_shows_live_status(cx: &mut TestAp
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -6832,10 +5896,10 @@ async fn test_absorbed_worktree_running_thread_shows_live_status(cx: &mut TestAp
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     // Create the MultiWorkspace with both projects.
@@ -6913,7 +5977,7 @@ async fn test_absorbed_worktree_completion_triggers_notification(cx: &mut TestAp
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -6929,10 +5993,10 @@ async fn test_absorbed_worktree_completion_triggers_notification(cx: &mut TestAp
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -6998,7 +6062,7 @@ async fn test_clicking_worktree_thread_opens_workspace_when_none_exists(cx: &mut
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -7013,12 +6077,12 @@ async fn test_clicking_worktree_thread_opens_workspace_when_none_exists(cx: &mut
     // Only open the main repo — no workspace for the worktree.
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -7095,7 +6159,7 @@ async fn test_clicking_worktree_thread_does_not_briefly_render_as_separate_proje
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -7109,12 +6173,12 @@ async fn test_clicking_worktree_thread_does_not_briefly_render_as_separate_proje
 
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -7243,7 +6307,7 @@ async fn test_clicking_absorbed_worktree_thread_activates_worktree_workspace(
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -7259,10 +6323,10 @@ async fn test_clicking_absorbed_worktree_thread_activates_worktree_workspace(
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -7413,7 +6477,7 @@ async fn test_sidebar_keeps_multi_root_thread_with_stale_main_paths(cx: &mut Tes
     fs.add_linked_worktree_for_repo(
         Path::new("/zed/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/worktrees/zed/wt_a/zed"),
             ref_name: Some("refs/heads/wt_a".into()),
             sha: "aaa".into(),
@@ -7433,7 +6497,7 @@ async fn test_sidebar_keeps_multi_root_thread_with_stale_main_paths(cx: &mut Tes
         cx,
     )
     .await;
-    project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -8043,7 +7107,7 @@ async fn test_archive_thread_uses_next_threads_own_workspace(cx: &mut TestAppCon
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -8059,10 +7123,10 @@ async fn test_archive_thread_uses_next_threads_own_workspace(cx: &mut TestAppCon
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -8176,498 +7240,6 @@ async fn test_archive_thread_uses_next_threads_own_workspace(cx: &mut TestAppCon
 }
 
 #[gpui::test]
-async fn test_archive_last_worktree_thread_removes_workspace(cx: &mut TestAppContext) {
-    // When the last non-archived thread for a linked worktree is archived,
-    // the linked worktree workspace should be removed from the multi-workspace.
-    // The main worktree workspace should remain (it's always reachable via
-    // the project header).
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "abc".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(
-        fs.clone(),
-        ["/worktrees/project/feature-a/project".as_ref()],
-        cx,
-    )
-    .await;
-
-    main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-    let main_workspace = multi_workspace.read_with(cx, |mw, _| mw.workspace().clone());
-
-    let _worktree_workspace = multi_workspace.update_in(cx, |mw, window, cx| {
-        mw.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-
-    // Save a thread for the main project.
-    save_thread_metadata(
-        acp::SessionId::new(Arc::from("main-thread")),
-        Some("Main Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &main_project,
-        cx,
-    );
-
-    // Save a thread for the linked worktree.
-    let wt_thread_id = acp::SessionId::new(Arc::from("worktree-thread"));
-    save_thread_metadata(
-        wt_thread_id.clone(),
-        Some("Worktree Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &worktree_project,
-        cx,
-    );
-    cx.run_until_parked();
-
-    multi_workspace.update_in(cx, |_, _window, cx| cx.notify());
-    cx.run_until_parked();
-
-    // Should have 2 workspaces.
-    assert_eq!(
-        multi_workspace.read_with(cx, |mw, _| mw.workspaces().count()),
-        2,
-        "should start with 2 workspaces (main + linked worktree)"
-    );
-
-    // Archive the worktree thread (the only thread for /wt-feature-a).
-    sidebar.update_in(cx, |sidebar: &mut Sidebar, window, cx| {
-        sidebar.archive_thread(&wt_thread_id, window, cx);
-    });
-
-    // archive_thread spawns a multi-layered chain of tasks (workspace
-    // removal → git persist → disk removal), each of which may spawn
-    // further background work. Each run_until_parked() call drives one
-    // layer of pending work.
-
-    cx.run_until_parked();
-
-    // The linked worktree workspace should have been removed.
-    assert_eq!(
-        multi_workspace.read_with(cx, |mw, _| mw.workspaces().count()),
-        1,
-        "linked worktree workspace should be removed after archiving its last thread"
-    );
-
-    multi_workspace.read_with(cx, |mw, _| {
-        assert_eq!(
-            mw.workspace(),
-            &main_workspace,
-            "archiving the worktree's last thread should activate the main project"
-        );
-    });
-
-    // The linked worktree checkout directory should also be removed from disk.
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk after archiving its last thread"
-    );
-
-    // The main thread should still be visible.
-    let entries = visible_entries_as_strings(&sidebar, cx);
-    assert!(
-        entries.iter().any(|e| e.contains("Main Thread")),
-        "main thread should still be visible: {entries:?}"
-    );
-    assert!(
-        !entries.iter().any(|e| e.contains("Worktree Thread")),
-        "archived worktree thread should not be visible: {entries:?}"
-    );
-
-    // The archived thread must retain its folder_paths so it can be
-    // restored to the correct workspace later.
-    let wt_thread_id = cx.update(|_window, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry_by_session(&wt_thread_id)
-            .unwrap()
-            .thread_id
-    });
-    let archived_paths = cx.update(|_window, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(wt_thread_id)
-            .unwrap()
-            .folder_paths()
-            .clone()
-    });
-    assert_eq!(
-        archived_paths.paths(),
-        &[PathBuf::from("/worktrees/project/feature-a/project")],
-        "archived thread must retain its folder_paths for restore"
-    );
-}
-
-#[gpui::test]
-async fn test_restore_worktree_when_branch_has_moved(cx: &mut TestAppContext) {
-    // restore_worktree_via_git should succeed when the branch has moved
-    // to a different SHA since archival. The worktree stays in detached
-    // HEAD and the moved branch is left untouched.
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/wt-feature-a",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/wt-feature-a"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "original-sha".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
-    main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, _cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    multi_workspace.update_in(_cx, |mw, window, cx| {
-        mw.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-
-    let wt_repo = worktree_project.read_with(cx, |project, cx| {
-        project.repositories(cx).values().next().unwrap().clone()
-    });
-    let (staged_hash, unstaged_hash) = cx
-        .update(|cx| wt_repo.update(cx, |repo, _| repo.create_archive_checkpoint()))
-        .await
-        .unwrap()
-        .unwrap();
-
-    // Move the branch to a different SHA.
-    fs.with_git_state(Path::new("/project/.git"), false, |state| {
-        state
-            .refs
-            .insert("refs/heads/feature-a".into(), "moved-sha".into());
-    })
-    .unwrap();
-
-    let result = cx
-        .spawn(|mut cx| async move {
-            agent_ui::thread_worktree_archive::restore_worktree_via_git(
-                &agent_ui::thread_metadata_store::ArchivedGitWorktree {
-                    id: 1,
-                    worktree_path: PathBuf::from("/wt-feature-a"),
-                    main_repo_path: PathBuf::from("/project"),
-                    branch_name: Some("feature-a".to_string()),
-                    staged_commit_hash: staged_hash,
-                    unstaged_commit_hash: unstaged_hash,
-                    original_commit_hash: "original-sha".to_string(),
-                },
-                &mut cx,
-            )
-            .await
-        })
-        .await;
-
-    assert!(
-        result.is_ok(),
-        "restore should succeed even when branch has moved: {:?}",
-        result.err()
-    );
-
-    // The moved branch ref should be completely untouched.
-    let branch_sha = fs
-        .with_git_state(Path::new("/project/.git"), false, |state| {
-            state.refs.get("refs/heads/feature-a").cloned()
-        })
-        .unwrap();
-    assert_eq!(
-        branch_sha.as_deref(),
-        Some("moved-sha"),
-        "the moved branch ref should not be modified by the restore"
-    );
-}
-
-#[gpui::test]
-async fn test_restore_worktree_when_branch_has_not_moved(cx: &mut TestAppContext) {
-    // restore_worktree_via_git should succeed when the branch still
-    // points at the same SHA as at archive time.
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-b": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-b",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/wt-feature-b",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-b",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/wt-feature-b"),
-            ref_name: Some("refs/heads/feature-b".into()),
-            sha: "original-sha".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-b".as_ref()], cx).await;
-    main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, _cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    multi_workspace.update_in(_cx, |mw, window, cx| {
-        mw.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-
-    let wt_repo = worktree_project.read_with(cx, |project, cx| {
-        project.repositories(cx).values().next().unwrap().clone()
-    });
-    let (staged_hash, unstaged_hash) = cx
-        .update(|cx| wt_repo.update(cx, |repo, _| repo.create_archive_checkpoint()))
-        .await
-        .unwrap()
-        .unwrap();
-
-    // refs/heads/feature-b already points at "original-sha" (set by
-    // add_linked_worktree_for_repo), matching original_commit_hash.
-
-    let result = cx
-        .spawn(|mut cx| async move {
-            agent_ui::thread_worktree_archive::restore_worktree_via_git(
-                &agent_ui::thread_metadata_store::ArchivedGitWorktree {
-                    id: 1,
-                    worktree_path: PathBuf::from("/wt-feature-b"),
-                    main_repo_path: PathBuf::from("/project"),
-                    branch_name: Some("feature-b".to_string()),
-                    staged_commit_hash: staged_hash,
-                    unstaged_commit_hash: unstaged_hash,
-                    original_commit_hash: "original-sha".to_string(),
-                },
-                &mut cx,
-            )
-            .await
-        })
-        .await;
-
-    assert!(
-        result.is_ok(),
-        "restore should succeed when branch has not moved: {:?}",
-        result.err()
-    );
-}
-
-#[gpui::test]
-async fn test_restore_worktree_when_branch_does_not_exist(cx: &mut TestAppContext) {
-    // restore_worktree_via_git should succeed when the branch no longer
-    // exists (e.g. it was deleted while the thread was archived). The
-    // code should attempt to recreate the branch.
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-d": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-d",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-    fs.insert_tree(
-        "/wt-feature-d",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-d",
-            "src": {},
-        }),
-    )
-    .await;
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/wt-feature-d"),
-            ref_name: Some("refs/heads/feature-d".into()),
-            sha: "original-sha".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-d".as_ref()], cx).await;
-    main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, _cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    multi_workspace.update_in(_cx, |mw, window, cx| {
-        mw.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-
-    let wt_repo = worktree_project.read_with(cx, |project, cx| {
-        project.repositories(cx).values().next().unwrap().clone()
-    });
-    let (staged_hash, unstaged_hash) = cx
-        .update(|cx| wt_repo.update(cx, |repo, _| repo.create_archive_checkpoint()))
-        .await
-        .unwrap()
-        .unwrap();
-
-    // Remove the branch ref so change_branch will fail.
-    fs.with_git_state(Path::new("/project/.git"), false, |state| {
-        state.refs.remove("refs/heads/feature-d");
-    })
-    .unwrap();
-
-    let result = cx
-        .spawn(|mut cx| async move {
-            agent_ui::thread_worktree_archive::restore_worktree_via_git(
-                &agent_ui::thread_metadata_store::ArchivedGitWorktree {
-                    id: 1,
-                    worktree_path: PathBuf::from("/wt-feature-d"),
-                    main_repo_path: PathBuf::from("/project"),
-                    branch_name: Some("feature-d".to_string()),
-                    staged_commit_hash: staged_hash,
-                    unstaged_commit_hash: unstaged_hash,
-                    original_commit_hash: "original-sha".to_string(),
-                },
-                &mut cx,
-            )
-            .await
-        })
-        .await;
-
-    assert!(
-        result.is_ok(),
-        "restore should succeed when branch does not exist: {:?}",
-        result.err()
-    );
-}
-
-#[gpui::test]
 async fn test_restore_worktree_thread_uses_main_repo_project_group_key(cx: &mut TestAppContext) {
     // Activating an archived linked worktree thread whose directory has
     // been deleted should reuse the existing main repo workspace, not
@@ -8705,7 +7277,7 @@ async fn test_restore_worktree_thread_uses_main_repo_project_group_key(cx: &mut 
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/wt-feature-c"),
             ref_name: Some("refs/heads/feature-c".into()),
             sha: "original-sha".into(),
@@ -8721,10 +7293,10 @@ async fn test_restore_worktree_thread_uses_main_repo_project_group_key(cx: &mut 
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-c".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -8850,7 +7422,7 @@ async fn test_linked_worktree_threads_not_duplicated_across_groups(cx: &mut Test
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -8865,19 +7437,19 @@ async fn test_linked_worktree_threads_not_duplicated_across_groups(cx: &mut Test
     // Workspace 1: just /project.
     let project_only = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     project_only
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     // Workspace 2: /other and /project together (multi-root).
     let multi_root =
         project::Project::test(fs.clone(), ["/other".as_ref(), "/project".as_ref()], cx).await;
     multi_root
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     // Save a thread under the linked worktree path BEFORE setting up
@@ -10381,7 +8953,7 @@ async fn test_archive_last_thread_on_linked_worktree_does_not_create_new_thread_
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-ochre-drift"),
             ref_name: Some("refs/heads/ochre-drift".into()),
             sha: "aaa".into(),
@@ -10398,10 +8970,10 @@ async fn test_archive_last_thread_on_linked_worktree_does_not_create_new_thread_
         project::Project::test(fs.clone(), ["/wt-ochre-drift".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -10553,7 +9125,7 @@ async fn test_archive_last_thread_on_linked_worktree_with_no_siblings_leaves_gro
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-ochre-drift"),
             ref_name: Some("refs/heads/ochre-drift".into()),
             sha: "aaa".into(),
@@ -10570,10 +9142,10 @@ async fn test_archive_last_thread_on_linked_worktree_with_no_siblings_leaves_gro
         project::Project::test(fs.clone(), ["/wt-ochre-drift".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -10685,7 +9257,7 @@ async fn test_unarchive_linked_worktree_thread_into_project_group_shows_only_res
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-ochre-drift"),
             ref_name: Some("refs/heads/ochre-drift".into()),
             sha: "aaa".into(),
@@ -10702,10 +9274,10 @@ async fn test_unarchive_linked_worktree_thread_into_project_group_shows_only_res
         project::Project::test(fs.clone(), ["/wt-ochre-drift".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -10854,7 +9426,7 @@ async fn test_archive_thread_on_linked_worktree_selects_sibling_thread(cx: &mut 
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-ochre-drift"),
             ref_name: Some("refs/heads/ochre-drift".into()),
             sha: "aaa".into(),
@@ -10871,10 +9443,10 @@ async fn test_archive_thread_on_linked_worktree_selects_sibling_thread(cx: &mut 
         project::Project::test(fs.clone(), ["/wt-ochre-drift".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -11004,7 +9576,7 @@ async fn test_linked_worktree_workspace_shows_main_worktree_threads(cx: &mut Tes
     fs.add_linked_worktree_for_repo(
         std::path::Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "abc".into(),
@@ -11019,12 +9591,12 @@ async fn test_linked_worktree_workspace_shows_main_worktree_threads(cx: &mut Tes
     // Only open the linked worktree as a workspace — NOT the main repo.
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) = cx.add_window_view(|window, cx| {
@@ -11249,7 +9821,7 @@ async fn test_legacy_thread_with_canonical_path_opens_main_repo_workspace(cx: &m
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "abc".into(),
@@ -11264,7 +9836,7 @@ async fn test_legacy_thread_with_canonical_path_opens_main_repo_workspace(cx: &m
     // Only a linked worktree workspace is open — no workspace for /project.
     let worktree_project = project::Project::test(fs.clone(), ["/wt-feature-a".as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) = cx.add_window_view(|window, cx| {
@@ -11377,7 +9949,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_unrelated_project
     cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
     let project =
         project::Project::test(fs.clone() as Arc<dyn fs::Fs>, ["/my-project".as_ref()], cx).await;
-    project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -11406,7 +9978,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_unrelated_project
     fs.add_linked_worktree_for_repo(
         Path::new("/my-project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from(worktree_path),
             ref_name: Some(format!("refs/heads/{}", worktree_name).into()),
             sha: "aaa".into(),
@@ -11419,7 +9991,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_unrelated_project
     let main_workspace = multi_workspace.read_with(cx, |mw, _| mw.workspace().clone());
     let main_project = main_workspace.read_with(cx, |ws, _| ws.project().clone());
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     cx.run_until_parked();
 
@@ -11427,7 +9999,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_unrelated_project
     let worktree_project =
         project::Project::test(fs.clone() as Arc<dyn fs::Fs>, [worktree_path.as_ref()], cx).await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     let worktree_workspace = multi_workspace.update_in(cx, |mw, window, cx| {
         mw.test_add_workspace(worktree_project.clone(), window, cx)
@@ -11450,7 +10022,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_unrelated_project
     )
     .await;
     other_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     multi_workspace.update_in(cx, |mw, window, cx| {
         mw.test_add_workspace(other_project.clone(), window, cx);
@@ -11867,7 +10439,7 @@ async fn test_worktree_add_only_regroups_threads_for_changed_workspace(cx: &mut 
     fs.add_linked_worktree_for_repo(
         Path::new("/project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature"),
             ref_name: Some("refs/heads/feature".into()),
             sha: "aaa".into(),
@@ -11886,10 +10458,10 @@ async fn test_worktree_add_only_regroups_threads_for_changed_workspace(cx: &mut 
         project::Project::test(fs.clone() as Arc<dyn fs::Fs>, ["/wt-feature".as_ref()], cx).await;
 
     main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     let (multi_workspace, cx) =
@@ -12028,7 +10600,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_worktree_to_proje
     fs.add_linked_worktree_for_repo(
         Path::new("/my-project/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: PathBuf::from("/worktrees/wt-0"),
             ref_name: Some("refs/heads/wt-0".into()),
             sha: "aaa".into(),
@@ -12039,7 +10611,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_worktree_to_proje
     .await;
 
     // Re-scan so the main project discovers the linked worktree.
-    project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+    project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
     let (multi_workspace, cx) =
         cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -12053,7 +10625,7 @@ async fn test_linked_worktree_workspace_reachable_after_adding_worktree_to_proje
     )
     .await;
     worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     multi_workspace.update_in(cx, |mw, window, cx| {
         mw.test_add_workspace(worktree_project.clone(), window, cx);
@@ -12405,7 +10977,7 @@ mod property_test {
                     cx,
                 )
                 .await;
-                project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+                project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
                 multi_workspace.update_in(cx, |mw, window, cx| {
                     mw.test_add_workspace(project.clone(), window, cx)
                 });
@@ -12498,7 +11070,7 @@ mod property_test {
                     .add_linked_worktree_for_repo(
                         dot_git_path,
                         false,
-                        git::repository::Worktree {
+                        fs::Worktree {
                             path: worktree_pathbuf,
                             ref_name: Some(format!("refs/heads/{}", worktree_name).into()),
                             sha: "aaa".into(),
@@ -12519,7 +11091,7 @@ mod property_test {
                 });
                 let main_project = main_workspace.read_with(cx, |ws, _| ws.project().clone());
                 main_project
-                    .update(cx, |p, cx| p.git_scans_complete(cx))
+                    .update(cx, |p, cx| p.wait_for_initial_scan(cx))
                     .await;
 
                 state.unopened_worktrees.push(UnopenedWorktree {
@@ -12732,16 +11304,6 @@ mod property_test {
             }
 
             // Legacy: per-workspace queries for different root paths.
-            let covered_paths: HashSet<std::path::PathBuf> = group_workspaces
-                .iter()
-                .flat_map(|ws| {
-                    ws.read(cx)
-                        .root_paths(cx)
-                        .into_iter()
-                        .map(|p| p.to_path_buf())
-                })
-                .collect();
-
             for workspace in group_workspaces {
                 let ws_path_list = workspace_path_list(workspace, cx);
                 if ws_path_list != path_list {
@@ -12753,30 +11315,6 @@ mod property_test {
                 }
             }
 
-            for workspace in group_workspaces {
-                for snapshot in root_repository_snapshots(workspace, cx) {
-                    let Some(main_worktree_abs_path) = snapshot.main_worktree_abs_path() else {
-                        continue;
-                    };
-                    let repo_path_list = PathList::new(&[main_worktree_abs_path.to_path_buf()]);
-                    if repo_path_list != path_list {
-                        continue;
-                    }
-                    for linked_worktree in snapshot.linked_worktrees() {
-                        if covered_paths.contains(&*linked_worktree.path) {
-                            continue;
-                        }
-                        let worktree_path_list =
-                            PathList::new(std::slice::from_ref(&linked_worktree.path));
-                        for metadata in thread_store.read(cx).entries_for_path(&worktree_path_list)
-                        {
-                            if let Some(sid) = metadata.session_id.clone() {
-                                metadata_thread_ids.insert(sid);
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         anyhow::ensure!(
@@ -13012,7 +11550,7 @@ mod property_test {
         let project =
             project::Project::test(fs.clone() as Arc<dyn fs::Fs>, ["/my-project".as_ref()], cx)
                 .await;
-        project.update(cx, |p, cx| p.git_scans_complete(cx)).await;
+        project.update(cx, |p, cx| p.wait_for_initial_scan(cx)).await;
 
         let (multi_workspace, cx) =
             cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
@@ -13043,611 +11581,6 @@ mod property_test {
             }
         }
     }
-}
-
-#[gpui::test]
-async fn test_archive_removes_worktree_even_when_workspace_paths_diverge(cx: &mut TestAppContext) {
-    // When the thread's folder_paths don't exactly match any workspace's
-    // root paths (e.g. because a folder was added to the workspace after
-    // the thread was created), workspace_to_remove is None. But the linked
-    // worktree workspace still needs to be removed so that its worktree
-    // entities are released, allowing git worktree removal to proceed.
-    //
-    // With the fix, archive_thread scans roots_to_archive for any linked
-    // worktree workspaces and includes them in the removal set, even when
-    // the thread's folder_paths don't match the workspace's root paths.
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/project",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-a": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-a",
-                    },
-                },
-            },
-            "src": {},
-        }),
-    )
-    .await;
-
-    fs.insert_tree(
-        "/worktrees/project/feature-a/project",
-        serde_json::json!({
-            ".git": "gitdir: /project/.git/worktrees/feature-a",
-            "src": {
-                "main.rs": "fn main() {}",
-            },
-        }),
-    )
-    .await;
-
-    fs.add_linked_worktree_for_repo(
-        Path::new("/project/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/project/feature-a/project"),
-            ref_name: Some("refs/heads/feature-a".into()),
-            sha: "abc".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/project/feature-a/project"),
-        cx,
-    )
-    .await;
-
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let main_project = project::Project::test(fs.clone(), ["/project".as_ref()], cx).await;
-    let worktree_project = project::Project::test(
-        fs.clone(),
-        ["/worktrees/project/feature-a/project".as_ref()],
-        cx,
-    )
-    .await;
-
-    main_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-    worktree_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) =
-        cx.add_window_view(|window, cx| MultiWorkspace::test_new(main_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-
-    multi_workspace.update_in(cx, |mw, window, cx| {
-        mw.test_add_workspace(worktree_project.clone(), window, cx)
-    });
-
-    // Save thread metadata using folder_paths that DON'T match the
-    // workspace's root paths. This simulates the case where the workspace's
-    // paths diverged (e.g. a folder was added after thread creation).
-    // This causes workspace_to_remove to be None because
-    // workspace_for_paths can't find a workspace with these exact paths.
-    let wt_thread_id = acp::SessionId::new(Arc::from("worktree-thread"));
-    save_thread_metadata_with_main_paths(
-        "worktree-thread",
-        "Worktree Thread",
-        PathList::new(&[
-            PathBuf::from("/worktrees/project/feature-a/project"),
-            PathBuf::from("/nonexistent"),
-        ]),
-        PathList::new(&[PathBuf::from("/project"), PathBuf::from("/nonexistent")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        cx,
-    );
-
-    // Also save a main thread so the sidebar has something to show.
-    save_thread_metadata(
-        acp::SessionId::new(Arc::from("main-thread")),
-        Some("Main Thread".into()),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        None,
-        None,
-        &main_project,
-        cx,
-    );
-    cx.run_until_parked();
-
-    multi_workspace.update_in(cx, |_, _window, cx| cx.notify());
-    cx.run_until_parked();
-
-    assert_eq!(
-        multi_workspace.read_with(cx, |mw, _| mw.workspaces().count()),
-        2,
-        "should start with 2 workspaces (main + linked worktree)"
-    );
-
-    // Archive the worktree thread.
-    sidebar.update_in(cx, |sidebar, window, cx| {
-        sidebar.archive_thread(&wt_thread_id, window, cx);
-    });
-
-    cx.run_until_parked();
-
-    // The linked worktree workspace should have been removed, even though
-    // workspace_to_remove was None (paths didn't match).
-    assert_eq!(
-        multi_workspace.read_with(cx, |mw, _| mw.workspaces().count()),
-        1,
-        "linked worktree workspace should be removed after archiving, \
-         even when folder_paths don't match workspace root paths"
-    );
-
-    // The thread should still be archived (not unarchived due to an error).
-    let still_archived = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry_by_session(&wt_thread_id)
-            .map(|t| t.archived)
-    });
-    assert_eq!(
-        still_archived,
-        Some(true),
-        "thread should still be archived (not rolled back due to error)"
-    );
-
-    // The linked worktree directory should be removed from disk.
-    assert!(
-        !fs.is_dir(Path::new("/worktrees/project/feature-a/project"))
-            .await,
-        "linked worktree directory should be removed from disk"
-    );
-}
-
-#[gpui::test]
-async fn test_archive_mixed_workspace_closes_only_archived_worktree_items(cx: &mut TestAppContext) {
-    // When a workspace contains both a worktree being archived and other
-    // worktrees that should remain, only the editor items referencing the
-    // archived worktree should be closed — the workspace itself must be
-    // preserved.
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/main-repo",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-b": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-b",
-                    },
-                },
-            },
-            "src": {
-                "lib.rs": "pub fn hello() {}",
-            },
-        }),
-    )
-    .await;
-
-    fs.insert_tree(
-        "/worktrees/main-repo/feature-b/main-repo",
-        serde_json::json!({
-            ".git": "gitdir: /main-repo/.git/worktrees/feature-b",
-            "src": {
-                "main.rs": "fn main() { hello(); }",
-            },
-        }),
-    )
-    .await;
-
-    fs.add_linked_worktree_for_repo(
-        Path::new("/main-repo/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/main-repo/feature-b/main-repo"),
-            ref_name: Some("refs/heads/feature-b".into()),
-            sha: "def".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/main-repo/feature-b/main-repo"),
-        cx,
-    )
-    .await;
-
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    // Create a single project that contains BOTH the main repo and the
-    // linked worktree — this makes it a "mixed" workspace.
-    let mixed_project = project::Project::test(
-        fs.clone(),
-        [
-            "/main-repo".as_ref(),
-            "/worktrees/main-repo/feature-b/main-repo".as_ref(),
-        ],
-        cx,
-    )
-    .await;
-
-    mixed_project
-        .update(cx, |p, cx| p.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) = cx
-        .add_window_view(|window, cx| MultiWorkspace::test_new(mixed_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-
-    // Open editor items in both worktrees so we can verify which ones
-    // get closed.
-    let workspace = multi_workspace.read_with(cx, |mw, _| mw.workspace().clone());
-
-    let worktree_ids: Vec<(WorktreeId, Arc<Path>)> = workspace.read_with(cx, |ws, cx| {
-        ws.project()
-            .read(cx)
-            .visible_worktrees(cx)
-            .map(|wt| (wt.read(cx).id(), wt.read(cx).abs_path()))
-            .collect()
-    });
-
-    let main_repo_wt_id = worktree_ids
-        .iter()
-        .find(|(_, path)| path.as_ref() == Path::new("/main-repo"))
-        .map(|(id, _)| *id)
-        .expect("should find main-repo worktree");
-
-    let feature_b_wt_id = worktree_ids
-        .iter()
-        .find(|(_, path)| path.as_ref() == Path::new("/worktrees/main-repo/feature-b/main-repo"))
-        .map(|(id, _)| *id)
-        .expect("should find feature-b worktree");
-
-    // Open files from both worktrees.
-    let main_repo_path = project::ProjectPath {
-        worktree_id: main_repo_wt_id,
-        path: Arc::from(rel_path("src/lib.rs")),
-    };
-    let feature_b_path = project::ProjectPath {
-        worktree_id: feature_b_wt_id,
-        path: Arc::from(rel_path("src/main.rs")),
-    };
-
-    workspace
-        .update_in(cx, |ws, window, cx| {
-            ws.open_path(main_repo_path.clone(), None, true, window, cx)
-        })
-        .await
-        .expect("should open main-repo file");
-    workspace
-        .update_in(cx, |ws, window, cx| {
-            ws.open_path(feature_b_path.clone(), None, true, window, cx)
-        })
-        .await
-        .expect("should open feature-b file");
-
-    cx.run_until_parked();
-
-    // Verify both items are open.
-    let open_paths_before: Vec<project::ProjectPath> = workspace.read_with(cx, |ws, cx| {
-        ws.panes()
-            .iter()
-            .flat_map(|pane| {
-                pane.read(cx)
-                    .items()
-                    .filter_map(|item| item.project_path(cx))
-            })
-            .collect()
-    });
-    assert!(
-        open_paths_before
-            .iter()
-            .any(|pp| pp.worktree_id == main_repo_wt_id),
-        "main-repo file should be open"
-    );
-    assert!(
-        open_paths_before
-            .iter()
-            .any(|pp| pp.worktree_id == feature_b_wt_id),
-        "feature-b file should be open"
-    );
-
-    // Save thread metadata for the linked worktree with deliberately
-    // mismatched folder_paths to trigger the scan-based detection.
-    save_thread_metadata_with_main_paths(
-        "feature-b-thread",
-        "Feature B Thread",
-        PathList::new(&[
-            PathBuf::from("/worktrees/main-repo/feature-b/main-repo"),
-            PathBuf::from("/nonexistent"),
-        ]),
-        PathList::new(&[PathBuf::from("/main-repo"), PathBuf::from("/nonexistent")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        cx,
-    );
-
-    // Save another thread that references only the main repo (not the
-    // linked worktree) so archiving the feature-b thread's worktree isn't
-    // blocked by another unarchived thread referencing the same path.
-    save_thread_metadata_with_main_paths(
-        "other-thread",
-        "Other Thread",
-        PathList::new(&[PathBuf::from("/main-repo")]),
-        PathList::new(&[PathBuf::from("/main-repo")]),
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 2, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.run_until_parked();
-
-    multi_workspace.update_in(cx, |_, _window, cx| cx.notify());
-    cx.run_until_parked();
-
-    // There should still be exactly 1 workspace.
-    assert_eq!(
-        multi_workspace.read_with(cx, |mw, _| mw.workspaces().count()),
-        1,
-        "should have 1 workspace (the mixed workspace)"
-    );
-
-    // Archive the feature-b thread.
-    let fb_session_id = acp::SessionId::new(Arc::from("feature-b-thread"));
-    sidebar.update_in(cx, |sidebar, window, cx| {
-        sidebar.archive_thread(&fb_session_id, window, cx);
-    });
-
-    cx.run_until_parked();
-
-    // The workspace should still exist (it's "mixed" — has non-archived worktrees).
-    assert_eq!(
-        multi_workspace.read_with(cx, |mw, _| mw.workspaces().count()),
-        1,
-        "mixed workspace should be preserved"
-    );
-
-    // Only the feature-b editor item should have been closed.
-    let open_paths_after: Vec<project::ProjectPath> = workspace.read_with(cx, |ws, cx| {
-        ws.panes()
-            .iter()
-            .flat_map(|pane| {
-                pane.read(cx)
-                    .items()
-                    .filter_map(|item| item.project_path(cx))
-            })
-            .collect()
-    });
-    assert!(
-        open_paths_after
-            .iter()
-            .any(|pp| pp.worktree_id == main_repo_wt_id),
-        "main-repo file should still be open"
-    );
-    assert!(
-        !open_paths_after
-            .iter()
-            .any(|pp| pp.worktree_id == feature_b_wt_id),
-        "feature-b file should have been closed"
-    );
-}
-
-#[gpui::test]
-async fn test_discard_mixed_workspace_draft_closes_only_archived_worktree_items(
-    cx: &mut TestAppContext,
-) {
-    init_test(cx);
-    let fs = FakeFs::new(cx.executor());
-
-    fs.insert_tree(
-        "/main-repo",
-        serde_json::json!({
-            ".git": {
-                "worktrees": {
-                    "feature-b": {
-                        "commondir": "../../",
-                        "HEAD": "ref: refs/heads/feature-b",
-                    },
-                },
-            },
-            "src": {
-                "lib.rs": "pub fn hello() {}",
-            },
-        }),
-    )
-    .await;
-
-    fs.insert_tree(
-        "/worktrees/main-repo/feature-b/main-repo",
-        serde_json::json!({
-            ".git": "gitdir: /main-repo/.git/worktrees/feature-b",
-            "src": {
-                "main.rs": "fn main() { hello(); }",
-            },
-        }),
-    )
-    .await;
-
-    fs.add_linked_worktree_for_repo(
-        Path::new("/main-repo/.git"),
-        false,
-        git::repository::Worktree {
-            path: PathBuf::from("/worktrees/main-repo/feature-b/main-repo"),
-            ref_name: Some("refs/heads/feature-b".into()),
-            sha: "def".into(),
-            is_main: false,
-            is_bare: false,
-        },
-    )
-    .await;
-    agent_ui::test_support::record_zed_created_worktree(
-        fs.as_ref(),
-        Path::new("/worktrees/main-repo/feature-b/main-repo"),
-        cx,
-    )
-    .await;
-
-    cx.update(|cx| <dyn fs::Fs>::set_global(fs.clone(), cx));
-
-    let mixed_project = project::Project::test(
-        fs.clone(),
-        [
-            "/main-repo".as_ref(),
-            "/worktrees/main-repo/feature-b/main-repo".as_ref(),
-        ],
-        cx,
-    )
-    .await;
-
-    mixed_project
-        .update(cx, |project, cx| project.git_scans_complete(cx))
-        .await;
-
-    let (multi_workspace, cx) = cx
-        .add_window_view(|window, cx| MultiWorkspace::test_new(mixed_project.clone(), window, cx));
-    let sidebar = setup_sidebar(&multi_workspace, cx);
-    let workspace =
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace.workspace().clone());
-
-    let worktree_ids: Vec<(WorktreeId, Arc<Path>)> = workspace.read_with(cx, |workspace, cx| {
-        workspace
-            .project()
-            .read(cx)
-            .visible_worktrees(cx)
-            .map(|worktree| (worktree.read(cx).id(), worktree.read(cx).abs_path()))
-            .collect()
-    });
-
-    let main_repo_worktree_id = worktree_ids
-        .iter()
-        .find(|(_, path)| path.as_ref() == Path::new("/main-repo"))
-        .map(|(id, _)| *id)
-        .expect("should find main-repo worktree");
-
-    let feature_b_worktree_id = worktree_ids
-        .iter()
-        .find(|(_, path)| path.as_ref() == Path::new("/worktrees/main-repo/feature-b/main-repo"))
-        .map(|(id, _)| *id)
-        .expect("should find feature-b worktree");
-
-    let main_repo_path = project::ProjectPath {
-        worktree_id: main_repo_worktree_id,
-        path: Arc::from(rel_path("src/lib.rs")),
-    };
-    let feature_b_path = project::ProjectPath {
-        worktree_id: feature_b_worktree_id,
-        path: Arc::from(rel_path("src/main.rs")),
-    };
-
-    workspace
-        .update_in(cx, |workspace, window, cx| {
-            workspace.open_path(main_repo_path.clone(), None, true, window, cx)
-        })
-        .await
-        .expect("should open main-repo file");
-    workspace
-        .update_in(cx, |workspace, window, cx| {
-            workspace.open_path(feature_b_path.clone(), None, true, window, cx)
-        })
-        .await
-        .expect("should open feature-b file");
-
-    let folder_paths = PathList::new(&[
-        PathBuf::from("/main-repo"),
-        PathBuf::from("/worktrees/main-repo/feature-b/main-repo"),
-    ]);
-    let main_worktree_paths =
-        PathList::new(&[PathBuf::from("/main-repo"), PathBuf::from("/main-repo")]);
-    let draft_id = save_draft_metadata_with_main_paths(
-        Some("Mixed Workspace Draft".into()),
-        folder_paths,
-        main_worktree_paths,
-        chrono::TimeZone::with_ymd_and_hms(&Utc, 2024, 1, 1, 0, 0, 0).unwrap(),
-        cx,
-    );
-    cx.update(|_, cx| {
-        agent_ui::draft_prompt_store::write(
-            draft_id,
-            &[acp::ContentBlock::Text(acp::TextContent::new(
-                "mixed workspace draft",
-            ))],
-            cx,
-        )
-    })
-    .await
-    .expect("draft prompt should persist");
-
-    sidebar.update(cx, |sidebar, cx| sidebar.update_entries(cx));
-    cx.run_until_parked();
-
-    let draft_index = sidebar.read_with(cx, |sidebar, _cx| {
-        sidebar
-            .contents
-            .entries
-            .iter()
-            .position(|entry| {
-                matches!(
-                    entry,
-                    ListEntry::Thread(thread) if thread.metadata.thread_id == draft_id
-                )
-            })
-            .expect("mixed workspace draft should be visible")
-    });
-
-    focus_sidebar(&sidebar, cx);
-    sidebar.update_in(cx, |sidebar, _window, _cx| {
-        sidebar.selection = Some(draft_index);
-    });
-    cx.dispatch_action(ArchiveSelectedThread);
-    for _ in 0..8 {
-        cx.run_until_parked();
-    }
-
-    assert_eq!(
-        multi_workspace.read_with(cx, |multi_workspace, _| multi_workspace
-            .workspaces()
-            .count()),
-        1,
-        "mixed workspace should be preserved"
-    );
-
-    let open_paths_after: Vec<project::ProjectPath> = workspace.read_with(cx, |workspace, cx| {
-        workspace
-            .panes()
-            .iter()
-            .flat_map(|pane| {
-                pane.read(cx)
-                    .items()
-                    .filter_map(|item| item.project_path(cx))
-            })
-            .collect()
-    });
-    assert!(
-        open_paths_after
-            .iter()
-            .any(|project_path| project_path.worktree_id == main_repo_worktree_id),
-        "main-repo file should still be open"
-    );
-    assert!(
-        !open_paths_after
-            .iter()
-            .any(|project_path| project_path.worktree_id == feature_b_worktree_id),
-        "feature-b file should have been closed"
-    );
-
-    let draft_metadata_deleted = cx.update(|_, cx| {
-        ThreadMetadataStore::global(cx)
-            .read(cx)
-            .entry(draft_id)
-            .is_none()
-    });
-    assert!(
-        draft_metadata_deleted,
-        "discarded draft metadata should be deleted"
-    );
 }
 
 #[test]
@@ -13799,7 +11732,7 @@ async fn test_cmd_click_project_header_returns_to_last_active_linked_worktree_wo
     fs.add_linked_worktree_for_repo(
         Path::new("/project-a/.git"),
         false,
-        git::repository::Worktree {
+        fs::Worktree {
             path: std::path::PathBuf::from("/wt-feature-a"),
             ref_name: Some("refs/heads/feature-a".into()),
             sha: "aaa".into(),
@@ -13817,10 +11750,10 @@ async fn test_cmd_click_project_header_returns_to_last_active_linked_worktree_wo
     let project_b = project::Project::test(fs.clone(), ["/project-b".as_ref()], cx).await;
 
     main_project_a
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
     worktree_project_a
-        .update(cx, |p, cx| p.git_scans_complete(cx))
+        .update(cx, |p, cx| p.wait_for_initial_scan(cx))
         .await;
 
     // The multi-workspace starts with the main-paths workspace of group A

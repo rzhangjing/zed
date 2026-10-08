@@ -410,10 +410,6 @@ pub struct ScrollbarContent {
     ///
     /// Default: auto
     pub show: Option<ShowScrollbar>,
-    /// Whether to show git diff indicators in the scrollbar.
-    ///
-    /// Default: true
-    pub git_diff: Option<bool>,
     /// Whether to show buffer search result indicators in the scrollbar.
     ///
     /// Default: true
@@ -498,29 +494,6 @@ pub struct ScrollbarAxesContent {
     pub vertical: Option<bool>,
 }
 
-/// Controls the width of the git diff hunk indicators in the gutter.
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    Serialize,
-    Deserialize,
-    JsonSchema,
-    MergeFrom,
-    PartialEq,
-    strum::EnumDiscriminants,
-)]
-#[strum_discriminants(derive(strum::VariantArray, strum::VariantNames, strum::FromRepr))]
-#[serde(rename_all = "snake_case")]
-pub enum GitGutterWidth {
-    /// Width scales automatically with the buffer font size.
-    #[default]
-    Default,
-    /// A fixed pixel width for the git diff indicators.
-    Custom(crate::PixelSetting),
-}
-
 /// Gutter related settings
 #[with_fallible_options]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
@@ -549,11 +522,6 @@ pub struct GutterContent {
     ///
     /// Default: true
     pub folds: Option<bool>,
-    /// The width of the git diff hunk indicators in the gutter.
-    /// Use "default" to scale with the buffer font size, or {"custom": <pixels>} for a fixed width.
-    ///
-    /// Default: "default"
-    pub git_gutter_width: Option<GitGutterWidth>,
 }
 
 /// Whether to display code lenses from language servers above code elements.

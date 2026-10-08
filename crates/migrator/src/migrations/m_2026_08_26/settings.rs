@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::migrations::migrate_settings;
 
-const PANEL_KEYS: &[&str] = &["project_panel", "outline_panel", "git_panel"];
+const PANEL_KEYS: &[&str] = &["project_panel", "outline_panel"];
 const OLD_KEY: &str = "folder_icons";
 const NEW_KEY: &str = "folder_indicator";
 

@@ -78,7 +78,7 @@ Once inside a project:
 - Use {#kb:jetbrains command_palette::Toggle} to open the Command Palette (like WebStorm's "Search Everywhere")
 - Use {#kb:jetbrains project_symbols::Toggle} to search for symbols (like WebStorm's "Go to Symbol")
 
-Open buffers appear as tabs across the top. The Project Panel shows your file tree and Git status. Toggle it with {#kb:jetbrains project_panel::ToggleFocus} (just like WebStorm's Project tool window).
+Open buffers appear as tabs across the top. The Project Panel shows your file tree. Toggle it with {#kb:jetbrains project_panel::ToggleFocus} (just like WebStorm's Project tool window).
 
 ## Differences in Keybindings
 
@@ -241,7 +241,6 @@ WebStorm organizes auxiliary views into numbered tool windows. Zed uses a simila
 | WebStorm Tool Window | Zed Equivalent | Zed Keybinding                             |
 | -------------------- | -------------- | ------------------------------------------ |
 | Project              | Project Panel  | {#kb:jetbrains project_panel::ToggleFocus} |
-| Git                  | Git Panel      | {#kb:jetbrains git_panel::ToggleFocus}     |
 | Terminal             | Terminal Panel | {#kb:jetbrains terminal_panel::Toggle}     |
 | Structure            | Outline Panel  | {#kb:jetbrains outline_panel::ToggleFocus} |
 | Problems             | Diagnostics    | {#kb:jetbrains diagnostics::Deploy}        |

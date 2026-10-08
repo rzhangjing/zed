@@ -24,7 +24,6 @@
 - [Collab-Deep-Dive](Collab-Deep-Dive)
 - [Panels-Deep-Dive](Panels-Deep-Dive)
 - [Search-Deep-Dive](Search-Deep-Dive)
-- [Git-Deep-Dive](Git-Deep-Dive)
 - [Extension-Deep-Dive](Extension-Deep-Dive)
 - [Edit-Prediction-Deep-Dive](Edit-Prediction-Deep-Dive)
 - [GPUI-Platform-Backends-Deep-Dive](GPUI-Platform-Backends-Deep-Dive)
@@ -70,7 +69,6 @@
 - [Language-and-Project](Language-and-Project)
 - [LSP-Features](LSP-Features)
 - [Project-Panel-and-FS](Project-Panel-and-FS)
-- [Git-Integration](Git-Integration)
 - [Terminal](Terminal)
 
 ### 智能与协作

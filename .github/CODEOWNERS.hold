@@ -103,8 +103,6 @@
 /crates/git/ @zed-industries/developer-tools-team
 # SUGGESTED: Review needed - based on Anthony Eid (4 commits)
 /crates/git_graph/ @zed-industries/developer-tools-team
-/crates/git_hosting_providers/ @zed-industries/developer-tools-team
-/crates/git_ui/ @zed-industries/developer-tools-team
 /crates/inspector_ui/ @zed-industries/developer-tools-team
 /crates/miniprofiler_ui/ @zed-industries/developer-tools-team
 /crates/repl/ @zed-industries/developer-tools-team

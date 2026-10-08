@@ -78,7 +78,7 @@ Once inside a project:
 - Use `Cmd+Shift+A` or `Shift Shift` to open the Command Palette (like IntelliJ's "Search Everywhere")
 - Use `Cmd+O` to search for symbols (like IntelliJ's "Go to Class")
 
-Open buffers appear as tabs across the top. The Project Panel shows your file tree and Git status. Toggle it with `Cmd+1` (just like IntelliJ's Project tool window).
+Open buffers appear as tabs across the top. The Project Panel shows your file tree. Toggle it with `Cmd+1` (just like IntelliJ's Project tool window).
 
 ## Differences in Keybindings
 
@@ -230,12 +230,11 @@ If your daily work depends heavily on framework-aware navigation and refactoring
 
 ### Tool Windows vs. Docks
 
-IntelliJ organizes auxiliary views into numbered tool windows (Project = 1, Git = 9, Terminal = Alt+F12, etc.). Zed uses a similar concept called "docks":
+IntelliJ organizes auxiliary views into numbered tool windows (Project = 1, Terminal = Alt+F12, etc.). Zed uses a similar concept called "docks":
 
 | IntelliJ Tool Window | Zed Equivalent | Shortcut (JetBrains keymap) |
 | -------------------- | -------------- | --------------------------- |
 | Project (1)          | Project Panel  | `Cmd + 1`                   |
-| Git (9 or Cmd+0)     | Git Panel      | `Cmd + 0`                   |
 | Terminal (Alt+F12)   | Terminal Panel | `Alt + F12`                 |
 | Structure (7)        | Outline Panel  | `Cmd + 7`                   |
 | Problems (6)         | Diagnostics    | `Cmd + 6`                   |

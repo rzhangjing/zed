@@ -320,41 +320,6 @@ pub struct OpenWorktreeInNewWindow {
     pub path: PathBuf,
 }
 
-pub mod git {
-    use gpui::actions;
-
-    actions!(
-        git,
-        [
-            /// Checks out a different git branch.
-            CheckoutBranch,
-            /// Switches to a different git branch.
-            Switch,
-            /// Selects a different repository.
-            SelectRepo,
-            /// Filter remotes.
-            FilterRemotes,
-            /// Create a git remote.
-            CreateRemote,
-            /// Opens the git branch selector.
-            #[action(deprecated_aliases = ["branches::OpenRecent"])]
-            Branch,
-            /// Shows uncommitted changes across the project.
-            ViewUncommittedChanges,
-            /// Shows unstaged changes across the project.
-            ViewUnstagedChanges,
-            /// Shows staged changes across the project.
-            ViewStagedChanges,
-            /// Opens the git stash selector.
-            ViewStash,
-            /// Opens the git worktree selector.
-            Worktree,
-            /// Creates a pull request for the current branch.
-            CreatePullRequest
-        ]
-    );
-}
-
 pub mod toast {
     use gpui::actions;
 
@@ -887,18 +852,6 @@ pub mod notebook {
             EnterEditMode,
             /// Exits the cell editor and returns to cell command mode.
             EnterCommandMode,
-        ]
-    );
-}
-
-pub mod git_panel {
-    use gpui::actions;
-
-    actions!(
-        git_panel,
-        [
-            /// Toggles focus on the git panel.
-            ToggleFocus,
         ]
     );
 }

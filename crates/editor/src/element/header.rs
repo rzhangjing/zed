@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use collections::HashMap;
 use file_icons::FileIcons;
-use git::status::FileStatus;
 use gpui::{
     Action, AnyElement, App, AvailableSpace, Bounds, ClickEvent, ClipboardItem, ContentMask,
     CursorStyle, DefiniteLength, Entity, Focusable as _, Hitbox, HitboxBehavior, Hsla, IntoElement,
@@ -644,10 +643,6 @@ pub(crate) fn render_buffer_header(
         None
     };
 
-    let file_status = multi_buffer
-        .all_diff_hunks_expanded()
-        .then(|| editor_read.status_for_buffer_id(buffer_id, cx))
-        .flatten();
     let diff_stat = multi_buffer
         .all_diff_hunks_expanded()
         .then(|| multibuffer_snapshot.diff_for_buffer_id(buffer_id))
@@ -848,12 +843,8 @@ pub(crate) fn render_buffer_header(
                                             .child(
                                                 Label::new(filename)
                                                     .single_line()
-                                                    .color(file_status_label_color(file_status))
+                                                    .color(Color::Default)
                                                     .buffer_font(cx)
-                                                    .when(
-                                                        file_status.is_some_and(|s| s.is_deleted()),
-                                                        |label| label.strikethrough(),
-                                                    ),
                                             )
                                             .tooltip(move |_, cx| {
                                                 Tooltip::with_meta(
@@ -880,15 +871,7 @@ pub(crate) fn render_buffer_header(
                                             Label::new(path)
                                                 .buffer_font(cx)
                                                 .truncate_start()
-                                                .color(
-                                                    if file_status
-                                                        .is_some_and(FileStatus::is_deleted)
-                                                    {
-                                                        Color::Custom(colors.text_disabled)
-                                                    } else {
-                                                        Color::Custom(colors.text_muted)
-                                                    },
-                                                ),
+                                                .color(Color::Custom(colors.text_muted)),
                                         )
                                     })
                                     .when(!buffer.capability.editable(), |el| {
@@ -1090,18 +1073,3 @@ pub(crate) fn render_buffer_header(
         })
 }
 
-pub fn file_status_label_color(file_status: Option<FileStatus>) -> Color {
-    file_status.map_or(Color::Default, |status| {
-        if status.is_conflicted() {
-            Color::Conflict
-        } else if status.is_modified() {
-            Color::Modified
-        } else if status.is_deleted() {
-            Color::Disabled
-        } else if status.is_created() {
-            Color::Created
-        } else {
-            Color::Default
-        }
-    })
-}

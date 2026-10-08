@@ -90,7 +90,7 @@ Once inside a project:
 - Use `Cmd+Shift+A` or `Shift Shift` to open the Command Palette (like RustRover's "Search Everywhere")
 - Use `Cmd+O` to search for symbols (like RustRover's "Go to Symbol")
 
-Open buffers appear as tabs across the top. The Project Panel shows your file tree and Git status. Toggle it with `Cmd+1` (just like RustRover's Project tool window).
+Open buffers appear as tabs across the top. The Project Panel shows your file tree. Toggle it with `Cmd+1` (just like RustRover's Project tool window).
 
 ## Differences in Keybindings
 
@@ -240,7 +240,6 @@ RustRover organizes auxiliary views into numbered tool windows (Project = 1, Car
 | RustRover Tool Window | Zed Equivalent | Shortcut (JetBrains keymap) |
 | --------------------- | -------------- | --------------------------- |
 | Project (1)           | Project Panel  | `Cmd + 1`                   |
-| Git (9 or Cmd+0)      | Git Panel      | `Cmd + 0`                   |
 | Terminal (Alt+F12)    | Terminal Panel | `Alt + F12`                 |
 | Structure (7)         | Outline Panel  | `Cmd + 7`                   |
 | Problems (6)          | Diagnostics    | `Cmd + 6`                   |

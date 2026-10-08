@@ -101,7 +101,6 @@ use {
     assets::Assets,
     editor::display_map::DisplayRow,
     feature_flags::FeatureFlagAppExt as _,
-    git_ui::project_diff::ProjectDiff,
     gpui::{
         App, AppContext as _, Bounds, Entity, KeyBinding, Modifiers, VisualTestAppContext,
         WindowBounds, WindowHandle, WindowOptions, point, px, size,
@@ -203,7 +202,6 @@ fn run_visual_tests(project_path: PathBuf, update_baseline: bool) -> Result<()> 
         language_model::init(cx);
         
         language_models::init(app_state.user_store.clone(), app_state.client.clone(), cx);
-        git_ui::init(cx);
         project::AgentRegistryStore::init_global(
             cx,
             app_state.fs.clone(),
@@ -530,7 +528,7 @@ fn run_visual_tests(project_path: PathBuf, update_baseline: bool) -> Result<()> 
     }
 
     // Run Test 7: Diff Review Button visual tests
-    println!("\n--- Test 7: diff_review_button (3 variants) ---");
+    println!("\n--- Test 7: diff_review_button (6 variants) ---");
     match run_diff_review_visual_tests(app_state.clone(), &mut cx, update_baseline) {
         Ok(TestResult::Passed) => {
             println!("✓ diff_review_button: PASSED");
@@ -969,7 +967,7 @@ fn init_app_state(cx: &mut App) -> Arc<AppState> {
     }
 
     // Use the real filesystem instead of FakeFs so we can access actual files on disk
-    let fs: Arc<dyn Fs> = fs::RealFs::new(None, cx.background_executor().clone());
+    let fs: Arc<dyn Fs> = fs::RealFs::new(cx.background_executor().clone());
     <dyn Fs>::set_global(fs.clone(), cx);
 
     let languages = Arc::new(language::LanguageRegistry::test(
@@ -1458,12 +1456,13 @@ fn run_settings_ui_subpage_visual_tests(
     }
 }
 
-/// Runs visual tests for the diff review button in git diff views.
+/// Runs visual tests for the diff review overlay.
 ///
-/// This test captures three states:
-/// 1. Diff view with feature flag enabled (button visible)
-/// 2. Diff view with feature flag disabled (no button)
-/// 3. Regular editor with feature flag enabled (no button - only shows in diff views)
+/// The git diff view variants (`diff_review_button_enabled` /
+/// `diff_review_button_disabled`) were removed together with the `git_ui` crate.
+/// These tests cover the overlay in a regular editor: the button stays hidden
+/// outside of diff views, and the prompt, comment submission, and collapsing
+/// behavior are captured from there.
 #[cfg(target_os = "macos")]
 fn run_diff_review_visual_tests(
     app_state: Arc<AppState>,
@@ -1557,84 +1556,6 @@ import { AiPaneTabContext } from 'context';
         cx.advance_clock(Duration::from_millis(100));
         cx.run_until_parked();
     }
-
-    // Test 1: Diff view with feature flag enabled
-    // Enable the feature flag
-    cx.update(|cx| {
-        cx.update_flags(true, vec!["diff-review".to_string()]);
-    });
-
-    let workspace_window: WindowHandle<Workspace> = cx
-        .update(|cx| {
-            cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(bounds)),
-                    focus: false,
-                    show: false,
-                    ..Default::default()
-                },
-                |window, cx| {
-                    cx.new(|cx| {
-                        Workspace::new(None, project.clone(), app_state.clone(), window, cx)
-                    })
-                },
-            )
-        })
-        .context("Failed to open diff review test window")?;
-
-    cx.run_until_parked();
-
-    // Create and add the ProjectDiff using the public deploy_at method
-    workspace_window
-        .update(cx, |workspace, window, cx| {
-            ProjectDiff::deploy_at(workspace, None, window, cx);
-        })
-        .log_err();
-
-    // Wait for diff to render
-    for _ in 0..5 {
-        cx.advance_clock(Duration::from_millis(100));
-        cx.run_until_parked();
-    }
-
-    // Refresh window
-    cx.update_window(workspace_window.into(), |_, window, _cx| {
-        window.refresh();
-    })?;
-
-    cx.run_until_parked();
-
-    // Capture Test 1: Diff with flag enabled
-    let test1_result = run_visual_test(
-        "diff_review_button_enabled",
-        workspace_window.into(),
-        cx,
-        update_baseline,
-    )?;
-
-    // Test 2: Diff view with feature flag disabled
-    // Disable the feature flag
-    cx.update(|cx| {
-        cx.update_flags(false, vec![]);
-    });
-
-    // Refresh window
-    cx.update_window(workspace_window.into(), |_, window, _cx| {
-        window.refresh();
-    })?;
-
-    for _ in 0..3 {
-        cx.advance_clock(Duration::from_millis(100));
-        cx.run_until_parked();
-    }
-
-    // Capture Test 2: Diff with flag disabled
-    let test2_result = run_visual_test(
-        "diff_review_button_disabled",
-        workspace_window.into(),
-        cx,
-        update_baseline,
-    )?;
 
     // Test 3: Regular editor with flag enabled (should NOT show button)
     // Re-enable the feature flag
@@ -1900,7 +1821,7 @@ import { AiPaneTabContext } from 'context';
     )?;
 
     // Clean up: remove worktrees to stop background scanning
-    workspace_window
+    regular_window
         .update(cx, |workspace, _window, cx| {
             let project = workspace.project().clone();
             project.update(cx, |project, cx| {
@@ -1916,10 +1837,6 @@ import { AiPaneTabContext } from 'context';
     cx.run_until_parked();
 
     // Close windows
-    cx.update_window(workspace_window.into(), |_, window, _cx| {
-        window.remove_window();
-    })
-    .log_err();
     cx.update_window(regular_window.into(), |_, window, _cx| {
         window.remove_window();
     })
@@ -1935,8 +1852,6 @@ import { AiPaneTabContext } from 'context';
 
     // Return combined result
     let all_results = [
-        &test1_result,
-        &test2_result,
         &test3_result,
         &test4_result,
         &test5_result,

@@ -152,9 +152,9 @@ impl MentionSet {
                 include_errors,
                 include_warnings,
             } => self.confirm_mention_for_diagnostics(include_errors, include_warnings, cx),
-            MentionUri::GitDiff { base_ref } => {
-                self.confirm_mention_for_git_diff(base_ref.into(), cx)
-            }
+            MentionUri::GitDiff { .. } => Task::ready(Err(anyhow!(
+                "branch diffs are unavailable because git support has been removed"
+            ))),
             MentionUri::Selection {
                 abs_path: Some(abs_path),
                 line_range,
@@ -330,9 +330,9 @@ impl MentionSet {
                 debug_panic!("unexpected terminal URI");
                 Task::ready(Err(anyhow!("unexpected terminal URI")))
             }
-            MentionUri::GitDiff { base_ref } => {
-                self.confirm_mention_for_git_diff(base_ref.into(), cx)
-            }
+            MentionUri::GitDiff { .. } => Task::ready(Err(anyhow!(
+                "branch diffs are unavailable because git support has been removed"
+            ))),
             MentionUri::MergeConflict { .. } => {
                 debug_panic!("unexpected merge conflict URI");
                 Task::ready(Err(anyhow!("unexpected merge conflict URI")))
@@ -661,42 +661,8 @@ impl MentionSet {
         })
     }
 
-    pub fn confirm_mention_for_git_diff(
-        &self,
-        base_ref: SharedString,
-        cx: &mut Context<Self>,
-    ) -> Task<Result<Mention>> {
-        let Some(project) = self.project.upgrade() else {
-            return Task::ready(Err(anyhow!("project not found")));
-        };
-
-        let Some(repo) = project.read(cx).active_repository(cx) else {
-            return Task::ready(Err(anyhow!("no active repository")));
-        };
-
-        let diff_receiver = repo.update(cx, |repo, cx| {
-            repo.diff(
-                git::repository::DiffType::MergeBase { base_ref: base_ref },
-                cx,
-            )
-        });
-
-        cx.spawn(async move |_, _| {
-            let diff_text = diff_receiver.await??;
-            if diff_text.is_empty() {
-                Ok(Mention::Text {
-                    content: "No changes found in branch diff.".into(),
-                    tracked_buffers: Vec::new(),
-                })
-            } else {
-                Ok(Mention::Text {
-                    content: diff_text,
-                    tracked_buffers: Vec::new(),
-                })
-            }
-        })
-    }
 }
+
 
 /// Computes disambiguated labels for a set of mentions, so that mentions sharing
 /// a base name get extra context (parent path components, skill source) to tell

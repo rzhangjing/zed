@@ -66,7 +66,6 @@ For general settings mechanics, see [Configuring Zed](../configuring-zed.md).
 | Prompt agents, add context, and review changes | [Agent Panel](./agent-panel.md)                      |
 | Accept AI completions while typing             | [Edit Prediction](./edit-prediction.md)              |
 | Run multiple AI tasks at once                  | [Parallel Agents](./parallel-agents.md)              |
-| Generate commit messages                       | [Git commit generation](../git.md#ai-support-in-git) |
 
 ## Learn More {#learn-more}
 

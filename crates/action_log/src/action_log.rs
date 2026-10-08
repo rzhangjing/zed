@@ -3,7 +3,7 @@ use buffer_diff::BufferDiff;
 use clock;
 use collections::{BTreeMap, HashMap};
 use fs::MTime;
-use futures::{FutureExt, StreamExt, channel::mpsc};
+use futures::{StreamExt, channel::mpsc};
 use gpui::{
     App, AppContext, AsyncApp, Context, Entity, SharedString, Subscription, Task, WeakEntity,
 };
@@ -285,42 +285,8 @@ impl ActionLog {
         mut buffer_updates: mpsc::UnboundedReceiver<(ChangeAuthor, text::BufferSnapshot)>,
         cx: &mut AsyncApp,
     ) -> Result<()> {
-        let git_diff = this
-            .update(cx, |this, cx| {
-                this.project.update(cx, |project, cx| {
-                    project.open_uncommitted_diff(buffer.clone(), cx)
-                })
-            })?
-            .await
-            .ok();
-        let (mut git_diff_updates_tx, mut git_diff_updates_rx) = watch::channel(());
-        let _diff_subscription = if let Some(git_diff) = git_diff.as_ref() {
-            cx.update(|cx| {
-                Some(cx.subscribe(git_diff, move |_, event, _cx| {
-                    if matches!(event, buffer_diff::BufferDiffEvent::BaseTextChanged) {
-                        git_diff_updates_tx.send(()).ok();
-                    }
-                }))
-            })
-        } else {
-            None
-        };
-
-        loop {
-            futures::select_biased! {
-                buffer_update = buffer_updates.next() => {
-                    if let Some((author, buffer_snapshot)) = buffer_update {
-                        Self::track_edits(&this, &buffer, author, buffer_snapshot, cx).await?;
-                    } else {
-                        break;
-                    }
-                }
-                _ = git_diff_updates_rx.changed().fuse() => {
-                    if let Some(git_diff) = git_diff.as_ref() {
-                        Self::keep_committed_edits(&this, &buffer, git_diff, cx).await?;
-                    }
-                }
-            }
+        while let Some((author, buffer_snapshot)) = buffer_updates.next().await {
+            Self::track_edits(&this, &buffer, author, buffer_snapshot, cx).await?;
         }
 
         Ok(())
@@ -362,100 +328,6 @@ impl ActionLog {
             anyhow::Ok(rebase)
         })??;
         let (new_base_text, new_diff_base) = rebase.await;
-
-        Self::update_diff(
-            this,
-            buffer,
-            buffer_snapshot,
-            new_base_text,
-            new_diff_base,
-            cx,
-        )
-        .await
-    }
-
-    async fn keep_committed_edits(
-        this: &WeakEntity<ActionLog>,
-        buffer: &Entity<Buffer>,
-        git_diff: &Entity<BufferDiff>,
-        cx: &mut AsyncApp,
-    ) -> Result<()> {
-        let buffer_snapshot = this.read_with(cx, |this, _cx| {
-            let tracked_buffer = this
-                .tracked_buffers
-                .get(buffer)
-                .context("buffer not tracked")?;
-            anyhow::Ok(tracked_buffer.snapshot.clone())
-        })??;
-        let (new_base_text, new_diff_base) = this
-            .read_with(cx, |this, cx| {
-                let tracked_buffer = this
-                    .tracked_buffers
-                    .get(buffer)
-                    .context("buffer not tracked")?;
-                let old_unreviewed_edits = tracked_buffer.unreviewed_edits.clone();
-                let agent_diff_base = tracked_buffer.diff_base.clone();
-                let git_diff_base = git_diff.read(cx).base_text(cx).as_rope().clone();
-                let buffer_text = tracked_buffer.snapshot.as_rope().clone();
-                anyhow::Ok(cx.background_spawn(async move {
-                    if buffer_text.len() == git_diff_base.len()
-                        && buffer_text.chars_at(0).eq(git_diff_base.chars_at(0))
-                    {
-                        return (Arc::<str>::from(git_diff_base.to_string()), git_diff_base);
-                    }
-                    let mut old_unreviewed_edits = old_unreviewed_edits.into_iter().peekable();
-                    let committed_edits = language::line_diff(
-                        &agent_diff_base.to_string(),
-                        &git_diff_base.to_string(),
-                    )
-                    .into_iter()
-                    .map(|(old, new)| Edit { old, new });
-
-                    let mut new_agent_diff_base = agent_diff_base.clone();
-                    let mut row_delta = 0i32;
-                    for committed in committed_edits {
-                        while let Some(unreviewed) = old_unreviewed_edits.peek() {
-                            // If the committed edit matches the unreviewed
-                            // edit, assume the user wants to keep it.
-                            if committed.old == unreviewed.old {
-                                let unreviewed_new =
-                                    buffer_text.slice_rows(unreviewed.new.clone()).to_string();
-                                let committed_new =
-                                    git_diff_base.slice_rows(committed.new.clone()).to_string();
-                                if unreviewed_new == committed_new {
-                                    let old_byte_start =
-                                        new_agent_diff_base.point_to_offset(Point::new(
-                                            (unreviewed.old.start as i32 + row_delta) as u32,
-                                            0,
-                                        ));
-                                    let old_byte_end =
-                                        new_agent_diff_base.point_to_offset(cmp::min(
-                                            Point::new(
-                                                (unreviewed.old.end as i32 + row_delta) as u32,
-                                                0,
-                                            ),
-                                            new_agent_diff_base.max_point(),
-                                        ));
-                                    new_agent_diff_base
-                                        .replace(old_byte_start..old_byte_end, &unreviewed_new);
-                                    row_delta +=
-                                        unreviewed.new_len() as i32 - unreviewed.old_len() as i32;
-                                }
-                            } else if unreviewed.old.start >= committed.old.end {
-                                break;
-                            }
-
-                            old_unreviewed_edits.next().unwrap();
-                        }
-                    }
-
-                    (
-                        Arc::from(new_agent_diff_base.to_string().as_str()),
-                        new_agent_diff_base,
-                    )
-                }))
-            })??
-            .await;
 
         Self::update_diff(
             this,
@@ -2876,14 +2748,6 @@ mod tests {
         assert_eq!(hunk.len(), 1);
         assert_eq!(hunk[0].old_text, "bbb\n");
 
-        // Simulate the race condition: update only the HEAD SHA first,
-        // without changing the committed file contents. This is analogous
-        // to compute_snapshot updating head_commit before
-        // reload_buffer_diff_bases has loaded the new base text.
-        fs.with_git_state(path!("/project/.git").as_ref(), true, |state| {
-            state.refs.insert("HEAD".into(), "0000001".into());
-        })
-        .unwrap();
         cx.run_until_parked();
 
         // Make a user edit (on a different line) to trigger a buffer diff
@@ -2898,18 +2762,6 @@ mod tests {
         });
         cx.run_until_parked();
 
-        // Now update the committed file contents to match the buffer
-        // (the agent edit was committed). Keep the same SHA so head_commit
-        // does NOT change again — this is the second half of the race.
-        {
-            use git::repository::repo_path;
-            fs.with_git_state(path!("/project/.git").as_ref(), true, |state| {
-                state
-                    .head_contents
-                    .insert(repo_path("file.txt"), "aaa\nBBB\nccc\nDDD\neee".into());
-            })
-            .unwrap();
-        }
         cx.run_until_parked();
 
         // The agent's edit (bbb -> BBB) should be accepted because the

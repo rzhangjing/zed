@@ -2,11 +2,10 @@ use crate::{
     DisplayPoint, Editor, MultiBuffer, MultiBufferSnapshot, RowExt,
     display_map::{HighlightKey, ToDisplayPoint},
 };
-use buffer_diff::DiffHunkStatusKind;
+use buffer_diff::{BufferDiff, DiffHunkStatusKind};
 use collections::BTreeMap;
 use futures::Future;
 
-use git::repository::RepoPath;
 use gpui::{
     AnyWindowHandle, App, Context, Entity, Focusable as _, Keystroke, Pixels, Point,
     VisualTestContext, Window, WindowHandle, prelude::*,
@@ -338,43 +337,18 @@ impl EditorTestContext {
             &[(path.as_unix_str(), diff_base.to_string())],
             "deadbeef",
         );
+        self.set_diff_base_text(diff_base);
         self.cx.run_until_parked();
     }
 
-    pub fn clear_index_text(&mut self) {
+    /// Attaches (or replaces) a base-text diff on the editor's multi buffer. This stands in
+    /// for the uncommitted diff that editors used to load from the project's git store, which
+    /// no longer exists now that git support has been removed.
+    pub fn set_diff_base_text(&mut self, diff_base: &str) {
+        self.update_multibuffer(|multibuffer, cx| {
+            attach_base_text_diff(multibuffer, diff_base, cx);
+        });
         self.cx.run_until_parked();
-        let fs =
-            self.update_editor(|editor, _, cx| editor.project().unwrap().read(cx).fs().as_fake());
-        fs.set_index_for_repo(&Self::root_path().join(".git"), &[]);
-        self.cx.run_until_parked();
-    }
-
-    pub fn set_index_text(&mut self, diff_base: &str) {
-        self.cx.run_until_parked();
-        let fs =
-            self.update_editor(|editor, _, cx| editor.project().unwrap().read(cx).fs().as_fake());
-        let path = self.update_buffer(|buffer, _| buffer.file().unwrap().path().clone());
-        fs.set_index_for_repo(
-            &Self::root_path().join(".git"),
-            &[(path.as_unix_str(), diff_base.to_string())],
-        );
-        self.cx.run_until_parked();
-    }
-
-    #[track_caller]
-    pub fn assert_index_text(&mut self, expected: Option<&str>) {
-        let fs =
-            self.update_editor(|editor, _, cx| editor.project().unwrap().read(cx).fs().as_fake());
-        let path = self.update_buffer(|buffer, _| buffer.file().unwrap().path().clone());
-        let mut found = None;
-        fs.with_git_state(&Self::root_path().join(".git"), false, |git_state| {
-            found = git_state
-                .index_contents
-                .get(&RepoPath::from_rel_path(&path))
-                .cloned();
-        })
-        .unwrap();
-        assert_eq!(expected.map(str::as_bytes), found.as_deref());
     }
 
     /// Change the editor's text and selections using a string containing
@@ -775,6 +749,38 @@ impl std::fmt::Display for FormatMultiBufferAsMarkedText {
 
         Ok(())
     }
+}
+
+/// Attaches (or replaces) a base-text diff on `multibuffer`, recomputing it whenever the
+/// buffer is edited. This stands in for the uncommitted diff that editors used to load from
+/// the project's git store, which no longer exists now that git support has been removed.
+pub fn attach_base_text_diff(
+    multibuffer: &mut MultiBuffer,
+    base_text: &str,
+    cx: &mut Context<MultiBuffer>,
+) {
+    let buffer = multibuffer.as_singleton().unwrap();
+    let snapshot = buffer.read(cx).text_snapshot();
+    let diff = cx.new(|cx| BufferDiff::new_with_base_text(base_text, &snapshot, cx));
+    multibuffer.add_diff(diff.clone(), cx);
+
+    // The project's git store used to reload a buffer's diff whenever it was edited; keep
+    // the attached diff in sync so that tests observe hunks for the current buffer text.
+    let multibuffer_handle = cx.entity();
+    cx.subscribe(
+        &multibuffer_handle,
+        move |multibuffer, _, event: &multi_buffer::Event, cx| {
+            if !matches!(event, multi_buffer::Event::Edited { .. }) {
+                return;
+            }
+            let Some(buffer) = multibuffer.as_singleton() else {
+                return;
+            };
+            let snapshot = buffer.read(cx).text_snapshot();
+            diff.update(cx, |diff, cx| diff.recalculate_diff_sync(&snapshot, cx));
+        },
+    )
+    .detach();
 }
 
 #[track_caller]

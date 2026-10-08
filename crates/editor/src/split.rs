@@ -35,7 +35,7 @@ use workspace::{
 };
 
 use crate::{
-    Autoscroll, DefaultDiffHunkRenderer, DiffHunkRenderer, Editor, EditorEvent, EditorSettings,
+    Autoscroll, HiddenDiffHunkRenderer, DiffHunkRenderer, Editor, EditorEvent, EditorSettings,
     ToggleSoftWrap,
     actions::{DisableBreakpoint, EditLogBreakpoint, EnableBreakpoint, ToggleBreakpoint},
     display_map::Companion,
@@ -629,7 +629,7 @@ impl SplittableEditor {
             editor.disable_inline_diagnostics();
             editor.disable_mouse_wheel_zoom();
             editor.set_minimap_visibility(crate::MinimapVisibility::Disabled, window, cx);
-            editor.set_diff_hunk_renderer(Some(Arc::new(DefaultDiffHunkRenderer)), cx);
+            editor.set_diff_hunk_renderer(Some(Arc::new(HiddenDiffHunkRenderer)), cx);
             editor
         });
         // TODO(split-diff) we might want to tag editor events with whether they came from rhs/lhs
@@ -728,7 +728,6 @@ impl SplittableEditor {
         });
 
         let splittable = cx.weak_entity();
-        let rhs_editor = self.rhs_editor.downgrade();
         let lhs_editor = cx.new(|cx| {
             let mut editor =
                 Editor::for_multibuffer(lhs_multibuffer.clone(), Some(project.clone()), window, cx);
@@ -740,7 +739,6 @@ impl SplittableEditor {
                 })),
                 cx,
             );
-            editor.set_diff_hunk_action_target(Some(rhs_editor));
             editor.set_delegate_open_excerpts(true);
             editor.set_show_vertical_scrollbar(false, cx);
             editor.disable_lsp_data();
@@ -3258,132 +3256,6 @@ mod tests {
             ccc
             § spacer
             ddd"
-            .unindent(),
-            &mut cx,
-        );
-    }
-
-    #[gpui::test]
-    async fn test_reverting_deletion_hunk(cx: &mut gpui::TestAppContext) {
-        use git::Restore;
-        use rope::Point;
-        use unindent::Unindent as _;
-
-        let (editor, mut cx) = init_test(cx, SoftWrap::EditorWidth, DiffViewStyle::Split).await;
-
-        let base_text = "
-            aaa
-            bbb
-            ccc
-            ddd
-            eee
-        "
-        .unindent();
-        let current_text = "
-            aaa
-            ddd
-            eee
-        "
-        .unindent();
-
-        let (buffer, diff) = buffer_with_diff(&base_text, &current_text, &mut cx);
-
-        editor.update(cx, |editor, cx| {
-            let path = PathKey::sorted(0);
-            editor.update_excerpts_for_path(
-                path,
-                buffer.clone(),
-                vec![Point::new(0, 0)..buffer.read(cx).max_point()],
-                0,
-                diff.clone(),
-                cx,
-            );
-        });
-
-        cx.run_until_parked();
-
-        assert_split_content(
-            &editor,
-            "
-            § <no file>
-            § -----
-            aaa
-            § spacer
-            § spacer
-            ddd
-            eee"
-            .unindent(),
-            "
-            § <no file>
-            § -----
-            aaa
-            bbb
-            ccc
-            ddd
-            eee"
-            .unindent(),
-            &mut cx,
-        );
-
-        let rhs_editor = editor.update(cx, |editor, _cx| editor.rhs_editor.clone());
-        cx.update_window_entity(&rhs_editor, |editor, window, cx| {
-            editor.change_selections(crate::SelectionEffects::no_scroll(), window, cx, |s| {
-                s.select_ranges([Point::new(1, 0)..Point::new(1, 0)]);
-            });
-            editor.git_restore(&Restore, window, cx);
-        });
-
-        cx.run_until_parked();
-
-        assert_split_content(
-            &editor,
-            "
-            § <no file>
-            § -----
-            aaa
-            bbb
-            ccc
-            ddd
-            eee"
-            .unindent(),
-            "
-            § <no file>
-            § -----
-            aaa
-            bbb
-            ccc
-            ddd
-            eee"
-            .unindent(),
-            &mut cx,
-        );
-
-        let buffer_snapshot = buffer.read_with(cx, |buffer, _| buffer.text_snapshot());
-        diff.update(cx, |diff, cx| {
-            diff.recalculate_diff_sync(&buffer_snapshot, cx);
-        });
-
-        cx.run_until_parked();
-
-        assert_split_content(
-            &editor,
-            "
-            § <no file>
-            § -----
-            aaa
-            bbb
-            ccc
-            ddd
-            eee"
-            .unindent(),
-            "
-            § <no file>
-            § -----
-            aaa
-            bbb
-            ccc
-            ddd
-            eee"
             .unindent(),
             &mut cx,
         );

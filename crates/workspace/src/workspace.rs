@@ -58,7 +58,7 @@ use futures::{
 };
 use gpui::{
     Action, AnyEntity, AnyView, AnyWeakView, App, AppContext, AsyncApp, AsyncWindowContext, Axis,
-    Bounds, ClipboardItem, Context, CursorStyle, Decorations, DragMoveEvent, Entity, EntityId,
+    Bounds, Context, CursorStyle, Decorations, DragMoveEvent, Entity, EntityId,
     EventEmitter, FocusHandle, Focusable, Global, HitboxBehavior, Hsla, KeyContext, Keystroke,
     ManagedView, MouseButton, PathPromptOptions, Point, PromptLevel, Render, ResizeEdge, Size,
     Stateful, Subscription, SystemWindowTabController, Task, TaskExt, Tiling, WeakEntity,
@@ -97,7 +97,6 @@ use project::{
     DirectoryLister, Project, ProjectEntryId, ProjectPath, ResolvedPath, Worktree, WorktreeId,
     WorktreeSettings,
     debugger::{breakpoint_store::BreakpointStoreEvent, session::ThreadStatus},
-    git_store::{GitStoreEvent, RepositoryEvent},
     project_settings::ProjectSettings,
     toolchain_store::ToolchainStoreEvent,
     trusted_worktrees::{RemoteHostLocation, TrustedWorktrees, TrustedWorktreesEvent},
@@ -176,7 +175,6 @@ struct WindowTitleNeeds {
     relative_path: bool,
     file_stem: bool,
     app_name: bool,
-    branch: bool,
 }
 
 impl WindowTitleNeeds {
@@ -186,7 +184,6 @@ impl WindowTitleNeeds {
             relative_path: template.contains("${relativePath}"),
             file_stem: template.contains("${fileStem}"),
             app_name: template.contains("${appName}"),
-            branch: template.contains("${branch}"),
         }
     }
 }
@@ -199,7 +196,6 @@ struct WindowTitleContext {
     relative_path: Option<String>,
     file_stem: Option<String>,
     app_name: &'static str,
-    branch: Option<String>,
 }
 
 enum WindowTitleTemplatePart<'a> {
@@ -217,7 +213,6 @@ impl WindowTitleContext {
             "relativePath" => self.relative_path.as_deref(),
             "fileStem" => self.file_stem.as_deref(),
             "appName" => Some(self.app_name),
-            "branch" => self.branch.as_deref(),
             // Unknown placeholders collapse like missing values so imported and
             // native templates follow the same rendering rules.
             _ => None,
@@ -743,75 +738,6 @@ impl Toast {
         self.autohide = true;
         self
     }
-}
-
-/// Opens a permalink for the selected file on its Git hosting provider.
-pub fn open_file_permalink(
-    project: Entity<Project>,
-    project_path: ProjectPath,
-    workspace: WeakEntity<Workspace>,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    handle_file_permalink(project, project_path, workspace, false, window, cx);
-}
-
-/// Copies a permalink for the selected file on its Git hosting provider.
-pub fn copy_file_permalink(
-    project: Entity<Project>,
-    project_path: ProjectPath,
-    workspace: WeakEntity<Workspace>,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    handle_file_permalink(project, project_path, workspace, true, window, cx);
-}
-
-fn handle_file_permalink(
-    project: Entity<Project>,
-    project_path: ProjectPath,
-    workspace: WeakEntity<Workspace>,
-    copy: bool,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    let permalink_task = project.update(cx, |project, cx| {
-        project.get_file_permalink(&project_path, cx)
-    });
-
-    window
-        .spawn(cx, async move |cx| match permalink_task.await {
-            Ok(permalink) => {
-                cx.update(|_, cx| {
-                    if copy {
-                        cx.write_to_clipboard(ClipboardItem::new_string(permalink.to_string()));
-                    } else {
-                        cx.open_url(permalink.as_ref());
-                    }
-                })
-                .ok();
-            }
-            Err(err) => {
-                let action = if copy {
-                    "copy file permalink"
-                } else {
-                    "open file permalink"
-                };
-                let message = format!("Failed to {action}: {err}");
-                anyhow::Result::<()>::Err(err).log_err();
-
-                workspace
-                    .update(cx, |workspace, cx| {
-                        struct FilePermalinkAction;
-                        workspace.show_toast(
-                            Toast::new(NotificationId::unique::<FilePermalinkAction>(), message),
-                            cx,
-                        );
-                    })
-                    .ok();
-            }
-        })
-        .detach();
 }
 
 impl PartialEq for Toast {
@@ -2008,23 +1934,6 @@ impl Workspace {
                     this.update_window_title(window, cx);
                 }
             }),
-            cx.subscribe_in(
-                &project.read(cx).git_store().clone(),
-                window,
-                |this, _, event, window, cx| match event {
-                    GitStoreEvent::ActiveRepositoryChanged(_)
-                    | GitStoreEvent::RepositoryUpdated(
-                        _,
-                        RepositoryEvent::HeadChanged | RepositoryEvent::BranchListChanged,
-                        true,
-                    ) => {
-                        if this.window_title_needs_branch(cx) {
-                            this.update_window_title(window, cx);
-                        }
-                    }
-                    _ => {}
-                },
-            ),
             cx.observe_window_bounds(window, move |this, window, cx| {
                 if !window.is_window_active() {
                     return;
@@ -5978,7 +5887,7 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) {
         self.active_pane = pane.clone();
-        self.active_item_path_changed(true, window, cx);
+        self.active_item_path_changed(window, cx);
         self.last_active_center_pane = Some(pane.downgrade());
     }
 
@@ -6055,7 +5964,7 @@ impl Workspace {
                 }
                 serialize_workspace = *focus_changed || pane != self.active_pane();
                 if pane == self.active_pane() {
-                    self.active_item_path_changed(*focus_changed, window, cx);
+                    self.active_item_path_changed(window, cx);
                     self.update_active_view_for_followers(window, cx);
                 } else if *local {
                     self.set_active_pane(pane, window, cx);
@@ -6071,7 +5980,7 @@ impl Workspace {
             }
             pane::Event::ChangeItemTitle => {
                 if *pane == self.active_pane {
-                    self.active_item_path_changed(false, window, cx);
+                    self.active_item_path_changed(window, cx);
                     cx.notify();
                 }
                 serialize_workspace = false;
@@ -6252,7 +6161,7 @@ impl Workspace {
 
             cx.notify();
         } else {
-            self.active_item_path_changed(true, window, cx);
+            self.active_item_path_changed(window, cx);
         }
         cx.emit(Event::PaneRemoved);
     }
@@ -6540,7 +6449,6 @@ impl Workspace {
 
     pub(crate) fn active_item_path_changed(
         &mut self,
-        focus_changed: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -6551,13 +6459,6 @@ impl Workspace {
         self.project.update(cx, |project, cx| {
             project.set_active_path(active_entry.clone(), cx)
         });
-
-        if focus_changed && let Some(project_path) = &active_entry {
-            let git_store_entity = self.project.read(cx).git_store().clone();
-            git_store_entity.update(cx, |git_store, cx| {
-                git_store.set_active_repo_for_path(project_path, cx);
-            });
-        }
 
         if active_project_path_changed {
             match active_entry.as_ref() {
@@ -6594,13 +6495,6 @@ impl Workspace {
             return;
         }
         self.apply_window_title(window, cx);
-    }
-
-    /// Whether the active window-title template references `${branch}`, and so
-    /// can be affected by Git repository events.
-    fn window_title_needs_branch(&self, cx: &App) -> bool {
-        WindowTitleNeeds::from_template(&WorkspaceSettings::get_global(cx).window_title_format)
-            .branch
     }
 
     fn apply_window_title(&mut self, window: &mut Window, cx: &mut App) {
@@ -6712,14 +6606,6 @@ impl Workspace {
             })
             .unwrap_or((None, None, None, None));
 
-        let branch = if needs.branch {
-            project
-                .active_repository(cx)
-                .and_then(|repo| repo.read(cx).branch.as_ref().map(|b| b.name().to_owned()))
-        } else {
-            None
-        };
-
         WindowTitleContext {
             project_name,
             file_name,
@@ -6733,7 +6619,6 @@ impl Workspace {
             } else {
                 ""
             },
-            branch,
         }
     }
 
@@ -11893,9 +11778,6 @@ fn load_legacy_panel_size(
         "OutlinePanel" => {
             format!("{}-{:?}", "OutlinePanel", workspace_id)
         }
-        "GitPanel" => {
-            format!("{}-{:?}", "GitPanel", workspace_id)
-        }
         "TerminalPanel" => {
             format!("{:?}-{:?}", "TerminalPanel", workspace_id)
         }
@@ -11950,7 +11832,6 @@ mod tests {
             relative_path: Some("src/main.rs".to_string()),
             file_stem: Some("main".to_string()),
             app_name: "Zed",
-            branch: Some("main".to_string()),
         };
 
         assert_eq!(
@@ -11978,14 +11859,6 @@ mod tests {
             "project — src/main.rs — /tmp/project/src/main.rs"
         );
         assert_eq!(
-            render_window_title_format(
-                "${projectName}${separator}${branch}${separator}${fileName}",
-                " | ",
-                &context,
-            ),
-            "project | main"
-        );
-        assert_eq!(
             render_window_title_format("${projectName}${separator}", " — ", &context),
             "project"
         );
@@ -12004,7 +11877,6 @@ mod tests {
             relative_path: Some("src/main.rs".to_string()),
             file_stem: Some("main".to_string()),
             app_name: "Zed",
-            branch: None,
         };
 
         assert_eq!(
@@ -12026,17 +11898,12 @@ mod tests {
         let context = WindowTitleContext {
             project_name: "project".to_string(),
             app_name: "Zed",
-            branch: Some("feature/foo".to_string()),
             ..Default::default()
         };
 
         assert_eq!(
             render_window_title_format("${projectName}${separator}${appName}", " — ", &context),
             "project — Zed"
-        );
-        assert_eq!(
-            render_window_title_format("${projectName}${separator}${branch}", " — ", &context),
-            "project — feature/foo"
         );
     }
 
@@ -12047,23 +11914,19 @@ mod tests {
         assert!(!default.relative_path);
         assert!(!default.file_stem);
         assert!(!default.app_name);
-        assert!(!default.branch);
 
-        let all = WindowTitleNeeds::from_template(
-            "${filePath} ${relativePath} ${fileStem} ${appName} ${branch}",
-        );
+        let all =
+            WindowTitleNeeds::from_template("${filePath} ${relativePath} ${fileStem} ${appName}");
         assert!(all.file_path);
         assert!(all.relative_path);
         assert!(all.file_stem);
         assert!(all.app_name);
-        assert!(all.branch);
 
         // Substrings and unrelated text must not trigger the expensive path.
         let noise =
             WindowTitleNeeds::from_template("filePath relativePath fileStem ${projectName}");
         assert!(!noise.file_path);
         assert!(!noise.relative_path);
-        assert!(!noise.branch);
     }
 
     #[gpui::test]
@@ -12465,62 +12328,6 @@ mod tests {
         });
         cx.executor().run_until_parked();
         assert_eq!(cx.window_title().as_deref(), Some("empty project"));
-    }
-
-    #[gpui::test]
-    async fn test_window_title_format_branch(cx: &mut TestAppContext) {
-        init_test(cx);
-
-        let fs = FakeFs::new(cx.executor());
-        fs.insert_tree(path!("/root1"), json!({ ".git": {}, "a.txt": "" }))
-            .await;
-        fs.set_branch_name(Path::new(path!("/root1/.git")), Some("main"));
-        let project = Project::test(fs.clone(), [path!("/root1").as_ref()], cx).await;
-        let (workspace, cx) =
-            cx.add_window_view(|window, cx| Workspace::test_new(project.clone(), window, cx));
-
-        cx.update(|_, cx| {
-            SettingsStore::update_global(cx, |settings, cx| {
-                settings.update_user_settings(cx, |settings| {
-                    settings.workspace.window_title_format = Some(
-                        "${projectName}${separator}${branch}${separator}${fileName}".to_string(),
-                    );
-                })
-            });
-        });
-        cx.executor().run_until_parked();
-        assert_eq!(cx.window_title().as_deref(), Some("root1 — main"));
-
-        let item = cx.new(|cx| {
-            TestItem::new(cx).with_project_items(&[TestProjectItem::new(1, "a.txt", cx)])
-        });
-        workspace.update_in(cx, |workspace, window, cx| {
-            workspace.add_item_to_active_pane(Box::new(item), None, true, window, cx)
-        });
-        cx.executor().run_until_parked();
-        assert_eq!(cx.window_title().as_deref(), Some("root1 — main — a.txt"));
-
-        fs.set_branch_name(Path::new(path!("/root1/.git")), Some("feature"));
-        cx.executor().run_until_parked();
-        assert_eq!(
-            cx.window_title().as_deref(),
-            Some("root1 — feature — a.txt")
-        );
-
-        cx.update(|_, cx| {
-            SettingsStore::update_global(cx, |settings, cx| {
-                settings.update_user_settings(cx, |settings| {
-                    settings.workspace.window_title_format =
-                        Some("${projectName}${separator}${fileName}".to_string());
-                })
-            });
-        });
-        cx.executor().run_until_parked();
-        assert_eq!(cx.window_title().as_deref(), Some("root1 — a.txt"));
-
-        fs.set_branch_name(Path::new(path!("/root1/.git")), Some("other"));
-        cx.executor().run_until_parked();
-        assert_eq!(cx.window_title().as_deref(), Some("root1 — a.txt"));
     }
 
     #[gpui::test]
