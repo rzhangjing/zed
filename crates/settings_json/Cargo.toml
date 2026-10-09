@@ -17,7 +17,7 @@ editing = ["dep:tree-sitter", "dep:tree-sitter-json"]
 
 [dependencies]
 anyhow.workspace = true
-tree-sitter = { workspace = true, features = ["wasm"], optional = true }
+tree-sitter = { workspace = true, optional = true }
 tree-sitter-json = { workspace = true, optional = true }
 util.workspace = true
 serde.workspace = true

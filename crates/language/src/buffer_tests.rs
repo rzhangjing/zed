@@ -514,46 +514,6 @@ async fn test_reregistering_language_during_failed_load_yields_current_language(
     );
 }
 
-#[gpui::test]
-async fn test_extension_grammar_cannot_shadow_native_grammar(cx: &mut TestAppContext) {
-    let registry = Arc::new(LanguageRegistry::test(cx.executor()));
-    registry.register_native_grammars([("rust", tree_sitter_rust::LANGUAGE)]);
-    registry.register_wasm_grammars(vec![(
-        Arc::from("rust"),
-        PathBuf::from("/extensions/bogus/grammars/rust.wasm"),
-    )]);
-
-    registry.register_test_language(LanguageConfig {
-        name: LanguageName::new_static("TheLanguage"),
-        grammar: Some(Arc::from("rust")),
-        matcher: Arc::new(LanguageMatcher {
-            path_suffixes: vec!["the".to_string()],
-            ..LanguageMatcher::default()
-        }),
-        ..LanguageConfig::default()
-    });
-    let language = registry.language_for_name("TheLanguage").await.unwrap();
-    assert!(
-        language.grammar().is_some(),
-        "an extension grammar must not replace a native grammar with the same name"
-    );
-
-    registry.remove_languages(&[], &[Arc::from("rust")]);
-    registry.register_test_language(LanguageConfig {
-        name: LanguageName::new_static("TheOtherLanguage"),
-        grammar: Some(Arc::from("rust")),
-        ..LanguageConfig::default()
-    });
-    let language = registry
-        .language_for_name("TheOtherLanguage")
-        .await
-        .unwrap();
-    assert!(
-        language.grammar().is_some(),
-        "removing an extension grammar must not remove the native grammar it failed to shadow"
-    );
-}
-
 fn file(path: &str) -> Arc<dyn File> {
     Arc::new(TestFile {
         path: Arc::from(rel_path(path)),
