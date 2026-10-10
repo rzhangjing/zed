@@ -10853,7 +10853,7 @@ mod tests {
     async fn test_layout_line_numbers_with_folded_lines(cx: &mut TestAppContext) {
         init_test(cx, |_| {});
 
-        let python_lang = languages::language("python", tree_sitter_python::LANGUAGE.into());
+        let python_lang = language::language("python", tree_sitter_python::LANGUAGE.into());
 
         let window = cx.add_window(|window, cx| {
             let buffer = cx.new(|cx| {

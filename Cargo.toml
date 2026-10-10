@@ -93,15 +93,10 @@ members = [
     "crates/keymap_editor",
     "crates/language",
     "crates/language_core",
-    "crates/language_detection",
     #"crates/language_extension",
     "crates/language_model",
     "crates/language_model_core",
     "crates/language_models",
-    "crates/language_onboarding",
-    "crates/language_selector",
-    "crates/language_tools",
-    "crates/languages",
     "crates/line_ending_selector",
     "crates/llama_cpp",
     "crates/lmstudio",
@@ -319,15 +314,10 @@ json_schema_store = { path = "crates/json_schema_store" }
 keymap_editor = { path = "crates/keymap_editor" }
 language = { path = "crates/language" }
 language_core = { path = "crates/language_core" }
-language_detection = { path = "crates/language_detection" }
 #language_extension = { path = "crates/language_extension" }
 language_model = { path = "crates/language_model" }
 language_model_core = { path = "crates/language_model_core" }
 language_models = { path = "crates/language_models" }
-language_onboarding = { path = "crates/language_onboarding" }
-language_selector = { path = "crates/language_selector" }
-language_tools = { path = "crates/language_tools" }
-languages = { path = "crates/languages" }
 line_ending_selector = { path = "crates/line_ending_selector" }
 llama_cpp = { path = "crates/llama_cpp" }
 lmstudio = { path = "crates/lmstudio" }
@@ -468,7 +458,6 @@ async-tungstenite = "0.33"
 async_zip = { version = "0.0.18", features = ["deflate", "deflate64"] }
 backtrace = "0.3"
 base64 = "0.22"
-betlang = "0.1.1"
 bitflags = "2.6.0"
 block = "0.1"
 block2 = "0.6"
@@ -641,13 +630,6 @@ partial-json-fixer = "0.5.3"
 pathfinder_geometry = "0.5"
 pciid-parser = "0.8.0"
 percent-encoding = "2.3.2"
-pet = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
-pet-conda = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
-pet-core = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
-pet-fs = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
-pet-poetry = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
-pet-reporter = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
-pet-virtualenv = { git = "https://github.com/microsoft/python-environment-tools.git", rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0" }
 piper = "0.2"
 portable-pty = "0.9.0"
 postage = { version = "0.5", features = ["futures-traits"] }
@@ -865,13 +847,6 @@ windows-capture = { git = "https://github.com/zed-industries/windows-capture.git
 calloop = { git = "https://github.com/zed-industries/calloop" }
 notify = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
 notify-types = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
-# Replace `msvc_spectre_libs` (pulled in transitively by the `pet-*` crates that
-# `crates/languages` depends on) with a local no-op stub. Its real build.rs only adds
-# a link-search to the Spectre-mitigated MSVC CRT libs and panics (via the `error`
-# feature the `pet-*` crates enable) when those libs are absent. The stub keeps the
-# `error` feature but does nothing, so MSVC builds fall back to the normal CRT instead
-# of failing. Remove this line + build-patches/msvc_spectre_libs to revert.
-msvc_spectre_libs = { path = "build-patches/msvc_spectre_libs" }
 
 [profile.dev]
 split-debuginfo = "unpacked"

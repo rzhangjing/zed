@@ -561,10 +561,6 @@ pub struct StatusBarSettingsContent {
     ///
     /// Default: false
     pub show_active_file: Option<bool>,
-    /// Whether to display the active language button in the status bar.
-    ///
-    /// Default: true
-    pub active_language_button: Option<bool>,
     /// Whether to show the cursor position button in the status bar.
     ///
     /// Default: true

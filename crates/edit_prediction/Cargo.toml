@@ -68,7 +68,6 @@ zstd.workspace = true
 criterion.workspace = true
 fs = { workspace = true, features = ["test-support"] }
 gpui = { workspace = true, features = ["test-support"] }
-languages = { workspace = true, features = ["load-grammars"] }
 node_runtime.workspace = true
 clock = { workspace = true, features = ["test-support"] }
 ctor.workspace = true
@@ -85,8 +84,4 @@ zlog.workspace = true
 
 [[bench]]
 name = "kept_rate"
-harness = false
-
-[[bench]]
-name = "ts_error_count"
 harness = false

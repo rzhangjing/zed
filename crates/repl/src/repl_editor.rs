@@ -874,12 +874,12 @@ mod tests {
             store.set_kernel_specs_for_testing(vec![typescript_spec, python_spec], cx);
         });
 
-        let markdown = languages::language("markdown", tree_sitter_md::LANGUAGE.into());
-        let typescript = languages::language(
+        let markdown = language::language("markdown", tree_sitter_md::LANGUAGE.into());
+        let typescript = language::language(
             "typescript",
             tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
         );
-        let python = languages::language("python", tree_sitter_python::LANGUAGE.into());
+        let python = language::language("python", tree_sitter_python::LANGUAGE.into());
         let language_registry = Arc::new(LanguageRegistry::new(cx.background_executor().clone()));
         language_registry.add(markdown.clone());
         language_registry.add(typescript);

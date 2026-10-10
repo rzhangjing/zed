@@ -511,7 +511,6 @@ fn main() {
 
         let node_runtime = NodeRuntime::new(client.http_client(), Some(shell_env_loaded_rx), rx);
 
-        languages::init(languages.clone(), fs.clone(), node_runtime.clone(), cx);
         let user_store = cx.new(|cx| UserStore::new(client.clone(), cx));
         let workspace_store = cx.new(|cx| WorkspaceStore::new(client.clone(), cx));
 
@@ -639,12 +638,10 @@ fn main() {
         terminal_view::init(cx);
         journal::init(app_state.clone(), cx);
         encoding_selector::init(cx);
-        language_selector::init(cx);
         line_ending_selector::init(cx);
         toolchain_selector::init(cx);
         theme_selector::init(cx);
         settings_profile_selector::init(cx);
-        language_tools::init(cx);
         title_bar::init(cx);
         feedback::init(cx);
         markdown_preview::init(cx);

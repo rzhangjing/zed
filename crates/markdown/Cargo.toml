@@ -48,7 +48,6 @@ gpui_platform = { workspace = true, features = ["wayland", "x11"] }
 image.workspace = true
 indoc.workspace = true
 language = { workspace = true, features = ["test-support"] }
-languages = { workspace = true, features = ["load-grammars"] }
 node_runtime.workspace = true
 settings = { workspace = true, features = ["test-support"] }
 util = { workspace = true, features = ["test-support"] }

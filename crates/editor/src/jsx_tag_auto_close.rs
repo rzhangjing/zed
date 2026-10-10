@@ -617,7 +617,7 @@ mod jsx_tag_autoclose_tests {
 
     use super::*;
     use gpui::{AppContext as _, TestAppContext};
-    use languages::language;
+    use language::language;
     use multi_buffer::{MultiBufferOffset, PathKey};
     use text::Selection;
 

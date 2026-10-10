@@ -246,7 +246,6 @@ impl VsCodeSettings {
     fn editor_settings_content(&self) -> EditorSettingsContent {
         EditorSettingsContent {
             auto_signature_help: self.read_bool("editor.parameterHints.enabled"),
-            language_detection: self.read_bool("workbench.editor.languageDetection"),
             autoscroll_on_clicks: None,
             cursor_blink: self.read_enum("editor.cursorBlinking", |s| match s {
                 "blink" | "phase" | "expand" | "smooth" => Some(true),
@@ -790,7 +789,6 @@ impl VsCodeSettings {
         skip_default(StatusBarSettingsContent {
             show: self.read_bool("workbench.statusBar.visible"),
             show_active_file: None,
-            active_language_button: None,
             cursor_position_button: None,
             line_endings_button: None,
             active_encoding_button: None,

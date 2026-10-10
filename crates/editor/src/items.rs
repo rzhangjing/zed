@@ -2606,7 +2606,7 @@ mod tests {
         init_test(cx, |_| {});
 
         let buffer = cx.update(|cx| {
-            cx.new(|cx| Buffer::local("", cx).with_language(languages::rust_lang(), cx))
+            cx.new(|cx| Buffer::local("", cx).with_language(language::rust_lang(), cx))
         });
         let (editor, cx) =
             cx.add_window_view(|window, cx| Editor::for_buffer(buffer, None, window, cx));
@@ -2624,7 +2624,7 @@ mod tests {
 
         let buffer = cx.update(|cx| {
             cx.new(|cx| {
-                Buffer::local("sadsdsads\nmore text", cx).with_language(languages::rust_lang(), cx)
+                Buffer::local("sadsdsads\nmore text", cx).with_language(language::rust_lang(), cx)
             })
         });
         let (editor, cx) =
@@ -2642,7 +2642,7 @@ mod tests {
 
         let buffer = cx.update(|cx| {
             cx.new(|cx| {
-                Buffer::local("main.rs\nfn main() {}", cx).with_language(languages::rust_lang(), cx)
+                Buffer::local("main.rs\nfn main() {}", cx).with_language(language::rust_lang(), cx)
             })
         });
         let (editor, cx) =
@@ -2805,7 +2805,7 @@ mod tests {
             let project = Project::test(fs.clone(), [path!("/file.rs").as_ref()], cx).await;
             // Add Rust to the language, so that we can restore the language of the buffer
             project.read_with(cx, |project, _| {
-                project.languages().add(languages::rust_lang())
+                project.languages().add(language::rust_lang())
             });
 
             let (multi_workspace, cx) = cx.add_window_view(|window, cx| {

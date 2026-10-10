@@ -1638,6 +1638,12 @@ pub fn markdown_lang() -> Arc<Language> {
     test_language("markdown", tree_sitter_md::LANGUAGE.into())
 }
 
+#[doc(hidden)]
+#[cfg(any(test, feature = "test-support"))]
+pub fn language(name: &str, grammar: tree_sitter::Language) -> Arc<Language> {
+    test_language(name, grammar)
+}
+
 #[cfg(any(test, feature = "test-support"))]
 fn test_language(name: &str, grammar: tree_sitter::Language) -> Arc<Language> {
     Arc::new(

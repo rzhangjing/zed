@@ -859,7 +859,7 @@ mod tests {
     use gpui::{AppContext as _, Entity, Task, TestAppContext};
     use indoc::indoc;
     use language::{ContextProvider, FakeLspAdapter};
-    use languages::rust_lang;
+    use language::rust_lang;
     use lsp::LanguageServerName;
     use multi_buffer::{MultiBuffer, PathKey};
     use project::{

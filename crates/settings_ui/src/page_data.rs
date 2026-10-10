@@ -3423,7 +3423,7 @@ fn search_and_files_page() -> SettingsPage {
 }
 
 fn window_and_layout_page() -> SettingsPage {
-    fn status_bar_section() -> [SettingsPageItem; 12] {
+    fn status_bar_section() -> [SettingsPageItem; 11] {
         [
             SettingsPageItem::SectionHeader("Status Bar"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -3439,28 +3439,6 @@ fn window_and_layout_page() -> SettingsPage {
                             .project_panel
                             .get_or_insert_default()
                             .button = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Active Language Button",
-                description: "Show the active language button in the status bar.",
-                field: Box::new(SettingField {
-                    json_path: Some("status_bar.active_language_button"),
-                    pick: |settings_content| {
-                        settings_content
-                            .status_bar
-                            .as_ref()?
-                            .active_language_button
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .status_bar
-                            .get_or_insert_default()
-                            .active_language_button = value;
                     },
                 }),
                 metadata: None,
@@ -8477,22 +8455,9 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
         ]
     }
 
-    fn miscellaneous_section() -> [SettingsPageItem; 8] {
+    fn miscellaneous_section() -> [SettingsPageItem; 7] {
         [
             SettingsPageItem::SectionHeader("Miscellaneous"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Language Detection",
-                description: "Whether to enable automatic language detection in unsaved buffers.",
-                field: Box::new(SettingField {
-                    json_path: Some("language_detection"),
-                    pick: |settings_content| settings_content.editor.language_detection.as_ref(),
-                    write: |settings_content, value, _| {
-                        settings_content.editor.language_detection = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
             SettingsPageItem::SettingItem(SettingItem {
                 title: "Word Diff Enabled",
                 description: "Whether to enable word diff highlighting in the editor. When enabled, changed words within modified lines are highlighted to show exactly what changed.",

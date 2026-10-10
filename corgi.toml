@@ -9,8 +9,7 @@ corgi_version = "0.1.43"
 # only those packages' actions key on it — comment or command-text edits
 # rebuild nothing.
 #
-# See the top-level Cargo.toml `[patch.crates-io]` for the local
-# `msvc_spectre_libs` path patch, and `util::fs_embed!` for how dev builds read
+# See `util::fs_embed!` for how dev builds read
 # embedded assets from the checkout instead of baking the build path into the
 # binary.
 

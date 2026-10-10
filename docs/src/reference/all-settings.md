@@ -1835,7 +1835,6 @@ Positive `integer` value between 1 and 32. Values outside of this range will be 
 {
   "status_bar": {
     "show_active_file": false,
-    "active_language_button": true,
     "cursor_position_button": true,
     "line_endings_button": false,
     "active_encoding_button": "non_utf8",
@@ -1847,7 +1846,6 @@ Positive `integer` value between 1 and 32. Values outside of this range will be 
 **Options**
 
 - `show_active_file`: Whether to show the name of the active file in the status bar
-- `active_language_button`: Whether to show the active language button (clicking it opens the language selector)
 - `cursor_position_button`: Whether to show the cursor position button (clicking it opens the go-to-line/column input)
 - `line_endings_button`: Whether to show the active line endings button (clicking it opens the line-ending selector)
 - `active_encoding_button`: When to show the active encoding button: `"enabled"`, `"disabled"`, or `"non_utf8"` (only for encodings other than UTF-8 without BOM)
@@ -2879,16 +2877,6 @@ Unspecified values have a `false` value, hints won't be toggled if all the modif
 **Options**
 
 - `enabled`: Whether to enable automatic JSX tag closing
-
-## Language Detection
-
-- Description: Whether to automatically detect the language of an untitled buffer from its contents. Languages explicitly selected from the language selector are not changed.
-- Setting: `language_detection`
-- Default: `true`
-
-**Options**
-
-`boolean` values
 
 ## Languages
 

@@ -217,7 +217,6 @@ impl Settings for TabBarSettings {
 pub struct StatusBarSettings {
     pub show: bool,
     pub show_active_file: bool,
-    pub active_language_button: bool,
     pub cursor_position_button: bool,
     pub line_endings_button: bool,
     pub active_encoding_button: EncodingDisplayOptions,
@@ -230,7 +229,6 @@ impl Settings for StatusBarSettings {
         StatusBarSettings {
             show: status_bar.show.unwrap(),
             show_active_file: status_bar.show_active_file.unwrap(),
-            active_language_button: status_bar.active_language_button.unwrap(),
             cursor_position_button: status_bar.cursor_position_button.unwrap(),
             line_endings_button: status_bar.line_endings_button.unwrap(),
             active_encoding_button: status_bar.active_encoding_button.unwrap(),

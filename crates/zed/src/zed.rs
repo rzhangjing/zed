@@ -36,9 +36,6 @@ use gpui::{
 };
 use image_viewer::ImageInfo;
 use language::Capability;
-use language_onboarding::BasedPyrightBanner;
-use language_tools::lsp_button::{self, LspButton};
-use language_tools::lsp_log_view::LspLogToolbarItemView;
 use markdown::{Markdown, MarkdownElement, MarkdownFont, MarkdownStyle};
 use migrate::{MigrationBanner, MigrationEvent, MigrationNotification, MigrationType};
 use migrator::migrate_keymap;
@@ -586,22 +583,11 @@ pub fn initialize_workspace(app_state: Arc<AppState>, cx: &mut App) {
         let activity_indicator = activity_indicator::ActivityIndicator::new(workspace, window, cx);
         let active_buffer_encoding =
             cx.new(|_| encoding_selector::ActiveBufferEncoding::new(workspace));
-        let active_buffer_language =
-            cx.new(|_| language_selector::ActiveBufferLanguage::new(workspace));
         let active_toolchain_language =
             cx.new(|cx| toolchain_selector::ActiveToolchain::new(workspace, window, cx));
         let pending_keystrokes_indicator =
             cx.new(|cx| which_key::PendingKeystrokesIndicator::new(window, cx));
         let image_info = cx.new(|_cx| ImageInfo::new(workspace));
-
-        let lsp_button_menu_handle = PopoverMenuHandle::default();
-        let lsp_button =
-            cx.new(|cx| LspButton::new(workspace, lsp_button_menu_handle.clone(), window, cx));
-        workspace.register_action({
-            move |_, _: &lsp_button::ToggleMenu, window, cx| {
-                lsp_button_menu_handle.toggle(window, cx);
-            }
-        });
 
         let cursor_position =
             cx.new(|_| go_to_line::cursor_position::CursorPosition::new(workspace));
@@ -609,13 +595,11 @@ pub fn initialize_workspace(app_state: Arc<AppState>, cx: &mut App) {
             cx.new(|_| line_ending_selector::LineEndingIndicator::default());
         workspace.status_bar().update(cx, |status_bar, cx| {
             status_bar.add_left_item(search_button, window, cx);
-            status_bar.add_left_item(lsp_button, window, cx);
             status_bar.add_left_item(diagnostic_summary, window, cx);
             status_bar.add_left_item(active_file_name, window, cx);
             status_bar.add_left_item(activity_indicator, window, cx);
             status_bar.add_right_item(edit_prediction_ui, window, cx);
             status_bar.add_right_item(active_buffer_encoding, window, cx);
-            status_bar.add_right_item(active_buffer_language, window, cx);
             status_bar.add_right_item(active_toolchain_language, window, cx);
             status_bar.add_right_item(line_ending_indicator, window, cx);
             status_bar.add_right_item(cursor_position, window, cx);
@@ -1361,24 +1345,15 @@ fn initialize_pane(
             toolbar.add_item(diagnostic_editor_controls, window, cx);
             let project_search_bar = cx.new(|_| ProjectSearchBar::new());
             toolbar.add_item(project_search_bar, window, cx);
-            let lsp_log_item = cx.new(|_| LspLogToolbarItemView::new());
-            toolbar.add_item(lsp_log_item, window, cx);
             let dap_log_item = cx.new(|_| debugger_tools::DapLogToolbarItemView::new());
             toolbar.add_item(dap_log_item, window, cx);
             let acp_tools_item = cx.new(|_| acp_tools::AcpToolsToolbarItemView::new());
             toolbar.add_item(acp_tools_item, window, cx);
-            let syntax_tree_item = cx.new(|_| language_tools::SyntaxTreeToolbarItemView::new());
-            toolbar.add_item(syntax_tree_item, window, cx);
             let migration_banner =
                 cx.new(|inner_cx| MigrationBanner::new(workspace_handle.clone(), inner_cx));
             toolbar.add_item(migration_banner, window, cx);
-            let highlights_tree_item =
-                cx.new(|_| language_tools::HighlightsTreeToolbarItemView::new());
-            toolbar.add_item(highlights_tree_item, window, cx);
             let agent_diff_toolbar = cx.new(AgentDiffToolbar::new);
             toolbar.add_item(agent_diff_toolbar, window, cx);
-            let basedpyright_banner = cx.new(|cx| BasedPyrightBanner::new(workspace, cx));
-            toolbar.add_item(basedpyright_banner, window, cx);
             let image_view_toolbar = cx.new(|_| image_viewer::ImageViewToolbarControls::new());
             toolbar.add_item(image_view_toolbar, window, cx);
         })
@@ -2654,8 +2629,7 @@ mod tests {
         Action, AnyWindowHandle, App, AssetSource, BorrowAppContext, Modifiers, OwnedMenuItem,
         TestAppContext, UpdateGlobal, VisualTestContext, WindowHandle, actions, point, px,
     };
-    use language::LanguageRegistry;
-    use languages::{markdown_lang, rust_lang};
+    use language::{markdown_lang, rust_lang};
     use pretty_assertions::{assert_eq, assert_ne};
     use project::{Project, ProjectPath};
     use prompt_store::PromptBuilder;
@@ -4187,7 +4161,7 @@ mod tests {
                             .read(cx)
                             .language_at(MultiBufferOffset(0), cx)
                             .unwrap(),
-                        &languages::PLAIN_TEXT
+                        &language::PLAIN_TEXT
                     ));
                     editor.handle_input("hi", window, cx);
                     assert!(editor.is_dirty(cx));
@@ -4345,7 +4319,7 @@ mod tests {
                             .read(cx)
                             .language_at(MultiBufferOffset(0), cx)
                             .unwrap(),
-                        &languages::PLAIN_TEXT
+                        &language::PLAIN_TEXT
                     ));
                     editor.handle_input("hi", window, cx);
                     assert!(editor.is_dirty(cx));
@@ -5562,7 +5536,6 @@ mod tests {
                 "buffer_search",
                 "call_hierarchy",
                 "cli",
-                "client",
                 "collab",
                 "command_palette",
                 "console",
@@ -5576,18 +5549,16 @@ mod tests {
                 "encoding_selector",
                 "feedback",
                 "file_finder",
+                "git",
                 "git_onboarding",
                 "go_to_line",
-                "highlights_tree_view",
                 "icon_theme_selector",
                 "image_viewer",
                 "journal",
                 "keymap_editor",
                 "keystroke_input",
-                "language_selector",
                 "welcome",
                 "line_ending_selector",
-                "lsp_tool",
                 "markdown",
                 "menu",
                 "multi_workspace",
@@ -5610,7 +5581,6 @@ mod tests {
                 "skill_creator",
                 "snippets",
                 "svg",
-                "syntax_tree_view",
                 "tab_switcher",
                 "tabular_data",
                 "task",
@@ -5627,7 +5597,6 @@ mod tests {
                 "zed",
                 "zed_actions",
                 "zed_predict_onboarding",
-                "zeta",
             ];
             assert_eq!(
                 all_namespaces,
@@ -5754,28 +5723,6 @@ mod tests {
 
         assert_eq!(first_item_id, second_item_id);
         assert_eq!(item_count, 1);
-    }
-
-    #[gpui::test]
-    async fn test_bundled_languages(cx: &mut TestAppContext) {
-        let fs = fs::FakeFs::new(cx.background_executor.clone());
-        env_logger::builder().is_test(true).try_init().ok();
-        let settings = cx.update(SettingsStore::test);
-        cx.set_global(settings);
-        let languages = LanguageRegistry::test(cx.executor());
-        let languages = Arc::new(languages);
-        let node_runtime = node_runtime::NodeRuntime::unavailable();
-        cx.update(|cx| {
-            languages::init(languages.clone(), fs, node_runtime, cx);
-        });
-        for name in languages.language_names() {
-            languages
-                .language_for_name(name.as_ref())
-                .await
-                .with_context(|| format!("language name {name}"))
-                .unwrap();
-        }
-        cx.run_until_parked();
     }
 
     pub(crate) fn init_test(cx: &mut TestAppContext) -> Arc<AppState> {

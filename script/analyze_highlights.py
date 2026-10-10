@@ -50,7 +50,7 @@ def main():
     args = parse_arguments()
 
     base_dir = Path(__file__).parent.parent
-    core_path = base_dir / 'crates/languages/src'
+    core_path = base_dir / 'crates/grammars/src'
     extension_path = base_dir / 'extensions/'
 
     core_instances = count_instances(find_highlight_files(core_path))

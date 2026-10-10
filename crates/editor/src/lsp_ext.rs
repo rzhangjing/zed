@@ -191,7 +191,7 @@ mod tests {
     use futures::StreamExt as _;
     use gpui::{AppContext as _, Entity, TestAppContext};
     use language::{FakeLspAdapter, Language};
-    use languages::rust_lang;
+    use language::rust_lang;
     use lsp::{LanguageServerId, LanguageServerName};
     use multi_buffer::MultiBuffer;
     use project::{FakeFs, Project};

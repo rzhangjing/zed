@@ -521,7 +521,7 @@ mod tests {
         Diagnostic, DiagnosticEntry, DiagnosticSet, Language, LanguageAwareStyling, LanguageConfig,
         LanguageMatcher,
     };
-    use languages::FakeLspAdapter;
+    use language::FakeLspAdapter;
     use lsp::LanguageServerId;
     use multi_buffer::{
         AnchorRangeExt, ExpandExcerptDirection, MultiBuffer, MultiBufferOffset, PathKey,
