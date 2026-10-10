@@ -8,23 +8,169 @@ perf-test = ["test", "--profile", "release-fast", "--lib", "--bins", "--tests", 
 # Keep similar flags here to share some ccache
 perf-compare = ["run", "--profile", "release-fast", "-p", "perf", "--config", "target.'cfg(true)'.rustflags=[\"--cfg\", \"perf_enabled\"]", "--", "compare"]
 
+# `windows_slim_errors` / `+crt-static` 对 msvc 与 gnu 两种 windows 目标都生效。
+# 若 gnu 构建在 windows-core 上出现 cfg/定义相关错误，先去掉 `windows_slim_errors`。
 [target.'cfg(target_os = "windows")']
 rustflags = [
     "--cfg",
     "windows_slim_errors",        # This cfg will reduce the size of `windows::core::Error` from 16 bytes to 4 bytes
     "-C",
-    "target-feature=+crt-static", # Link the CRT statically so the binary doesn't need the MSVC runtime redistributable
+    "target-feature=+crt-static", # Link the CRT statically: MSVC 免 VC redistributable，mingw 免 libgcc_s_seh-1.dll / libwinpthread-1.dll
 ]
 
 [env]
 MACOSX_DEPLOYMENT_TARGET = "10.15.7"
 
-# MSVC D8050 修复：把 TMP/TEMP 指到一个干净、可写的目录。
-# 当临时目录缺失 / 不可写 / 文件过多 / 所在磁盘写满时，cl.exe（以及 lib.exe、
-# link.exe、rc.exe）会失败：
-#   cl : Command line error D8050 : cannot execute '...\c1xx.dll':
-#        failed to get command line into debug records
-# 目录由 target/cl-tmp/README.txt 占位创建；本机根因（多半是 C 盘临时目录满/不可写）
-# 修好后，删掉这段和 target/cl-tmp 即可。注意：手动删 target/ 会连它一起删掉。
-TMP = { value = "D:\\Rust\\zed\\target\\cl-tmp", force = true }
-TEMP = { value = "D:\\Rust\\zed\\target\\cl-tmp", force = true }
+# 原先这里把 TMP/TEMP 指到 target/cl-tmp 以绕开 MSVC cl.exe 的 D8050；该目录在当前
+# 工作区并不存在（旧路径还写的是 D:\Rust\zed），而 GNU 构建的 gcc 需要一个真实可写的
+# 临时目录，故移除。若将来再遇到 D8050，把 TMP/TEMP 指向确实存在的可写目录即可。
+
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/RustAudio/rodio?rev=e50e726ddd0292f6ef9de0dda6b90af4ed1fb66a"]
+git = "https://github.com/RustAudio/rodio"
+rev = "e50e726ddd0292f6ef9de0dda6b90af4ed1fb66a"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/camdencheek/tree-sitter-go-mod?rev=2e886870578eeba1927a2dc4bd2e2b3f598c5f9a"]
+git = "https://github.com/camdencheek/tree-sitter-go-mod"
+rev = "2e886870578eeba1927a2dc4bd2e2b3f598c5f9a"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/microsoft/python-environment-tools.git?rev=bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0"]
+git = "https://github.com/microsoft/python-environment-tools.git"
+rev = "bb8e04607b96a3865d6aa4bb2a5a5a82ce05b5f0"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/proptest-rs/proptest?rev=3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b"]
+git = "https://github.com/proptest-rs/proptest"
+rev = "3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/smol-rs/async-task.git?rev=b4486cd71e4e94fbda54ce6302444de14f4d190e"]
+git = "https://github.com/smol-rs/async-task.git"
+rev = "b4486cd71e4e94fbda54ce6302444de14f4d190e"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/tree-sitter/tree-sitter-cpp?rev=5cb9b693cfd7bfacab1d9ff4acac1a4150700609"]
+git = "https://github.com/tree-sitter/tree-sitter-cpp"
+rev = "5cb9b693cfd7bfacab1d9ff4acac1a4150700609"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/tree-sitter/tree-sitter?rev=43623ec9bf0eaaf7113285c46e8a09018f181b18"]
+git = "https://github.com/tree-sitter/tree-sitter"
+rev = "43623ec9bf0eaaf7113285c46e8a09018f181b18"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/alacritty?rev=4c129667ce56611becdc82de6e28218c80e2e88f"]
+git = "https://github.com/zed-industries/alacritty"
+rev = "4c129667ce56611becdc82de6e28218c80e2e88f"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/async-pipe-rs?rev=82d00a04211cf4e1236029aa03e6b6ce2a74c553"]
+git = "https://github.com/zed-industries/async-pipe-rs"
+rev = "82d00a04211cf4e1236029aa03e6b6ce2a74c553"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/async-process.git?rev=0b6d6713570af61806e1e5cb40e0f757cb93fd9d"]
+git = "https://github.com/zed-industries/async-process.git"
+rev = "0b6d6713570af61806e1e5cb40e0f757cb93fd9d"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/async-tar?rev=bd3ad6f89df9a9da7a8535958756d6bf465936a0"]
+git = "https://github.com/zed-industries/async-tar"
+rev = "bd3ad6f89df9a9da7a8535958756d6bf465936a0"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/calloop"]
+git = "https://github.com/zed-industries/calloop"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/dap-types?rev=1b461b310481d01e02b2603c16d7144b926339f8"]
+git = "https://github.com/zed-industries/dap-types"
+rev = "1b461b310481d01e02b2603c16d7144b926339f8"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/font-kit?rev=94b0f28166665e8fd2f53ff6d268a14955c82269"]
+git = "https://github.com/zed-industries/font-kit"
+rev = "94b0f28166665e8fd2f53ff6d268a14955c82269"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/lsp-types?rev=f1783e63a7f4eb4397bf51d4148b4895a1f7ab16"]
+git = "https://github.com/zed-industries/lsp-types"
+rev = "f1783e63a7f4eb4397bf51d4148b4895a1f7ab16"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/notify?rev=d842f16b2716bd60f09caf3ae3a894237ab38f54"]
+git = "https://github.com/zed-industries/notify"
+rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/reqwest.git?rev=33bc764aa15ff7b200bf7c93bd96e24878d53e14"]
+git = "https://github.com/zed-industries/reqwest.git"
+rev = "33bc764aa15ff7b200bf7c93bd96e24878d53e14"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/scap?rev=4afea48c3b002197176fb19cd0f9b180dd36eaac"]
+git = "https://github.com/zed-industries/scap"
+rev = "4afea48c3b002197176fb19cd0f9b180dd36eaac"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/trash-rs?rev=41c6c800d884a89351f3b8856d12894cccee261d"]
+git = "https://github.com/zed-industries/trash-rs"
+rev = "41c6c800d884a89351f3b8856d12894cccee261d"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/tree-sitter-git-commit?rev=88309716a69dd13ab83443721ba6e0b491d37ee9"]
+git = "https://github.com/zed-industries/tree-sitter-git-commit"
+rev = "88309716a69dd13ab83443721ba6e0b491d37ee9"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/tree-sitter-go-work?rev=acb0617bf7f4fda02c6217676cc64acb89536dc7"]
+git = "https://github.com/zed-industries/tree-sitter-go-work"
+rev = "acb0617bf7f4fda02c6217676cc64acb89536dc7"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/tree-sitter-heex?rev=1dd45142fbb05562e35b2040c6129c9bca346592"]
+git = "https://github.com/zed-industries/tree-sitter-heex"
+rev = "1dd45142fbb05562e35b2040c6129c9bca346592"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/tree-sitter-markdown?rev=b596e737286780d7bfa9fcddceaeeb754574b352"]
+git = "https://github.com/zed-industries/tree-sitter-markdown"
+rev = "b596e737286780d7bfa9fcddceaeeb754574b352"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/tree-sitter-typescript?rev=e2c53597d6a5d9cf7bbe8dccde576fe1e46c5899"]
+git = "https://github.com/zed-industries/tree-sitter-typescript"
+rev = "e2c53597d6a5d9cf7bbe8dccde576fe1e46c5899"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/tree-sitter-yaml?rev=baff0b51c64ef6a1fb1f8390f3ad6015b83ec13a"]
+git = "https://github.com/zed-industries/tree-sitter-yaml"
+rev = "baff0b51c64ef6a1fb1f8390f3ad6015b83ec13a"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/wasm_thread?rev=0cf96c7708dfb97ccf3da50347e25edcf75d6937"]
+git = "https://github.com/zed-industries/wasm_thread"
+rev = "0cf96c7708dfb97ccf3da50347e25edcf75d6937"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/windows-capture.git?rev=f0d6c1b6691db75461b732f6d5ff56eed002eeb9"]
+git = "https://github.com/zed-industries/windows-capture.git"
+rev = "f0d6c1b6691db75461b732f6d5ff56eed002eeb9"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/wprcontrol?rev=cd811f7"]
+git = "https://github.com/zed-industries/wprcontrol"
+rev = "cd811f7"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/zed-industries/xim-rs.git?rev=16f35a2c881b815a2b6cdfd6687988e84f8447d8"]
+git = "https://github.com/zed-industries/xim-rs.git"
+rev = "16f35a2c881b815a2b6cdfd6687988e84f8447d8"
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"

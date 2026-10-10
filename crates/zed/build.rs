@@ -67,6 +67,9 @@ fn main() {
             println!("cargo:rustc-link-arg=/stack:{}", 8 * 1024 * 1024);
             println!("cargo:rustc-link-arg=/DELAYLOAD:windowsperformancerecordercontrol");
             println!("cargo:rustc-link-lib=delayimp");
+        } else {
+            // 与上面 MSVC 分支等价的 8MB 栈，GNU ld 的写法不同；delay-load 未在 GNU 下复刻。
+            println!("cargo:rustc-link-arg=-Wl,--stack,{}", 8 * 1024 * 1024);
         }
 
         if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {

@@ -110,7 +110,11 @@ END
     let rc_path = out_dir.join("zed_resources.rc");
     std::fs::write(&rc_path, rc_content)?;
 
-    if let Ok(toolkit_path) = std::env::var("ZED_RC_TOOLKIT_PATH") {
+    // embed-resource 只在 MSVC 目标上读 `RC`：`*-pc-windows-gnu` 下它硬编码调用 PATH
+    // 上的 `windres`，所以这段只对 MSVC 有意义。
+    if cfg!(target_env = "msvc")
+        && let Ok(toolkit_path) = std::env::var("ZED_RC_TOOLKIT_PATH")
+    {
         let rc_exe = std::path::Path::new(&toolkit_path).join("rc.exe");
         unsafe {
             std::env::set_var("RC", rc_exe);

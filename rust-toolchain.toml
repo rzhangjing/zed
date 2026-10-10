@@ -1,5 +1,10 @@
 [toolchain]
-channel = "stable"
-targets = ["x86_64-pc-windows-msvc"]
+# 必须写全三元组：只写 "stable" 时 rustup 会按 ~/.rustup/settings.toml 的
+# default_host_tuple（本机是 msvc）解析，等于没切。
+channel = "stable-x86_64-pc-windows-gnu"
+targets = ["x86_64-pc-windows-gnu"]
 profile = "minimal"
-components = [ "rustfmt", "clippy", "rust-analyzer", "rust-src" ]
+# 这里没有 rust-analyzer：本机该工具链 bin 下没有 rust-analyzer.exe，上游 release
+# 也只发 -msvc 产物。加回来之前先跑：
+#   rustup component list --toolchain stable-x86_64-pc-windows-gnu
+components = [ "rustfmt", "clippy", "rust-src" ]
