@@ -9,7 +9,8 @@ use super::{
 use collections::HashMap;
 use futures_lite::future::yield_now;
 use gpui::{
-    App, AppContext as _, Context, Entity, Font, FontId, LineWrapper, Pixels, Task, TextSystem,
+    App, AppContext as _, Context, Entity, Font, FontId, IndentAdjustment, LineWrapper, Pixels,
+    Task, TextSystem,
 };
 use language::{LanguageAwareStyling, Point};
 use multi_buffer::RowInfo;
@@ -652,7 +653,11 @@ impl WrapSnapshot {
                     }
 
                     let mut prev_boundary_ix = 0;
-                    for boundary in line_wrapper.wrap_line(&line_fragments, wrap_width) {
+                    for boundary in line_wrapper.wrap_line(
+                        &line_fragments,
+                        wrap_width,
+                        IndentAdjustment::SameIndent,
+                    ) {
                         let wrapped = &line[prev_boundary_ix..boundary.ix];
                         push_isomorphic(&mut edit_transforms, TextSummary::from(wrapped));
                         edit_transforms.push(Transform::wrap(boundary.next_indent));
@@ -1904,7 +1909,11 @@ mod tests {
                 }
 
                 let mut prev_ix = 0;
-                for boundary in line_wrapper.wrap_line(&[LineFragment::text(line)], wrap_width) {
+                for boundary in line_wrapper.wrap_line(
+                    &[LineFragment::text(line)],
+                    wrap_width,
+                    IndentAdjustment::SameIndent,
+                ) {
                     wrapped_text.push_str(&line[prev_ix..boundary.ix]);
                     wrapped_text.push('\n');
                     wrapped_text.push_str(&" ".repeat(boundary.next_indent as usize));

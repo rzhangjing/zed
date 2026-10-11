@@ -1,0 +1,89 @@
+[package]
+description = "Behavior, interaction, and infrastructure foundations for GPUI applications."
+keywords = ["desktop", "gpui", "ui", "foundation"]
+license = "Apache-2.0"
+name = "gpui-base"
+# The examples are development tools that read fixtures from `crates/story`;
+# they stay out of the published package.
+exclude = ["examples/"]
+repository = "https://github.com/longbridge/gpui-kit"
+homepage = "https://gpui-kit.com"
+documentation = "https://docs.rs/gpui-base"
+version = "0.7.1"
+publish = true
+edition.workspace = true
+
+[lib]
+doctest = false
+
+[[bench]]
+name = "motion"
+harness = false
+
+[[bench]]
+name = "text_view_scroll"
+harness = false
+
+[features]
+decimal = ["dep:rust_decimal"]
+test-support = ["gpui/test-support"]
+inspector = ["gpui_macros/inspector", "gpui/inspector"]
+
+[dependencies]
+anyhow.workspace = true
+aho-corasick.workspace = true
+chrono.workspace = true
+data-url = "0.3"
+futures.workspace = true
+gpui.workspace = true
+gpui_macros.workspace = true
+instant.workspace = true
+itertools.workspace = true
+lsp-types = { workspace = true, features = ["proposed"] }
+markdown = { version = "1.0.0", features = ["serde"] }
+html5ever = "0.27"
+markup5ever_rcdom = "0.3.0"
+num-traits = "0.2"
+ropey.workspace = true
+regex.workspace = true
+rust_decimal = { version = "1.37.0", optional = true }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+smallvec.workspace = true
+sum_tree.workspace = true
+tracing.workspace = true
+unicode-linebreak = "0.1.5"
+unicode-segmentation.workspace = true
+web-time.workspace = true
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+smol.workspace = true
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+async-channel.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+raw-window-handle.workspace = true
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSAccessibility", "NSView", "NSWindow", "NSWorkspace"] }
+objc2-foundation = { version = "0.3", features = ["NSGeometry", "NSString"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# The reduced-motion preference (SystemParametersInfoW).
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# The reduced-motion preference, through the XDG desktop portal's Settings
+# interface. The same version and features `gpui-linux` already pulls in.
+ashpd.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+gpui = { workspace = true, features = ["test-support", "bench-support"] }
+gpui_platform = { workspace = true, features = ["bench-support"] }
+indoc.workspace = true
+reqwest_client.workspace = true
+
+[lints]
+workspace = true

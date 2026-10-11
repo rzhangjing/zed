@@ -1143,6 +1143,11 @@ impl LanguageServer {
                     }),
                     ..WindowClientCapabilities::default()
                 }),
+                // `lsp-types`'s `proposed` feature adds `offset_encoding`; this
+                // workspace enables it because gpui-kit's editor uses the
+                // proposed inline-completion types. Without the feature the
+                // update is merely redundant, so it compiles either way.
+                ..ClientCapabilities::default()
             },
             trace: None,
             workspace_folders: Some(workspace_folders),
@@ -1972,6 +1977,8 @@ impl FakeLanguageServer {
                             name,
                             ..Default::default()
                         }),
+                        // See the `ClientCapabilities` initializer above.
+                        ..InitializeResult::default()
                     })
                 }
             }

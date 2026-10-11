@@ -192,6 +192,47 @@ members = [
     "crates/ztracing_macro",
 
     #
+    # gpui-kit
+    #
+
+    "crates/gpui-base",
+    "crates/gpui-component",
+    "crates/gpui-component-macros",
+    "crates/gpui-fps",
+    "crates/gpui-kit",
+    "crates/gpui-kit-assets",
+    # The script host and everything built on it are vendored but kept out of the
+    # build, because one pinned QuickJS revision could not be fetched into
+    # cargo's git db on this machine (the object is absent, so both `--offline`
+    # and every retry fail; see `gpui-kit/PROVENANCE.md`). Sources are complete.
+    #
+    # To re-enable, fetch the missing revision first, then uncomment the four
+    # members below, `crates/gpui-kit-examples/dock`, the three
+    # `[workspace.dependencies]` entries and the `rquickjs` patch:
+    #
+    #   git -C "$env:USERPROFILE\.cargo\git\db\quickjs-jit-85f77f3fd15b7d92" \
+    #       fetch --no-tags --force --update-head-ok \
+    #       https://github.com/longbridge/quickjs-jit \
+    #       +96593cd7a54440ac060a391b8baea7e9a3cf1393:refs/commit/96593cd7a54440ac060a391b8baea7e9a3cf1393
+    #
+    # (or `$env:CARGO_NET_GIT_FETCH_WITH_CLI='true'; cargo fetch`).
+    #
+    #"crates/gpui-shell",
+    #"crates/gpui-shell/rquickjs-compat",
+    #"crates/gpui-component-shell",
+    #"crates/gpui-component-story",
+
+    #
+    # gpui-kit examples
+    #
+
+    #"crates/gpui-kit-examples/dock",
+    "crates/gpui-kit-examples/example-input",
+    "crates/gpui-kit-examples/example-sidebar",
+    "crates/gpui-kit-examples/system_monitor",
+    "crates/gpui-kit-examples/table_in_scrollable",
+
+    #
     # Tooling
     #
 
@@ -392,6 +433,26 @@ ztracing = { path = "crates/ztracing" }
 ztracing_macro = { path = "crates/ztracing_macro" }
 
 #
+# gpui-kit
+#
+# The gpui-kit stack ("GPUI Kit" by longbridge, Apache-2.0) vendored as workspace
+# members. Its crates originally depended on the `gpui-pre-*` snapshots of the
+# upstream Zed crates published to crates.io; here they are redirected to this
+# fork's own `gpui*` crates.
+#
+
+gpui-base = { path = "crates/gpui-base" }
+gpui-component = { path = "crates/gpui-component" }
+gpui-component-macros = { path = "crates/gpui-component-macros" }
+gpui-fps = { path = "crates/gpui-fps" }
+gpui-kit = { path = "crates/gpui-kit" }
+gpui-kit-assets = { path = "crates/gpui-kit-assets" }
+# Vendored, not members: see the comment in the `members` list above.
+#gpui-shell = { path = "crates/gpui-shell" }
+#gpui-component-shell = { path = "crates/gpui-component-shell" }
+#gpui-component-story = { path = "crates/gpui-component-story" }
+
+#
 # External crates
 #
 
@@ -505,6 +566,8 @@ httparse = "1.10"
 human_bytes = "0.4.1"
 idna = "1.0"
 ignore = "0.4.22"
+# Used by gpui-kit's gpui-base/gpui-component (cross-platform time APIs).
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 # image's default features minus "avif", which only adds an encoder (rav1e);
 # decoding AVIF would additionally need the non-default "avif-native" feature.
 image = { version = "0.25.1", default-features = false, features = [
@@ -549,6 +612,10 @@ moka = { version = "0.12.10", features = ["sync"] }
 nanoid = "0.4"
 nbformat = "1.2.0"
 nix = "0.30"
+# Used by gpui-kit's gpui-component to watch theme files. Pinned to the same
+# release candidate `crates/fs` uses so the `[patch.crates-io]` entry below
+# (and the shared `notify-types`) applies to both.
+notify = "9.0.0-rc.4"
 notify-rust = "4"
 nucleo = "0.5"
 num-format = "0.4.4"
@@ -641,10 +708,18 @@ resvg = { version = "0.46.0", default-features = false, features = [
     "raster-images",
 ] }
 rsa = "0.9.6"
+# Used by gpui-kit's gpui-base/gpui-component for rope-backed text buffers.
+ropey = { version = "=2.0.0-beta.1", features = [
+    "metric_chars",
+    "metric_lines_lf",
+    "metric_utf16",
+] }
 runtimelib = { version = "1.4.0", default-features = false, features = [
     "async-dispatcher-runtime", "aws-lc-rs"
 ] }
 rust-embed = { version = "8.11", features = ["include-exclude"] }
+# Used by gpui-kit's gpui-component (and its story app) for UI translations.
+rust-i18n = "4.2.0"
 rustc-hash = "2.1.0"
 rustix = { version = "1.1", features = ["fs"] }
 rustls = { version = "0.23.26" }
@@ -661,6 +736,8 @@ serde_json_lenient = { version = "0.2", features = [
     "raw_value",
 ] }
 serde_path_to_error = "0.1.17"
+# Used by gpui-kit's gpui-component for repr-backed enums.
+serde_repr = "0.1"
 serde_urlencoded = "0.7"
 serde_yaml_ng = "0.10"
 sha2 = "0.10"
@@ -809,6 +886,11 @@ features = [
 ]
 
 [patch.crates-io]
+# GPUI Kit's script host and the LLRT modules it pins name their QuickJS
+# bindings `rquickjs`; routing them through this source-compatible facade keeps
+# the shell and LLRT on one `quickjs-jit` VM. Re-enable together with the
+# `gpui-shell` members listed above.
+#rquickjs = { path = "crates/gpui-shell/rquickjs-compat" }
 # Unify `tree_sitter_language::LanguageFn` between crates.io grammar crates and
 # the git tree-sitter above; two instances of the crate would make grammar
 # constants type-incompatible with `tree_sitter::Language`.
