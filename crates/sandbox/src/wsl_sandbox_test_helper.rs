@@ -1,9 +1,7 @@
-//! Behavior test helper for the Windows WSL Bubblewrap sandbox — the Windows
-//! analog of `bwrap_test_helper`.
+//! Behavior test helper for the Windows WSL Bubblewrap sandbox.
 //!
-//! Where the Linux helper is the sandboxed process itself (it re-execs under
-//! the launcher), here the sandboxed process is a *Linux* program inside WSL
-//! while this helper runs on Windows. So instead of a status channel and a
+//! The sandboxed process is a *Linux* program inside WSL while this helper runs
+//! on Windows. So instead of a status channel and a
 //! launcher, the helper drives the real [`sandbox::Sandbox`] (`new` + `wrap`),
 //! spawns the command line it produces, and inspects exit codes and
 //! host-side filesystem effects to confirm every grant the sandbox makes and
@@ -71,8 +69,7 @@ mod imp {
         allow_fs_write: bool,
     }
 
-    /// Tag prefixed to every result line, matching `bwrap_test_helper` so both
-    /// helpers' output reads the same.
+    /// Tag prefixed to every result line.
     const RESULT_TAG: &str = "[sandbox_test]:";
 
     /// `CREATE_NO_WINDOW`: keep `wsl.exe` (a console-subsystem binary) from
@@ -723,7 +720,7 @@ mod imp {
     }
 
     /// Tracks assertion results so the helper can report a summary and a single
-    /// exit code, mirroring `bwrap_test_helper`.
+    /// exit code.
     struct Checks {
         passed: usize,
         failed: usize,

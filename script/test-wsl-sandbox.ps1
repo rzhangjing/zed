@@ -1,7 +1,6 @@
 #!/usr/bin/env pwsh
 # Provision the default WSL distro for the Windows sandbox behavior tests and
-# run them. The Windows analog of the Linux sandbox behavior tests
-# (`bwrap_test_helper`, driven by the NixOS VM tests in `nix/tests/sandboxing`).
+# run them.
 #
 # What it does:
 #   1. Checks that WSL is installed.
