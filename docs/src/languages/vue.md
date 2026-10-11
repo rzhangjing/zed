@@ -1,6 +1,6 @@
 ---
 title: Vue
-description: "Configure Vue language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Vue language support in Zed, including language servers and formatting."
 ---
 
 # Vue

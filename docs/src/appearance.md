@@ -122,7 +122,7 @@ Zed provides extensive control over UI elements including:
 - **Status bar** — Language selector, cursor position, line endings
 - **Scrollbar** — Visibility, search results
 - **Minimap** — Code overview display
-- **Gutter** — Line numbers, fold indicators, breakpoints
+- **Gutter** — Line numbers, fold indicators
 - **Panels** — Project Panel, Terminal, Agent Panel sizing and docking
 
 → [Visual Customization documentation](./visual-customization.md) for all UI element settings

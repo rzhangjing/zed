@@ -1,6 +1,6 @@
 ---
 title: Deno
-description: "Configure Deno language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Deno language support in Zed, including language servers and formatting."
 ---
 
 # Deno
@@ -92,26 +92,6 @@ To get completions for `deno.json` or `package.json`, add the following to your 
       }
     }
   }
-```
-
-## DAP support
-
-To debug deno programs, add this to `.zed/debug.json`
-
-```json [debug]
-[
-  {
-    "adapter": "JavaScript",
-    "label": "Deno",
-    "request": "launch",
-    "type": "pwa-node",
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "program": "$ZED_FILE",
-    "runtimeExecutable": "deno",
-    "runtimeArgs": ["run", "--allow-all", "--inspect-wait"],
-    "attachSimplePort": 9229
-  }
-]
 ```
 
 ## Runnable support

@@ -2,7 +2,7 @@ use std::sync::{Arc, LazyLock};
 
 use anyhow::{Context as _, Result};
 use collections::HashMap;
-use gpui::{App, AsyncApp, BorrowAppContext as _, Entity, Task, WeakEntity};
+use gpui::{App, AsyncApp, Entity, Task};
 use language::{
     LanguageRegistry, LanguageServerName, LspAdapterDelegate,
     language_settings::AllLanguageSettings,
@@ -48,80 +48,14 @@ static ACTION_SCHEMA_CACHE: LazyLock<RwLock<HashMap<String, String>>> =
 // Runtime cache for dynamic schemas that depend on runtime state:
 // - "settings": depends on installed fonts, themes, languages, LSP adapters (extensions can add these)
 // - "settings/lsp/*": depends on LSP adapter initialization options
-// - "debug_tasks": depends on DAP adapters (extensions can add these)
-// Cache is invalidated via notify_schema_changed() when extensions or DAP registry change.
 static DYNAMIC_SCHEMA_CACHE: LazyLock<RwLock<HashMap<String, String>>> =
     LazyLock::new(|| RwLock::new(HashMap::default()));
 
 pub fn init(cx: &mut App) {
-    cx.set_global(SchemaStore::default());
     project::lsp_store::json_language_server_ext::register_schema_handler(
         handle_schema_request,
         cx,
     );
-
-    cx.observe_new(|_, _, cx| {
-        let lsp_store = cx.weak_entity();
-        cx.global_mut::<SchemaStore>().lsp_stores.push(lsp_store);
-    })
-    .detach();
-
-    cx.observe_global::<dap::DapRegistry>(move |cx| {
-        cx.update_global::<SchemaStore, _>(|schema_store, cx| {
-            schema_store.notify_schema_changed(ChangedSchemas::DebugTasks, cx);
-        });
-    })
-    .detach();
-}
-
-#[derive(Default)]
-pub struct SchemaStore {
-    lsp_stores: Vec<WeakEntity<LspStore>>,
-}
-
-impl gpui::Global for SchemaStore {}
-
-enum ChangedSchemas {
-    Settings,
-    DebugTasks,
-}
-
-impl SchemaStore {
-    fn notify_schema_changed(&mut self, changed_schemas: ChangedSchemas, cx: &mut App) {
-        let uris_to_invalidate = match changed_schemas {
-            ChangedSchemas::Settings => {
-                let settings_uri_prefix = &format!("{SCHEMA_URI_PREFIX}settings");
-                let project_settings_uri = &format!("{SCHEMA_URI_PREFIX}project_settings");
-                DYNAMIC_SCHEMA_CACHE
-                    .write()
-                    .extract_if(|uri, _| {
-                        uri == project_settings_uri || uri.starts_with(settings_uri_prefix)
-                    })
-                    .map(|(url, _)| url)
-                    .collect()
-            }
-            ChangedSchemas::DebugTasks => DYNAMIC_SCHEMA_CACHE
-                .write()
-                .remove_entry(&format!("{SCHEMA_URI_PREFIX}debug_tasks"))
-                .map_or_else(Vec::new, |(uri, _)| vec![uri]),
-        };
-
-        if uris_to_invalidate.is_empty() {
-            return;
-        }
-
-        self.lsp_stores.retain(|lsp_store| {
-            let Some(lsp_store) = lsp_store.upgrade() else {
-                return false;
-            };
-            project::lsp_store::json_language_server_ext::notify_schemas_changed(
-                lsp_store,
-                &uris_to_invalidate,
-                cx,
-            );
-            true
-        })
-    }
 }
 
 pub fn handle_schema_request(
@@ -367,12 +301,6 @@ async fn resolve_dynamic_schema(
             inject_feature_flags_schema(&mut schema);
             schema
         }
-        "debug_tasks" => {
-            let adapter_schemas = cx.read_global::<dap::DapRegistry, _>(|dap_registry, _| {
-                dap_registry.adapters_schema()
-            });
-            task::DebugTaskFile::generate_json_schema(&adapter_schemas)
-        }
         "keymap" => cx.update(settings::KeymapFile::generate_json_schema_for_registered_actions),
         "action" => {
             let normalized_action_name = rest.context("No Action name provided")?;
@@ -435,13 +363,6 @@ pub fn all_schema_file_associations(
                 paths::local_tasks_file_relative_path()
             ],
             "url": format!("{SCHEMA_URI_PREFIX}tasks"),
-        },
-        {
-            "fileMatch": [
-                schema_file_match(paths::debug_scenarios_file()),
-                paths::local_debug_file_relative_path()
-            ],
-            "url": format!("{SCHEMA_URI_PREFIX}debug_tasks"),
         },
         {
             "fileMatch": [

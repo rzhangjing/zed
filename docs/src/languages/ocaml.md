@@ -1,6 +1,6 @@
 ---
 title: OCaml
-description: "Configure OCaml language support in Zed, including language servers, formatting, and debugging."
+description: "Configure OCaml language support in Zed, including language servers and formatting."
 ---
 
 # OCaml

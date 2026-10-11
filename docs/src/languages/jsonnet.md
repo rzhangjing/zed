@@ -1,6 +1,6 @@
 ---
 title: Jsonnet
-description: "Configure Jsonnet language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Jsonnet language support in Zed, including language servers and formatting."
 ---
 
 # Jsonnet

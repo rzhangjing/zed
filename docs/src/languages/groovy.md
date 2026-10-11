@@ -1,6 +1,6 @@
 ---
 title: Groovy
-description: "Configure Groovy language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Groovy language support in Zed, including language servers and formatting."
 ---
 
 # Groovy

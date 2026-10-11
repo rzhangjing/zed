@@ -1,6 +1,6 @@
 ---
 title: Biome
-description: "Configure Biome language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Biome language support in Zed, including language servers and formatting."
 ---
 
 # Biome

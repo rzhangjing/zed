@@ -1,6 +1,6 @@
 ---
 title: Roc
-description: "Configure Roc language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Roc language support in Zed, including language servers and formatting."
 ---
 
 # Roc

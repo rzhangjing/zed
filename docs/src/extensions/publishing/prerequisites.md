@@ -34,7 +34,7 @@ Note that maintainers will raise non-compliance during the publishing process. S
 
 - Only provide support for the language your extension targets, as well as any dialects that are directly associated with that language.
 - Define a [grammar](../languages.md#grammar) in your extension's `extension.toml` for every language that you provide.
-- You may also provide language servers, debuggers and snippets for that language.
+- You may also provide language servers and snippets for that language.
 - Choose an extension ID and name similar or equal to the name of the primary language you intend to add.
 - Do not include any Rust code should your extension not also provide language servers.
 
@@ -42,11 +42,6 @@ Note that maintainers will raise non-compliance during the publishing process. S
 
 - Should your extension only provide a language server, make sure your extension ID reflects that (e.g., by suffixing it with `-language-server` or `-lsp`).
 - Do not bundle a language server with the extension. Download it or check for it in the user's environment through the [Zed Rust Extension API](https://docs.rs/zed_extension_api/latest/zed_extension_api/).
-
-## Debugger Extensions
-
-- Should your extension only provide a debugger, make sure your extension ID reflects that (e.g., by suffixing it with `-debugger`).
-- Do not bundle the debug adapter with the extension. Download it or check for it in the user's environment through the [Zed Rust Extension API](https://docs.rs/zed_extension_api/latest/zed_extension_api/).
 
 ## Theme Extensions
 

@@ -70,7 +70,6 @@ graph TB
 
 ## 6. 与其他页面的关系
 - 任务在终端 tab 执行：[Terminal.md](Terminal.md)。
-- 调试任务与 launch/attach 配置同源：[Debugger.md](Debugger.md)。
 - REPL 结果内联 block 依赖编辑器：[Editing-Deep-Dive.md](Editing-Deep-Dive.md)。
 - 任务选择弹窗是一个 Picker：[Picker-and-Commands.md](Picker-and-Commands.md)。
 - 剖析器基于 GPUI profiler：[GPUI-Internals.md](GPUI-Internals.md)。

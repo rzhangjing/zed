@@ -1,6 +1,6 @@
 ---
 title: Nim
-description: "Configure Nim language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Nim language support in Zed, including language servers and formatting."
 ---
 
 # Nim

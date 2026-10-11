@@ -1,6 +1,6 @@
 ---
 title: Fish
-description: "Configure Fish language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Fish language support in Zed, including language servers and formatting."
 ---
 
 # Fish

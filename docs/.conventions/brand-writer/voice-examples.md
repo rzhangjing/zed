@@ -108,7 +108,7 @@ Ten before/after transformations demonstrating Zed's brand voice. Use these as c
 
 **After (Score: 5/5)**
 
-> Zed combines editing, debugging, collaboration, and AI assistance in one application. Everything runs in the same process, so switching between tasks has no context-switch overhead.
+> Zed combines editing, collaboration, and AI assistance in one application. Everything runs in the same process, so switching between tasks has no context-switch overhead.
 
 **Transformation notes:**
 

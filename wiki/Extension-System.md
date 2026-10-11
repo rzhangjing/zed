@@ -27,7 +27,6 @@ Zed 的扩展以 **WebAssembly** 形式加载运行，宿主用 **wasmtime 组�
 | `register_theme_proxy`(L63) | 主题/图标主题 |
 | `register_snippet_proxy`(L79) | 代码片段 |
 | `register_context_server_proxy`(L83) | MCP 上下文服务器 |
-| `register_debug_adapter_proxy`(L87) | DAP 调试适配器 |
 | `register_language_model_provider_proxy`(L93) | AI 模型 Provider（见 [Agent-and-AI.md](Agent-and-AI.md)） |
 
 扩展在自己的 `activate` 里调用这些 proxy，把实现登记到宿主；`ExtensionRegistry` 汇总后，`project`/`workspace` 等即可发现并使用。
@@ -60,7 +59,7 @@ graph TB
 
 - **语言扩展**：贡献 grammar + language + LSP（如 Python/Rust 插件）。
 - **主题/图标扩展**：只贡献 theme proxy。
-- **上下文/调试/模型扩展**：贡献 MCP server、DAP adapter 或 LLM provider。
+- **上下文/模型扩展**：贡献 MCP server 或 LLM provider。
 `ExtensionManifest` 声明这些贡献点与依赖；扩展商店索引由云端提供，本地 `ExtensionRegistry` 维护已激活集合，扩展安装/卸载会触发语言模型注册表与 keymap 的更新（`LanguageModelRegistry::extension_installed`，见 [Agent-and-AI.md](Agent-and-AI.md)）。
 
 ## 6. 关键符号速查
@@ -79,5 +78,4 @@ graph TB
 ## 7. 与其他页面的关系
 - 扩展注册的 LLM Provider：[Agent-and-AI.md](Agent-and-AI.md)。
 - 扩展贡献的语言 grammar/LSP：[Language-and-Project.md](Language-and-Project.md)。
-- 扩展贡献的 DAP adapter：[Debugger.md](Debugger.md)。
 - 设置项里的扩展管理页：[Settings-and-Themes.md](Settings-and-Themes.md)。

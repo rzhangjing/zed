@@ -1,6 +1,6 @@
 ---
 title: Markdown
-description: "Configure Markdown language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Markdown language support in Zed, including language servers and formatting."
 ---
 
 # Markdown

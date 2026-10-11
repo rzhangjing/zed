@@ -392,10 +392,10 @@ message Completion {
   optional string sort_text = 13;
 
   enum Source {
+    reserved 3;
     Lsp = 0;
     Custom = 1;
     BufferWord = 2;
-    Dap = 3;
   }
 }
 

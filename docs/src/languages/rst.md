@@ -1,6 +1,6 @@
 ---
 title: reStructuredText
-description: "Configure reStructuredText language support in Zed, including language servers, formatting, and debugging."
+description: "Configure reStructuredText language support in Zed, including language servers and formatting."
 ---
 
 # ReStructuredText (rst)

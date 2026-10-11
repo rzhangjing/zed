@@ -1,6 +1,6 @@
 # Workspace / Pane / Dock（应用外壳与 Item 系统）
 
-`Workspace` 是 Zed 窗口的**根视图与状态中枢**——所有编辑器、终端、调试面板、侧栏都挂在它下面。相关 crate：[`workspace`](../crates/workspace)，核心文件体量极大：`workspace.rs`（约 757KB）、`pane.rs`（约 366KB）、`persistence.rs`（约 230KB）、`item.rs`、`dock.rs`、`pane_group.rs`。
+`Workspace` 是 Zed 窗口的**根视图与状态中枢**——所有编辑器、终端、侧栏都挂在它下面。相关 crate：[`workspace`](../crates/workspace)，核心文件体量极大：`workspace.rs`（约 757KB）、`pane.rs`（约 366KB）、`persistence.rs`（约 230KB）、`item.rs`、`dock.rs`、`pane_group.rs`。
 
 ## 1. 层级结构
 
@@ -13,7 +13,7 @@ graph TB
     P1 --> I2[Item: TerminalView]
     WS --> DL[Dock Left: ProjectPanel]
     WS --> DR[Dock Right: AgentPanel]
-    WS --> DB[Dock Bottom: Terminal/Debugger]
+    WS --> DB[Dock Bottom: Terminal]
     WS --> TB[Toolbar 面包屑]
     WS --> SB[StatusBar]
 ```
@@ -58,7 +58,7 @@ graph TB
 
 ## 4. Dock 与 Panel（侧栏 / 底部栏）
 
-- 每个 `Dock` 有一个 `position`（L509 `position()`），内含当前 `Panel`（如 `ProjectPanel`、`DebugPanel`、终端面板）。
+- 每个 `Dock` 有一个 `position`（L509 `position()`），内含当前 `Panel`（如 `ProjectPanel`、终端面板）。
 - 折叠/展开：`toggle_panel_flexible_size`（L1056）等；`toggle_action()`（L1212）按位置返回对应 Action（如 `project_panel::ToggleFocus`）。
 - Panel 本身也是可 focus 的视图，参与 GPUI 焦点环；`is_open`（L513）控制显隐。
 

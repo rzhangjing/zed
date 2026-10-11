@@ -1,6 +1,6 @@
 ---
 title: Julia
-description: "Configure Julia language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Julia language support in Zed, including language servers and formatting."
 ---
 
 # Julia

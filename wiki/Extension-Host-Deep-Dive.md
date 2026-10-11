@@ -53,9 +53,9 @@ graph TB
 
 - `wit.rs` 顶部逐代声明模块（wit.rs:1-10）：`since_v0_0_1`、`since_v0_0_4`、`since_v0_0_6`、`since_v0_1_0`、`since_v0_2_0`、`since_v0_3_0`、`since_v0_4_0`、`since_v0_5_0`、`since_v0_6_0`、`since_v0_8_0`，其中 `use since_v0_8_0 as latest;`(24)。
 - `wit/`（10 项）为各版本 `.wit` 接口文件；宿主按 manifest 声明的 `api version` 选择绑定代。
-- 关键生成类型：`zed::extension::lsp::*`(36)、`context_server::ContextServerConfiguration`(35)、`slash_command::{…Completion, …Output}`(39)、`dap::StartDebuggingRequestArgumentsRequest`(19)、`LanguageServerConfig`(41)。
+- 关键生成类型：`zed::extension::lsp::*`(36)、`context_server::ContextServerConfiguration`(35)、`slash_command::{…Completion, …Output}`(39)、`LanguageServerConfig`(41)。
 - 运行时依赖 `wasmtime::{Store, component::{Component, Linker, Resource}}`(26-29)。
-- 边界类型直接复用其它 crate：`task::{DebugScenario, SpawnInTerminal, TaskTemplate, ZedDebugConfig}`(17)（见 [Task-System-Deep-Dive](Task-System-Deep-Dive.md)）、`dap::DebugRequest`(11)、`lsp::LanguageServerName`(15)。
+- 边界类型直接复用其它 crate：`task::{SpawnInTerminal, TaskTemplate}`(17)（见 [Task-System-Deep-Dive](Task-System-Deep-Dive.md)）、`lsp::LanguageServerName`(15)。
 
 ## 5. `capability_granter.rs`（4.8KB · 能力沙箱）
 
@@ -104,6 +104,6 @@ graph TB
 ## 9. 集成 / 相关页
 
 - 上层生态/API：[Extension-Deep-Dive.md](Extension-Deep-Dive.md)（`extension_api`、`ExtensionManifest`、市场 `ExtensionStore`/UI）。
-- 消费方：`language`（LSP/grammar）见 [Language-Deep-Dive.md](Language-Deep-Dive.md)；`agent`（context server / slash command）见 [Agent-Deep-Dive.md](Agent-Deep-Dive.md)；任务/DAP 见 [Task-System-Deep-Dive.md](Task-System-Deep-Dive.md)、[Debugger-Deep-Dive.md](Debugger-Deep-Dive.md)。
+- 消费方：`language`（LSP/grammar）见 [Language-Deep-Dive.md](Language-Deep-Dive.md)；`agent`（context server / slash command）见 [Agent-Deep-Dive.md](Agent-Deep-Dive.md)；任务见 [Task-System-Deep-Dive.md](Task-System-Deep-Dive.md)。
 - 概览：[Extension-System.md](Extension-System.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

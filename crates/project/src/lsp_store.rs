@@ -7989,9 +7989,7 @@ impl LspStore {
                         request_timeout,
                     )
                 }
-                CompletionSource::BufferWord { .. }
-                | CompletionSource::Dap { .. }
-                | CompletionSource::Custom => {
+                CompletionSource::BufferWord { .. } | CompletionSource::Custom => {
                     return Ok(());
                 }
             }
@@ -8146,9 +8144,7 @@ impl LspStore {
                     }
                     serde_json::to_string(lsp_completion).unwrap().into_bytes()
                 }
-                CompletionSource::Custom
-                | CompletionSource::Dap { .. }
-                | CompletionSource::BufferWord { .. } => {
+                CompletionSource::Custom | CompletionSource::BufferWord { .. } => {
                     return Ok(());
                 }
             }
@@ -13853,10 +13849,6 @@ impl LspStore {
                 serialized_completion.source = proto::completion::Source::Custom as i32;
                 serialized_completion.resolved = true;
             }
-            CompletionSource::Dap { sort_text } => {
-                serialized_completion.source = proto::completion::Source::Dap as i32;
-                serialized_completion.sort_text = Some(sort_text.clone());
-            }
         }
 
         serialized_completion
@@ -13911,12 +13903,7 @@ impl LspStore {
                         resolved: completion.resolved,
                     }
                 }
-                Some(proto::completion::Source::Dap) => CompletionSource::Dap {
-                    sort_text: completion
-                        .sort_text
-                        .context("expected sort text to exist")?,
-                },
-                _ => anyhow::bail!("Unexpected completion source {}", completion.source),
+                None => anyhow::bail!("Unexpected completion source {}", completion.source),
             },
         })
     }

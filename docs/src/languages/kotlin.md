@@ -1,6 +1,6 @@
 ---
 title: Kotlin
-description: "Configure Kotlin language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Kotlin language support in Zed, including language servers and formatting."
 ---
 
 # Kotlin

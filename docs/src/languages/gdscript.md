@@ -1,6 +1,6 @@
 ---
 title: GDScript
-description: "Configure GDScript language support in Zed, including language servers, formatting, and debugging."
+description: "Configure GDScript language support in Zed, including language servers and formatting."
 ---
 
 # GDScript

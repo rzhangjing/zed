@@ -3,7 +3,7 @@ use project::DisableAiSettings;
 use release_channel::ReleaseChannel;
 use settings::Settings;
 use terminal_view::terminal_panel;
-use zed_actions::{Quit, assistant, debug_panel, dev, project_panel};
+use zed_actions::{Quit, assistant, dev, project_panel};
 
 pub fn app_menus(cx: &mut App) -> Vec<Menu> {
     let mut view_items = vec![
@@ -42,7 +42,6 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
         MenuItem::action("Project Panel", project_panel::ToggleFocus),
         MenuItem::action("Outline Panel", outline_panel::ToggleFocus),
         MenuItem::action("Terminal Panel", terminal_panel::Toggle),
-        MenuItem::action("Debugger Panel", debug_panel::ToggleFocus),
     ];
 
     if !DisableAiSettings::get_global(cx).disable_ai {
@@ -272,19 +271,8 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
                         reveal_target: None,
                     },
                 ),
-                MenuItem::action("Start Debugger", debugger_ui::Start),
                 MenuItem::separator(),
                 MenuItem::action("Edit tasks.json…", zed_actions::OpenProjectTasks),
-                MenuItem::action("Edit debug.json…", zed_actions::OpenProjectDebugTasks),
-                MenuItem::separator(),
-                MenuItem::action("Continue", debugger_ui::Continue),
-                MenuItem::action("Step Over", debugger_ui::StepOver),
-                MenuItem::action("Step Into", debugger_ui::StepInto),
-                MenuItem::action("Step Out", debugger_ui::StepOut),
-                MenuItem::separator(),
-                MenuItem::action("Toggle Breakpoint", editor::actions::ToggleBreakpoint),
-                MenuItem::action("Edit Breakpoint", editor::actions::EditLogBreakpoint),
-                MenuItem::action("Clear All Breakpoints", debugger_ui::ClearAllBreakpoints),
             ],
         },
         Menu {

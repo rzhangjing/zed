@@ -1,6 +1,6 @@
 ---
 title: Rego
-description: "Configure Rego language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Rego language support in Zed, including language servers and formatting."
 ---
 
 # Rego

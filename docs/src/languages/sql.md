@@ -1,6 +1,6 @@
 ---
 title: SQL
-description: "Configure SQL language support in Zed, including language servers, formatting, and debugging."
+description: "Configure SQL language support in Zed, including language servers and formatting."
 ---
 
 # SQL

@@ -1,6 +1,6 @@
 ---
 title: Racket
-description: "Configure Racket language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Racket language support in Zed, including language servers and formatting."
 ---
 
 # Racket

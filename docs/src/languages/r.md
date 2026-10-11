@@ -1,6 +1,6 @@
 ---
 title: R
-description: "Configure R language support in Zed, including language servers, formatting, and debugging."
+description: "Configure R language support in Zed, including language servers and formatting."
 ---
 
 # R

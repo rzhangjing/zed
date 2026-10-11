@@ -1,6 +1,6 @@
 ---
 title: Bash
-description: "Configure Bash language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Bash language support in Zed, including language servers and formatting."
 ---
 
 # Bash

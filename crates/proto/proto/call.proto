@@ -332,8 +332,8 @@ message UpdateActiveView {
 }
 
 enum PanelId {
+  reserved 1;
   AssistantPanel = 0;
-  DebugPanel = 1;
 }
 
 message UpdateView {

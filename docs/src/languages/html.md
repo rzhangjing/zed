@@ -1,6 +1,6 @@
 ---
 title: HTML
-description: "Configure HTML language support in Zed, including language servers, formatting, and debugging."
+description: "Configure HTML language support in Zed, including language servers and formatting."
 ---
 
 # HTML

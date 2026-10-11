@@ -1,6 +1,6 @@
 ---
 title: Dart
-description: "Configure Dart language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Dart language support in Zed, including language servers and formatting."
 ---
 
 # Dart

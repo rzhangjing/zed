@@ -1,6 +1,6 @@
 # Deep Reference: workspace
 
-> 参考手册级：`crates/workspace`。`Workspace` 是**一个窗口内的顶层布局/协作/持久化根**：中央 `PaneGroup`（可分栏的标签页组）+ 左/右/下三个 `Dock` + `StatusBar` + `ModalLayer`/`ToastLayer`。它定义 `trait Item`——**所有可打开的东西（editor、terminal、debug、image、markdown preview…）的统一契约**。`workspace.rs` 达 20000 行。
+> 参考手册级：`crates/workspace`。`Workspace` 是**一个窗口内的顶层布局/协作/持久化根**：中央 `PaneGroup`（可分栏的标签页组）+ 左/右/下三个 `Dock` + `StatusBar` + `ModalLayer`/`ToastLayer`。它定义 `trait Item`——**所有可打开的东西（editor、terminal、image、markdown preview…）的统一契约**。`workspace.rs` 达 20000 行。
 
 ## 1. `struct Workspace`（[workspace.rs:1581](../crates/workspace/src/workspace.rs)）——字段全景
 ### 布局
@@ -26,7 +26,7 @@
 | `app_state` | `Arc<AppState>` | 全局服务（fs/db/client/node…，[Startup-Flow.md](Startup-Flow.md)） |
 | `database_id` | `Option<WorkspaceId>` | DB 行 id（恢复布局） |
 | `session_id` | `Option<String>` | 本次启动会话 |
-| `terminal_provider`/`debugger_provider` | `dyn` trait | 可注入的终端/调试后端 |
+| `terminal_provider` | `dyn` trait | 可注入的终端后端 |
 | `on_prompt_for_new_path`/`_open_path` | | 文件对话框钩子 |
 | `multi_workspace` | | 多工作区 |
 

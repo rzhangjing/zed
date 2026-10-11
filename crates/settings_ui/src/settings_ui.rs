@@ -603,7 +603,6 @@ fn init_renderers(cx: &mut App) {
         .add_basic_renderer::<settings::DisplayIn>(render_dropdown)
         .add_basic_renderer::<settings::MinimapThumb>(render_dropdown)
         .add_basic_renderer::<settings::MinimapThumbBorder>(render_dropdown)
-        .add_basic_renderer::<settings::SteppingGranularity>(render_dropdown)
         .add_basic_renderer::<settings::NotifyWhenAgentWaiting>(render_dropdown)
         .add_basic_renderer::<settings::PlaySoundWhenAgentDone>(render_dropdown)
         .add_basic_renderer::<settings::ThinkingBlockDisplay>(render_dropdown)

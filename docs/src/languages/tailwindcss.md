@@ -1,6 +1,6 @@
 ---
 title: Tailwind CSS
-description: "Configure Tailwind CSS language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Tailwind CSS language support in Zed, including language servers and formatting."
 ---
 
 # Tailwind CSS

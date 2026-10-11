@@ -1,6 +1,6 @@
 ---
 title: Haskell
-description: "Configure Haskell language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Haskell language support in Zed, including language servers and formatting."
 ---
 
 # Haskell

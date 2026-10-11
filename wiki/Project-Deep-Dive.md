@@ -1,6 +1,6 @@
 # Deep Reference: project & worktree
 
-> 参考手册级：`crates/project`（"打开的项目"聚合根，`project.rs` 248KB + `lsp_store.rs` 683KB + `lsp_command.rs` 216KB）与 `crates/worktree`（文件系统树）。`Project` 把语言、LSP、Buffer、任务、调试、Agent、终端、协作全部**编排成一个 Entity**，是编辑器功能的中枢。
+> 参考手册级：`crates/project`（"打开的项目"聚合根，`project.rs` 248KB + `lsp_store.rs` 683KB + `lsp_command.rs` 216KB）与 `crates/worktree`（文件系统树）。`Project` 把语言、LSP、Buffer、任务、Agent、终端、协作全部**编排成一个 Entity**，是编辑器功能的中枢。
 
 ## 1. `struct Project`（[project.rs:216](../crates/project/src/project.rs)）——字段全景
 | 字段 | 类型 | 子 store / 职责 |
@@ -9,14 +9,13 @@
 | `worktree_store` | `Entity<WorktreeStore>` | 所有 `Worktree` |
 | `buffer_store` | `Entity<BufferStore>` | buffer ↔ worktree 关联（`buffer_store.rs` 70KB） |
 | `lsp_store` | `Entity<LspStore>` | **LSP 全部逻辑**（683KB：server 生命周期、请求路由、编辑操作） |
-| `dap_store` | `Entity<DapStore>` | 调试（[Debugger.md](Debugger.md)） |
 | `task_store` | `Entity<TaskStore>` | 任务（enum，[Tasks-and-Tooling.md](Tasks-and-Tooling.md)） |
 | `context_server_store` | `Entity<ContextServerStore>` | MCP/context server（[Agent-and-AI.md](Agent-and-AI.md)） |
 | `agent_server_store` | `Entity<AgentServerStore>` | ACP/外部 agent（85KB） |
 | `toolchain_store` | `Option<Entity<ToolchainStore>>` | 语言运行时版本 |
 | `terminals` | `Terminals` | 项目终端（[Terminal.md](Terminal.md)） |
 | `image_store` | `Entity<ImageStore>` | 粘贴图片（[Misc-Items-and-Selectors.md](Misc-Items-and-Selectors.md)） |
-| `bookmark_store` / `breakpoint_store` | `Entity<..>` | 书签 / 断点 |
+| `bookmark_store` | `Entity<..>` | 书签 |
 | `snippets` | `Entity<SnippetProvider>` | snippet |
 | `user_store` / `collab_client` | client | 用户 / 协作 |
 | `collaborators` | `HashMap<PeerId,Collaborator>` | 在场协作者 |

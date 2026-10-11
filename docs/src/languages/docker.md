@@ -1,6 +1,6 @@
 ---
 title: Docker
-description: "Configure Docker language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Docker language support in Zed, including language servers and formatting."
 ---
 
 # Docker

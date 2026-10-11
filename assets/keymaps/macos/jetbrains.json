@@ -4,14 +4,6 @@
       "cmd-{": "pane::ActivatePreviousItem",
       "cmd-}": "pane::ActivateNextItem",
       "shift-escape": null, // Unmap workspace::zoom
-      "ctrl-f2": "debugger::Stop",
-      "f6": "debugger::Pause",
-      "f7": "debugger::StepInto",
-      "f8": "debugger::StepOver",
-      "shift-f8": "debugger::StepOut",
-      "f9": "debugger::Continue",
-      "shift-f9": "debugger::Start",
-      "alt-shift-f9": "debugger::Start",
     },
   },
   {
@@ -61,8 +53,6 @@
       "alt-right": "editor::MoveToNextSubwordEnd",
       "shift-alt-left": "editor::SelectToPreviousSubwordStart",
       "shift-alt-right": "editor::SelectToNextSubwordEnd",
-      "ctrl-f8": "editor::ToggleBreakpoint",
-      "ctrl-shift-f8": "editor::EditLogBreakpoint",
       "cmd-shift-u": "editor::ToggleCase",
     },
   },
@@ -131,7 +121,6 @@
       "cmd-alt-o": "project_symbols::Toggle", // JetBrains: Go to Symbol
       "cmd-o": "project_symbols::Toggle", // JetBrains: Go to Class
       "cmd-1": "project_panel::ToggleFocus",
-      "cmd-5": "debug_panel::ToggleFocus",
       "cmd-6": "diagnostics::Deploy",
       "cmd-7": "outline_panel::ToggleFocus",
     },
@@ -143,7 +132,6 @@
       "cmd-2": null, // Bookmarks (left dock)
       "cmd-3": null, // Find Panel (bottom dock)
       "cmd-4": null, // Run Panel (bottom dock)
-      "cmd-5": "debug_panel::ToggleFocus",
       "cmd-6": "diagnostics::Deploy",
       "cmd-7": "outline_panel::ToggleFocus",
       "cmd-8": null, // Services (bottom dock)
@@ -190,7 +178,7 @@
   },
   { "context": "GitPanel", "bindings": { "cmd-0": "workspace::CloseActiveDock" } },
   { "context": "ProjectPanel", "bindings": { "cmd-1": "workspace::CloseActiveDock" } },
-  { "context": "DebugPanel", "bindings": { "cmd-5": "workspace::CloseActiveDock" } },
+
   { "context": "Diagnostics > Editor", "bindings": { "cmd-6": "pane::CloseActiveItem" } },
   { "context": "OutlinePanel", "bindings": { "cmd-7": "workspace::CloseActiveDock" } },
   {

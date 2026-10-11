@@ -1,6 +1,6 @@
 ---
 title: Helm
-description: "Configure Helm language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Helm language support in Zed, including language servers and formatting."
 ---
 
 # Helm

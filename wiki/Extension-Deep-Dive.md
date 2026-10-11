@@ -1,6 +1,6 @@
 # Deep Reference: extensions (extension_api / extension / extension_host / extensions_ui)
 
-> 参考手册级：扩展系统四 crate——`crates/extension_api`（**扩展作者面向的 WASM ABI**）、`crates/extension`（**宿主侧类型/manifest/proxy**）、`crates/extension_host`（**发现/安装/运行 wasm 的引擎**）、`crates/extensions_ui`（**市场页 `Item`**）。扩展以 **WASM**（`wasmtime`）加载，通过 `ExtensionHostProxy` 向宿主注册语言/语法/LSP/主题/斜杠命令/debug adapter/context server/agent server 等。→ 概览 [Extension-System.md](Extension-System.md)。
+> 参考手册级：扩展系统四 crate——`crates/extension_api`（**扩展作者面向的 WASM ABI**）、`crates/extension`（**宿主侧类型/manifest/proxy**）、`crates/extension_host`（**发现/安装/运行 wasm 的引擎**）、`crates/extensions_ui`（**市场页 `Item`**）。扩展以 **WASM**（`wasmtime`）加载，通过 `ExtensionHostProxy` 向宿主注册语言/语法/LSP/主题/斜杠命令/context server/agent server 等。→ 概览 [Extension-System.md](Extension-System.md)。
 
 ## 1. `crates/extension_api`：扩展作者 ABI（编译进 wasm）
 | 类型 | 位置 | 角色 |
@@ -15,11 +15,11 @@
 | 类型 | 位置 | 角色 |
 |---|---|---|
 | `trait Extension`（宿主版） | [extension.rs:50](../crates/extension/src/extension.rs) | 宿主内运行的扩展契约（比 api 版更丰富：`context_server`/`indexed_docs`/`settings_profile`…） |
-| `struct ExtensionHostProxy` | [extension_host_proxy.rs:26](../crates/extension/src/extension_host_proxy.rs) | **注册面**：扩展 `activate` 时调 `register_language`/`register_grammar`/`register_language_server`/`register_theme`/`register_icon_theme`/`register_snippet_provider`/`register_slash_command`/`register_debug_adapter`/`register_context_server`/`register_indexed_docs_provider`/`register_agent_profile`…（`Global`(L14)） |
+| `struct ExtensionHostProxy` | [extension_host_proxy.rs:26](../crates/extension/src/extension_host_proxy.rs) | **注册面**：扩展 `activate` 时调 `register_language`/`register_grammar`/`register_language_server`/`register_theme`/`register_icon_theme`/`register_snippet_provider`/`register_slash_command`/`register_context_server`/`register_indexed_docs_provider`/`register_agent_profile`…（`Global`(L14)） |
 | `struct ExtensionManifest` | [extension_manifest.rs:84](../crates/extension/src/extension_manifest.rs) | `extension.toml`（id/name/version/schema + 各贡献表）；`SchemaVersion`(L43) |
-| `LibManifestEntry`/`GrammarManifestEntry`/`LanguageServerManifestEntry`/`ContextServerManifestEntry`/`SlashCommandManifestEntry`/`DebugAdapterManifestEntry`/`AgentServerManifestEntry` | [L226](../crates/extension/src/extension_manifest.rs).. | 各类贡献的清单条目 |
-| `types/`：`Completion`/`Symbol`/`SymbolKind`（[lsp.rs](../crates/extension/src/types/lsp.rs)）、`SlashCommand`/`SlashCommandOutput`（[slash_command.rs](../crates/extension/src/types/slash_command.rs)）、`ContextServerConfiguration`（[context_server.rs](../crates/extension/src/types/context_server.rs)）、`project_queries`/`debugger` | | 跨 wasm 边界的结构化类型 |
-`ExtensionHostProxy` 是"注册到的地方"——实际注册目标即各子系统 registry（`LanguageRegistry`、`ThemeRegistry`、`ContextServerRegistry`、`DebugRegistry`、`AgentRegistry`；见 [Language-Deep-Dive.md](Language-Deep-Dive.md)/[Agent-Deep-Dive.md](Agent-Deep-Dive.md)）。
+| `LibManifestEntry`/`GrammarManifestEntry`/`LanguageServerManifestEntry`/`ContextServerManifestEntry`/`SlashCommandManifestEntry`/`AgentServerManifestEntry` | [L226](../crates/extension/src/extension_manifest.rs).. | 各类贡献的清单条目 |
+| `types/`：`Completion`/`Symbol`/`SymbolKind`（[lsp.rs](../crates/extension/src/types/lsp.rs)）、`SlashCommand`/`SlashCommandOutput`（[slash_command.rs](../crates/extension/src/types/slash_command.rs)）、`ContextServerConfiguration`（[context_server.rs](../crates/extension/src/types/context_server.rs)）、`project_queries` | | 跨 wasm 边界的结构化类型 |
+`ExtensionHostProxy` 是"注册到的地方"——实际注册目标即各子系统 registry（`LanguageRegistry`、`ThemeRegistry`、`ContextServerRegistry`、`AgentRegistry`；见 [Language-Deep-Dive.md](Language-Deep-Dive.md)/[Agent-Deep-Dive.md](Agent-Deep-Dive.md)）。
 
 ## 3. `crates/extension_host`：引擎与生命周期 [`extension_host.rs`](../crates/extension_host/src/extension_host.rs)(89KB)
 | 类型 | 位置 | 角色 |
@@ -56,4 +56,4 @@ graph TB
 - 远程（历史）：原 remote server 经 `headless_host` + `ProtoClient` 同步扩展；本 fork 已随远程开发栈一并移除。
 
 ## 7. 相关页
-概览 [Extension-System.md](Extension-System.md)；被注册目标 [Language-Deep-Dive.md](Language-Deep-Dive.md)、[Agent-Deep-Dive.md](Agent-Deep-Dive.md)、[Debugger-Deep-Dive.md](Debugger-Deep-Dive.md)、[Settings-and-Themes.md](Settings-and-Themes.md)。
+概览 [Extension-System.md](Extension-System.md)；被注册目标 [Language-Deep-Dive.md](Language-Deep-Dive.md)、[Agent-Deep-Dive.md](Agent-Deep-Dive.md)、[Settings-and-Themes.md](Settings-and-Themes.md)。

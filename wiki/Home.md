@@ -46,7 +46,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Project-Deep-Dive（Project/LspStore/Worktree 全子 store）](Project-Deep-Dive.md)
 - [Workspace-Deep-Dive（Workspace/Pane/Dock/Item 契约/持久化）](Workspace-Deep-Dive.md)
 - [Terminal-Deep-Dive（PTY/Alacritty 适配/TerminalElement 渲染）](Terminal-Deep-Dive.md)
-- [Debugger-Deep-Dive（dap 传输/Session 状态机/debugger_ui 面板）](Debugger-Deep-Dive.md)
 - [Agent-Deep-Dive（NativeAgent/Thread/31 tool/AcpThread/LanguageModel）](Agent-Deep-Dive.md)
 - [Markdown-Deep-Dive（parser/markdown.rs 渲染/preview 面板）](Markdown-Deep-Dive.md)
 - [Collab-Deep-Dive（历史：Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
@@ -59,7 +58,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Diagnostics-Deep-Dive（Diagnostic/DiagnosticSet → editor 波浪线/块 → 项目/缓冲侧栏）](Diagnostics-Deep-Dive.md)
 - [Settings-and-Onboarding-Deep-Dive（settings_content 模型/SettingsWindow/Onboarding 引导）](Settings-and-Onboarding-Deep-Dive.md)
 - [Call-and-Voice-Deep-Dive（历史：音视频 RTC/livekit_client·mock；audio 管线仍在）](Call-and-Voice-Deep-Dive.md)
-- [Task-System-Deep-Dive（TaskTemplate/变量替换/Inventory/TasksModal/终端·DAP 分发）](Task-System-Deep-Dive.md)
+- [Task-System-Deep-Dive（TaskTemplate/变量替换/Inventory/TasksModal/终端分发）](Task-System-Deep-Dive.md)
 - [Extension-Host-Deep-Dive（Wasmtime 组件宿主/版本化 WIT/CapabilityGranter/Headless）](Extension-Host-Deep-Dive.md)
 - [GPUI-Macros-and-Utilities-Deep-Dive（proc-macro/Refineable 样式级联/SharedString/Tokio 桥/gpui_util）](GPUI-Macros-and-Utilities-Deep-Dive.md)
 - [Model-Providers-Deep-Dive（LanguageModel/Provider 契约 + 逐厂商 client→适配层两层架构/SSE/云；原 Bedrock SigV4 路径已移除）](Model-Providers-Deep-Dive.md)
@@ -117,7 +116,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Settings-and-Themes（分层设置 / 主题注册）](Settings-and-Themes.md)
 
 ### 高级特性
-- [Debugger（DAP 协议 / 会话状态 / 调试 UI）](Debugger.md)
 - [Tasks-and-Tooling（任务运行 / REPL / 日志 / 剖析）](Tasks-and-Tooling.md)
 
 ### 构建与平台

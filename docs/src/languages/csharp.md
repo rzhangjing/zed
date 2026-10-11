@@ -1,6 +1,6 @@
 ---
 title: C#
-description: "Configure C# language support in Zed, including language servers, formatting, and debugging."
+description: "Configure C# language support in Zed, including language servers and formatting."
 ---
 
 # C#

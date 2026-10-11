@@ -1,6 +1,6 @@
 ---
 title: Svelte
-description: "Configure Svelte language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Svelte language support in Zed, including language servers and formatting."
 ---
 
 # Svelte

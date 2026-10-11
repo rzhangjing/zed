@@ -1,6 +1,6 @@
 ---
 title: Luau
-description: "Configure Luau language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Luau language support in Zed, including language servers and formatting."
 ---
 
 # Luau

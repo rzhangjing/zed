@@ -3,7 +3,6 @@
   {
     "use_key_equivalents": true,
     "bindings": {
-      "f4": "debugger::Start",
       "home": "menu::SelectFirst",
       "shift-pageup": "menu::SelectFirst",
       "pageup": "menu::SelectFirst",
@@ -139,8 +138,6 @@
       "cmd-'": "editor::ToggleSelectedDiffHunks",
       "cmd-\"": "editor::ExpandAllDiffHunks",
       "cmd-i": "editor::ShowSignatureHelp",
-      "f9": "editor::ToggleBreakpoint",
-      "shift-f9": "editor::EditLogBreakpoint",
       "ctrl-f12": "editor::GoToDeclaration",
       "alt-ctrl-f12": "editor::GoToDeclarationSplit",
       "ctrl-cmd-e": "editor::ToggleEditPrediction",
@@ -678,8 +675,7 @@
     "bindings": {
       // Move focus between the major regions of the window (editor, open
       // panels, status bar). Accessibility navigation; mirrors VS Code's
-      // "Focus Next/Previous Part". `cmd-f6` mirrors `f6` so region navigation
-      // stays available even while a debug session rebinds plain `f6` to Pause.
+      // "Focus Next/Previous Part". `cmd-f6` mirrors `f6`.
       "f6": "workspace::FocusNextPart",
       "shift-f6": "workspace::FocusPreviousPart",
       "cmd-f6": "workspace::FocusNextPart",
@@ -735,7 +731,6 @@
       "cmd-shift-m": "diagnostics::Deploy",
       "cmd-shift-e": "project_panel::ToggleFocus",
       "cmd-shift-b": "outline_panel::ToggleFocus",
-      "cmd-shift-d": "debug_panel::ToggleFocus",
       "cmd-?": "agent::ToggleFocus",
       "cmd-alt-s": "workspace::SaveAll",
       "cmd-k n": "encoding_selector::Toggle",
@@ -750,7 +745,6 @@
       "cmd-k shift-up": "workspace::SwapPaneUp",
       "cmd-k shift-down": "workspace::SwapPaneDown",
       "cmd-shift-x": "zed::Extensions",
-      "f5": "debugger::Rerun",
       "cmd-w": "workspace::CloseActiveDock",
     },
   },
@@ -799,27 +793,6 @@
     "bindings": {
       "ctrl-tab": "agents_sidebar::ToggleThreadSwitcher",
       "ctrl-shift-tab": ["agents_sidebar::ToggleThreadSwitcher", { "select_last": true }],
-    },
-  },
-  {
-    "context": "Workspace && debugger_running",
-    "use_key_equivalents": true,
-    "bindings": {
-      // Unbind `f5` to avoid dispatching the `debugger::Rerun` as that is what `f5` is bound to in the `Workspace`
-      // context.
-      "f5": null,
-    },
-  },
-  {
-    "context": "Workspace && debugger_stopped",
-    "use_key_equivalents": true,
-    "bindings": {
-      "f5": "debugger::Continue",
-      "f7": "debugger::StepOver",
-      "f10": "debugger::StepOver",
-      "f11": "debugger::StepInto",
-      "ctrl-f11": "debugger::StepInto",
-      "shift-f11": "debugger::StepOut",
     },
   },
   // Bindings from Sublime Text
@@ -1034,20 +1007,6 @@
     },
   },
   {
-    "context": "VariableList",
-    "use_key_equivalents": true,
-    "bindings": {
-      "left": "variable_list::CollapseSelectedEntry",
-      "right": "variable_list::ExpandSelectedEntry",
-      "enter": "variable_list::EditVariable",
-      "cmd-c": "variable_list::CopyVariableValue",
-      "cmd-alt-c": "variable_list::CopyVariableName",
-      "delete": "variable_list::RemoveWatch",
-      "backspace": "variable_list::RemoveWatch",
-      "alt-enter": "variable_list::AddWatch",
-    },
-  },
-  {
     "context": "GitPanel && (ChangesList || HistoryList) && !GitBranchSelector && !GitRepositorySelector",
     "use_key_equivalents": true,
     "bindings": {
@@ -1098,37 +1057,6 @@
     "bindings": {
       "enter": "editor::Newline",
       "escape": "menu::Cancel",
-    },
-  },
-  {
-    // While a debug session is live, `Pause`/`Stop`/`RerunSession` take over their F-keys
-    // (region navigation stays on `cmd-f6` / `shift-f6`), so they're inert when not debugging.
-    // Step commands and `Continue` are scoped to `debugger_stopped` instead, since they only
-    // make sense while execution is actually paused.
-    // `debugger::Start` stays global so a session can be started from anywhere.
-    "context": "Workspace && debugger_session",
-    "use_key_equivalents": true,
-    "bindings": {
-      "f6": "debugger::Pause",
-      "shift-f5": "debugger::Stop",
-      "shift-cmd-f5": "debugger::RerunSession",
-    },
-  },
-  {
-    "context": "DebugPanel",
-    "bindings": {
-      "cmd-t": "debugger::ToggleThreadPicker",
-      "cmd-i": "debugger::ToggleSessionPicker",
-      "shift-alt-escape": "debugger::ToggleExpandItem",
-    },
-  },
-  {
-    "context": "BreakpointList",
-    "bindings": {
-      "space": "debugger::ToggleEnableBreakpoint",
-      "backspace": "debugger::UnsetBreakpoint",
-      "left": "debugger::PreviousBreakpointProperty",
-      "right": "debugger::NextBreakpointProperty",
     },
   },
   {
@@ -1290,14 +1218,6 @@
     "use_key_equivalents": true,
     "bindings": {
       "ctrl-r": "diagnostics::ToggleDiagnosticsRefresh",
-    },
-  },
-  {
-    "context": "DebugConsole > Editor",
-    "use_key_equivalents": true,
-    "bindings": {
-      "enter": "menu::Confirm",
-      "alt-enter": "console::WatchExpression",
     },
   },
   {
@@ -1480,15 +1400,6 @@
       "cmd-1": "image_viewer::ZoomToActualSize",
       "cmd-k r": "editor::RevealInFileManager",
       "cmd-shift-0": "image_viewer::FitToView",
-    },
-  },
-  {
-    "context": "RunModal",
-    "bindings": {
-      "cmd-1": "new_process_modal::ActivateTaskTab",
-      "cmd-2": "new_process_modal::ActivateDebugTab",
-      "cmd-3": "new_process_modal::ActivateAttachTab",
-      "cmd-4": "new_process_modal::ActivateLaunchTab",
     },
   },
   {

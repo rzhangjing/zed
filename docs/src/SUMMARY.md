@@ -24,7 +24,6 @@
 - [Running & Testing](./running-testing.md)
   - [Terminal](./terminal.md)
   - [Tasks](./tasks.md)
-  - [Debugger](./debugger.md)
   - [REPL](./repl.md)
 - [Modelines](./modelines.md)
 
@@ -174,7 +173,6 @@
   - [Frequently Asked Questions](./extensions/publishing/faq.md)
 - [Extension Capabilities](./extensions/capabilities.md)
 - [Language Extensions](./extensions/languages.md)
-- [Debugger Extensions](./extensions/debugger-extensions.md)
 - [Theme Extensions](./extensions/themes.md)
 - [Icon Theme Extensions](./extensions/icon-themes.md)
 - [Snippets Extensions](./extensions/snippets.md)
@@ -203,7 +201,6 @@
   - [Linux](./development/linux.md)
   - [Windows](./development/windows.md)
   - [FreeBSD](./development/freebsd.md)
-  - [Using Debuggers](./development/debuggers.md)
   - [Performance](./performance.md)
   - [Glossary](./development/glossary.md)
 - [Release Notes](./development/release-notes.md)

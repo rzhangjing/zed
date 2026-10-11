@@ -1,6 +1,6 @@
 ---
 title: Shell Script
-description: "Configure Shell Script language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Shell Script language support in Zed, including language servers and formatting."
 ---
 
 # Shell Scripts

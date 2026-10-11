@@ -123,7 +123,6 @@ To disable this behavior use:
   // "collaboration_panel": {"button": false },
 
   // "agent": {"button": false },
-  // "debugger": {"button": false },
   // "diagnostics": {"button": false },
   // "search": {"button": false },
 }
@@ -226,7 +225,6 @@ TBD: Centered layout related settings
   "gutter": {
     "line_numbers": true,         // Show/hide line numbers in the gutter.
     "runnables": true,            // Show/hide runnables buttons in the gutter.
-    "breakpoints": true,          // Show/hide show breakpoints in the gutter.
     "folds": true,                // Show/hide show fold buttons in the gutter.
     "min_line_number_digits": 4   // Reserve space for N digit line numbers
   },
@@ -573,12 +571,6 @@ See [Terminal settings](./reference/all-settings.md#terminal) for additional non
 ### Other Panels
 
 ```json [settings]
-  // Debugger Panel
-  "debugger": {
-    "dock": "bottom",             // Where to dock: left, right, bottom
-    "button": true                // Show/hide status bar icon
-  },
-
   // Outline Panel
   "outline_panel": {
     "button": true,               // Show/hide status bar icon

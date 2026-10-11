@@ -90,7 +90,6 @@ pub enum ExtensionCategoryFilter {
     LanguageServers,
     ContextServers,
     Snippets,
-    DebugAdapters,
 }
 
 /// Opens the extensions management interface.
@@ -734,31 +733,6 @@ actions!(
 actions!(
     call_hierarchy,
     [ShowIncomingCalls, ShowOutgoingCalls, ToggleDirection]
-);
-
-pub mod debug_panel {
-    use gpui::actions;
-    actions!(
-        debug_panel,
-        [
-            /// Toggles the debug panel.
-            Toggle,
-            /// Toggles focus on the debug panel.
-            ToggleFocus
-        ]
-    );
-}
-
-actions!(
-    debugger,
-    [
-        /// Toggles the enabled state of a breakpoint.
-        ToggleEnableBreakpoint,
-        /// Removes a breakpoint.
-        UnsetBreakpoint,
-        /// Opens the project debug tasks configuration.
-        OpenProjectDebugTasks,
-    ]
 );
 
 pub mod preview {

@@ -1,6 +1,6 @@
 ---
 title: Standard ML
-description: "Configure Standard ML language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Standard ML language support in Zed, including language servers and formatting."
 ---
 
 # Standard ML

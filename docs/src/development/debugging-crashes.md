@@ -21,5 +21,3 @@ Alongside the minidump in your logs directory, you should also see a `<uuid>.jso
 ## Using a Debugger
 
 If you can reproduce the crash consistently, use a debugger to inspect program state at the crash point.
-
-For setup details, see [Using a debugger](./debuggers.md#debugging-panics-and-crashes).

@@ -138,7 +138,7 @@ impl EditorElement {
             cx.notify();
         }
 
-        // Don't show breakpoint indicator when diff review indicator is active on this row
+        // Don't show the gutter hover button when the diff review indicator is active on this row
         let is_on_diff_review_button_row = diff_review_indicator.is_some_and(|indicator| {
             let start_row = indicator
                 .start
@@ -155,7 +155,7 @@ impl EditorElement {
                 .snapshot
                 .display_point_to_anchor(valid_point, Bias::Left);
 
-            // Breakpoints and bookmarks are keyed by absolute file path, so the
+            // Bookmarks are keyed by absolute file path, so the
             // gutter button would be a no-op for buffers without a worktree file
             // (e.g. untitled buffers). Hide it there.
             if position_map

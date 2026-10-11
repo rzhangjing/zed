@@ -5,7 +5,7 @@
 ## 1. 核心实体
 - `struct Editor`（[editor.rs:951](../crates/editor/src/editor.rs)）：主 `Entity`。构造 `new`(L1882)、`new_file`(L2934)、`new_in_workspace`(L2954)；`snapshot(window,cx)->EditorSnapshot`(L3086) 取只读快照供元素/算法使用。
 - `enum EditorMode`（[editor.rs:470](../crates/editor/src/editor.rs)）：`SingleLine`｜`AutoHeight{min_lines,max_lines}`｜`Full{scale_ui_elements_with_buffer_font_size,show_active_line_background,sizing_behavior}`｜`Minimap{parent:WeakEntity<Editor>}`。`full()`(L490) 便捷构造。决定测量/布局/是否可滚动。
-- 相关枚举：`SizingBehavior`(L456)、`SelectMode`(L448：`Line`/`Word`/`All`)、`SelectPhase`(L417，拖拽选择状态机)、`ColumnarMode`(L442，块选择)、`Navigated`(L348)、marker `ActiveDebugLine`/`DebugStackFrameLine`(L335/336)、冲突标记 `ConflictsOuter/Ours/Theirs*`(L338-342)。
+- 相关枚举：`SizingBehavior`(L456)、`SelectMode`(L448：`Line`/`Word`/`All`)、`SelectPhase`(L417，拖拽选择状态机)、`ColumnarMode`(L442，块选择)、`Navigated`(L348)、冲突标记 `ConflictsOuter/Ours/Theirs*`(L338-342)。
 - `struct EditorSnapshot`、`struct VisualLine`、`struct DisplayPoint`：display 层坐标（见 §3）。
 
 ## 2. 输入 / 命令（键盘→动作）

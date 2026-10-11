@@ -18,7 +18,6 @@
 - [Project-Deep-Dive](Project-Deep-Dive)
 - [Workspace-Deep-Dive](Workspace-Deep-Dive)
 - [Terminal-Deep-Dive](Terminal-Deep-Dive)
-- [Debugger-Deep-Dive](Debugger-Deep-Dive)
 - [Agent-Deep-Dive](Agent-Deep-Dive)
 - [Markdown-Deep-Dive](Markdown-Deep-Dive)
 - [Collab-Deep-Dive](Collab-Deep-Dive)
@@ -89,7 +88,6 @@
 - [Settings-and-Themes](Settings-and-Themes)
 
 ### 高级特性
-- [Debugger](Debugger)
 - [Tasks-and-Tooling](Tasks-and-Tooling)
 
 ### 构建与平台

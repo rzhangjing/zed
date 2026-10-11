@@ -21,7 +21,6 @@ use assets::Assets;
 
 use breadcrumbs::Breadcrumbs;
 use collections::VecDeque;
-use debugger_ui::debugger_panel::DebugPanel;
 use editor::{Editor, MultiBuffer};
 use feature_flags::{FeatureFlagAppExt as _, PanicFeatureFlag};
 use fs::Fs;
@@ -42,10 +41,7 @@ use migrator::migrate_keymap;
 use onboarding::multibuffer_hint::MultibufferHint;
 pub use open_listener::*;
 use outline_panel::OutlinePanel;
-use paths::{
-    local_debug_file_relative_path, local_settings_file_relative_path,
-    local_tasks_file_relative_path,
-};
+use paths::{local_settings_file_relative_path, local_tasks_file_relative_path};
 use project::{
     DisableAiSettings,
     project_settings::{SettingsObserver, SettingsObserverEvent},
@@ -58,8 +54,8 @@ use search::project_search::ProjectSearchBar;
 use settings::{
     BaseKeymap, DEFAULT_KEYMAP_PATH, DefaultOpenBehavior, InvalidSettingsError, KeybindSource,
     KeymapFile, KeymapFileLoadResult, MigrationStatus, SPECIFIC_OVERRIDES_KEYMAP_PATH, Settings,
-    SettingsFile, SettingsStore, initial_local_debug_tasks_content,
-    initial_project_settings_content, initial_tasks_content, update_settings_file,
+    SettingsFile, SettingsStore, initial_project_settings_content, initial_tasks_content,
+    update_settings_file,
 };
 use sidebar::Sidebar;
 #[cfg(debug_assertions)]
@@ -118,8 +114,6 @@ actions!(
         OpenProjectSettingsFile,
         /// Opens the tasks panel.
         OpenTasks,
-        /// Opens debug tasks configuration.
-        OpenDebugTasks,
         /// Shows the default semantic token rules (read-only).
         ShowDefaultSemanticTokenRules,
         /// Resets the application database.
@@ -255,16 +249,6 @@ pub fn init(cx: &mut App) {
             open_settings_file(
                 paths::tasks_file(),
                 || settings::initial_tasks_content().as_ref().into(),
-                window,
-                cx,
-            );
-        });
-    })
-    .on_action(|_: &OpenDebugTasks, cx| {
-        with_active_or_new_workspace(cx, |_, window, cx| {
-            open_settings_file(
-                paths::debug_scenarios_file(),
-                || settings::initial_debug_tasks_content().as_ref().into(),
                 window,
                 cx,
             );
@@ -736,7 +720,6 @@ fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<a
         let project_panel = ProjectPanel::load(workspace_handle.clone(), cx.clone());
         let outline_panel = OutlinePanel::load(workspace_handle.clone(), cx.clone());
         let terminal_panel = TerminalPanel::load(workspace_handle.clone(), cx.clone());
-        let debug_panel = DebugPanel::load(workspace_handle.clone(), cx);
 
         async fn add_panel_when_ready(
             panel_task: impl Future<Output = anyhow::Result<Entity<impl workspace::Panel>>> + 'static,
@@ -757,7 +740,6 @@ fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<a
             add_panel_when_ready(project_panel, workspace_handle.clone(), cx.clone()),
             add_panel_when_ready(outline_panel, workspace_handle.clone(), cx.clone()),
             add_panel_when_ready(terminal_panel, workspace_handle.clone(), cx.clone()),
-            add_panel_when_ready(debug_panel, workspace_handle.clone(), cx.clone()),
             initialize_agent_panel(workspace_handle.clone(), cx.clone()).map(|r| r.log_err()),
         );
 
@@ -1201,7 +1183,6 @@ fn register_actions(
         .register_action(open_project_settings_file)
         .register_action(open_project_tasks_file)
         .register_action(open_worktree_setup_tasks_file)
-        .register_action(open_project_debug_tasks_file)
         .register_action(
             |workspace: &mut Workspace,
              _: &zed_actions::project_panel::ToggleFocus,
@@ -1345,8 +1326,6 @@ fn initialize_pane(
             toolbar.add_item(diagnostic_editor_controls, window, cx);
             let project_search_bar = cx.new(|_| ProjectSearchBar::new());
             toolbar.add_item(project_search_bar, window, cx);
-            let dap_log_item = cx.new(|_| debugger_tools::DapLogToolbarItemView::new());
-            toolbar.add_item(dap_log_item, window, cx);
             let acp_tools_item = cx.new(|_| acp_tools::AcpToolsToolbarItemView::new());
             toolbar.add_item(acp_tools_item, window, cx);
             let migration_banner =
@@ -1828,11 +1807,6 @@ fn init_global_config_error_notifications(cx: &mut App) {
                 SettingsObserverEvent::GlobalTasksUpdated(result) => {
                     (result, "tasks", |window, cx| {
                         window.dispatch_action(OpenTasks.boxed_clone(), cx)
-                    })
-                }
-                SettingsObserverEvent::GlobalDebugScenariosUpdated(result) => {
-                    (result, "debug scenarios", |window, cx| {
-                        window.dispatch_action(OpenDebugTasks.boxed_clone(), cx)
                     })
                 }
                 _ => return,
@@ -2331,23 +2305,6 @@ fn open_worktree_setup_tasks_file(
         })?
     })
     .detach_and_log_err(cx);
-}
-
-fn open_project_debug_tasks_file(
-    workspace: &mut Workspace,
-    _: &zed_actions::OpenProjectDebugTasks,
-    window: &mut Window,
-    cx: &mut Context<Workspace>,
-) {
-    if let Some(task) = open_local_file(
-        workspace,
-        local_debug_file_relative_path(),
-        initial_local_debug_tasks_content(),
-        window,
-        cx,
-    ) {
-        task.detach_and_log_err(cx);
-    }
 }
 
 fn open_local_file(
@@ -5248,8 +5205,8 @@ mod tests {
         use workspace::ActivatePreviousPane;
         // From the JetBrains keymap
         use workspace::ActivatePreviousItem;
-        // From the VSCode keymap
-        use debugger_ui::Start;
+        // From the VSCode keymap overlay
+        use zed_actions::assistant::ToggleFocus as AgentToggleFocus;
 
         app_state
             .fs
@@ -5359,17 +5316,19 @@ mod tests {
         window
             .update(cx, |_, _, cx| {
                 workspace.update(cx, |workspace, cx| {
-                    workspace.register_action(|_, _: &Start, _window, _cx| {});
+                    workspace.register_action(|_, _: &AgentToggleFocus, _window, _cx| {});
                     cx.notify();
                 });
             })
             .unwrap();
         executor.run_until_parked();
 
+        // The VSCode overlay binds `ctrl-alt-i` to `agent::ToggleFocus`; the helper only
+        // compares the key, not the modifiers.
         assert_key_bindings_for(
             window.into(),
             cx,
-            vec![("backspace", &ActionB), ("f5", &Start)],
+            vec![("backspace", &ActionB), ("i", &AgentToggleFocus)],
             line!(),
         );
     }
@@ -5538,10 +5497,7 @@ mod tests {
                 "cli",
                 "collab",
                 "command_palette",
-                "console",
                 "context_server",
-                "debug_panel",
-                "debugger",
                 "dev",
                 "diagnostics",
                 "edit_prediction",
@@ -5562,7 +5518,6 @@ mod tests {
                 "markdown",
                 "menu",
                 "multi_workspace",
-                "new_process_modal",
                 "notebook",
                 "onboarding",
                 "outline",
@@ -5591,7 +5546,6 @@ mod tests {
                 "theme_selector",
                 "toast",
                 "toolchain",
-                "variable_list",
                 "window",
                 "workspace",
                 "zed",
@@ -5783,11 +5737,6 @@ mod tests {
             repl::init(app_state.fs.clone(), cx);
             repl::notebook::init(cx);
             tasks_ui::init(cx);
-            project::debugger::breakpoint_store::BreakpointStore::init(
-                &app_state.client.clone().into(),
-            );
-            project::debugger::dap_store::DapStore::init(&app_state.client.clone().into(), cx);
-            debugger_ui::init(cx);
             initialize_workspace(app_state.clone(), cx);
             search::init(cx);
             lsp_locations::init(cx);

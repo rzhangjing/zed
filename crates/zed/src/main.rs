@@ -520,8 +520,6 @@ fn main() {
         #[cfg(target_os = "macos")]
         zed::move_to_applications::init(cx);
         project::Project::init(&client, cx);
-        debugger_ui::init(cx);
-        debugger_tools::init(cx);
         feature_flags::FeatureFlagStore::init(cx);
 
         let system_id = cx.foreground_executor().block_on(system_id).ok();
@@ -568,7 +566,6 @@ fn main() {
         AppState::set_global(app_state.clone(), cx);
 
         auto_update::init(client.clone(), cx);
-        dap_adapters::init(cx);
         auto_update_ui::init(cx);
         reliability::init(client.clone(), app_state.workspace_store.clone(), cx);
 
@@ -1303,7 +1300,6 @@ fn init_paths() -> HashMap<io::ErrorKind, Vec<&'static Path>> {
         paths::config_dir(),
         paths::extensions_dir(),
         paths::languages_dir(),
-        paths::debug_adapters_dir(),
         paths::database_dir(),
         paths::logs_dir(),
         paths::temp_dir(),

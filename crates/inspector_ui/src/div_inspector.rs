@@ -498,7 +498,6 @@ impl DivInspector {
             editor.set_show_line_numbers(false, cx);
             editor.set_show_code_actions(false, cx);
             editor.set_show_bookmarks(false, cx);
-            editor.set_show_breakpoints(false, cx);
             editor.set_show_runnables(false, cx);
             editor.disable_mouse_wheel_zoom();
             editor.set_show_edit_predictions(Some(false), window, cx);

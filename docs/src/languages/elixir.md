@@ -1,6 +1,6 @@
 ---
 title: Elixir
-description: "Configure Elixir language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Elixir language support in Zed, including language servers and formatting."
 ---
 
 # Elixir
@@ -16,7 +16,6 @@ Elixir support is available through the [Elixir extension](https://github.com/ze
   - [elixir-tools/next-ls](https://github.com/elixir-tools/next-ls)
   - [lexical-lsp/lexical](https://github.com/lexical-lsp/lexical)
   - [remoteoss/dexter](https://github.com/remoteoss/dexter)
-- Debug Adapter: [ElixirLS](https://github.com/elixir-lsp/elixir-ls)
 
 Furthermore, the extension provides support for [EEx](https://hexdocs.pm/eex/EEx.html) (Embedded Elixir) templates and [HEEx](https://hexdocs.pm/phoenix/components.html#heex) templates, a mix of HTML and EEx used by Phoenix LiveView applications.
 
@@ -289,51 +288,6 @@ If you prefer to work without a language server but would still like code format
     }
   }
 ```
-
-## Debugging
-
-The Elixir extension also provides a debug adapter via ElixirLS. Like the language servers, the extension will try to find and use a local binary in your `$PATH`. If it cannot find one, it will fallback to installing it instead.
-
-Alternatively, you can provide your own custom binary by passing the path and arguments in your settings file via `dap.ElixirLS.binary` and `dap.ElixirLS.args` respectively.
-
-Refer to the [Debugger](../debugger.md#getting-started) documentation for more information on how debugging works in Zed.
-
-### Using ElixirLS
-
-The following example allows you to debug the test files of a project:
-
-```json [debug]
-[
-  {
-    "label": "Debug tests",
-    "adapter": "ElixirLS",
-    "request": "launch",
-    "projectDir": "$ZED_WORKTREE_ROOT",
-    "task": "test",
-    "taskArgs": ["--trace"],
-    "requireFiles": ["test/**/test_helper.exs", "test/**/*_test.exs"]
-  }
-]
-```
-
-The following example allows you to debug a Phoenix server:
-
-```json [debug]
-[
-  {
-    "label": "Debug Phoenix server",
-    "adapter": "ElixirLS",
-    "request": "launch",
-    "projectDir": "$ZED_WORKTREE_ROOT",
-    "task": "phx.server",
-    "debugAutoInterpretAllModules": false,
-    "debugInterpretModulesPatterns": ["MyApp*", "MyAppWeb*"],
-    "exitAfterTaskReturns": false
-  }
-]
-```
-
-See the official [ElixirLS documentation](https://github.com/elixir-lsp/elixir-ls#debugger-support) for more information.
 
 ## Using the Tailwind CSS Language Server with HEEx templates
 

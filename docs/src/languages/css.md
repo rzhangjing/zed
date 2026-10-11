@@ -1,6 +1,6 @@
 ---
 title: CSS
-description: "Configure CSS language support in Zed, including language servers, formatting, and debugging."
+description: "Configure CSS language support in Zed, including language servers and formatting."
 ---
 
 # CSS

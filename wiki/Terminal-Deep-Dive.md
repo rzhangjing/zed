@@ -68,7 +68,7 @@ graph TB
 
 ## 7. 集成点
 - `TerminalPanel` 作为 `Item` 常驻 bottom dock（[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)）。
-- 任务运行、debug console、agent 命令输出复用 `HeadlessTerminal`/`Terminal`。→ [Tasks-and-Tooling.md](Tasks-and-Tooling.md)。
+- 任务运行、agent 命令输出复用 `HeadlessTerminal`/`Terminal`。→ [Tasks-and-Tooling.md](Tasks-and-Tooling.md)。
 
 ## 8. 相关页
 概览 [Terminal.md](Terminal.md)；GPui 元素机制 [GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)。

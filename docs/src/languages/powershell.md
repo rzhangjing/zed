@@ -1,6 +1,6 @@
 ---
 title: PowerShell
-description: "Configure PowerShell language support in Zed, including language servers, formatting, and debugging."
+description: "Configure PowerShell language support in Zed, including language servers and formatting."
 ---
 
 # PowerShell

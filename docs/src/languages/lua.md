@@ -1,6 +1,6 @@
 ---
 title: Lua
-description: "Configure Lua language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Lua language support in Zed, including language servers and formatting."
 ---
 
 # Lua

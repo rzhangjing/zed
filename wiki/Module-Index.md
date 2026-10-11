@@ -4,7 +4,7 @@
 
 > 📘 **参考手册（Deep Dive）层**：针对最核心的 crate，已提供"逐类型/逐函数"的参考手册页（公开 API 全量 + 内部流程），与下方按族的概览页互补：
 > [Sum-Tree](Sum-Tree-Deep-Dive.md) · [Rope](Rope-Deep-Dive.md) · [Text](Text-Buffer-Deep-Dive.md) · [Multi-Buffer](Multi-Buffer-Deep-Dive.md) · [Editor](Editor-Deep-Dive.md) · [GPUI](GPUI-Deep-Dive.md) · [Language](Language-Deep-Dive.md) · [Project/Worktree](Project-Deep-Dive.md) · [Workspace](Workspace-Deep-Dive.md)
-> 📗 **第二批**：[Terminal](Terminal-Deep-Dive.md) · [Debugger/DAP](Debugger-Deep-Dive.md) · [Agent](Agent-Deep-Dive.md) · [Markdown](Markdown-Deep-Dive.md) · [Collab](Collab-Deep-Dive.md) · [Panels](Panels-Deep-Dive.md)
+> 📗 **第二批**：[Terminal](Terminal-Deep-Dive.md) · [Agent](Agent-Deep-Dive.md) · [Markdown](Markdown-Deep-Dive.md) · [Collab](Collab-Deep-Dive.md) · [Panels](Panels-Deep-Dive.md)
 > 📙 **第三批**：[Search](Search-Deep-Dive.md) · [Extension](Extension-Deep-Dive.md)
 > 📘 **第四批**：[Edit-Prediction](Edit-Prediction-Deep-Dive.md)
 > 🌐 **第五批**：[GPUI-Platform-Backends](GPUI-Platform-Backends-Deep-Dive.md)
@@ -201,14 +201,9 @@
 | `credentials_provider` / `zed_credentials_provider` | 凭据存储抽象与实现 | ⏳ |
 | `oauth_callback_server` | OAuth 回调本地服务 | ⏳ |
 
-## 15. 调试（DAP）
+## 15. 任务
 | Crate | 职责 | 覆盖 |
 |---|---|---|
-| `dap` | DAP 协议/client/transport | ✅ [Debugger](Debugger.md) / **📘[Deep](Debugger-Deep-Dive.md)** |
-| `dap_adapters` | 内置 adapter 定义 | 🔧 [Debugger](Debugger.md) |
-| `debug_adapter_extension` | 扩展贡献 adapter | 🔧 [Debugger](Debugger.md) |
-| `debugger_ui` | 调试面板/会话 UI | ✅ [Debugger](Debugger.md) / **📘[Deep](Debugger-Deep-Dive.md)** |
-| `debugger_tools` | 调试辅助工具 | ⏳ |
 | `task` | 任务模板/变量/ResolvedTask/VS Code 格式（`TaskTemplate`/`TaskVariables`/`SpawnInTerminal`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) / **📘[Deep](Task-System-Deep-Dive.md)** |
 | `tasks_ui` | 任务模态/生成 UI（`TasksModal`/`spawn_task_or_modal`；`project` 侧 `Inventory`/`TaskStore`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) / **📘[Deep](Task-System-Deep-Dive.md)** |
 

@@ -1,6 +1,6 @@
 ---
 title: Scala
-description: "Configure Scala language support in Zed, including language servers, formatting, and debugging."
+description: "Configure Scala language support in Zed, including language servers and formatting."
 ---
 
 # Scala
