@@ -40,7 +40,12 @@
         <!-- Custom HTML head -->
         {{> head}}
 
-        <meta name="description" content="#description#">
+        {{!-- NOTE (this fork): this used to be the literal `#description#`
+             marker, which the removed zed-html post-processor replaced with the
+             page's front-matter description. The builtin html renderer has no
+             per-page description, only the book-wide one from
+             `[book] description`, which it exposes as `{{ description }}`. --}}
+        <meta name="description" content="{{ description }}">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 

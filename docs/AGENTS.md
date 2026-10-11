@@ -36,7 +36,12 @@ Example:
 
 ### Custom Preprocessor
 
-The docs use a custom preprocessor (`docs_preprocessor`) that expands special commands:
+> **Note (this fork):** `docs_preprocessor` has been removed from this fork, so
+> nothing expands the commands below and they are emitted literally into the
+> built HTML. Do not add new markers until the preprocessor is restored; the
+> syntax rules are kept only to describe how upstream pages were written.
+
+Upstream, the docs used a custom preprocessor (`docs_preprocessor`) that expands special commands:
 
 | Syntax                      | Purpose                               | Example                       |
 | --------------------------- | ------------------------------------- | ----------------------------- |
@@ -193,7 +198,7 @@ While some users might miss indexing, Zed's approach is actually better because 
 - `CHANGELOG.md`, `CONTRIBUTING.md`, `README.md` at repo root
 - Inline code comments and rustdoc
 - `CLAUDE.md`, `GEMINI.md`, or other AI instruction files
-- Build configuration (`book.toml`, theme files, `docs_preprocessor`)
+- Build configuration (`book.toml`, theme files)
 - Any file outside `docs/src/`
 
 ## Page Structure Patterns

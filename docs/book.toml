@@ -4,30 +4,46 @@ language = "en"
 multilingual = false
 src = "src"
 title = "Zed"
+# NOTE (this fork): upstream kept the per-page `description` front matter
+# working by putting a `#description#` marker in `theme/index.hbs` and having the
+# removed `zed-html` post-processor replace it, falling back to the
+# `default-description` key further down. The builtin html renderer supports only
+# one description per book, exposed to the template as `{{ description }}` and
+# taken from this key, so `theme/index.hbs` now uses that instead. Per-page
+# descriptions in `src/**` front matter no longer reach the `meta` tag.
+description = "Learn how to use and customize Zed, the fast, collaborative code editor. Official docs on features, configuration, AI tools, and workflows."
 site-url = "/docs/"
 
-[build]
-extra-watch-dirs = ["../crates/docs_preprocessor"]
+# NOTE (this fork): `crates/docs_preprocessor` has been removed from this fork.
+# The `[build] extra-watch-dirs` entry pointed at that (now non-existent) crate,
+# so it is commented out.
+# [build]
+# extra-watch-dirs = ["../crates/docs_preprocessor"]
 
-# zed-html is a "custom" renderer that just wraps the
-# builtin mdbook html renderer, and applies post-processing
-# as post-processing is not possible with mdbook in the same way
-# pre-processing is
-# The config is passed directly to the html renderer, so all config
-# options that apply to html apply to zed-html
-[output.zed-html]
-command = "cargo run -p docs_preprocessor -- postprocess"
+# NOTE (this fork): upstream ran this output through a custom mdBook renderer
+# named `zed-html`, which was a thin wrapper around the builtin mdbook html
+# renderer, driven by the `docs_preprocessor -- postprocess` command below.
+# That crate is gone, so this now uses the builtin html renderer and the
+# `command` line is commented out.
+#
+# `default-title` / `default-description` were only consumed by that removed
+# post-processor (neither is a real mdbook option), so they are commented out
+# too, and the description text now lives in `[book] description` above. Every
+# remaining key below is a standard mdbook `[output.html]` option and still takes
+# effect.
+[output.html]
+# command = "cargo run -p docs_preprocessor -- postprocess"
 smart-punctuation = true
-# Set here instead of above as we only use it replace the `#description#` we set in the template
-# when no front-matter is provided value
-default-description = "Learn how to use and customize Zed, the fast, collaborative code editor. Official docs on features, configuration, AI tools, and workflows."
-default-title = "Zed Code Editor Documentation"
+# These two keys did nothing outside the removed `zed-html` post-processor; they
+# are kept (commented out) only to show what upstream configured.
+# default-description = "Learn how to use and customize Zed, the fast, collaborative code editor. Official docs on features, configuration, AI tools, and workflows."
+# default-title = "Zed Code Editor Documentation"
 no-section-label = true
 preferred-dark-theme = "dark"
 additional-css = ["theme/page-toc.css", "theme/plugins.css", "theme/highlight.css", "theme/consent-banner.css"]
 additional-js  = ["redirects/legacy-fragment-redirects.js", "theme/page-toc.js", "theme/plugins.js", "theme/c15t@2.0.0-rc.3.js", "theme/analytics.js"]
 
-[output.zed-html.print]
+[output.html.print]
 enable = false
 
 # Redirects for `/docs` pages.
@@ -39,7 +55,7 @@ enable = false
 # The destination URLs are interpreted relative to `https://zed.dev`.
 # - Redirects to other docs pages should end in `.html`
 # - You can link to pages on the Zed site by omitting the `/docs` in front of it.
-[output.zed-html.redirect]
+[output.html.redirect]
 # AI
 "/ai.html" = "/docs/ai/overview.html"
 "/assistant-panel.html" = "/docs/ai/agent-panel.html"
@@ -98,10 +114,20 @@ enable = false
 "/development/development/macos.html" = "/docs/development/macos.html"
 "/development/development/windows.html" = "/docs/development/windows.html"
 
+# NOTE (this fork): `crates/docs_preprocessor` has been removed from this fork, so
+# this preprocessor cannot run any more. The section below is commented out rather
+# than deleted, so the original intent stays visible.
+#
+# Consequence: the `{#kb scope::Action}` and `{#action scope::Action}` markers in
+# `src/**` are no longer expanded and will appear literally in the built HTML.
+# Fixing that needs the removed crate back; it is not a config-level problem.
+#
+# Upstream text follows, with the section itself commented out:
+#
 # Our custom preprocessor for expanding commands like `{#kb action::ActionName}`,
 # and other docs-related functions.
 #
 # Comment the below section out if you need to bypass the preprocessor for some reason.
-[preprocessor.zed-docs-preprocessor]
-command = "cargo run -p docs_preprocessor --"
-renderer = ["html", "zed-html"]
+# [preprocessor.zed-docs-preprocessor]
+# command = "cargo run -p docs_preprocessor --"
+# renderer = ["html", "zed-html"]

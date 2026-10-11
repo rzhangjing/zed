@@ -190,7 +190,6 @@
 /crates/cli/ @zed-industries/platform-team
 /crates/command_palette/ @zed-industries/platform-team
 /crates/command_palette_hooks/ @zed-industries/platform-team
-/crates/docs_preprocessor/ @zed-industries/platform-team
 /crates/feedback/ @zed-industries/platform-team
 /crates/install_cli/ @zed-industries/platform-team
 /crates/keymap_editor/ @zed-industries/platform-team
@@ -233,7 +232,6 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 /crates/diagnostics/ @zed-industries/project-team
-/crates/explorer_command_injector/ @zed-industries/project-team
 /crates/file_finder/ @zed-industries/project-team
 /crates/file_icons/ @zed-industries/project-team
 /crates/fuzzy/ @zed-industries/project-team
@@ -297,5 +295,3 @@
 # DIRECT OVERRIDES
 # Paths with specific owner assignments (not derived from team paths)
 # ═══════════════════════════════════════════════════════════════════════════════
-
-/.cloudflare/ @zed-industries/cloud-team

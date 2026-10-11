@@ -2,19 +2,23 @@
 
 Welcome to Zed's documentation.
 
-This is built on push to `main` and published automatically to [https://zed.dev/docs](https://zed.dev/docs).
+Upstream, this is built on push to `main` and published automatically to [https://zed.dev/docs](https://zed.dev/docs).
 
-To preview the docs locally you will need to install [mdBook](https://rust-lang.github.io/mdBook/) (`cargo install mdbook@0.4.40`), generate the action metadata, and then serve:
+> **Note (this fork):** the deployment chain (the Cloudflare `docs-proxy` router,
+> the Pages projects it forwards to, and the CI upload) has been removed from
+> this fork, so nothing here is published automatically any more. Building and
+> serving the docs locally still works as described below.
+
+To preview the docs locally you will need to install [mdBook](https://rust-lang.github.io/mdBook/) (`cargo install mdbook@0.4.40`), and then serve:
 
 ```sh
-script/generate-action-metadata
 mdbook serve docs
 ```
 
-The first command dumps an action manifest to `crates/docs_preprocessor/actions.json`. Without it, the preprocessor cannot validate keybinding and action references in the docs and will report errors. You only need to re-run it when actions change.
-
-(When `actions.json` has not been generated, action/keybinding validation is
-skipped with a warning rather than failing the build.)
+> **Note (this fork):** the `script/generate-action-metadata` helper and the
+> `docs_preprocessor` crate it fed have both been removed from this fork, so
+> there is no action manifest to generate and no preprocessor to consume it.
+> Validation of keybinding and action references is therefore gone as well.
 
 It's important to note the version number above. For an unknown reason, as of 2025-04-23, running 0.4.48 will cause odd URL behavior that breaks things.
 
@@ -26,9 +30,17 @@ cd docs && pnpm dlx prettier@3.5.0 . --write && cd ..
 
 ## Preprocessor
 
-We have a custom mdBook preprocessor for interfacing with our crates (`crates/docs_preprocessor`).
+> **Note (this fork):** the custom mdBook preprocessor that interfaced with our
+> crates (`crates/docs_preprocessor`) has been removed from this fork, together
+> with its `[preprocessor.zed-docs-preprocessor]` section in `book.toml` (now
+> commented out). Nothing expands the `{#kb ...}` / `{#action ...}` markers any
+> more, so they show up literally in the built HTML.
+>
+> The rest of this section is retained to describe how it worked upstream.
+> Restoring the preprocessor is follow-up work: it needs the removed crate back,
+> not a `book.toml` change.
 
-If for some reason you need to bypass the docs preprocessor, you can comment out `[preprocessor.zed-docs-preprocessor]` from the `book.toml`.
+Upstream, the docs had a custom mdBook preprocessor for interfacing with our crates. To bypass it, you would comment out `[preprocessor.zed-docs-preprocessor]` in `book.toml`.
 
 ## Images and videos
 
@@ -38,7 +50,11 @@ Putting binary assets such as images in the Git repository will bloat the reposi
 
 ## Internal notes:
 
-- We have a Cloudflare router called `docs-proxy` that intercepts requests to `zed.dev/docs` and forwards them to the "docs" Cloudflare Pages project.
+> **Note (this fork):** upstream served these docs through a Cloudflare router
+> called `docs-proxy` (`.cloudflare/docs-proxy/`), which intercepted requests to
+> `zed.dev/docs` and forwarded them to the "docs" Cloudflare Pages project. That
+> directory and the rest of the deployment chain have been removed from this
+> fork, so there is nothing left here to configure or deploy.
 
 ### Table of Contents
 
@@ -75,7 +91,9 @@ This will render a human-readable version of the action name, e.g., "zed: open s
 ### Creating New Templates
 
 Templates are functions that modify the source of the docs pages (usually with a regex match and replace).
-You can see how the actions and keybindings are templated in `crates/docs_preprocessor/src/main.rs` for reference on how to create new templates.
+> **Note (this fork):** upstream, the actions and keybindings were templated in
+> `crates/docs_preprocessor/src/main.rs`. That crate has been removed from this
+> fork, so there are no templates to extend any more.
 
 ## Consent Banner
 
@@ -95,13 +113,24 @@ Replace `<version>` with the new version of `c15t` you are installing. Then upda
 
 ### References
 
-- Template Trait: `crates/docs_preprocessor/src/templates.rs`
-- Example template: `crates/docs_preprocessor/src/templates/keybinding.rs`
+> **Note (this fork):** the first two references pointed into
+> `crates/docs_preprocessor`, which has been removed from this fork. Only the
+> client-side plugins are still present.
+
 - Client-side plugins: `docs/theme/plugins.js`
 
 ## Postprocessor
 
-A postprocessor is implemented as a sub-command of `docs_preprocessor` that wraps the built-in HTML renderer and applies post-processing to the HTML files, to add support for page-specific title and `meta` tag description values.
+> **Note (this fork):** the post-processor described here was a sub-command of
+> `docs_preprocessor` and has been removed with that crate. Page-specific
+> `title` / `description` front matter is therefore no longer applied.
+> `theme/index.hbs` no longer emits the literal `#description#` marker that the
+> post-processor used to substitute: it now uses mdBook's builtin
+> `{{ description }}` variable, which the html renderer fills from
+> `[book] description` in `book.toml`. That is one description for the whole
+> book, which is the only granularity mdBook itself offers.
+
+Upstream, a postprocessor was implemented as a sub-command of `docs_preprocessor` that wraps the built-in HTML renderer and applies post-processing to the HTML files, to add support for page-specific title and `meta` tag description values.
 
 An example of the syntax can be found below:
 
@@ -132,6 +161,9 @@ If no front matter is provided, or if one or both keys aren't provided, the `tit
 
 Unfortunately, mdBook does not support post-processing like it does pre-processing, and only supports defining one description to put in the `meta` tag per book rather than per file.
 So in order to apply post-processing (necessary to modify the HTML `head` tags) the global book description is set to a marker value `#description#` and the HTML renderer is replaced with a sub-command of `docs_preprocessor` that wraps the built-in HTML renderer and applies post-processing to the HTML files, replacing the marker value and the `<title>(.*)</title>` with the contents of the front matter if there is one.
+
+> **Note (this fork):** that `docs_preprocessor` sub-command has been removed
+> from this fork, so none of the post-processing described in this section runs.
 
 ### Known limitations
 

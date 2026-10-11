@@ -18,7 +18,7 @@ In particular **we love PRs that are**:
 - Fixing or extending the **docs**.
 - Fixing **bugs**.
 - **Small** enhancements to existing features to **make them work for more people** (making things work on more platforms/modes/whatever).
-- **Small** extra features, like keybindings or actions you miss from other editors or extensions.
+- **Small** extra features, like keybindings or actions you miss from other editors.
 - Part of a **Community Program** like [Let's Git Together](https://github.com/zed-industries/zed/issues/41541) or [The Guild](https://zed.dev/community/guild).
 - Features we **explicitly called out as open to community contributions**
 
@@ -53,7 +53,6 @@ submitted. **If you'd like your PR to have the best chance of being merged**:
   but **features should be confirmed with us first** if you aim to avoid wasted
   effort. If there isn't already a GitHub issue for your feature with staff
   confirmation that we want it, start with a [GitHub discussion](https://github.com/zed-industries/zed/discussions) rather than a PR.
-  - This especially applies to any changes proposed to the Zed Extension API.
 - Include a clear description of **what you're solving**, and why it's important.
 - Include **tests**. For UI changes, consider updating visual regression tests (see [Building Zed for macOS](./docs/src/development/macos.md#visual-regression-tests)).
 - If the change is visible in the UI, attach **screenshots or screen recordings**.
@@ -74,8 +73,6 @@ review them, including the occasional automated burst.
 
 Although there are few hard and fast rules, **typically we don't merge**:
 
-- Anything that can be provided by an extension. For example a new language, or theme. For adding themes or support for a new language to Zed, check out our [docs on developing extensions](https://zed.dev/docs/extensions/developing-extensions).
-- Changes to the Zed Extension API submitted without prior discussion involving Zed staff.
 - New file icons. Zed's default icon theme consists of icons that are hand-designed to fit together in a cohesive manner, please don't submit PRs with off-the-shelf SVGs.
 - Features where (in our subjective opinion) the extra complexity isn't worth it for the number of people who will benefit.
 - Giant refactorings.

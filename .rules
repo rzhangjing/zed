@@ -162,7 +162,6 @@ Release Notes:
 - Crash investigation prompts: `.factory/prompts/crash/investigate.md`
 - Crash fix prompts: `.factory/prompts/crash/fix.md`
 - Fetch crash reports: `script/sentry-fetch <issue-id>`
-- Generate investigation prompt from crash: `script/crash-to-prompt <issue-id>`
 
 # Rules Hygiene
 
