@@ -23,7 +23,6 @@
 - [Collab-Deep-Dive](Collab-Deep-Dive)
 - [Panels-Deep-Dive](Panels-Deep-Dive)
 - [Search-Deep-Dive](Search-Deep-Dive)
-- [Extension-Deep-Dive](Extension-Deep-Dive)
 - [Edit-Prediction-Deep-Dive](Edit-Prediction-Deep-Dive)
 - [GPUI-Platform-Backends-Deep-Dive](GPUI-Platform-Backends-Deep-Dive)
 - [Picker-Family-Deep-Dive](Picker-Family-Deep-Dive)
@@ -31,7 +30,6 @@
 - [Settings-and-Onboarding-Deep-Dive](Settings-and-Onboarding-Deep-Dive)
 - [Call-and-Voice-Deep-Dive](Call-and-Voice-Deep-Dive)
 - [Task-System-Deep-Dive](Task-System-Deep-Dive)
-- [Extension-Host-Deep-Dive](Extension-Host-Deep-Dive)
 - [GPUI-Macros-and-Utilities-Deep-Dive](GPUI-Macros-and-Utilities-Deep-Dive)
 - [Model-Providers-Deep-Dive](Model-Providers-Deep-Dive)
 - [Persistence-Deep-Dive](Persistence-Deep-Dive)
@@ -83,8 +81,7 @@
 - [Telemetry-Logging-Updates](Telemetry-Logging-Updates)
 - [Tooling-Evals-Utilities](Tooling-Evals-Utilities)
 
-### 扩展与配置
-- [Extension-System](Extension-System)
+### 设置与配置
 - [Settings-and-Themes](Settings-and-Themes)
 
 ### 高级特性

@@ -5,7 +5,7 @@ description: "Configure Astro language support in Zed, including language server
 
 # Astro
 
-Astro support is available through the [Astro extension](https://github.com/zed-extensions/astro).
+> **Removed in this fork.** Astro support came from the [Astro extension](https://github.com/zed-extensions/astro), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [virchau13/tree-sitter-astro](https://github.com/virchau13/tree-sitter-astro)
 - Language Server: [withastro/language-tools](https://github.com/withastro/astro/tree/main/packages/language-tools/language-server)

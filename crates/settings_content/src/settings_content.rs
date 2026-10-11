@@ -1,7 +1,6 @@
 mod action;
 mod agent;
 mod editor;
-mod extension;
 mod fallible_options;
 mod language;
 mod language_model;
@@ -17,7 +16,6 @@ pub use action::{ActionName, ActionWithArguments, CommandAliasTarget};
 pub use agent::*;
 use anyhow::Context;
 pub use editor::*;
-pub use extension::*;
 pub use fallible_options::*;
 pub use language::*;
 pub use language_model::*;
@@ -174,9 +172,6 @@ pub struct SettingsContent {
 
     #[serde(flatten)]
     pub theme: Box<ThemeSettingsContent>,
-
-    #[serde(flatten)]
-    pub extension: ExtensionSettingsContent,
 
     #[serde(flatten)]
     pub workspace: WorkspaceSettingsContent,
@@ -361,7 +356,7 @@ impl SettingsContent {
 }
 
 fallible_options::flattened_deserialize!(SettingsContent {
-    sections: { project, theme, extension, workspace, editor },
+    sections: { project, theme, workspace, editor },
     options: {
         call_hierarchy, file_finder, tabs, tab_bar, status_bar, preview_tabs, agent,
         agent_servers, audio, auto_update, base_keymap, collaboration_panel, diagnostics,
@@ -468,10 +463,6 @@ pub struct UserSettingsContent {
 
     #[serde(default)]
     pub profiles: IndexMap<String, SettingsProfile>,
-}
-
-pub struct ExtensionsSettingsContent {
-    pub all_languages: AllLanguageSettingsContent,
 }
 
 /// Base key bindings scheme. Base keymaps can be overridden with user keymaps.
@@ -988,8 +979,7 @@ pub struct WhichKeySettingsContent {
 // to allow new values to be added.
 //
 // Consider using a HashMap<String, bool> instead of this type
-// (like auto_install_extensions) so that user settings files can both add
-// and remove values from the set.
+// so that user settings files can both add and remove values from the set.
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ExtendingVec<T>(pub Vec<T>);
 

@@ -5,7 +5,7 @@ description: "Configure Vue language support in Zed, including language servers 
 
 # Vue
 
-Vue support is available through the [Vue extension](https://github.com/zed-extensions/vue).
+> **Removed in this fork.** Vue support came from the [Vue extension](https://github.com/zed-extensions/vue), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter-grammars/tree-sitter-vue](https://github.com/tree-sitter-grammars/tree-sitter-vue)
 - Language Server: [vuejs/language-tools](https://github.com/vuejs/language-tools)

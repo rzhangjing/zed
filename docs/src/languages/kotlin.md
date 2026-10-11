@@ -5,7 +5,7 @@ description: "Configure Kotlin language support in Zed, including language serve
 
 # Kotlin
 
-Kotlin language support in Zed is provided by the community-maintained [Kotlin extension](https://github.com/zed-extensions/kotlin).
+> **Removed in this fork.** Kotlin support came from the community-maintained [Kotlin extension](https://github.com/zed-extensions/kotlin), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 Report issues to: [https://github.com/zed-extensions/kotlin/issues](https://github.com/zed-extensions/kotlin/issues)
 
 - Tree-sitter: [fwcd/tree-sitter-kotlin](https://github.com/fwcd/tree-sitter-kotlin)

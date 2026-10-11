@@ -13,7 +13,7 @@
 - **通道层** `release_channel`：编译期确定当前 `RELEASE_CHANNEL`，提供版本号、更新检查端点、显示名。
 - **更新引擎层** `auto_update`：`AutoUpdater`（GPUI Entity）负责查询发布资产、下载、按平台安装（macOS/Windows/Linux 各一条路径）。
 - **更新 UI 层** `auto_update_ui`：把 `AutoUpdater` 状态渲染成 toast / 发布说明 / 公告，启动后提示"已更新"。
-- **反馈层** `feedback`：把 `SystemSpecs`+已装扩展拼成 GitHub issue URL 或 `mailto:`。
+- **反馈层** `feedback`：把 `SystemSpecs` 拼成 GitHub issue URL 或 `mailto:`。
 
 ## 2. 类型总览
 
@@ -113,5 +113,4 @@ graph TB
 
 - [Telemetry-Logging-Updates](Telemetry-Logging-Updates.md)（本族概览）
 - [Network-HTTP-Deep-Dive](Network-HTTP-Deep-Dive.md)（`session`/`http_client` 上传通道）
-- [Extension-Host-Deep-Dive](Extension-Host-Deep-Dive.md)（扩展更新与 `ReleaseChannel`）
 - [Startup-Flow](Startup-Flow.md)（各 init 的启动顺序）

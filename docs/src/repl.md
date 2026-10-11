@@ -109,7 +109,6 @@ ark --install
 ### R (Xeus Kernel) {#r-xeus}
 
 - Install [Xeus-R](https://github.com/jupyter-xeus/xeus-r)
-- Install the R Extension for Zed (search for `R` in Zed Extensions)
 
 <!--
 TBD: Improve R REPL (Ark Kernel) instructions
@@ -130,7 +129,6 @@ TBD: Improve R REPL (Ark Kernel) instructions
 ### Julia
 
 - Download and install Julia from the [official website](https://julialang.org/downloads/).
-- Install the Julia Extension for Zed (search for `Julia` in Zed Extensions)
 
 <!--
 TBD: Improve Julia REPL instructions

@@ -31,8 +31,8 @@
 事件 `BufferEvent`（buffer.rs）：`Modified`、`Reloaded`、`Reparsed`、`DiagnosticsUpdated`、`LanguageServerAdapterUpdated`、`DiffUpdated` 等。
 
 ## 2. `Language`（[language.rs:941](../crates/language/src/language.rs)）
-一种语言的静态描述：`name`、`config: LanguageConfig`（extension、grammar、path_suffixes、line_comments、indent、brackets…）、`context_provider: Option<Arc<dyn ContextProvider>>`、`lsp_adapters: Vec<Arc<dyn LanguageServerAdapter>>`、`highlight_config`、`icon`。
-- `LanguageConfigLoad`（language.rs）：从扩展/内建加载 TOML+grammar。
+一种语言的静态描述：`name`、`config: LanguageConfig`（grammar、path_suffixes、line_comments、indent、brackets…）、`context_provider: Option<Arc<dyn ContextProvider>>`、`lsp_adapters: Vec<Arc<dyn LanguageServerAdapter>>`、`highlight_config`、`icon`。
+- `LanguageConfig`（[language_config.rs:28](../crates/language_core/src/language_config.rs)）从与 grammar 同目录的 `config.toml` 载入；用户侧覆盖走 `LanguageConfigOverride`（L365）。
 - `LanguageServerAdapter` trait（language/adapter_trait）：`server_id`/`get_language_server_id`/`to_lsp_params`——把 buffer 位置转成 LSP `TextDocumentPositionParams`（多语言→单 server 或反之）。
 - `next_buffer_id` / `buffer_id_base`：本地 buffer id 分配。
 
@@ -40,7 +40,7 @@
 全局语言/语法中心（`Arc`，跨项目共享）：
 - `add(Arc<Language>)`/`remove`/`clear`、`languages()`、`language_for_name`/`language_for_file(path,open_cx)`/`language_for_syntax`。
 - `adapters: Vec<Arc<dyn LanguageServerAdapter>>` + `adapter_server_ids`——LSP server id→adapter 反查。
-- `wasm_url`/grammar loading via [`grammars`](Extension-System.md)；`load_language_at_runtime`（异步下载语法）。
+- 语法的注册与查询：`register_native_grammars`（L449）/`grammar_names`（L477）；grammar crate 由 [`grammars`](../crates/grammars) 汇集（见 [Language-Tooling-Deep-Dive.md](Language-Tooling-Deep-Dive.md)）。
 - `register_context_provider`、`restart_language_servers`。
 - 内建语言清单见 [`available_languages.rs`](../crates/language/src/available_languages.rs)。
 

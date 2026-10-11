@@ -12,7 +12,7 @@ Zed's language support is built on two technologies:
 
 This page covers language-specific settings, file associations, language server configuration, formatting, linting, and syntax highlighting.
 
-For a list of supported languages, see [Supported Languages](./languages.md). To add support for new languages, see [Language Extensions](./extensions/languages.md).
+For a list of supported languages, see [Supported Languages](./languages.md).
 
 ## Language-specific Settings
 
@@ -97,7 +97,7 @@ Some key features provided by language servers include:
 
 Zed simplifies language server management for users:
 
-1. Automatic Download: When you open a file with a matching file type, Zed automatically downloads the appropriate language server. Zed may prompt you to install an extension for known file types.
+1. Automatic Download: When you open a file with a matching file type, Zed automatically downloads the appropriate language server.
 
 2. Storage Location:
 
@@ -108,7 +108,7 @@ Zed simplifies language server management for users:
 
 ### Choosing Language Servers
 
-Some languages in Zed offer multiple language server options. You might have multiple extensions installed that bundle language servers targeting the same language, potentially leading to overlapping capabilities. To ensure you get the functionality you prefer, Zed allows you to prioritize which language servers are used and in what order.
+Some languages in Zed offer multiple language server options. You might have multiple language servers available for the same language, potentially leading to overlapping capabilities. To ensure you get the functionality you prefer, Zed allows you to prioritize which language servers are used and in what order.
 
 You can specify your preference using the `language_servers` setting:
 
@@ -126,7 +126,7 @@ In this example:
 - `phpactor`, `phptools` and `phpantom` are disabled (note the `!` prefix).
 - `"..."` expands to the rest of the language servers registered for PHP that are not already listed.
 
-The `"..."` entry acts as a wildcard that includes any registered language server you haven't explicitly mentioned. Servers you list by name keep their position, and `"..."` fills in the remaining ones at that point in the list. Servers prefixed with `!` are excluded entirely. This means that if a new language server extension is installed or a new server is registered for a language, `"..."` will automatically include it. If you want full control over which servers are enabled, omit `"..."` — only the servers you list by name will be used.
+The `"..."` entry acts as a wildcard that includes any registered language server you haven't explicitly mentioned. Servers you list by name keep their position, and `"..."` fills in the remaining ones at that point in the list. Servers prefixed with `!` are excluded entirely. This means that if a new language server is installed or a new server is registered for a language, `"..."` will automatically include it. If you want full control over which servers are enabled, omit `"..."` — only the servers you list by name will be used.
 
 #### Examples
 
@@ -450,12 +450,6 @@ Change your theme:
 ```
 
 Create custom themes by creating a JSON file in `~/.config/zed/themes/`. Zed will automatically detect and make available any themes in this directory.
-
-### Using Theme Extensions
-
-Zed supports theme extensions. Browse and install theme extensions from the Extensions panel ({#kb zed::Extensions}).
-
-To create your own theme extension, refer to the [Developing Theme Extensions](./extensions/themes.md) guide.
 
 ## Using Language Server Features
 

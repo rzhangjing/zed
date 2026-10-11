@@ -114,7 +114,7 @@ zed --foreground
 
 ### `--user-data-dir <DIR>`
 
-Use a custom directory for all user data (database, extensions, logs) instead of the default location:
+Use a custom directory for all user data (database, logs) instead of the default location:
 
 ```sh
 zed --user-data-dir ~/.zed-custom

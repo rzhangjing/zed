@@ -5,7 +5,7 @@ description: "Configure R language support in Zed, including language servers an
 
 # R
 
-R support is available via multiple R Zed extensions:
+> **Removed in this fork.** R support came from community-maintained extensions, and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - [ocsmit/zed-r](https://github.com/ocsmit/zed-r)
 
@@ -24,10 +24,6 @@ R support is available via multiple R Zed extensions:
 install.packages("languageserver")
 install.packages("lintr")
 ```
-
-3. Install the [R](https://github.com/ocsmit/zed-r) extension through Zed's extensions manager for basic R language support (syntax highlighting, tree-sitter support) and for [REditorSupport/languageserver](https://github.com/REditorSupport/languageserver) support.
-
-4. Install the [Air](https://posit-dev.github.io/air/) extension through Zed's extensions manager for R code formatting via Air.
 
 ## Linting
 
@@ -58,8 +54,6 @@ See [Using lintr](https://lintr.r-lib.org/articles/lintr.html) for a complete li
 ### Air
 
 [Air](https://posit-dev.github.io/air/) provides code formatting for R, including support for format-on-save. The [Air documentation for Zed](https://posit-dev.github.io/air/editor-zed.html) contains the most up-to-date advice for running Air in Zed.
-
-Ensure that you have installed both the [ocsmit/zed-r](https://github.com/ocsmit/zed-r) extension (for general R language awareness in Zed) and the [Air](https://posit-dev.github.io/air/) extension.
 
 Configure language servers in Settings ({#kb zed::OpenSettings}) under Languages > R, or add to your settings file:
 

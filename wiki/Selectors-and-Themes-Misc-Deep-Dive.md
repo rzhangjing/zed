@@ -21,7 +21,7 @@
 | `fn get_icon_theme` | [registry.rs:229](file:///e:/Rust/zed/crates/theme/src/registry.rs) | 按名解析 `Arc<IconTheme>` |
 | `struct ThemeMeta` | [registry.rs:17](file:///e:/Rust/zed/crates/theme/src/registry.rs) | 主题元数据（family/name/is_default） |
 | `enum Appearance` | [theme.rs:81](file:///e:/Rust/zed/crates/theme/src/theme.rs) | Light/Dark 外观 |
-| `enum LoadThemes` | [theme.rs:108](file:///e:/Rust/zed/crates/theme/src/theme.rs) | 主题加载来源（User/Extension…） |
+| `enum LoadThemes` | [theme.rs:108](file:///e:/Rust/zed/crates/theme/src/theme.rs) | 主题加载来源（`JustBase` / `All`） |
 | `struct SystemAppearance` | [theme.rs:159](file:///e:/Rust/zed/crates/theme/src/theme.rs) | 跟随系统外观的 `Global` 包装 |
 | `struct ThemeFamily` | [theme.rs:219](file:///e:/Rust/zed/crates/theme/src/theme.rs) | 一套主题（含明/暗变体） |
 | `struct Theme` | [theme.rs:235](file:///e:/Rust/zed/crates/theme/src/theme.rs) | 单个主题（样式核心） |

@@ -5,7 +5,7 @@ description: "Configure Emmet language support in Zed, including language server
 
 # Emmet
 
-Emmet support is available through the [Emmet extension](https://github.com/zed-extensions/emmet).
+> **Removed in this fork.** Emmet support came from the [Emmet extension](https://github.com/zed-extensions/emmet), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 [Emmet](https://emmet.io/) is a web-developer’s toolkit that can greatly improve your HTML & CSS workflow.
 

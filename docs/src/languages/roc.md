@@ -7,7 +7,7 @@ description: "Configure Roc language support in Zed, including language servers 
 
 [Roc](https://www.roc-lang.org/) is a fast, friendly, functional language.
 
-Roc language support in Zed is provided by the community-maintained [Roc extension](https://github.com/h2000/zed-roc).
+> **Removed in this fork.** Roc support came from the community-maintained [Roc extension](https://github.com/h2000/zed-roc), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 Report issues to: [https://github.com/h2000/zed-roc/issues](https://github.com/h2000/zed-roc/issues)
 
 - Tree-sitter: [faldor20/tree-sitter-roc](https://github.com/faldor20/tree-sitter-roc)

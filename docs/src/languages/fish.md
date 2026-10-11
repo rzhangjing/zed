@@ -5,7 +5,7 @@ description: "Configure Fish language support in Zed, including language servers
 
 # Fish
 
-Fish language support in Zed is provided by the community-maintained [Fish extension](https://github.com/hasit/zed-fish).
+> **Removed in this fork.** Fish support came from the community-maintained [Fish extension](https://github.com/hasit/zed-fish), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 Report issues to: [https://github.com/hasit/zed-fish/issues](https://github.com/hasit/zed-fish/issues)
 
 - Tree-sitter: [ram02z/tree-sitter-fish](https://github.com/ram02z/tree-sitter-fish)

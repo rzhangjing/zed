@@ -27,7 +27,7 @@ That's it. You now have a personalized Zed setup.
 
 ## Themes
 
-Install themes from the Extensions page ({#action zed::Extensions}), then switch between them with the Theme Selector ({#kb theme_selector::Toggle}).
+Switch between themes with the Theme Selector ({#kb theme_selector::Toggle}), and create your own by placing theme files in Zed's themes directory. See [Themes](./themes.md).
 
 Zed supports separate themes for light and dark mode with automatic switching based on your system preference:
 

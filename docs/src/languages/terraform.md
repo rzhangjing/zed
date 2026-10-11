@@ -5,7 +5,7 @@ description: "Configure Terraform language support in Zed, including language se
 
 # Terraform
 
-Terraform support is available through the [Terraform extension](https://github.com/zed-extensions/terraform).
+> **Removed in this fork.** Terraform support came from the [Terraform extension](https://github.com/zed-extensions/terraform), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter-grammars/tree-sitter-hcl](https://github.com/tree-sitter-grammars/tree-sitter-hcl)
 - Language Server: [hashicorp/terraform-ls](https://github.com/hashicorp/terraform-ls)

@@ -59,7 +59,7 @@ graph TB
 流程：按 `release_channel` + 平台拼 `AssetQuery` → 经 [HttpClient](Network-And-HTTP.md) 查询 → 下载 → 通过 `auto_update_helper`（独立进程，规避"更新自身"文件锁）替换 → `auto_update_ui` 提示重启。渠道由 `release_channel`（stable/preview/dev，含版本号与 URL）决定。
 
 ## 6. feedback + system_specs：反馈诊断
-[`feedback.rs`](../crates/feedback/src/feedback.rs)：`init`(L48) 注册 actions —— `OpenZedRepo`/`CopyInstalledExtensionsIntoClipboard`(L13/15) 及 `FileBugReport`/`RequestFeature`/`EmailZed`（`zed_actions::feedback`）。`file_bug_report_url`(L23)/`email_zed_url`(L36) 把 `SystemSpecs`（[system_specs](../crates/system_specs) crate，采集 OS/内存/CPU/发行版）编码进 GitHub issue 模板或 mailto。`CopySystemSpecsIntoClipboard` 一键复制诊断。
+[`feedback.rs`](../crates/feedback/src/feedback.rs)：`init`(L45) 注册 actions —— `OpenZedRepo`(L12) 及 `FileBugReport`/`RequestFeature`/`EmailZed`（`zed_actions::feedback`）。`file_bug_report_url`(L20)/`email_zed_url`(L33) 把 `SystemSpecs`（[system_specs](../crates/system_specs) crate，采集 OS/内存/CPU/发行版）编码进 GitHub issue 模板或 mailto。`CopySystemSpecsIntoClipboard`(L48) 一键复制诊断。
 
 ## 7. crashes：崩溃报告
 [`crashes`](../crates/crashes) 负责安装崩溃钩子、收集 backtrace 并（在用户同意下）上传；与 telemetry/sentry 风格的错误通道配合。

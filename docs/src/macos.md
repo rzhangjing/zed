@@ -62,7 +62,7 @@ See the [CLI Reference](./reference/cli.md) for all available options.
 
 1. Quit Zed if it's running
 2. Drag Zed from Applications to the Trash
-3. Optionally, remove your settings and extensions:
+3. Optionally, remove your settings:
 
 ```sh
 rm -rf ~/.config/zed
@@ -143,7 +143,6 @@ Zed uses Metal for rendering. If you experience graphical glitches:
 If Zed uses more resources than expected:
 
 1. Check for runaway language servers in the terminal output ({#action zed::OpenLog})
-2. Try disabling extensions one by one to identify conflicts
-3. For large projects, consider using [project settings](./reference/all-settings.md#file-scan-exclusions) to exclude unnecessary folders from indexing
+2. For large projects, consider using [project settings](./reference/all-settings.md#file-scan-exclusions) to exclude unnecessary folders from indexing
 
 For additional help, see the [Troubleshooting guide](./troubleshooting.md) or visit the [Zed Discord](https://discord.gg/zed-community).

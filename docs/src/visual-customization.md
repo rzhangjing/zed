@@ -11,7 +11,7 @@ See [All Settings](./reference/all-settings.md) for additional information and o
 
 ## Themes
 
-You can install many [themes](./themes.md) and [icon themes](./icon-themes.md) in form of extensions by running {#action zed::Extensions} from the command palette.
+Zed ships with a set of built-in [themes](./themes.md) and [icon themes](./icon-themes.md), and you can add your own.
 
 You can preview/choose amongst your installed themes and icon themes with {#action theme_selector::Toggle} ({#kb theme_selector::Toggle}) and {#action icon_theme_selector::Toggle} which will modify the following settings:
 

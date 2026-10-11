@@ -9,9 +9,7 @@ actions!(
     zed,
     [
         /// Opens the Zed repository on GitHub.
-        OpenZedRepo,
-        /// Copies installed extensions to the clipboard for bug reports.
-        CopyInstalledExtensionsIntoClipboard
+        OpenZedRepo
     ]
 );
 
@@ -69,17 +67,6 @@ pub fn init(cx: &mut App) {
                 })
                 .detach();
             })
-            .register_action(|_, _: &CopyInstalledExtensionsIntoClipboard, window, cx| {
-                let clipboard_text = format_installed_extensions_for_clipboard(cx);
-                cx.write_to_clipboard(ClipboardItem::new_string(clipboard_text.clone()));
-                drop(window.prompt(
-                    PromptLevel::Info,
-                    "Copied into clipboard",
-                    Some(&clipboard_text),
-                    &["OK"],
-                    cx,
-                ));
-            })
             .register_action(|_, _: &RequestFeature, _, cx| {
                 cx.open_url(REQUEST_FEATURE_URL);
             })
@@ -112,8 +99,4 @@ pub fn init(cx: &mut App) {
             });
     })
     .detach();
-}
-
-fn format_installed_extensions_for_clipboard(_cx: &mut App) -> String {
-    "No extensions installed.".to_string()
 }

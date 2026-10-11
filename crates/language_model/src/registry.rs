@@ -212,23 +212,6 @@ impl LanguageModelRegistry {
         self.builtin_provider_hiding_fn = Some(hiding_fn);
     }
 
-    /// Called when an extension is installed/loaded.
-    /// If the extension provides language models, track it so we can hide the corresponding built-in.
-    pub fn extension_installed(&mut self, extension_id: Arc<str>, cx: &mut Context<Self>) {
-        if self.installed_llm_extension_ids.insert(extension_id) {
-            cx.emit(Event::ProvidersChanged);
-            cx.notify();
-        }
-    }
-
-    /// Called when an extension is uninstalled/unloaded.
-    pub fn extension_uninstalled(&mut self, extension_id: &str, cx: &mut Context<Self>) {
-        if self.installed_llm_extension_ids.remove(extension_id) {
-            cx.emit(Event::ProvidersChanged);
-            cx.notify();
-        }
-    }
-
     /// Sync the set of installed LLM extension IDs.
     pub fn sync_installed_llm_extensions(
         &mut self,
@@ -547,8 +530,10 @@ mod tests {
         assert_eq!(visible.len(), 1);
         assert_eq!(visible[0].id(), provider_id);
 
+        let extension_ids: HashSet<Arc<str>> = [Arc::from("fake-extension")].into_iter().collect();
+
         registry.update(cx, |registry, cx| {
-            registry.extension_installed("fake-extension".into(), cx);
+            registry.sync_installed_llm_extensions(extension_ids, cx);
         });
 
         let visible = registry.read(cx).visible_providers();
@@ -576,14 +561,17 @@ mod tests {
                 }
             }));
 
-            registry.extension_installed("fake-extension".into(), cx);
+            registry.sync_installed_llm_extensions(
+                [Arc::from("fake-extension")].into_iter().collect(),
+                cx,
+            );
         });
 
         let visible = registry.read(cx).visible_providers();
         assert!(visible.is_empty());
 
         registry.update(cx, |registry, cx| {
-            registry.extension_uninstalled("fake-extension", cx);
+            registry.sync_installed_llm_extensions(HashSet::default(), cx);
         });
 
         let visible = registry.read(cx).visible_providers();
@@ -606,7 +594,10 @@ mod tests {
                 }
             }));
 
-            registry.extension_installed("anthropic".into(), cx);
+            registry.sync_installed_llm_extensions(
+                [Arc::from("anthropic")].into_iter().collect(),
+                cx,
+            );
         });
 
         let registry_read = registry.read(cx);

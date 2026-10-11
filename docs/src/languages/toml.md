@@ -5,8 +5,6 @@ description: "Configure TOML language support in Zed, including language servers
 
 # TOML
 
-TOML support is available through the [TOML extension](https://zed.dev/extensions/toml).
+> **Removed in this fork.** TOML support came from the TOML extension, and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter/tree-sitter-toml](https://github.com/tree-sitter/tree-sitter-toml)
-
-A TOML language server is available in the [Tombi extension](https://zed.dev/extensions/tombi).

@@ -77,7 +77,7 @@ Tasks can be defined:
 - in the global `tasks.json` file; such tasks are available in all Zed projects you work on. This file is usually located in `~/.config/zed/tasks.json`. You can edit them by using the {#action zed::OpenTasks} action.
 - in the worktree-specific (local) `.zed/tasks.json` file; such tasks are available only when working on a project with that worktree included. You can edit worktree-specific tasks by using the {#action zed::OpenProjectTasks} action.
 - on the fly with [oneshot tasks](#oneshot-tasks). These tasks are project-specific and do not persist across sessions.
-- by language extension.
+- by the language server or by Zed's built-in language tasks.
 
 ## Variables
 

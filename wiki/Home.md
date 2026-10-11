@@ -16,7 +16,7 @@ Zed 是一款用 **Rust** 编写的高性能代码编辑器 / IDE，核心卖点
 
 | 目录 | 说明 |
 |---|---|
-| `crates/` | 244 个 Cargo workspace 成员（各功能模块） |
+| `crates/` | 177 个顶层 crate 目录（= 178 个 crate 成员；全 workspace 共 179 个成员，另含 `tooling/perf`） |
 | `assets/` | 图标、主题、keymaps、声音等资源 |
 | `vendor/` | 离线依赖源（`replace-with = "vendored-sources"`） |
 | `docs/` | 面向用户的手册（mdbook，非本 Wiki） |
@@ -31,7 +31,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 ### 总览
 - [模块综述（各模块用途速查 + 一键跳转，新人首选）](模块综述.md)
 - [Architecture（整体架构与模块分层）](Architecture.md)
-- [Module-Index（全量模块索引 / 覆盖矩阵，240+ crate）](Module-Index.md)
+- [Module-Index（全量模块索引 / 覆盖矩阵，178 个 crate）](Module-Index.md)
 - [Startup-Flow（启动函数级调用流程）](Startup-Flow.md)
 
 ### 参考手册（Deep Dive · 逐 crate 全 API）
@@ -51,7 +51,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Collab-Deep-Dive（历史：Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
 - [Panels-Deep-Dive（project_panel/outline_panel/call_hierarchy）](Panels-Deep-Dive.md)
 - [Search-Deep-Dive（BufferSearchBar/ProjectSearch/TextFinder/registrar）](Search-Deep-Dive.md)
-- [Extension-Deep-Dive（extension_api/宿主类型/ExtensionStore·WasmHost/市场页）](Extension-Deep-Dive.md)
 - [Edit-Prediction-Deep-Dive（EditPredictionStore/Delegate 双抽象/zeta・fim・ollama/context）](Edit-Prediction-Deep-Dive.md)
 - [GPUI-Platform-Backends-Deep-Dive（Platform/PlatformWindow 抽象 + macOS・Windows・Linux・wgpu・Web 后端）](GPUI-Platform-Backends-Deep-Dive.md)
 - [Picker-Family-Deep-Dive（Picker/PickerDelegate + fuzzy・fuzzy_nucleo 双引擎 + file_finder/project_symbols）](Picker-Family-Deep-Dive.md)
@@ -59,7 +58,6 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Settings-and-Onboarding-Deep-Dive（settings_content 模型/SettingsWindow/Onboarding 引导）](Settings-and-Onboarding-Deep-Dive.md)
 - [Call-and-Voice-Deep-Dive（历史：音视频 RTC/livekit_client·mock；audio 管线仍在）](Call-and-Voice-Deep-Dive.md)
 - [Task-System-Deep-Dive（TaskTemplate/变量替换/Inventory/TasksModal/终端分发）](Task-System-Deep-Dive.md)
-- [Extension-Host-Deep-Dive（Wasmtime 组件宿主/版本化 WIT/CapabilityGranter/Headless）](Extension-Host-Deep-Dive.md)
 - [GPUI-Macros-and-Utilities-Deep-Dive（proc-macro/Refineable 样式级联/SharedString/Tokio 桥/gpui_util）](GPUI-Macros-and-Utilities-Deep-Dive.md)
 - [Model-Providers-Deep-Dive（LanguageModel/Provider 契约 + 逐厂商 client→适配层两层架构/SSE/云；原 Bedrock SigV4 路径已移除）](Model-Providers-Deep-Dive.md)
 - [Persistence-Deep-Dive（sqlez/db 两套迁移栈 + AppMigrator inventory 拓扑排序 + migrator 配置 JSON 迁移）](Persistence-Deep-Dive.md)
@@ -111,8 +109,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Telemetry-Logging-Updates（遥测 / zlog / ztracing / 自动更新 / 反馈）](Telemetry-Logging-Updates.md)
 - [Tooling-Evals-Utilities（评测 / 基准 / 基础工具库）](Tooling-Evals-Utilities.md)
 
-### 扩展与配置
-- [Extension-System（Wasm 扩展 / wasmtime / 能力注册）](Extension-System.md)
+### 设置与配置
 - [Settings-and-Themes（分层设置 / 主题注册）](Settings-and-Themes.md)
 
 ### 高级特性

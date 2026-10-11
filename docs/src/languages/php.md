@@ -5,7 +5,7 @@ description: "Configure PHP language support in Zed, including language servers 
 
 # PHP
 
-PHP support is available through the [PHP extension](https://github.com/zed-extensions/php).
+> **Removed in this fork.** PHP support came from the [PHP extension](https://github.com/zed-extensions/php), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter/tree-sitter-php](https://github.com/tree-sitter/tree-sitter-php)
 - Language Server: [phpactor/phpactor](https://github.com/phpactor/phpactor)

@@ -272,15 +272,7 @@ PyCharm has a dedicated test runner with a visual interface showing pass/fail st
 
 The test output appears in the terminal panel. For pytest, use `--tb=short` for concise tracebacks or `-v` for verbose output.
 
-### Extensions vs. Plugins
-
-PyCharm has a large plugin catalog covering everything from additional language support to database tools to deployment integrations.
-
-Zed's extension catalog is smaller and more focused:
-
-- Language support and syntax highlighting
-- Themes
-- Context servers
+### Built-in Features
 
 Several features that require plugins in PyCharm are built into Zed:
 

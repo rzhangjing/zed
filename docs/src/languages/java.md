@@ -5,9 +5,8 @@ description: "Configure Java language support in Zed, including language servers
 
 # Java
 
-Java language support in Zed is provided by:
+> **Removed in this fork.** Java support came from the [Zed Java extension](https://github.com/zed-extensions/java), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
-- Zed Java: [zed-extensions/java](https://github.com/zed-extensions/java)
 - Tree-sitter: [tree-sitter/tree-sitter-java](https://github.com/tree-sitter/tree-sitter-java)
 - Language Server: [eclipse-jdtls/eclipse.jdt.ls](https://github.com/eclipse-jdtls/eclipse.jdt.ls)
 
@@ -21,10 +20,6 @@ You will need to install a Java runtime (OpenJDK).
 - Arch Linux: `sudo pacman -S jre-openjdk-headless`
 
 Or manually download and install [OpenJDK 23](https://jdk.java.net/23/).
-
-## Extension Install
-
-You can install by opening {#action zed::Extensions}({#kb zed::Extensions}) and searching for `java`.
 
 ## Quick start and configuration
 
@@ -53,15 +48,9 @@ Here is a common `settings.json` including the above mentioned configurations:
 }
 ```
 
-## Launch Scripts (aka Tasks) in Windows
-
-This extension provides tasks for running your application and tests from within Zed via little play buttons next to tests/entry points. However, due to current limitations of Zed's extension interface, we can not provide scripts that will work across Maven and Gradle on both Windows and Unix-compatible systems, so out of the box the launch scripts only work on Mac and Linux.
-
-There is a fairly straightforward fix that you can apply to make it work on Windows by supplying your own task scripts. Please see [this Issue](https://github.com/zed-extensions/java/issues/94) for information on how to do that and read the [Tasks section in Zed's documentation](https://zed.dev/docs/tasks) for more information.
-
 ## Advanced Configuration/JDTLS initialization Options
 
-JDTLS provides many configuration options that can be passed via the `initialize` LSP-request. The extension will pass the JSON-object from `lsp.jdtls.settings.initialization_options` in your settings on to JDTLS. Please refer to the [JDTLS Configuration Wiki Page](https://github.com/eclipse-jdtls/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request) for the available options and values. Below is an example `settings.json` that would pass on the example configuration from the above wiki page to JDTLS:
+JDTLS provides many configuration options that can be passed via the `initialize` LSP-request. Zed passes the JSON-object from `lsp.jdtls.settings.initialization_options` in your settings on to JDTLS. Please refer to the [JDTLS Configuration Wiki Page](https://github.com/eclipse-jdtls/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request) for the available options and values. Below is an example `settings.json` that would pass on the example configuration from the above wiki page to JDTLS:
 
 ```jsonc
 {

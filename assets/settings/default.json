@@ -2024,21 +2024,6 @@
     "path": null,
     "npm_path": null,
   },
-  // The extensions that Zed should automatically install on startup.
-  //
-  // If you don't want any of these extensions, add this field to your settings
-  // and change the value to `false`.
-  "auto_install_extensions": {
-    "html": true,
-  },
-  // The capabilities granted to extensions.
-  //
-  // This list can be customized to restrict what extensions are able to do.
-  "granted_extension_capabilities": [
-    { "kind": "process:exec", "command": "*", "args": ["**"] },
-    { "kind": "download_file", "host": "*", "path": ["**"] },
-    { "kind": "npm:install", "package": "*" },
-  ],
   // Controls how completions are processed for this language.
   "completions": {
     // Controls how words are completed.
@@ -2092,19 +2077,6 @@
   },
   // Different settings for specific languages.
   "languages": {
-    "Astro": {
-      "format_on_save": "on",
-      "language_servers": ["astro-language-server", "..."],
-      "prettier": {
-        "allowed": true,
-        "plugins": ["prettier-plugin-astro"],
-      },
-    },
-    "Blade": {
-      "prettier": {
-        "allowed": true,
-      },
-    },
     "C": {
       "use_on_type_format": false,
       "prettier": {
@@ -2117,67 +2089,21 @@
         "allowed": false,
       },
     },
-    "CSharp": {
-      "language_servers": ["roslyn", "!csharp-ls", "!omnisharp", "..."],
-    },
     "CSS": {
       "prettier": {
         "allowed": true,
       },
-    },
-    "Dart": {
-      "format_on_save": "on",
-      "tab_size": 2,
     },
     "Diff": {
       "show_edit_predictions": false,
       "remove_trailing_whitespace_on_save": false,
       "ensure_final_newline_on_save": false,
     },
-    "EEx": {
-      "format_on_save": "on",
-      "language_servers": ["elixir-ls", "!expert", "!dexter", "!next-ls", "!lexical", "..."],
-    },
-    "Elixir": {
-      "format_on_save": "on",
-      "language_servers": ["elixir-ls", "!expert", "!dexter", "!next-ls", "!lexical", "!emmet-language-server", "..."],
-    },
-    "Elm": {
-      "format_on_save": "on",
-      "tab_size": 4,
-    },
-    "Erlang": {
-      "language_servers": ["erlang-ls", "!elp", "..."],
-    },
     "Go": {
       "format_on_save": "on",
       "hard_tabs": true,
       "code_actions_on_format": {
         "source.organizeImports": true,
-      },
-    },
-    "GraphQL": {
-      "format_on_save": "on",
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "HEEx": {
-      "format_on_save": "on",
-      "language_servers": ["elixir-ls", "!expert", "!dexter", "!next-ls", "!lexical", "..."],
-    },
-    "HTML": {
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "HTML+ERB": {
-      "language_servers": ["herb", "!ruby-lsp", "..."],
-    },
-    "Java": {
-      "prettier": {
-        "allowed": true,
-        "plugins": ["prettier-plugin-java"],
       },
     },
     "JavaScript": {
@@ -2196,21 +2122,6 @@
         "allowed": true,
       },
     },
-    "JS+ERB": {
-      "language_servers": ["!ruby-lsp", "..."],
-    },
-    "Kotlin": {
-      "format_on_save": "on",
-      "language_servers": ["!kotlin-language-server", "kotlin-lsp", "..."],
-    },
-    "LaTeX": {
-      "formatter": "language_server",
-      "language_servers": ["texlab", "..."],
-      "prettier": {
-        "allowed": true,
-        "plugins": ["prettier-plugin-latex"],
-      },
-    },
     "Markdown": {
       "use_on_type_format": false,
       "remove_trailing_whitespace_on_save": false,
@@ -2223,23 +2134,12 @@
         "allowed": true,
       },
     },
-    "PHP": {
-      "language_servers": ["phpactor", "!intelephense", "!phptools", "!phpantom", "..."],
-      "prettier": {
-        "allowed": true,
-        "plugins": ["@prettier/plugin-php"],
-        "parser": "php",
-      },
-    },
     "Plain Text": {
       "allow_rewrap": "anywhere",
       "soft_wrap": "editor_width",
       "completions": {
         "words": "disabled",
       },
-    },
-    "Proto": {
-      "language_servers": ["buf", "!protols", "!protobuf-language-server", "..."],
     },
     "Python": {
       "code_actions_on_format": {
@@ -2252,44 +2152,11 @@
       },
       "language_servers": ["basedpyright", "ruff", "!ty", "!pyrefly", "!pyright", "!pylsp", "..."],
     },
-    "Ruby": {
-      "language_servers": [
-        "solargraph",
-        "!ruby-lsp",
-        "!rubocop",
-        "!sorbet",
-        "!steep",
-        "!kanayago",
-        "!fuzzy-ruby-server",
-        "...",
-      ],
-    },
     "Rust": {
       "format_on_save": "on",
     },
-    "SCSS": {
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "Starlark": {
-      "format_on_save": "on",
-      "language_servers": ["starpls", "!buck2-lsp", "!tilt", "..."],
-    },
-    "Svelte": {
-      "language_servers": ["svelte-language-server", "..."],
-      "prettier": {
-        "allowed": true,
-        "plugins": ["prettier-plugin-svelte"],
-      },
-    },
     "TSX": {
       "language_servers": ["!typescript-language-server", "vtsls", "..."],
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "Twig": {
       "prettier": {
         "allowed": true,
       },
@@ -2300,33 +2167,10 @@
         "allowed": true,
       },
     },
-    "SystemVerilog": {
-      "language_servers": ["slang", "!verible", "!veridian", "!svls", "..."],
-      "use_on_type_format": false,
-    },
-    "Vue.js": {
-      "language_servers": ["vue-language-server", "vtsls", "..."],
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "XML": {
-      "prettier": {
-        "allowed": true,
-        "plugins": ["@prettier/plugin-xml"],
-      },
-    },
     "YAML": {
       "prettier": {
         "allowed": true,
       },
-    },
-    "YAML+ERB": {
-      "language_servers": ["!ruby-lsp", "..."],
-    },
-    "Zig": {
-      "format_on_save": "on",
-      "language_servers": ["zls", "..."],
     },
   },
   // Different settings for specific language models.

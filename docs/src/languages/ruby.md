@@ -5,7 +5,7 @@ description: "Configure Ruby language support in Zed, including language servers
 
 # Ruby
 
-Ruby support is available through the [Ruby extension](https://github.com/zed-extensions/ruby).
+> **Removed in this fork.** Ruby support came from the [Ruby extension](https://github.com/zed-extensions/ruby), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitters:
   - [tree-sitter-ruby](https://github.com/tree-sitter/tree-sitter-ruby)

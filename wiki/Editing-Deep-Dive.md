@@ -61,7 +61,7 @@ graph TB
 
 ## 5. 代码片段（Snippet）
 
-`Editor::insert_snippet`（[editor.rs:4925](../crates/editor/src/editor.rs)）/ `insert_snippet_with_autoindent`（L4943）解析 `$1`、`${2:placeholder}` 语法，插入后把各 tabstop 变成**多个同步选择**（改一处所有占位同改），`Tab` 在占位间跳转。补全项里的 snippet 走 `insert_snippet_at_selections`（[input.rs:1198](../crates/editor/src/input.rs)）。运行期片段由 [`snippet_provider`](../crates/snippet_provider) 提供，扩展也能贡献 snippets（见 [Extension-System.md](Extension-System.md)）。
+`Editor::insert_snippet`（[editor.rs:4925](../crates/editor/src/editor.rs)）/ `insert_snippet_with_autoindent`（L4943）解析 `$1`、`${2:placeholder}` 语法，插入后把各 tabstop 变成**多个同步选择**（改一处所有占位同改），`Tab` 在占位间跳转。补全项里的 snippet 走 `insert_snippet_at_selections`（[input.rs:1198](../crates/editor/src/input.rs)）。运行期片段由 [`snippet_provider`](../crates/snippet_provider) 提供。
 
 ## 6. MultiBuffer：把差异 / 结果缝成一面
 

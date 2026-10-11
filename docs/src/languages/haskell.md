@@ -5,7 +5,7 @@ description: "Configure Haskell language support in Zed, including language serv
 
 # Haskell
 
-Haskell support is available through the [Haskell extension](https://github.com/zed-extensions/haskell).
+> **Removed in this fork.** Haskell support came from the [Haskell extension](https://github.com/zed-extensions/haskell), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter-haskell](https://github.com/tree-sitter/tree-sitter-haskell)
 - Language Server: [haskell-language-server](https://github.com/haskell/haskell-language-server)

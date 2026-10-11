@@ -26,31 +26,6 @@ Zed also handles the `notifications/tools/list_changed` notification from MCP se
 
 ## Installing MCP Servers
 
-### As Extensions
-
-One of the ways you can use MCP servers in Zed is by exposing them as an extension.
-Check out the [MCP Server Extensions](../extensions/mcp-extensions.md) page to learn how to create your own.
-
-Many MCP servers are available as extensions. Find them via:
-
-1. [the Zed website](https://zed.dev/extensions?filter=context-servers)
-2. in the app, open the Command Palette and run the {#action zed::Extensions} action
-3. in the app, open **Settings → AI → MCP Servers**, click `Add Server`, and choose `Install from Extensions`
-
-Popular servers available as an extension include:
-
-- [Context7](https://zed.dev/extensions/mcp-server-context7)
-- [GitHub](https://zed.dev/extensions/mcp-server-github)
-- [Puppeteer](https://zed.dev/extensions/mcp-server-puppeteer)
-- [Gem](https://zed.dev/extensions/gem)
-- [Brave Search](https://zed.dev/extensions/mcp-server-brave-search)
-- [Prisma](https://github.com/aqrln/prisma-mcp-zed)
-- [Framelink Figma](https://zed.dev/extensions/mcp-server-figma)
-- [Resend](https://zed.dev/extensions/mcp-server-resend)
-
-### As Custom Servers
-
-Creating an extension is not the only way to use MCP servers in Zed.
 You can connect both local and remote MCP servers from **Settings → AI → MCP Servers** (also accessible via the {#action agent::OpenSettings} action, then selecting `MCP Servers`). Click `Add Server` in the page header, then choose `Add Local Server` or `Add Remote Server`. Your specified configuration will create entries in your settings file (which you can open with {#action zed::OpenSettingsFile}) similar to the ones below:
 
 ```json [settings]
@@ -78,12 +53,9 @@ You can connect both local and remote MCP servers from **Settings → AI → MCP
 
 ### Configuration Check
 
-Most MCP servers require configuration after installation.
+Most MCP servers require configuration after you add them.
 
-In the case of an extension, after installing it, Zed will pop up a modal displaying what is required for you to properly set it up.
-For example, the GitHub MCP extension requires you to add a [Personal Access Token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
-
-In the case of custom servers, make sure you check the provider documentation to determine what type of command, arguments, and environment variables need to be added to the JSON.
+Make sure you check the provider documentation to determine what type of command, arguments, and environment variables need to be added to the JSON.
 
 To check if your MCP server is properly configured, open **Settings → AI → MCP Servers** and watch the indicator dot next to its name.
 If it's running correctly, the indicator will be green and its tooltip will say "Server is active".
@@ -98,7 +70,7 @@ Mentioning the MCP server by name can help the model pick tools from that server
 
 However, if you want to _ensure_ a given MCP server will be used, you can create [a custom profile](./agent-profiles.md) where all built-in tools (or the ones that could cause conflicts with the server's tools) are turned off and only the tools coming from the MCP server are turned on.
 
-As an example, [the Dagger team suggests](https://container-use.com/agent-integrations#zed) doing that with their [Container Use MCP server](https://zed.dev/extensions/mcp-server-container-use):
+As an example, [the Dagger team suggests](https://container-use.com/agent-integrations#zed) doing that with their Container Use MCP server:
 
 ```json [settings]
 "agent": {

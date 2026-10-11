@@ -5,7 +5,7 @@ description: "Configure Elixir language support in Zed, including language serve
 
 # Elixir
 
-Elixir support is available through the [Elixir extension](https://github.com/zed-extensions/elixir).
+> **Removed in this fork.** Elixir support came from the [Elixir extension](https://github.com/zed-extensions/elixir), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter Grammars:
   - [elixir-lang/tree-sitter-elixir](https://github.com/elixir-lang/tree-sitter-elixir)

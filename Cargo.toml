@@ -49,11 +49,6 @@ members = [
     #"crates/eval_cli",
     "crates/eval_utils",
     #"crates/explorer_command_injector",
-    #"crates/extension",
-    #"crates/extension_api",
-    #"crates/extension_cli",
-    #"crates/extension_host",
-    #"crates/extensions_ui",
     "crates/feature_flags",
     "crates/feature_flags_macros",
     "crates/feedback",
@@ -199,15 +194,6 @@ members = [
     "crates/ztracing_macro",
 
     #
-    # Extensions
-    #
-
-    #"extensions/glsl",
-    #"extensions/html",
-    #"extensions/proto",
-    #"extensions/test-extension",
-
-    #
     # Tooling
     #
 
@@ -269,9 +255,6 @@ encoding_selector = { path = "crates/encoding_selector" }
 env_var = { path = "crates/env_var" }
 etw_tracing = { path = "crates/etw_tracing" }
 eval_utils = { path = "crates/eval_utils" }
-#extension = { path = "crates/extension" }
-#extension_host = { path = "crates/extension_host" }
-#extensions_ui = { path = "crates/extensions_ui" }
 feature_flags = { path = "crates/feature_flags" }
 feature_flags_macros = { path = "crates/feature_flags_macros" }
 feedback = { path = "crates/feedback" }

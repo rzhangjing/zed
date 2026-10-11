@@ -160,25 +160,6 @@
 - [Yarn](./languages/yarn.md)
 - [Zig](./languages/zig.md)
 
-# Extensions
-
-- [Overview](./extensions.md)
-- [Installing Extensions](./extensions/installing-extensions.md)
-- [Developing Extensions](./extensions/developing-extensions.md)
-- [Publishing Your Extension](./extensions/publishing/overview.md)
-  - [License Requirements](./extensions/publishing/license-requirements.md)
-  - [Publishing Prerequisites](./extensions/publishing/prerequisites.md)
-  - [Publishing Guide](./extensions/publishing/publishing-guide.md)
-  - [Updating an Extension](./extensions/publishing/updating-and-maintenance.md)
-  - [Frequently Asked Questions](./extensions/publishing/faq.md)
-- [Extension Capabilities](./extensions/capabilities.md)
-- [Language Extensions](./extensions/languages.md)
-- [Theme Extensions](./extensions/themes.md)
-- [Icon Theme Extensions](./extensions/icon-themes.md)
-- [Snippets Extensions](./extensions/snippets.md)
-- [MCP Server Extensions](./extensions/mcp-extensions.md)
-- [Agent Server Extensions](./extensions/agent-servers.md)
-
 # Coming From…
 
 - [VS Code](./migrate/vs-code.md)

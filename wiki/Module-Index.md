@@ -1,32 +1,31 @@
 # Module Index（全量模块索引与覆盖矩阵）
 
-> 本表枚举 `crates/` 下**全部约 240 个 crate**，按模块族归类，标注职责与对应详解页。目标：任何模块都能从这里定位到文档；`✅` 已有专页，`🔧` 已并入相关页，`⏳` 待深挖（见文末计划）。
+> 本表枚举 `crates/` 下的 crate（实测 **178 个 crate 成员** = `crates/` 顶层 177 个目录 + 嵌套成员 `refineable/derive_refineable`），按模块族归类，标注职责与对应详解页。目标：任何模块都能从这里定位到文档；`✅` 已有专页，`🔧` 已并入相关页，`⏳` 待深挖（见文末计划）。
 
 > 📘 **参考手册（Deep Dive）层**：针对最核心的 crate，已提供"逐类型/逐函数"的参考手册页（公开 API 全量 + 内部流程），与下方按族的概览页互补：
 > [Sum-Tree](Sum-Tree-Deep-Dive.md) · [Rope](Rope-Deep-Dive.md) · [Text](Text-Buffer-Deep-Dive.md) · [Multi-Buffer](Multi-Buffer-Deep-Dive.md) · [Editor](Editor-Deep-Dive.md) · [GPUI](GPUI-Deep-Dive.md) · [Language](Language-Deep-Dive.md) · [Project/Worktree](Project-Deep-Dive.md) · [Workspace](Workspace-Deep-Dive.md)
 > 📗 **第二批**：[Terminal](Terminal-Deep-Dive.md) · [Agent](Agent-Deep-Dive.md) · [Markdown](Markdown-Deep-Dive.md) · [Collab](Collab-Deep-Dive.md) · [Panels](Panels-Deep-Dive.md)
-> 📙 **第三批**：[Search](Search-Deep-Dive.md) · [Extension](Extension-Deep-Dive.md)
+> 📙 **第三批**：[Search](Search-Deep-Dive.md)
 > 📘 **第四批**：[Edit-Prediction](Edit-Prediction-Deep-Dive.md)
 > 🌐 **第五批**：[GPUI-Platform-Backends](GPUI-Platform-Backends-Deep-Dive.md)
 > 📚 **第六批**：[Picker-Family](Picker-Family-Deep-Dive.md) · [Diagnostics](Diagnostics-Deep-Dive.md) · [Settings&Onboarding](Settings-and-Onboarding-Deep-Dive.md)
 > ⌨️ **第七批**：[Call&Voice](Call-and-Voice-Deep-Dive.md) · [Task-System](Task-System-Deep-Dive.md)
-> 🧩 **第八批**：[Extension-Host](Extension-Host-Deep-Dive.md)（extension_host 运行时内核）
-> ⚙️ **第九批**：[GPUI-Macros&Util](GPUI-Macros-and-Utilities-Deep-Dive.md) · [Model-Providers](Model-Providers-Deep-Dive.md)
-> 🗄️ **第十批**：[Persistence](Persistence-Deep-Dive.md) · [Network-HTTP](Network-HTTP-Deep-Dive.md)
-> 📡 **第十一批**：[Telemetry&Updates](Telemetry-and-Updates-Deep-Dive.md) · [Agent-Skills&Context](Agent-Skills-and-Context-Deep-Dive.md)
-> 🎨 **第十二批**：[UI-Primitives](UI-Primitives-Deep-Dive.md) · [Diff-Engines](Diff-Engines-Deep-Dive.md)
-> 🔤 **第十三批**：[Language-Tooling](Language-Tooling-Deep-Dive.md) · [Edit-Prediction-UI-CLI](Edit-Prediction-UI-CLI-Deep-Dive.md)
-> 🔒 **第十四批**：[Misc-Preview-Items](Misc-Preview-Items-Deep-Dive.md)
-> ⌨️ **第十五批**：[Keymap&Navigation](Keymap-and-Navigation-Deep-Dive.md) · [Copilot-Stack](Copilot-Stack-Deep-Dive.md)
-> 🎨 **第十六批**：[CLI&Packaging](CLI-and-Packaging-Deep-Dive.md) · [Selectors&Themes](Selectors-and-Themes-Misc-Deep-Dive.md)
-> 🧪 **第十七批**：[Tooling&Evals&Benchmarks](Tooling-Evals-Benchmarks-Deep-Dive.md)
+> ⚙️ **第八批**：[GPUI-Macros&Util](GPUI-Macros-and-Utilities-Deep-Dive.md) · [Model-Providers](Model-Providers-Deep-Dive.md)
+> 🗄️ **第九批**：[Persistence](Persistence-Deep-Dive.md) · [Network-HTTP](Network-HTTP-Deep-Dive.md)
+> 📡 **第十批**：[Telemetry&Updates](Telemetry-and-Updates-Deep-Dive.md) · [Agent-Skills&Context](Agent-Skills-and-Context-Deep-Dive.md)
+> 🎨 **第十一批**：[UI-Primitives](UI-Primitives-Deep-Dive.md) · [Diff-Engines](Diff-Engines-Deep-Dive.md)
+> 🔤 **第十二批**：[Language-Tooling](Language-Tooling-Deep-Dive.md) · [Edit-Prediction-UI-CLI](Edit-Prediction-UI-CLI-Deep-Dive.md)
+> 🔒 **第十三批**：[Misc-Preview-Items](Misc-Preview-Items-Deep-Dive.md)
+> ⌨️ **第十四批**：[Keymap&Navigation](Keymap-and-Navigation-Deep-Dive.md) · [Copilot-Stack](Copilot-Stack-Deep-Dive.md)
+> 🎨 **第十五批**：[CLI&Packaging](CLI-and-Packaging-Deep-Dive.md) · [Selectors&Themes](Selectors-and-Themes-Misc-Deep-Dive.md)
+> 🧪 **第十六批**：[Tooling&Evals&Benchmarks](Tooling-Evals-Benchmarks-Deep-Dive.md)
 
 ## 1. 应用入口与打包
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `zed` | 主二进制入口、`main.rs`/`bin`、启动初始化 | ✅ [Startup-Flow](Startup-Flow.md) |
 | `cli` | `zed` 命令行（打开、安装） | 🔧 [Building-on-Windows](Building-on-Windows.md) / **📘[Deep](CLI-and-Packaging-Deep-Dive.md)** |
-| `install_cli` | `zed install` 扩展安装 CLI | **📘[Deep](CLI-and-Packaging-Deep-Dive.md)** |
+| `install_cli` | 把 `zed` 二进制装到 PATH、注册 `zed://` scheme | **📘[Deep](CLI-and-Packaging-Deep-Dive.md)** |
 | `assets` | 内嵌图标/字体/主题资源生成 | 🔧 [Home](Home.md) |
 | `paths` | 配置/数据/临时目录路径解析 | 🔧 [Settings-and-Themes](Settings-and-Themes.md) |
 | `zed_actions` | 全局 Action 定义聚合 | 🔧 [Picker-and-Commands](Picker-and-Commands.md) |
@@ -107,7 +106,6 @@
 | `syntax_theme` | 语法高亮主题（TextMate→Zed） | ⏳ |
 | `lsp` | LSP 协议封装/进程管理（`LanguageServer`） | ✅ [LSP-Features](LSP-Features.md) |
 | `lsp_locations` | 定义/引用跳转位置面板 | 🔧 [LSP-Features](LSP-Features.md) |
-| `language_extension` | 语言/语法贡献到扩展机制 | 🔧 [Extension-System](Extension-System.md) |
 | `language_selector` | 切换语言 picker | **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `language_tools` | 语法树/高亮树/LSP 日志/key context 调试视图 | **📘[Deep](Language-Tooling-Deep-Dive.md)** |
 | `outline` / `outline_panel` | 符号大纲 | ✅ [LSP-Features](LSP-Features.md) |
@@ -216,7 +214,7 @@
 | `settings_profile_selector` | 设置 Profile 切换 | 🔧 [Settings-and-Themes](Settings-and-Themes.md) / **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `theme` / `theme_settings` | 主题模型与设置 | ✅ [Settings-and-Themes](Settings-and-Themes.md) / **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `theme_selector` | 主题切换 picker | 🔧 [Settings-and-Themes](Settings-and-Themes.md) / **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
-| `theme_extension` / `theme_importer` | 主题扩展/导入 | ⏳ |
+| `theme_importer` | 主题导入（TextMate/VSCode 主题转换） | ⏳ |
 | `time_format` | 时间格式（12/24） | ⏳ |
 | `feature_flags` / `feature_flags_macros` | 特性开关 | 🔧 [Agent-and-AI](Agent-and-AI.md) |
 | `encoding_selector` / `line_ending_selector` | 编码/换行选择 | **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
@@ -224,16 +222,9 @@
 | `keymap_editor` | 键位映射编辑器（冲突检测） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
 | `which_key` | which-key 键位提示浮层（`WhichKeyModal`、`PendingKeystrokesIndicator`） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
 
-## 17. 扩展系统
-| Crate | 职责 | 覆盖 |
-|---|---|---|
-| `extension` | `Extension`/`ExtensionHostProxy` trait | ✅ [Extension-System](Extension-System.md) / **📘[Deep](Extension-Deep-Dive.md)** / **🧩[HostDeep](Extension-Host-Deep-Dive.md)** |
-| `extension_api` | 扩展 Wasm API（wit/宏） | ✅ [Extension-System](Extension-System.md) / **📘[Deep](Extension-Deep-Dive.md)** |
-| `extension_host` | wasmtime 宿主（`WasmHost`/`WasmState`/版本化 WIT/`CapabilityGranter`/`HeadlessExtensionStore`） | ✅ [Extension-System](Extension-System.md) / **🧩[HostDeep](Extension-Host-Deep-Dive.md)** |
-| `extension_cli` | 扩展打包/发布 CLI | 🔧 [Extension-System](Extension-System.md) |
-| `extensions_ui` | 扩展浏览/管理 UI | ✅ [Extension-System](Extension-System.md) / **📘[Deep](Extension-Deep-Dive.md)** |
+> ⚠️ 已移除 · 历史：扩展（extensions）子系统——`extension` / `extension_api` / `extension_host` / `extension_cli` / `extensions_ui`（Wasm 宿主、扩展 ABI、扩展市场 UI）——已从本 fork 整体移除，故本索引不再列该族 crate，原先的 Extension-System / Extension-Deep-Dive / Extension-Host-Deep-Dive 三页亦已删除。
 
-## 18. 预览 / 可视化 Item
+## 17. 预览 / 可视化 Item
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `repl` | Jupyter 式内核/会话（`ReplStore`/`KernelSpecification`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) |
@@ -242,9 +233,9 @@
 | `image_viewer` | 图片查看 Item（缩放/持久） | **📘[Deep](Misc-Preview-Items-Deep-Dive.md)** |
 | `svg_preview` | SVG 预览 | ⏳ |
 | `tabular_data_preview` | 表格数据预览（CSV/JSON） | ⏳ |
-| `html_to_markdown` | HTML→Markdown（剪贴板/扩展） | ⏳ |
+| `html_to_markdown` | HTML→Markdown 转换（Agent 网页抓取 / REPL HTML 输出） | ⏳ |
 
-## 19. 基础设施 / 数据 / 网络
+## 18. 基础设施 / 数据 / 网络
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `db` / `sqlez` / `sqlez_macros` / `migrator` | SQLite 封装与迁移 | **📘[Deep](Persistence-Deep-Dive.md)** |
@@ -259,7 +250,7 @@
 | `http_proxy` / `proxy_handshake` | 代理配置与握手 | **📘[Deep](Network-HTTP-Deep-Dive.md)** |
 | `session` | `Session`/`AppSession`：应用会话标识与窗口栈 | **📘[Deep](Network-HTTP-Deep-Dive.md)** |
 
-## 20. 遥测 / 日志 / 更新
+## 19. 遥测 / 日志 / 更新
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `telemetry` / `telemetry_events` | 事件遥测上报 | **📘[Deep](Telemetry-and-Updates-Deep-Dive.md)** |
@@ -273,13 +264,13 @@
 | `json_schema_store` / `schema_generator` | JSON Schema 存储/生成 | ⏳ |
 | `docs_preprocessor` | 文档预处理（mdbook） | ⏳ |
 
-## 21. 基准与评测工具
+## 20. 基准与评测工具
 | Crate | 职责 | 覆盖 |
 |---|---|---|
 | `benchmarks` / `editor_benchmarks` / `fs_benchmarks` / `project_benchmarks` / `worktree_benchmarks` | Criterion 性能基准 | **📘[Deep](Tooling-Evals-Benchmarks-Deep-Dive.md)** |
 | `eval_cli` / `eval_utils` | Agent/模型离线评测框架 | **📘[Deep](Tooling-Evals-Benchmarks-Deep-Dive.md)** |
 
-## 22. 深挖批次（已全部完成 ✅）
+## 21. 深挖批次（已全部完成 ✅）
 本索引已**覆盖全部模块的定位**。此前标 `⏳` 的模块族已逐族深挖成页（均先 `grep`/`read` 确证真实符号）：
 
 - ✅ G9 **数据结构底座** → [Data-Structures.md](Data-Structures.md)
@@ -294,5 +285,4 @@
 
 ### 仍可按需继续细分的方向（如后续需要）
 - 每个模型 provider crate（`anthropic`（已移除 · 历史）/`ollama`/`bedrock`（已移除）…）的**逐方法** HTTP 细节；
-- `languages`/`grammars` 各内置语言的 config/queries 明细；
-- `extension_api` 的 wit ABI 与宿主 proxy 全方法表。
+- `languages`/`grammars` 各内置语言的 config/queries 明细。

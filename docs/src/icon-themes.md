@@ -1,21 +1,17 @@
 ---
 title: Icon Themes
-description: "Zed comes with a built-in icon theme, with more icon themes available as extensions."
+description: "Zed comes with a built-in icon theme."
 ---
 
 # Icon Themes
 
-Zed comes with a built-in icon theme, with more icon themes available as extensions.
+Zed comes with a built-in icon theme.
 
 ## Selecting an Icon Theme
 
 See what icon themes are installed and preview them via the Icon Theme Selector, which you can open from the command palette with {#action icon_theme_selector::Toggle}.
 
 Navigating through the icon theme list by moving up and down will change the icon theme in real time and hitting enter will save it to your settings file.
-
-## Installing more Icon Themes
-
-More icon themes are available from the Extensions page, which you can access via the command palette with {#action zed::Extensions} or the [Zed website](https://zed.dev/extensions?filter=icon-themes).
 
 ## Configuring Icon Themes
 
@@ -34,7 +30,3 @@ You can set the mode to `"light"` or `"dark"` to ignore the current system mode.
   }
 }
 ```
-
-## Icon Theme Development
-
-See: [Developing Zed Icon Themes](./extensions/icon-themes.md)

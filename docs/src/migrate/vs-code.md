@@ -160,7 +160,7 @@ The following VS Code settings are automatically imported when you use **Import 
 | `chat.agent.enabled`       | `agent.enabled`                                              |
 | `mcp`                      | `context_servers`                                            |
 
-Zed doesn’t import extensions or keybindings, but this import gets core editor behavior close to your VS Code setup. If you skip that step during setup, you can still import settings manually later via the command palette:
+Zed doesn’t import keybindings, but this import gets core editor behavior close to your VS Code setup. If you skip that step during setup, you can still import settings manually later via the command palette:
 
 `Cmd+Shift+P → {#action zed::ImportVsCodeSettings}`
 
@@ -281,9 +281,7 @@ Zed takes a different approach:
 
 The UI keeps auxiliary panels out of the way so navigation stays centered on code.
 
-### Extensions vs. Marketplace
-
-Zed does not offer as many extensions as VS Code. The available extensions are focused on language support, themes, syntax highlighting, and other core editing enhancements.
+### Built-in Features
 
 Several features that typically require extensions in VS Code are built into Zed:
 
@@ -294,11 +292,9 @@ Several features that typically require extensions in VS Code are built into Zed
 - Task runner with JSON config
 - Inline diagnostics and code actions via LSP
 
-You won’t find one-to-one replacements for every VS Code extension, especially if you rely on tools for DevOps, containers, or test runners. Zed's extension catalog is still growing and remains smaller.
-
 ### Collaboration in Zed vs. VS Code
 
-Unlike VS Code, Zed doesn’t require an extension to collaborate. It’s built into the core experience.
+Zed has collaboration built into the core experience.
 
 - Open the Collab Panel in the left dock.
 > **Removed in this fork.** Collaboration, channels, contacts, and the collaboration server were removed, so the steps in this section no longer apply.

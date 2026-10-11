@@ -260,15 +260,7 @@ The test output appears in the terminal panel. For more detailed output, use:
 - `cargo test -- --test-threads=1` for sequential test execution
 - `cargo test specific_test_name` to run a single test
 
-### Extensions vs. Plugins
-
-RustRover has a full JetBrains plugin catalog.
-
-Zed's extension catalog is smaller and more focused:
-
-- Language support and syntax highlighting
-- Themes
-- Context servers
+### Built-in Features
 
 Several features that might require plugins in other editors are built into Zed:
 

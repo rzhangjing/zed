@@ -173,12 +173,6 @@ Open [Agent Settings](./agent-settings.md), go to the **External Agents** page, 
 
 Registry-installed agents can also have per-agent settings under `agent_servers.<agent-id>`.
 
-## Extension-Provided Agents {#extension-agents}
-
-Extension-provided agents are deprecated. The [ACP Registry](#registry) is now the way to install agents, and previously installed extension agents are automatically migrated to their registry equivalents.
-
-For details, see [Agent Server Extensions](../extensions/agent-servers.md).
-
 ## Importing Threads {#importing-threads}
 
 Zed can import existing threads from configured External Agents so they appear in your [Thread History](./agent-panel.md#multiple-threads) alongside the rest of your threads.

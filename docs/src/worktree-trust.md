@@ -1,6 +1,6 @@
 ---
 title: Zed and trusted worktrees
-description: "Configure which folders Zed trusts for running code and extensions."
+description: "Configure which folders Zed trusts for running code and language servers."
 ---
 
 # Zed and trusted worktrees

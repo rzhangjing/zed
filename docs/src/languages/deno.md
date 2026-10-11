@@ -5,7 +5,7 @@ description: "Configure Deno language support in Zed, including language servers
 
 # Deno
 
-Deno support is available through the [Deno extension](https://github.com/zed-extensions/deno).
+> **Removed in this fork.** Deno support came from the [Deno extension](https://github.com/zed-extensions/deno), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Language server: [Deno Language Server](https://docs.deno.com/runtime/manual/advanced/language_server/overview/)
 

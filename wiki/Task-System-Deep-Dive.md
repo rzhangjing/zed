@@ -81,7 +81,7 @@ graph TB
 ## 8. 集成 / 相关页
 
 - 执行侧：`terminal`（`alacritty` 终端）见 [Terminal-Deep-Dive.md](Terminal-Deep-Dive.md)。
-- 变量来源：`language`/`LSP`（`RunnableTag`、符号）见 [LSP-Features.md](LSP-Features.md)；`context server` 任务见 [Extension-Deep-Dive.md](Extension-Deep-Dive.md)。
+- 变量来源：`language`/`LSP`（`RunnableTag`、符号）见 [LSP-Features.md](LSP-Features.md)。
 - 模态选择器：[Picker-Family-Deep-Dive.md](Picker-Family-Deep-Dive.md)、[Project-Deep-Dive.md](Project-Deep-Dive.md)。
 - 概览：[Tasks-and-Tooling.md](Tasks-and-Tooling.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

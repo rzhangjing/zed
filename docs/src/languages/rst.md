@@ -5,7 +5,7 @@ description: "Configure reStructuredText language support in Zed, including lang
 
 # ReStructuredText (rst)
 
-ReStructuredText language support in Zed is provided by the community-maintained [reST extension](https://github.com/elmarco/zed-rst).
+> **Removed in this fork.** ReStructuredText support came from the community-maintained [reST extension](https://github.com/elmarco/zed-rst), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 Report issues to: [https://github.com/elmarco/zed-rst/issues](https://github.com/elmarco/zed-rst/issues)
 
 - Tree-sitter: [stsewd/tree-sitter-rst.git](https://github.com/stsewd/tree-sitter-rst.git)

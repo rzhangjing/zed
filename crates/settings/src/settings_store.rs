@@ -36,8 +36,8 @@ use crate::{
     LanguageToSettingsMap, LspSettings, LspSettingsMap, SemanticTokenRules, ThemeName,
     UserSettingsContentExt, VsCodeSettings, WorktreeId,
     settings_content::{
-        ExtendingSet, ExtensionsSettingsContent, ProfileBase, ProjectSettingsContent,
-        RootUserSettings, SettingsContent, UserSettingsContent, merge_from::MergeFrom,
+        ExtendingSet, ProfileBase, ProjectSettingsContent, RootUserSettings, SettingsContent,
+        UserSettingsContent, merge_from::MergeFrom,
     },
 };
 
@@ -147,8 +147,6 @@ pub struct SettingsStore {
     default_settings: Rc<SettingsContent>,
     user_settings: Option<UserSettingsContent>,
     global_settings: Option<Box<SettingsContent>>,
-
-    extension_settings: Option<Box<SettingsContent>>,
 
     language_semantic_token_rules: HashMap<SharedString, SemanticTokenRules>,
 
@@ -305,7 +303,6 @@ impl SettingsStore {
             default_settings: default_settings.clone(),
             global_settings: None,
             user_settings: None,
-            extension_settings: None,
             language_semantic_token_rules: HashMap::default(),
 
             merged_settings: default_settings,
@@ -1126,22 +1123,6 @@ impl SettingsStore {
         Ok(())
     }
 
-    pub fn set_extension_settings(
-        &mut self,
-        content: ExtensionsSettingsContent,
-        cx: &mut App,
-    ) -> Result<()> {
-        self.extension_settings = Some(Box::new(SettingsContent {
-            project: ProjectSettingsContent {
-                all_languages: content.all_languages,
-                ..Default::default()
-            },
-            ..Default::default()
-        }));
-        self.recompute_values(None, cx);
-        Ok(())
-    }
-
     /// Add or remove a set of local settings via a JSON string.
     pub fn clear_local_settings(&mut self, root_id: WorktreeId, cx: &mut App) -> Result<()> {
         self.local_settings
@@ -1334,7 +1315,6 @@ impl SettingsStore {
 
         if changed_local_path.is_none() {
             let mut merged = self.default_settings.as_ref().clone();
-            merged.merge_from_option(self.extension_settings.as_deref());
             merged.merge_from_option(self.global_settings.as_deref());
             if let Some(user_settings) = self.user_settings.as_ref() {
                 let active_profile = user_settings.for_profile(cx);

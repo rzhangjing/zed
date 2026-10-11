@@ -5,20 +5,10 @@ description: "Configure HTML language support in Zed, including language servers
 
 # HTML
 
-HTML support is available through the [HTML extension](https://github.com/zed-industries/zed/tree/main/extensions/html).
+> **Removed in this fork.** HTML support came from the HTML extension, and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter/tree-sitter-html](https://github.com/tree-sitter/tree-sitter-html)
 - Language Server: [microsoft/vscode-html-languageservice](https://github.com/microsoft/vscode-html-languageservice)
-
-This extension is automatically installed, but if you do not want to use it, you can add the following to your settings:
-
-```json [settings]
-{
-  "auto_install_extensions": {
-    "html": false
-  }
-}
-```
 
 ## Formatting
 

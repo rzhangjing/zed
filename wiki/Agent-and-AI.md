@@ -30,7 +30,7 @@ Zed 的 AI 能力分三层：**Provider（厂商接入）** → **LanguageModel�
 [`registry.rs:46`](../crates/language_model/src/registry.rs) 是全局单例（`Global`）：
 
 - `global(cx)`(L127) / `read_global(cx)`(L131)：任意处以 `App` 取用。
-- `register_provider::<T>()`(L162)：Zed 启动时注册内置 providers；扩展安装时注册扩展提供的 providers，并订阅其状态变化事件。
+- `register_provider::<T>()`(L162)：注册 provider 并订阅其状态变化事件（各内置 provider 在启动时经此登记）。
 - `providers()`(L189) / `visible_providers()`(L206)：枚举（`zed.dev` 恒排首位，隐藏的内置被过滤）。
 - 解析“当前默认模型”：`default_model()` 依据 settings 里用户选择 → 回落到 provider 默认，`thread.rs` 每轮都重新读取以支持中途切换模型。
 
@@ -94,7 +94,7 @@ graph TB
 | `LanguageModel::stream_completion` | `language_model/src/language_model.rs:218` | 统一流式补全入口 |
 | `LanguageModelCompletionEvent` | `language_model_core/src/language_model_core.rs:36` | Text/Thinking/ToolUse/Stop/UsageUpdate 事件 |
 | `LanguageModelProvider` | `language_model/src/language_model.rs:366` | 厂商 Provider 抽象 |
-| `LanguageModelRegistry::register_provider` | `language_model/src/registry.rs:162` | 注册 provider（内置或扩展） |
+| `LanguageModelRegistry::register_provider` | `language_model/src/registry.rs:162` | 注册 provider（内置） |
 | `AcpThread::send` | `agent/src/thread.rs:2524` | 提交用户消息、启动 turn |
 | `run_turn_internal` | `agent/src/thread.rs:2753` | 对话-工具多轮主循环 |
 | `build_completion_request` | `agent/src/thread.rs:4038` | 组装请求（消息+工具） |
@@ -102,6 +102,5 @@ graph TB
 | `EditPredictionStore` | `edit_prediction/src/edit_prediction.rs:158` | 内联预测状态与模型 |
 
 ## 8. 与其他页面的关系
-- Provider 通过扩展注册：见 [Architecture.md](Architecture.md)、[Language-and-Project.md](Language-and-Project.md) 的扩展体系。
 - 内联预测在编辑器中的渲染：[Editor.md](Editor.md)。
 - Zed 云推理走的 RPC/实时链路：[Collaboration-and-Call.md](Collaboration-and-Call.md)。

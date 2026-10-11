@@ -48,7 +48,7 @@ You can configure this globally or per-language:
 Semantic tokens are styled using rules that map LSP token types and modifiers to theme styles or custom colors. Zed provides sensible defaults, but you can customize these in your settings.json: add rules under `global_lsp_settings.semantic_token_rules` key.
 
 Rules are matched in order, and the first matching rule wins.
-User-defined rules take highest precedence, followed by extension-provided language rules, then Zed defaults.
+User-defined rules take highest precedence, followed by Zed defaults.
 
 ### Rule Structure
 

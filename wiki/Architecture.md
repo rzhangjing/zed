@@ -1,6 +1,6 @@
 # Architecture（整体架构与模块分层）
 
-Zed 是一个 Cargo workspace（[`Cargo.toml`](../Cargo.toml)），`crates/` 下 **244 个成员 crate**，最终由 `crates/zed` 装配成 `zed` 二进制。下面按"自底向上"的分层给出各层职责、代表 crate 与关键类型。
+Zed 是一个 Cargo workspace（[`Cargo.toml`](../Cargo.toml)）：根 `Cargo.toml` 的 `[workspace] members` 实测共 **179 个成员**（口径：`crates/` 下 **178 个 crate 条目**——来自 **177 个顶层 crate 目录**，另含嵌套成员 `crates/refineable/derive_refineable`——再加 `tooling/perf`），最终由 `crates/zed` 装配成 `zed` 二进制。下面按"自底向上"的分层给出各层职责、代表 crate 与关键类型。
 
 ## 1. 分层总览
 
@@ -17,7 +17,6 @@ graph TB
         PRED[edit_prediction]
         CALL["call / collab_ui（已移除）"]
         VIM[which_key]
-        EXT[extension / extension_host]
         PROV[open_ai / ollama / deepseek ...]
     end
     subgraph L4[编辑与 UI 面板层]
@@ -94,7 +93,6 @@ graph TB
 | `edit_prediction*` | 内联编辑预测 |
 | `audio` | 音频管线（cpal/rodio）；原 `call` / `collab_ui` / `livekit_client` 已移除（详见 [Collaboration-and-Call.md](Collaboration-and-Call.md)） |
 | `open_ai` / `anthropic`（已移除 · 历史） / `google_ai`（已移除 · 历史） / `ollama` / `mistral`（已移除） / `bedrock`（已移除） / `deepseek` / `codestral`（已移除） / `open_router`（已移除） / `lmstudio` / `llama_cpp` | 各模型 Provider |
-| `extension` / `extension_host` / `extensions_ui` | 扩展系统（WASM） |
 | `which_key` / `terminal` | 编辑增强 |
 
 ### L6 应用装配层

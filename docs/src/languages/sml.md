@@ -5,7 +5,7 @@ description: "Configure Standard ML language support in Zed, including language 
 
 # Standard ML
 
-Standard ML support is available through the community-maintained [Standard ML extension](https://github.com/omarjatoi/zed-sml).
+> **Removed in this fork.** Standard ML support came from the community-maintained [Standard ML extension](https://github.com/omarjatoi/zed-sml), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [MatthewFluet/tree-sitter-sml](https://github.com/MatthewFluet/tree-sitter-sml)
 - Language Server: [Millet](https://github.com/azdavis/millet)

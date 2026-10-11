@@ -38,13 +38,13 @@ graph LR
 | `IconTheme` | `icon_theme.rs` | 文件/文件夹图标映射 |
 | `UiDensity` | `ui_density.rs` | 紧凑/舒适间距 |
 
-- `ThemeRegistry::list()`(L188) 枚举可用主题（含来自扩展贡献的，见 [Extension-System.md](Extension-System.md) 的 `register_theme_proxy`）。
+- `ThemeRegistry::list()`(L188) 枚举已加载的可用主题（内置主题 + 用户自定义主题）。
 - `default_colors.rs`、`fallback_themes.rs` 提供内置配色与缺省回退；主题本身是 JSON → `ThemeStyles`。
 - 视图取色统一走 `cx.theme().styles`，故换主题只需切 `ThemeRegistry` 当前项并全局通知。
 
 ## 5. 设置界面（settings_ui）
 
-[`settings_ui`](../crates/settings_ui)（`settings_ui.rs` 约 259KB、`page_data.rs` 约 513KB）把上述注册过的 settings 结构渲染成可视化页面（Editor/Appearance/Keybindings/Extensions/Tool Permissions 等 `pages/`）。每个 `Settings` 类型的 `Element`/`Section` 声明驱动 UI 表单，写回时落到对应 JSON 层。工具权限设置页与 Agent 工具三重门禁相关联（见 [Agent-and-AI.md](Agent-and-AI.md)）。
+[`settings_ui`](../crates/settings_ui)（`settings_ui.rs` 约 259KB、`page_data.rs` 约 513KB）把上述注册过的 settings 结构渲染成可视化页面（Editor/Appearance/Keybindings/Tool Permissions 等 `pages/`）。每个 `Settings` 类型的 `Element`/`Section` 声明驱动 UI 表单，写回时落到对应 JSON 层。工具权限设置页与 Agent 工具三重门禁相关联（见 [Agent-and-AI.md](Agent-and-AI.md)）。
 
 ## 6. 一次改设置如何生效
 
@@ -74,5 +74,4 @@ graph TB
 ## 8. 与其他页面的关系
 - keymap 事件分发：[GPUI-Internals.md](GPUI-Internals.md)、[GPUI.md](GPUI.md)。
 - 主题被所有视图使用：[Workspace-Pane-Dock.md](Workspace-Pane-Dock.md)、[Editor.md](Editor.md)。
-- 扩展贡献主题/设置 schema：[Extension-System.md](Extension-System.md)。
 - 语言级设置影响 LSP：[Language-and-Project.md](Language-and-Project.md)。

@@ -5,7 +5,7 @@ description: "Configure Lua language support in Zed, including language servers 
 
 # Lua
 
-Lua support is available through the [Lua extension](https://github.com/zed-extensions/lua).
+> **Removed in this fork.** Lua support came from the [Lua extension](https://github.com/zed-extensions/lua), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter-grammars/tree-sitter-lua](https://github.com/tree-sitter-grammars/tree-sitter-lua)
 - Language server: [LuaLS/lua-language-server](https://github.com/LuaLS/lua-language-server)

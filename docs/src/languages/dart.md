@@ -5,7 +5,7 @@ description: "Configure Dart language support in Zed, including language servers
 
 # Dart
 
-Dart support is available through the [Dart extension](https://github.com/zed-extensions/dart).
+> **Removed in this fork.** Dart support came from the [Dart extension](https://github.com/zed-extensions/dart), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [UserNobody14/tree-sitter-dart](https://github.com/UserNobody14/tree-sitter-dart)
 - Language Server: [dart language-server](https://github.com/dart-lang/sdk)

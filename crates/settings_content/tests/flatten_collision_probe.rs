@@ -10,7 +10,6 @@ fn no_key_collisions_between_named_fields_and_flattened_sections() {
         vec![
             section::<settings_content::ProjectSettingsContent>("project"),
             section::<settings_content::ThemeSettingsContent>("theme"),
-            section::<settings_content::ExtensionSettingsContent>("extension"),
             section::<settings_content::WorkspaceSettingsContent>("workspace"),
             section::<settings_content::EditorSettingsContent>("editor"),
         ],

@@ -4344,14 +4344,6 @@ impl AgentPanel {
         })
     }
 
-    fn migrate_agent_server_from_extensions(&mut self, id: Arc<str>, cx: &mut Context<Self>) {
-        self.project.update(cx, |project, cx| {
-            project.agent_server_store().update(cx, |store, cx| {
-                store.migrate_agent_server_from_extensions(id, project.fs().clone(), cx);
-            });
-        });
-    }
-
     pub fn new_agent_thread_with_external_source_prompt(
         &mut self,
         external_source_prompt: Option<ExternalSourcePrompt>,
@@ -5601,15 +5593,6 @@ impl AgentPanel {
                                     Box::new(zed_actions::OpenSettingsAt {
                                         path: "context_servers".to_string(),
                                         target: None,
-                                    }),
-                                )
-                                .action(
-                                    "Install New Servers…",
-                                    Box::new(zed_actions::Extensions {
-                                        category_filter: Some(
-                                            zed_actions::ExtensionCategoryFilter::ContextServers,
-                                        ),
-                                        id: None,
                                     }),
                                 )
                                 .separator()

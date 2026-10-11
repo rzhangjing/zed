@@ -11,7 +11,7 @@
 | `language_core` | 更底层的语言核心（被 language 复用） | — |
 | `project` | 项目级模型：worktree、LSP 生命周期、搜索、诊断聚合、任务 | `Project`、`LspStore`(`lsp_store.rs`)、`Worktree`、`SearchHistory` |
 | `lsp` | LSP 协议消息类型封装 | `lsp::` 类型 |
-| `node_runtime` | 下载/管理 Node，供需要 Node 的语言服务器与扩展 | `NodeRuntime` |
+| `node_runtime` | 下载/管理 Node，供需要 Node 的语言服务器使用 | `NodeRuntime` |
 
 ## 2. 打开文件 → 语言服务介入的调用流程
 
@@ -59,4 +59,3 @@ graph TB
 ## 6. 与其他页面的关系
 - 缓冲区编辑与渲染：[Editor.md](Editor.md)
 - 补全/诊断 UI：`editor` + `diagnostics` crate
-- 语言扩展（下载语法/LSP）：`extension` 体系（见 [Architecture.md](Architecture.md) L5）

@@ -1,12 +1,11 @@
 ---
 title: Language Support
-description: "Overview of programming language support in Zed, including built-in and extension-based languages."
+description: "Overview of built-in programming language support in Zed."
 ---
 
 # Language Support in Zed
 
-Zed supports hundreds of programming languages and text formats.
-Some work out-of-the-box and others rely on 3rd party extensions.
+Zed includes built-in support for a set of programming languages and text formats.
 
 > The ones included out-of-the-box, natively built into Zed, are marked with \*.
 
@@ -81,7 +80,9 @@ Some work out-of-the-box and others rely on 3rd party extensions.
 - [Yarn](./languages/yarn.md)
 - [Zig](./languages/zig.md)
 
-## Additional Community Language Extensions
+## Additional Community Languages
+
+> **Removed in this fork.** These community language extensions can no longer be installed, because the extensions subsystem was removed from this fork. The list is kept for historical reference.
 
 - [Ada](https://github.com/wisn/zed-ada-language)
 - [Aiken](https://github.com/aiken-lang/zed-aiken)

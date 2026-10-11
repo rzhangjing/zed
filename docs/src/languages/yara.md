@@ -5,7 +5,7 @@ description: "Configure YARA language support in Zed, including language servers
 
 # YARA
 
-[YARA](https://virustotal.github.io/yara/) support is available through the [YARA extension](https://github.com/egibs/yara.zed).
+> **Removed in this fork.** [YARA](https://virustotal.github.io/yara/) support came from the [YARA extension](https://github.com/egibs/yara.zed), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [egibs/tree-sitter-yara](https://github.com/egibs/tree-sitter-yara)
 - Language Server: [avast/yls](https://github.com/avast/yls)

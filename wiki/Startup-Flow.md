@@ -73,7 +73,6 @@ app.run(move |cx| {
     cx.set_http_client(Arc::new(http));
     <dyn Fs>::set_global(fs.clone(), cx);
     OpenListener::set_global(cx, open_listener.clone());
-    extension::init(cx);
     // ... 继续注册 client / UserStore / LanguageRegistry / Theme / AppState 等
 });
 ```

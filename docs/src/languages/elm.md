@@ -5,7 +5,7 @@ description: "Configure Elm language support in Zed, including language servers 
 
 # Elm
 
-Elm support is available through the [Elm extension](https://github.com/zed-extensions/elm).
+> **Removed in this fork.** Elm support came from the [Elm extension](https://github.com/zed-extensions/elm), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [elm-tooling/tree-sitter-elm](https://github.com/elm-tooling/tree-sitter-elm)
 - Language Server: [elm-tooling/elm-language-server](https://github.com/elm-tooling/elm-language-server)

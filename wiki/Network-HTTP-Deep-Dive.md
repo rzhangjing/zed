@@ -134,5 +134,4 @@ graph TB
 
 - [Telemetry-and-Updates-Deep-Dive](Telemetry-and-Updates-Deep-Dive.md)（`session` 与自动更新的衔接）
 - [Persistence-Deep-Dive](Persistence-Deep-Dive.md)（配置/DB 迁移）
-- [Extension-Host-Deep-Dive](Extension-Host-Deep-Dive.md)（扩展下载走 `http_client`）
 - [Network-And-HTTP](Network-And-HTTP.md)（网络与 HTTP 族概览）

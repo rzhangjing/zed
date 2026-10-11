@@ -19,21 +19,21 @@ graph TB
 
 ## 2. `settings_content`（数据模型 · 与 UI 无关）
 
-`settings_content.rs`(48KB) 是"原始设置内容"的 schema 层：每个可编辑项是 `Option<T>`，便于"仅覆盖被改动的键"。
+`settings_content.rs`(34KB) 是"原始设置内容"的 schema 层：每个可编辑项是 `Option<T>`，便于"仅覆盖被改动的键"。
 
 | 类型 | 行 | 角色 |
 | --- | --- | --- |
-| `struct SettingsContent` | 174 | **根内容聚合**（editor/language/theme/terminal/workspace/project/title_bar… 各子域） |
-| `trait RootUserSettings` | 422 | 用户根设置契约（`DeserializeOwned`） |
-| `enum ProfileBase` / `struct SettingsProfile` | 470 / 481 | 设置档位（base）与自定义 profile |
-| `struct UserSettingsContent` / `ExtensionsSettingsContent` / `AudioSettingsContent` | 496 / 510 / 560 | 分面内容 |
-| `enum BaseKeymapContent` | 530 | 基础键位（VSCode/JetBrains/…）内容 |
-| `enum ParseStatus` | 107 | jsonc 解析状态 |
-| `struct PixelSetting` / `enum HideMouseMode` / `ReduceMotionMode` | 60 / 135 / 164 | 通用取值类型 |
-| `struct FeatureFlagsMap` | 359 | 特性开关 map |
+| `struct SettingsContent` | 169 | **根内容聚合**（editor/language/theme/terminal/workspace/project/title_bar… 各子域） |
+| `trait RootUserSettings` | 380 | 用户根设置契约（`DeserializeOwned`） |
+| `enum ProfileBase` / `struct SettingsProfile` | 428 / 439 | 设置档位（base）与自定义 profile |
+| `struct UserSettingsContent` / `AudioSettingsContent` | 454 / 514 | 分面内容 |
+| `enum BaseKeymapContent` | 484 | 基础键位（VSCode/JetBrains/…）内容 |
+| `enum ParseStatus` | 102 | jsonc 解析状态 |
+| `struct PixelSetting` / `enum HideMouseMode` / `ReduceMotionMode` | 58 / 130 / 159 | 通用取值类型 |
+| `struct FeatureFlagsMap` | 318 | 特性开关 map |
 | `trait MergeFrom` | merge_from.rs:17 | **增量合并**：`merge_from(&mut self, other)`/`merge_from_option`(22)——把"改动片段"叠到默认值上（大量 `impl`：33/63/77/…） |
 
-**按域文件**（每域一份 `*Content` 结构，字段全 `Option<..>`）：`editor.rs`(34KB)、`language.rs`(57KB)、`theme.rs`(53KB)、`terminal.rs`(18KB)、`workspace.rs`(35KB)、`project.rs`(34KB)、`agent.rs`(52KB)、`language_model.rs`(23KB)、`action.rs`(11KB)、`title_bar.rs`、`extension.rs`；`fallible_options.rs`/`serde_helper.rs` 提供容错反序列化。
+**按域文件**（每域一份 `*Content` 结构，字段全 `Option<..>`）：`editor.rs`(33KB)、`language.rs`(53KB)、`theme.rs`(53KB)、`terminal.rs`(18KB)、`workspace.rs`(35KB)、`project.rs`(25KB)、`agent.rs`(51KB)、`language_model.rs`(8KB)、`action.rs`(11KB)、`title_bar.rs`；`fallible_options.rs`/`serde_helper.rs` 提供容错反序列化。
 
 ## 3. `settings_ui`（图形设置页 · `settings_ui.rs` 259KB）
 
@@ -78,6 +78,6 @@ graph TB
 
 ## 6. 集成 / 相关页
 
-- 深页：[GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)、[Picker-Family-Deep-Dive.md](Picker-Family-Deep-Dive.md)（键位选择器）、[Extension-Deep-Dive.md](Extension-Deep-Dive.md)（扩展设置）、[Agent-Deep-Dive.md](Agent-Deep-Dive.md)（`agent.rs` 设置内容）、[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)（主题/键位应用）、[Persistence.md](Persistence.md)（`OnboardingPagesDb`）
+- 深页：[GPUI-Deep-Dive.md](GPUI-Deep-Dive.md)、[Picker-Family-Deep-Dive.md](Picker-Family-Deep-Dive.md)（键位选择器）、[Agent-Deep-Dive.md](Agent-Deep-Dive.md)（`agent.rs` 设置内容）、[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)（主题/键位应用）、[Persistence.md](Persistence.md)（`OnboardingPagesDb`）
 - 概览：[Settings-and-Themes.md](Settings-and-Themes.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

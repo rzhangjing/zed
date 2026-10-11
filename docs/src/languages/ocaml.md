@@ -5,7 +5,7 @@ description: "Configure OCaml language support in Zed, including language server
 
 # OCaml
 
-OCaml support is available through the [OCaml extension](https://github.com/zed-extensions/ocaml).
+> **Removed in this fork.** OCaml support came from the [OCaml extension](https://github.com/zed-extensions/ocaml), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter/tree-sitter-ocaml](https://github.com/tree-sitter/tree-sitter-ocaml)
 - Language Server: [ocaml/ocaml-lsp](https://github.com/ocaml/ocaml-lsp)

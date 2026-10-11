@@ -7,7 +7,7 @@ description: "Complete reference for all Zed settings."
 
 This is the complete reference for all Zed settings.
 
-You may also want to change your [theme](../themes.md), configure your [key bindings](../key-bindings.md), set up [tasks](../tasks.md), or install [extensions](../extensions.md).
+You may also want to change your [theme](../themes.md), configure your [key bindings](../key-bindings.md), or set up [tasks](../tasks.md).
 
 # Settings
 
@@ -149,68 +149,6 @@ Non-negative `float` values
 **Options**
 
 `boolean` values
-
-## Auto Install extensions
-
-- Description: Define extensions to install automatically or never install.
-- Setting: `auto_install_extensions`
-- Default: `{ "html": true }`
-
-**Options**
-
-You can find the names of your currently installed extensions by listing the subfolders under the [extension installation location](../extensions/installing-extensions.md#installation-location):
-
-On macOS:
-
-```sh
-ls ~/Library/Application\ Support/Zed/extensions/installed/
-```
-
-On Linux:
-
-```sh
-ls ~/.local/share/zed/extensions/installed
-```
-
-On Windows:
-
-```pwsh
-Get-ChildItem "$env:LOCALAPPDATA\Zed\extensions\installed" -Name
-```
-
-Define extensions which should be installed (`true`) or never installed (`false`).
-
-```json [settings]
-{
-  "auto_install_extensions": {
-    "html": true,
-    "dockerfile": true,
-    "docker-compose": false
-  }
-}
-```
-
-## Auto Update extensions
-
-- Description: Disable auto-updates for specific extensions.
-- Setting: `auto_update_extensions`
-- Default: `{}`
-
-**Options**
-
-By default, every installed extension is auto-updated when Zed starts.
-Add an extension here with `false` to pin it to its currently installed version.
-
-```json [settings]
-{
-  "auto_update_extensions": {
-    "html": false
-  }
-}
-```
-
-Selecting **Install Another Version…** from an extension's `⋯` menu on the Extensions
-page ({#action zed::Extensions}) does this automatically.
 
 ## Autosave
 
@@ -596,7 +534,6 @@ When enabled, this setting will automatically close tabs for files that have bee
 
 - `"unified"`: Show changes inline with added and deleted lines stacked vertically
 - `"split"`: Display old and new versions side by side in separate panes (default)
-
 
 ## Disable AI
 
@@ -4089,7 +4026,7 @@ List of `integer` column numbers
 
 - `variables`: Custom variables for task configuration
 - `enabled`: Whether tasks are enabled
-- `prefer_lsp`: Whether to prefer LSP-provided tasks over Zed language extension ones
+- `prefer_lsp`: Whether to prefer LSP-provided tasks over Zed's built-in language tasks
 
 ## Telemetry
 

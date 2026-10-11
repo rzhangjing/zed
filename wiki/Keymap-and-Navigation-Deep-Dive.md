@@ -50,7 +50,7 @@
 ## 3. 核心方法与调用锚点
 
 **keymap_editor 解析与编辑（keymap_editor.rs）**
-- `KeymapEditor`(:432) 读取当前活动 `KeyContext`，把生效绑定解析为 `KeyBinding`(:1748) 列表，按来源分类成 `ActionMapping`(:252)（区分 default / user / project / extension）。
+- `KeymapEditor`(:432) 读取当前活动 `KeyContext`，把生效绑定解析为 `KeyBinding`(:1748) 列表，聚合成 `ActionMapping`(:252)（仅 `keystrokes` + `context`）；来源过滤走 `SourceFilters`(:233) 与 `KeybindSource`（User/Base/Default/Vim/Unknown）。
 - `SearchMode`(:192) + `SourceFilters`(:233) 组合过滤；`ActionCompletionProvider` 提供动作名模糊匹配。
 - 冲突检测：`KeybindConflict`(:258)/`ConflictOrigin`(:264)/`ConflictState`(:308) 计算同一 keystroke 在相同 context 的多重绑定。
 - 编辑落盘：新增/`remove_keybinding`(:3690) 改写 `keymap.json`（经 `settings` 的 `KeymapFile`），`PreviousEdit`(:466) 支持 undo。

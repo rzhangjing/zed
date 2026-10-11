@@ -190,7 +190,6 @@ impl VsCodeSettings {
             collaboration_panel: None,
             diagnostics: None,
             editor: self.editor_settings_content(),
-            extension: ExtensionSettingsContent::default(),
             call_hierarchy: None,
             file_finder: None,
             global_lsp_settings: skip_default(GlobalLspSettingsContent {

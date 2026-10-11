@@ -5,7 +5,7 @@ description: "Configure PowerShell language support in Zed, including language s
 
 # PowerShell
 
-PowerShell language support in Zed is provided by the community-maintained [Zed PowerShell extension](https://github.com/wingyplus/zed-powershell). Please report issues to: [github.com/wingyplus/zed-powershell/issues](https://github.com/wingyplus/zed-powershell/issues)
+> **Removed in this fork.** PowerShell support came from the community-maintained [Zed PowerShell extension](https://github.com/wingyplus/zed-powershell), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [airbus-cert/tree-sitter-powershell](https://github.com/airbus-cert/tree-sitter-powershell)
 - Language Server: [PowerShell/PowerShellEditorServices](https://github.com/PowerShell/PowerShellEditorServices)

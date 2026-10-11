@@ -5,7 +5,7 @@ description: "Configure Swift language support in Zed, including language server
 
 # Swift
 
-Swift language support in Zed is provided by the community-maintained [Swift extension](https://github.com/zed-extensions/swift).
+> **Removed in this fork.** Swift support came from the community-maintained [Swift extension](https://github.com/zed-extensions/swift), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 Report issues to: [https://github.com/zed-extensions/swift/issues](https://github.com/zed-extensions/swift/issues)
 
 - Tree-sitter: [alex-pinkus/tree-sitter-swift](https://github.com/alex-pinkus/tree-sitter-swift)

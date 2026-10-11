@@ -23,7 +23,7 @@
 | `environment` | `Entity<ProjectEnvironment>` | 语言服务器/任务用环境变量 |
 | `settings_observer` | `Entity<SettingsObserver>` | 设置变更联动 |
 | `search_history`(+included/excluded) | `SearchHistory` | 搜索历史 |
-| `node` | `Option<NodeRuntime>` | 内置 Node（跑 LSP/扩展） |
+| `node` | `Option<NodeRuntime>` | 内置 Node（跑 LSP） |
 | `agent_location` | `Option<AgentLocation>` | agent 当前定位（buffer+anchor） |
 | `downloading_files` / `last_worktree_paths` / `remotely_created_models` | | 协作下载/远程模型保活 |
 
@@ -44,7 +44,7 @@
 
 ## 4. `LspStore`（[lsp_store.rs](../crates/project/src/lsp_store.rs)，683KB）
 - 持有 `Vec<LanguageServerContainer>`：每个含 `Vec<(Capability, LanguageServerId)>`、`live_local_servers`、`enabled`。
-- server 生命周期：`start_language_server`→`adapter` 找命令→`node`/扩展提供可执行→initialize handshake→`didOpen`。
+- server 生命周期：`start_language_server`→`adapter` 找命令→`node` 提供可执行→initialize handshake→`didOpen`。
 - 请求编解码在 [`lsp_command.rs`](../crates/project/src/lsp_command.rs)：`trait LspRequest`/`FromLsp`/`ToLsp`（`Completion`、`CodeAction`、`Hover`、`Rename`…），统一 `send_request`。
 - 编辑类请求 `EditOrNavigateOperation`（rename/organize imports/code action resolve）会**产 `Operation` 应用到 buffer**（走 CRDT，可协作）。
 - `pull_diagnostics`（项目级磁盘诊断）、`log_store`、`progress`（`$/progress`）。

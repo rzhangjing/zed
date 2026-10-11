@@ -5,7 +5,7 @@ description: "Configure Svelte language support in Zed, including language serve
 
 # Svelte
 
-Svelte support is available through the [Svelte extension](https://github.com/zed-extensions/svelte).
+> **Removed in this fork.** Svelte support came from the [Svelte extension](https://github.com/zed-extensions/svelte), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter-grammars/tree-sitter-svelte](https://github.com/tree-sitter-grammars/tree-sitter-svelte)
 - Language Server: [sveltejs/language-tools](https://github.com/sveltejs/language-tools)

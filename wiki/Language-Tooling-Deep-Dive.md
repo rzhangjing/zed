@@ -65,7 +65,7 @@ graph TB
 
 ## 5. 集成点
 
-- `zed` 启动调用 `languages::init`（在 `language::init` 之后、扩展加载之前）填充内置语言；扩展可再注册同名/新语言覆盖。
+- `zed` 启动调用 `languages::init`（在 `language::init` 之后）填充内置语言。
 - `language_tools` 依赖 `editor`/`workspace` 的 `ToolbarItemView`/`StatusItemView` trait 挂载；仅在 debug 构建或显式命令下部署，避免污染正式版工具栏。
 - 每语言 `.rs`（如 `python.rs` 127KB、`rust.rs` 93KB）实现 `lsp::LspAdapter`（`server_id`/`language_server_binary`/`labels_for_completions`…）与 `project::ContextProvider`。
 - `grammars` crate 汇集所有 tree-sitter grammar crate，`languages` 经 `language()`(:386) 消费。

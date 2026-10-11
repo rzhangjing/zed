@@ -45,9 +45,6 @@ pub enum OpenRequestKind {
         ),
     ),
     FocusApp,
-    Extension {
-        extension_id: String,
-    },
     AgentPanel {
         external_source_prompt: Option<ExternalSourcePrompt>,
     },
@@ -72,10 +69,6 @@ impl std::fmt::Debug for OpenRequestKind {
         match self {
             Self::CliConnection(_) => write!(f, "CliConnection(..)"),
             Self::FocusApp => write!(f, "FocusApp"),
-            Self::Extension { extension_id } => f
-                .debug_struct("Extension")
-                .field("extension_id", extension_id)
-                .finish(),
             Self::AgentPanel {
                 external_source_prompt,
             } => f
@@ -127,10 +120,6 @@ impl OpenRequest {
                 this.parse_file_path(file)
             } else if let Some(file) = url.strip_prefix("zed://file") {
                 this.parse_file_path(file)
-            } else if let Some(extension_id) = url.strip_prefix("zed://extension/") {
-                this.kind = Some(OpenRequestKind::Extension {
-                    extension_id: extension_id.to_string(),
-                });
             } else if url.starts_with(agent_skills::SKILL_SHARE_LINK_PREFIX) {
                 this.parse_skill_install_url(&url)?
             } else if let Some(agent_path) = url.strip_prefix("zed://agent") {

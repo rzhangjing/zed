@@ -5,7 +5,7 @@ description: "Configure SQL language support in Zed, including language servers 
 
 # SQL
 
-SQL files are handled by the [SQL Extension](https://github.com/zed-extensions/sql).
+> **Removed in this fork.** SQL files were handled by the [SQL Extension](https://github.com/zed-extensions/sql), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [nervenes/tree-sitter-sql](https://github.com/nervenes/tree-sitter-sql)
 

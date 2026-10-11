@@ -70,7 +70,7 @@ use zed::{
     handle_keymap_file_changes, initialize_workspace, open_paths_with_positions,
 };
 
-use crate::zed::{CrashHandler, OpenRequestKind, eager_load_active_theme_and_icon_theme};
+use crate::zed::{CrashHandler, OpenRequestKind};
 
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
@@ -570,7 +570,6 @@ fn main() {
         reliability::init(client.clone(), app_state.workspace_store.clone(), cx);
 
         theme_settings::init(theme::LoadThemes::All(Box::new(Assets)), cx);
-        eager_load_active_theme_and_icon_theme(fs.clone(), cx);
 
         command_palette::init(cx);
         language_model::init(cx);
@@ -856,22 +855,6 @@ fn handle_open_request(request: OpenRequest, app_state: Arc<AppState>, cx: &mut 
                         return anyhow::Ok(());
                     }
                     restore_or_create_workspace(app_state, cx).await
-                })
-                .detach_and_log_err(cx);
-            }
-            OpenRequestKind::Extension { extension_id } => {
-                cx.spawn(async move |cx| {
-                    let workspace =
-                        workspace::get_any_active_multi_workspace(app_state, cx.clone()).await?;
-                    workspace.update(cx, |_, window, cx| {
-                        window.dispatch_action(
-                            Box::new(zed_actions::Extensions {
-                                category_filter: None,
-                                id: Some(extension_id),
-                            }),
-                            cx,
-                        );
-                    })
                 })
                 .detach_and_log_err(cx);
             }
@@ -1298,7 +1281,6 @@ pub(crate) async fn restorable_workspace_locations(
 fn init_paths() -> HashMap<io::ErrorKind, Vec<&'static Path>> {
     [
         paths::config_dir(),
-        paths::extensions_dir(),
         paths::languages_dir(),
         paths::database_dir(),
         paths::logs_dir(),

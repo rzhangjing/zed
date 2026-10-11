@@ -24,7 +24,7 @@ winget install -e --id ZedIndustries.Zed
 - Installed via installer: Use `Settings` → `Apps` → `Installed apps`, search for Zed, and click Uninstall.
 - Built from source: Remove the build output directory you created (e.g., your target/install folder).
 
-Your settings and extensions live in your user profile. When uninstalling, you can choose to keep or remove them.
+Your settings live in your user profile. When uninstalling, you can choose to keep or remove them.
 
 ## Troubleshooting
 
@@ -33,7 +33,7 @@ Your settings and extensions live in your user profile. When uninstalling, you c
 - Check that your hardware and operating system version are compatible with Zed. See our [installation guide](./installation.md) for more information.
 - Update your GPU drivers from your GPU vendor (Intel/AMD/NVIDIA/Qualcomm).
 - Ensure hardware acceleration is enabled in Windows and not blocked by third‑party software.
-- Try launching Zed with no extensions or custom settings to isolate conflicts.
+- Try launching Zed with no custom settings to isolate conflicts.
 
 ### Terminal issues
 

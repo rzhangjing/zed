@@ -5,7 +5,7 @@ description: "Configure C# language support in Zed, including language servers a
 
 # C#
 
-C# support is available through the [C# extension](https://github.com/zed-extensions/csharp).
+> **Removed in this fork.** C# support came from the [C# extension](https://github.com/zed-extensions/csharp), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter/tree-sitter-c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp)
 - Language Servers:

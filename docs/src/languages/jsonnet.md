@@ -5,7 +5,7 @@ description: "Configure Jsonnet language support in Zed, including language serv
 
 # Jsonnet
 
-Jsonnet language support in Zed is provided by the community-maintained [Jsonnet extension](https://github.com/narqo/zed-jsonnet).
+> **Removed in this fork.** Jsonnet support came from the community-maintained [Jsonnet extension](https://github.com/narqo/zed-jsonnet), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [sourcegraph/tree-sitter-jsonnet](https://github.com/sourcegraph/tree-sitter-jsonnet)
 - Language Server: [grafana/jsonnet-language-server](https://github.com/grafana/jsonnet-language-server)

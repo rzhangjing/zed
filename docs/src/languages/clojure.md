@@ -5,7 +5,7 @@ description: "Configure Clojure language support in Zed, including language serv
 
 # Clojure
 
-Clojure support is available through the [Clojure extension](https://github.com/zed-extensions/clojure).
+> **Removed in this fork.** Clojure support came from the [Clojure extension](https://github.com/zed-extensions/clojure), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [prcastro/tree-sitter-clojure](https://github.com/prcastro/tree-sitter-clojure)
 - Language Server: [clojure-lsp/clojure-lsp](https://github.com/clojure-lsp/clojure-lsp)

@@ -5,7 +5,7 @@ description: "Configure Helm language support in Zed, including language servers
 
 # Helm
 
-Support for Helm in Zed is provided by the community-maintained [Helm extension](https://github.com/cabrinha/helm.zed).
+> **Removed in this fork.** Helm support came from the community-maintained [Helm extension](https://github.com/cabrinha/helm.zed), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [tree-sitter-go-template](https://github.com/ngalaiko/tree-sitter-go-template/tree/master)
 - Language Server: [mrjosh/helm-ls](https://github.com/mrjosh/helm-ls)

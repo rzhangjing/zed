@@ -28,7 +28,7 @@ graph TB
     F --> G[TaskHook/SaveStrategy 决定是否先保存]
 ```
 
-`TaskStore`（Local/Remote 两态，`local` L162 / `remote` L183）把模板按 `TaskSource`（用户/项目/扩展）聚合，`task_context_for_location`（L205）解析出当前文件/工作目录来填变量；协作时 `shared`/`unshared`（L247/259）同步任务清单。`RevealStrategy`/`HideStrategy`（L103/116）控制任务面板何时显隐。
+`TaskStore`（Local/Remote 两态，`local` L162 / `remote` L183）把模板按 `TaskSourceKind`（用户输入 / worktree 的 `.zed/task.json` / 全局 task.json / 语言 / LSP）聚合，`task_context_for_location`（L205）解析出当前文件/工作目录来填变量；协作时 `shared`/`unshared`（L247/259）同步任务清单。`RevealStrategy`/`HideStrategy`（L103/116）控制任务面板何时显隐。
 
 ## 2. REPL / 内核（交互式代码执行）
 

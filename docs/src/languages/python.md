@@ -189,7 +189,7 @@ Alternatively, if you're using `uv`, running `uv sync` will create a virtual env
 
 Zed uses the selected Python toolchain for your project in the following ways:
 
-- Built-in language servers will be automatically configured with the path to the toolchain's Python interpreter and, if applicable, virtual environment. This is important so that they can resolve dependencies. (Note that language servers provided by extensions can't be automatically configured like this currently.)
+- Built-in language servers will be automatically configured with the path to the toolchain's Python interpreter and, if applicable, virtual environment. This is important so that they can resolve dependencies.
 - Python tasks (such as pytest tests) will be run using the toolchain's Python interpreter.
 - If the toolchain is a virtual environment, the environment's activation script will be run automatically when you launch a new shell in Zed's integrated terminal, giving you convenient access to the selected Python interpreter and dependency set.
 - If a built-in language server is installed in the active virtual environment, that binary will be used instead of Zed's private automatically-installed binary.

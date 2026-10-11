@@ -5,7 +5,7 @@ description: "Configure Racket language support in Zed, including language serve
 
 # Racket
 
-Racket support is available through the [Racket extension](https://github.com/zed-extensions/racket).
+> **Removed in this fork.** Racket support came from the [Racket extension](https://github.com/zed-extensions/racket), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [zed-industries/tree-sitter-racket](https://github.com/zed-industries/tree-sitter-racket)
 

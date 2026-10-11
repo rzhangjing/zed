@@ -241,15 +241,7 @@ Zed has three dock positions: left, bottom, and right. Panels can be moved betwe
 
 > **Tip:** IntelliJ has an "Override IDE shortcuts" setting that lets terminal shortcuts like `Ctrl+Left/Right` work normally. In Zed, terminal keybindings are separate—check your keymap if familiar shortcuts aren't working in the terminal panel.
 
-### Extensions vs. Plugins
-
-IntelliJ has a large plugin catalog covering everything from language support to database tools to deployment integrations.
-
-Zed's extension catalog is smaller and more focused:
-
-- Language support and syntax highlighting
-- Themes
-- Context servers
+### Built-in Features
 
 Several features that require plugins in other editors are built into Zed:
 

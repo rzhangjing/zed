@@ -124,7 +124,6 @@ Use `Add Server` (in the page header) to:
 
 - `Add Local Server`
 - `Add Remote Server`
-- `Install from Extensions`
 
 Each configured server row exposes:
 

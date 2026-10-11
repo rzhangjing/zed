@@ -20,7 +20,7 @@ sandbox?](#trust) for more details.
 - Tool permissions restrict the agent's ability to run certain tool actions in the first place
 - Once a tool action is actually running, sandboxing restricts what it can do
 
-Sandboxing applies only to Zed Agent. It does not sandbox Zed itself, language servers, extensions, tasks, your normal
+Sandboxing applies only to Zed Agent. It does not sandbox Zed itself, language servers, tasks, your normal
 terminal tabs, [External Agents](./external-agents.md), or [Terminal Threads](./terminal-threads.md).
 
 > **Note**: Under some conditions, sandboxes on Windows are weaker than those on

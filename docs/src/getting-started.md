@@ -58,11 +58,7 @@ Common first changes:
 
 ### 4. Set Up Your Language
 
-Zed includes built-in support for many languages. For others, install the extension:
-
-1. Open Extensions with `Cmd+Shift+X` (macOS) or `Ctrl+Shift+X` (Linux/Windows)
-2. Search for your language
-3. Click Install
+Zed includes built-in support for many languages.
 
 See [Languages](./languages.md) for language-specific setup instructions.
 
@@ -83,7 +79,6 @@ We have dedicated guides for switching from other editors:
 - [RustRover](./migrate/rustrover.md) — Rust development in Zed
 
 You can also enable familiar keybindings:
-
 
 ## Join the Community
 

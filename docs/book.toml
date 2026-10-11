@@ -77,10 +77,8 @@ enable = false
 # MCP
 "/assistant/model-context-protocolCitedby.html" = "/docs/ai/mcp.html"
 "/context-servers.html" = "/docs/ai/mcp.html"
-"/extensions/context-servers.html" = "/docs/extensions/mcp-extensions.html"
 
 # Languages
-"/adding-new-languages.html" = "/docs/extensions/languages.html"
 "/elixir.html" = "/docs/languages/elixir.html"
 "/javascript.html" = "/docs/languages/javascript.html"
 "/languages/languages/html.html" = "/docs/languages/html.html"

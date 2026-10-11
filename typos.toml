@@ -12,7 +12,6 @@ extend-exclude = [
 
     # File suffixes aren't typos.
     "crates/theme/src/icon_theme.rs",
-    "crates/extensions_ui/src/extension_suggest.rs",
 
     # Vendored JSON schemas from SchemaStore.
     "crates/json_schema_store/src/schemas/",
@@ -25,11 +24,6 @@ extend-exclude = [
     "crates/editor/src/edit_prediction_tests.rs",
     # We have some base64-encoded data that is incorrectly being flagged.
     "crates/rpc/src/auth.rs",
-    # glsl isn't recognized by this tool.
-    "extensions/glsl/languages/glsl/",
-    # Protols is the name of the language server.
-    "extensions/proto/extension.toml",
-    "extensions/proto/src/language_servers/protols.rs",
     # Windows likes its abbreviations.
     "crates/gpui_windows/src/directx_renderer.rs",
     "crates/gpui_windows/src/events.rs",

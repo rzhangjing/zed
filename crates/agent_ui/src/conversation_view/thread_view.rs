@@ -1,6 +1,6 @@
 use crate::{
     DEFAULT_THREAD_TITLE, SelectPermissionGranularity,
-    agent_configuration::configure_context_server_modal::default_markdown_style,
+    agent_configuration::markdown_style::default_markdown_style,
     conversation_view::thread_search_bar::{ThreadSearchBar, ThreadSearchBarEvent},
     open_abs_path_at_point,
     thread_metadata_store::{ThreadId, ThreadMetadataStore},

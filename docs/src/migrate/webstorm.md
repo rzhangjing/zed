@@ -266,15 +266,7 @@ Zed supports auto-detection for common test frameworks:
 
 The test output appears in the terminal panel. For Jest, use `--verbose` for detailed output or `--watch` for continuous testing during development.
 
-### Extensions vs. Plugins
-
-WebStorm has a plugin catalog covering additional language support, themes, and tool integrations.
-
-Zed's extension catalog is smaller and more focused:
-
-- Language support and syntax highlighting
-- Themes
-- Context servers
+### Built-in Features
 
 Several features that require plugins in WebStorm are built into Zed:
 
@@ -295,7 +287,7 @@ To set expectations clearly, here's what WebStorm offers that Zed doesn't have:
 - **Database tools** — Use DataGrip, DBeaver, or TablePlus
 - **Framework-specific tooling** (Angular schematics, React refactorings) — Use CLI tools
 - **Visual package.json editor** — Edit the file directly
-- **Built-in REST client** — Use external tools or extensions
+- **Built-in REST client** — Use external tools such as curl, Postman, or Insomnia
 - **Profiler integration** — Use Chrome DevTools or Node.js profiling tools
 
 ## Collaboration in Zed vs. WebStorm

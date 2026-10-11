@@ -5,7 +5,7 @@ description: "Configure Erlang language support in Zed, including language serve
 
 # Erlang
 
-Erlang support is available through the [Erlang extension](https://github.com/zed-extensions/erlang).
+> **Removed in this fork.** Erlang support came from the [Erlang extension](https://github.com/zed-extensions/erlang), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [WhatsApp/tree-sitter-erlang](https://github.com/WhatsApp/tree-sitter-erlang)
 - Language Servers:

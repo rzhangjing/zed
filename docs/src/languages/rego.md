@@ -5,7 +5,7 @@ description: "Configure Rego language support in Zed, including language servers
 
 # Rego
 
-Rego language support in Zed is provided by the community-maintained [Rego extension](https://github.com/StyraInc/zed-rego).
+> **Removed in this fork.** Rego support came from the community-maintained [Rego extension](https://github.com/StyraInc/zed-rego), and the extensions subsystem was removed from this fork. This page is kept for historical reference.
 
 - Tree-sitter: [FallenAngel97/tree-sitter-rego](https://github.com/FallenAngel97/tree-sitter-rego)
 - Language Server: [open-policy-agent/regal](https://github.com/open-policy-agent/regal)
