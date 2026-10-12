@@ -41,7 +41,7 @@ clap = { workspace = true }
 # unstable-dynamic: `CompleteEnv` in main answers COMPLETE=<shell> callbacks so
 # sourced scripts get live completions (#2413). No-op unless that env is set.
 clap_complete = { workspace = true, features = ["unstable-dynamic"] }
-dirs = { workspace = true }
+dirs = { version = "5" }
 # Strip the `\\?\` prefix std::fs::canonicalize returns on Windows; the prefix
 # breaks downstream tools (git treats it as a URL). Same use as octos-agent.
 dunce = "1"
@@ -58,7 +58,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 rustyline = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking", "multipart"] }
 url = { workspace = true }
 sha2 = { workspace = true }
 semver = { workspace = true }
@@ -76,7 +76,7 @@ constant_time_eq = "0.3"
 percent-encoding = "2"
 open = { workspace = true }
 zip = { workspace = true }
-quick-xml = { workspace = true }
+quick-xml = { version = "0.37" }
 image = { workspace = true }
 regex = { workspace = true }
 tempfile = { workspace = true }
@@ -90,8 +90,17 @@ toml = { workspace = true }
 # over stdio. The official Rust SDK provides the JSON-RPC framing, the schema
 # types (initialize/session-new/prompt/cancel + session/update notifications),
 # and the connection runtime; `acp.rs` implements the agent side on top of the
-# existing octos agent loop. Pinned to the published 1.2.0 line.
-agent-client-protocol = "1.2.0"
+# existing octos agent loop.
+#
+# Merged workspace: this was pinned to the published 1.2.0 line, but Zed's agent
+# crates require `agent-client-protocol = "=2.0.0"`, and the two majors pin
+# `agent-client-protocol-schema` to different exact versions (`=1.4.0` vs
+# `=1.5.0`), so both majors cannot coexist in one dependency graph. Use the
+# workspace entry (2.0.0) instead: every ACP item `acp.rs` uses (Agent, Client,
+# ConnectTo, ConnectionTo, Responder, Stdio, Channel, JsonRpcRequest/Response,
+# on_receive_request, on_receive_notification, schema, util) exists in 2.0.0,
+# and none of the items 2.0.0 removed (the Mcp*/zed_* helpers) are referenced.
+agent-client-protocol.workspace = true
 keyring = { workspace = true }
 flate2 = { workspace = true }
 qrcode = { workspace = true }
@@ -100,7 +109,7 @@ argon2 = { workspace = true }
 tar = { workspace = true }
 # Optional deps gated by feature flags (api, admin-bot)
 axum = { workspace = true, optional = true }
-tower-http = { workspace = true, optional = true }
+tower-http = { version = "0.6", features = ["cors", "trace"], optional = true }
 # CancellationToken shared with the rmcp streamable-HTTP service so Ctrl+C tears
 # down live SSE sessions instead of blocking graceful shutdown.
 tokio-util = { version = "0.7", optional = true }
@@ -112,7 +121,7 @@ rust-embed = { workspace = true, optional = true }
 metrics = { workspace = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
 lettre = { workspace = true, optional = true }
-rand = { workspace = true, optional = true }
+rand = { version = "0.8", optional = true }
 teloxide = { workspace = true, optional = true }
 sysinfo = { version = "0.34", optional = true }
 redb.workspace = true

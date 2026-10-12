@@ -29,7 +29,7 @@ globset = { workspace = true }
 # Shell-quote validator argv when wrapping command validators for a POSIX
 # sandbox (so `sh -c` reconstructs the exact argv rather than word-splitting).
 shlex = "1"
-which = { workspace = true }
+which = { version = "7" }
 # Strip Windows `\\?\` verbatim path prefixes (from `fs::canonicalize`) before
 # handing paths to external programs like git, which mangle `\\?\C:\…` into
 # `//?/C:/…` and fail. No-op on Unix and on already-simple paths.
@@ -37,7 +37,7 @@ dunce = "1"
 regex = { workspace = true }
 ignore = { workspace = true }
 futures = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking", "multipart"] }
 # MCP over the official rmcp SDK. Client: stdio + streamable-HTTP + OAuth 2.1.
 # Server (`octos mcp-serve`): `server` + `transport-io` (stdio handler) and
 # `transport-streamable-http-server` (the tower service the CLI mounts in axum).
@@ -72,15 +72,22 @@ keyring = { workspace = true }
 url = { workspace = true }
 htmd = { workspace = true }
 octos-research = { workspace = true, features = ["http"] }
-html5ever = { workspace = true }
-markup5ever_rcdom = { workspace = true }
-dirs = { workspace = true }
+html5ever = { version = "0.35" }
+markup5ever_rcdom = { version = "0.35" }
+dirs = { version = "5" }
 sha2 = { workspace = true }
 flate2 = { workspace = true }
 tar = { workspace = true }
 libc = { workspace = true }
 gix = { workspace = true, optional = true }
 similar = { workspace = true, optional = true }
+# Merged workspace: these four were the crates.io pins (tree-sitter 0.24, grammar
+# crates 0.23). Zed's `language` crate uses the git `tree-sitter` 0.27, and
+# `tree-sitter` declares `links = "tree-sitter"`, so only one version may be in
+# the graph. The `ast` feature's parser setup (`Parser::new`,
+# `set_language(&LANGUAGE.into())`, `parse`, `Node` walking) is unchanged in
+# 0.27, and the grammar crates expose the same `LANGUAGE` constants, so inherit
+# the workspace (Zed's) versions instead.
 tree-sitter = { workspace = true, optional = true }
 tree-sitter-rust = { workspace = true, optional = true }
 tree-sitter-python = { workspace = true, optional = true }

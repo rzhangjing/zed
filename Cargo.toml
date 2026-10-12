@@ -238,6 +238,54 @@ members = [
     #
 
     "tooling/perf",
+
+    #
+    # Octos (merged from the octos workspace; see AGENTS.md and .rules)
+    #
+    # These are Octos' own crates, merged into this tree. `default-members`
+    # stays `crates/zed`, so a plain `cargo build` at the root still builds Zed
+    # only; build Octos with `-p octos-cli` (or `--workspace`).
+    #
+
+    "crates/octos-core",
+    "crates/octos-diagnostics",
+    "crates/octos-research",
+    "crates/octos-memory",
+    "crates/octos-llm",
+    "crates/octos-agent",
+    "crates/octos-bus",
+    "crates/octos-workflows",
+    "crates/octos-server",
+    "crates/octos-store",
+    "crates/octos-services",
+    "crates/octos-cli",
+    "crates/app-skills/news",
+    "crates/app-skills/deep-search",
+    "crates/app-skills/deep-crawl",
+    "crates/app-skills/send-email",
+    "crates/app-skills/account-manager",
+    "crates/app-skills/time",
+    "crates/app-skills/weather",
+    "crates/app-skills/smart-home",
+    "crates/app-skills/wechat-bridge",
+    "crates/app-skills/skill-evolve",
+    "crates/app-skills/harness-starter-generic",
+    "crates/app-skills/harness-starter-report",
+    "crates/app-skills/harness-starter-audio",
+    "crates/app-skills/harness-starter-coding",
+    "crates/platform-skills/voice",
+    "crates/octos-dora-mcp",
+    "crates/octos-pipeline",
+    "crates/octos-plugin",
+    "crates/octos-sandbox",
+    "crates/octos-swarm",
+    "crates/octos-fleet",
+    "crates/octos-fleet-worker",
+    "crates/octos-embed-llama",
+    "crates/octos-ffi",
+    "crates/octos-uniffi",
+    "crates/octos-wasm",
+    "crates/octos-pyo3",
 ]
 default-members = ["crates/zed"]
 
@@ -246,6 +294,15 @@ exclude = ["vendor/octocrab"]
 [workspace.package]
 publish = false
 edition = "2024"
+
+# Octos' own crates inherit these (`version.workspace = true` and friends), so
+# the merged workspace has to carry them. Zed's crates inherit only `edition`
+# and `publish`, so adding them changes nothing for Zed.
+version = "2.0.3-rc.13"
+rust-version = "1.85.0"
+authors = ["octos team"]
+license = "Apache-2.0"
+repository = "https://github.com/octos-org/octos"
 
 [workspace.dependencies]
 
@@ -271,7 +328,10 @@ buffer_diff = { path = "crates/buffer_diff" }
 call_hierarchy = { path = "crates/call_hierarchy" }
 cli = { path = "crates/cli" }
 client = { path = "crates/client" }
-clock = { path = "crates/clock" }
+# The package is `zed-clock`: Octos' `crates/app-skills/time` is also named
+# `clock`, and a workspace cannot hold two packages with one name. The key stays
+# `clock`, so every `clock.workspace = true` dependent is unaffected.
+clock = { path = "crates/clock", package = "zed-clock" }
 collections = { path = "crates/collections", version = "0.1.0" }
 command_palette = { path = "crates/command_palette" }
 command_palette_hooks = { path = "crates/command_palette_hooks" }
@@ -600,7 +660,13 @@ jsonschema = { version = "0.51", default-features = false }
 jupyter-protocol = "1.4.0"
 jupyter-websocket-client = "1.1.0"
 libc = "0.2"
-libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
+# Bumped from 0.30.1 by the Octos merge: Octos' `rusqlite 0.40` requires
+# `libsqlite3-sys ^0.38.1`, and both crates declare `links = "sqlite3"`, so only
+# one version may be in the graph. `sqlez` (the only consumer here) still
+# compiles against 0.38.2 — every SQLite identifier it uses (45 of them, via
+# `use libsqlite3_sys::*` plus `sqlite3_exec`) exists in both versions, and the
+# `bundled` feature is unchanged.
+libsqlite3-sys = { version = "0.38.2", features = ["bundled"] }
 linkify = "0.10.0"
 log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
 lru = "0.16"
@@ -724,7 +790,10 @@ rust-embed = { version = "8.11", features = ["include-exclude"] }
 rust-i18n = "4.2.0"
 rustc-hash = "2.1.0"
 rustix = { version = "1.1", features = ["fs"] }
-rustls = { version = "0.23.26" }
+# Octos asks for `default-features = false` with the ring provider; the merged
+# spec keeps Zed's defaults and adds the ring provider on top, which is
+# additive.
+rustls = { version = "0.23.26", features = ["std", "tls12", "ring"] }
 rustls-platform-verifier = "0.7"
 # WARNING: If you change this, you must also publish a new version of zed-scap to crates.io
 scap = { git = "https://github.com/zed-industries/scap", rev = "4afea48c3b002197176fb19cd0f9b180dd36eaac", default-features = false, package = "zed-scap", version = "0.0.8-zed" }
@@ -770,7 +839,8 @@ time = { version = "0.3", features = [
     "local-offset",
 ] }
 tiny_http = "0.12"
-tokio = { version = "1" }
+# Widened for Octos, which needs tokio's full feature set.
+tokio = { version = "1", features = ["full"] }
 toml = "0.8"
 tower-http = "0.4.4"
 tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter", rev = "43623ec9bf0eaaf7113285c46e8a09018f181b18" }
@@ -824,6 +894,161 @@ yaml-rust2 = "0.8"
 yawc = { git = "https://github.com/zed-industries/yawc", rev = "71a452f551cac178367eaac5d7418a09afa1f3a2", version = "0.3.3" }
 zeroize = "1.8"
 zstd = "0.11"
+
+#
+# Octos
+#
+# Merged from the octos workspace (see the `members` list above). Everything in
+# this section is additive: it is what Octos' crates inherit through
+# `foo.workspace = true`. Zed's table above is untouched except for the two
+# feature unions and the version conflicts documented at the end of this
+# section.
+#
+
+# Octos internal crates
+octos-core = { path = "crates/octos-core" }
+octos-diagnostics = { path = "crates/octos-diagnostics" }
+octos-research = { path = "crates/octos-research" }
+octos-memory = { path = "crates/octos-memory" }
+octos-llm = { path = "crates/octos-llm" }
+octos-agent = { path = "crates/octos-agent" }
+octos-bus = { path = "crates/octos-bus" }
+octos-workflows = { path = "crates/octos-workflows" }
+octos-server = { path = "crates/octos-server" }
+octos-store = { path = "crates/octos-store" }
+octos-services = { path = "crates/octos-services" }
+octos-pipeline = { path = "crates/octos-pipeline" }
+octos-plugin = { path = "crates/octos-plugin" }
+octos-swarm = { path = "crates/octos-swarm" }
+octos-fleet = { path = "crates/octos-fleet" }
+octos-fleet-worker = { path = "crates/octos-fleet-worker" }
+octos-embed-llama = { path = "crates/octos-embed-llama" }
+
+# codex-rs crates (reused by Octos; fetched from the openai/codex git repo)
+codex-execpolicy = { git = "https://github.com/openai/codex", path = "codex-rs/execpolicy" }
+codex-state = { git = "https://github.com/openai/codex", path = "codex-rs/state" }
+codex-file-search = { git = "https://github.com/openai/codex", path = "codex-rs/file-search" }
+codex-linux-sandbox = { git = "https://github.com/openai/codex", path = "codex-rs/linux-sandbox" }
+
+# Secrets and crypto
+# #2234/45c — echo-free interactive secret input (safe termios wrapper; a
+# hand-rolled termios arm needs `unsafe`, which the octos workspace denies).
+rpassword = "7"
+md-5 = "0.10"
+fs2 = "0.4"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+secrecy = { version = "0.10", features = ["serde"] }
+subtle = "2"
+# JWT signing for Google service-account (Vertex AI) auth. Uses `ring` (already
+# in tree via rustls) for RS256 — no OpenSSL.
+jsonwebtoken = "9"
+chacha20poly1305 = "0.10"
+argon2 = "0.5"
+qrcode = { version = "0.14", default-features = false }
+# Keychain (platform-native secure credential storage)
+keyring = { version = "3", default-features = false }
+
+# Errors and CLI
+eyre = "0.6"
+color-eyre = "0.6"
+colored = "2"
+rustyline = "15"
+
+# Serialization and text extraction
+serde_yml = "0.0.12"
+htmd = "0.5"
+
+# Storage, search and data
+redb = "2"
+# Keep the fleet ledger's checked u64/usize conversions on the 0.40 bindings.
+# This dependency requires Rust 1.88 or newer; the workspace MSRV is still stale.
+rusqlite = { version = "0.40.1", features = ["bundled", "fallible_uint"] }
+bincode = "1"
+hnsw_rs = "0.3"
+gix = { version = "0.79", default-features = false, features = ["max-performance-safe", "revision", "blob-diff"] }
+similar = "2"
+# Office file manipulation (DOCX/PPTX/XLSX are ZIP+XML)
+zip = "2"
+# PDF text extraction (pure Rust; read_file auto-detects %PDF- magic)
+pdf-extract = "0.9"
+glob = "0.3"
+cron = "0.15"
+chrono-tz = "0.10"
+iana-time-zone = "0.1"
+
+# Media and browser automation
+# Audio decoding (pure Rust). WAV is always on (AudioNonSilent validator); MP3
+# is gated behind the `audio_mp3` feature on octos-agent.
+hound = "3"
+symphonia = { version = "0.5", default-features = false, features = ["mp3"] }
+chromiumoxide = "0.9"
+
+# Networking, channels and web API
+# Channel integrations (optional, pulled in via feature flags)
+teloxide = { version = "0.17", default-features = false, features = ["rustls"] }
+serenity = { version = "0.12", default-features = false, features = ["rustls_backend", "gateway", "client", "http", "model"] }
+tokio-tungstenite = { version = "0.26", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
+# Email channel (optional)
+async-imap = { version = "0.11", default-features = false, features = ["runtime-tokio"] }
+tokio-rustls = { version = "0.26", default-features = false }
+rustls-native-certs = "0.8"
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+mailparse = "0.16"
+axum = { version = "0.8", features = ["multipart", "ws"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+tower = { version = "0.5", features = ["util"] }
+
+# Tracing and archives
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+flate2 = "1"
+tar = "0.4"
+
+# AST parsing (feature-gated)
+tree-sitter-javascript = "0.23"
+
+# Testing
+tokio-test = "0.4"
+wiremock = "0.6"
+
+# --- Merge notes: specs that could not be shared ----------------------------
+#
+# A workspace table has one entry per dependency name, so where Zed and Octos
+# asked for semantically incompatible versions the base (Zed) spec is kept and
+# Octos' request is recorded here. The Octos crates that pull the key are
+# listed; they need an explicit (non-workspace) version in their own manifest,
+# or Zed's spec has to move, before they will compile:
+#
+#   dirs                     zed 6.0              octos 5       (octos-agent, octos-services, octos-cli)
+#   html5ever                zed 0.39             octos 0.35    (octos-agent)
+#   markup5ever_rcdom        zed 0.39             octos 0.35    (octos-agent)
+#   quick-xml                zed 0.41             octos 0.37    (octos-research, octos-cli)
+#   rand                     zed 0.9              octos 0.8     (octos-server, octos-cli)
+#   reqwest                  zed fork (zed-reqwest, no `json`/`blocking`)
+#                                                 octos crates.io 0.12 (json, stream, rustls-tls, blocking, multipart)
+#                                                 (octos-diagnostics, octos-research, octos-llm, octos-agent,
+#                                                  octos-bus, octos-services, octos-server, octos-cli)
+#   tower-http               zed 0.4.4            octos 0.6     (octos-server, octos-cli)
+#   tree-sitter              zed git rev          octos 0.24    (octos-agent)
+#   tree-sitter-python       zed 0.25             octos 0.23    (octos-agent)
+#   tree-sitter-rust         zed 0.24.2           octos 0.23    (octos-agent)
+#   tree-sitter-typescript   zed git rev          octos 0.23    (octos-agent)
+#   webpki-roots             zed 1.0.8            octos 0.26    (octos-bus)
+#   which                    zed 8                octos 7       (octos-agent, octos-plugin)
+#   proptest                 zed git rev          octos 1.11    (octos-bus, dev-dependency)
+#
+# Two more specs were widened instead of split, because the merged value still
+# satisfies both sides (features are additive):
+#
+#   tokio   zed `{ version = "1" }` + octos `features = ["full"]`
+#           -> `{ version = "1", features = ["full"] }`
+#   rustls  zed `"0.23.26"` (default features) + octos `default-features = false,
+#           features = ["std", "tls12", "ring"]`
+#           -> `{ version = "0.23.26", features = ["std", "tls12", "ring"] }`
+#           (keeps Zed's default provider and additionally enables `ring`)
+#
 
 [workspace.dependencies.windows]
 version = "0.62"
@@ -909,6 +1134,22 @@ split-debuginfo = "unpacked"
 incremental = true
 codegen-units = 16
 debug = "limited"
+
+# Octos' workspace tuned `[profile.dev]` differently (see the octos repo's
+# Cargo.toml):
+#
+#   [profile.dev]
+#   debug = "line-tables-only"
+#   incremental = false
+#
+#   [profile.dev.package."*"]
+#   debug = false
+#
+# Those settings are deliberately *not* merged: `debug` and `incremental` are
+# profile-wide, so importing them would drop Zed's (debuggable backtraces,
+# incremental rebuilds) and force a full recompile of the existing target
+# directory. Merge them by hand if the merged tree should prefer Octos' small
+# dev builds.
 
 # mirror configuration for crates compiled for the build platform
 # (without this cargo will compile ~400 crates twice)
@@ -997,6 +1238,17 @@ codegen-units = 16
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow" }
 
+# Octos' workspace denied `unsafe_code` here. That cannot be merged into this
+# table as-is: 186 of the 190 Zed members opt into `[lints] workspace = true`
+# (including gpui_windows, gpui, terminal and sqlez, which are full of FFI
+# `unsafe`), so a workspace-wide deny would break the existing build.
+# To restore the Octos policy, either:
+#   * add `unsafe_code = "deny"` to `[lints.rust]` in each Octos crate (26 of
+#     its 39 members opt into the workspace table today), or
+#   * re-add the deny here and give every Zed crate that needs it an explicit
+#     `unsafe_code = "allow"` override.
+# unsafe_code = "deny"
+
 [workspace.lints.clippy]
 dbg_macro = "deny"
 todo = "deny"
@@ -1044,3 +1296,14 @@ nonminimal_bool = "allow"
 # this workspace on purpose.
 [workspace.metadata.dylint]
 libraries = [{ path = "tooling/lints" }]
+
+# Octos' release tooling (git-cliff + shared workspace version), merged in from
+# the octos workspace.
+[workspace.metadata.release]
+shared-version = true
+consolidate-commits = true
+tag-name = "v{{version}}"
+tag-message = "Release {{version}}"
+pre-release-commit-message = "chore: release {{version}}"
+pre-release-hook = ["git-cliff", "-o", "CHANGELOG.md", "--tag", "v{{version}}"]
+publish = false

@@ -12,11 +12,11 @@ serde_json = { workspace = true }
 chrono = { workspace = true }
 url = { workspace = true }
 regex = { workspace = true }
-quick-xml = { workspace = true }
+quick-xml = { version = "0.37" }
 tokio = { version = "1", features = ["sync", "time", "net"] }
 # SSRF-safe HTTP for the shared reader (`fetch` feature) and the metasearch
 # fetcher (`http`). gzip: Stack Exchange compresses every response.
-reqwest = { workspace = true, optional = true, features = ["gzip"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking", "multipart", "gzip"], optional = true }
 # Readability-style main-text + metadata extraction (MIT, a port of Mozilla
 # readability.js). Optional so `deep-crawl` can use the robots.txt and URL
 # helpers without pulling in an HTML parser it does not need.

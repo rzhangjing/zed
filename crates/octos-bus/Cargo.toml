@@ -39,7 +39,7 @@ eyre = { workspace = true }
 tracing = { workspace = true }
 metrics = { workspace = true }
 futures = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking", "multipart"] }
 serde_yml = { workspace = true }
 subtle = { workspace = true }
 sha2 = { workspace = true }
@@ -58,7 +58,7 @@ async-imap = { workspace = true, optional = true }
 tokio-rustls = { workspace = true, optional = true }
 rustls = { workspace = true, optional = true }
 rustls-native-certs = { workspace = true, optional = true }
-webpki-roots = { workspace = true, optional = true }
+webpki-roots = { version = "0.26", optional = true }
 lettre = { workspace = true, optional = true }
 mailparse = { workspace = true, optional = true }
 
@@ -70,5 +70,5 @@ axum = { workspace = true }
 tokio-test = { workspace = true }
 tempfile = { workspace = true }
 tower = { workspace = true }
-proptest = { workspace = true }
+proptest = { version = "1.11" }
 tracing-subscriber = { workspace = true }

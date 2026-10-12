@@ -17,7 +17,7 @@ eyre = { workspace = true }
 # stack stays consistent with octos-llm/octos-agent rather than introducing a
 # second `rustls-tls-native-roots` variant that would feature-unify the whole
 # workspace onto a different TLS-roots backend.
-reqwest = { workspace = true, optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "blocking", "multipart"], optional = true }
 
 [features]
 # Stage 1 stays dependency-light: `default = []` carries NO network/update deps.
