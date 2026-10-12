@@ -1,0 +1,1239 @@
+import { request } from "@/api/client";
+import { BridgeRpcError, METHODS } from "@/runtime/ui-protocol-bridge";
+import { ensureAuxBridge } from "@/runtime/ui-protocol-runtime";
+
+function stringFromUnknown(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function apiErrorMessageFromBody(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const record = body as Record<string, unknown>;
+  const direct =
+    stringFromUnknown(record.detail) ??
+    stringFromUnknown(record.message) ??
+    stringFromUnknown(record.error);
+  if (direct) return direct;
+
+  if (Array.isArray(record.detail)) {
+    const parts = record.detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return null;
+        const entry = item as Record<string, unknown>;
+        return stringFromUnknown(entry.msg) ?? stringFromUnknown(entry.message);
+      })
+      .filter((item): item is string => Boolean(item));
+    if (parts.length > 0) return parts.join("; ");
+  }
+
+  return null;
+}
+
+export function formatSettingsError(
+  err: unknown,
+  fallback = "Request failed.",
+): string {
+  if (err instanceof Error) {
+    const trimmed = err.message.trim();
+    if (trimmed) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return apiErrorMessageFromBody(parsed) ?? trimmed;
+      } catch {
+        return trimmed;
+      }
+    }
+  }
+  if (typeof err === "string" && err.trim()) return err.trim();
+  return fallback;
+}
+
+// ── Types (aligned with real /api/my/profile response) ──
+
+export interface LlmPrimary {
+  family_id: string;
+  model_id: string;
+  route?: {
+    base_url?: string | null;
+    api_key_env?: string | null;
+  } | null;
+}
+
+export interface GatewayConfig {
+  max_history: number | null;
+  max_iterations: number | null;
+  system_prompt: string | null;
+  max_concurrent_sessions: number | null;
+  browser_timeout_secs: number | null;
+  max_output_tokens: number | null;
+}
+
+export interface SandboxDocker {
+  image: string;
+  cpu_limit: string | null;
+  memory_limit: string | null;
+  pids_limit: number | null;
+  mount_mode: string;
+  extra_binds: string[];
+}
+
+export interface SandboxConfig {
+  enabled: boolean;
+  mode: string;
+  allow_network: boolean;
+  docker: SandboxDocker;
+  read_allow_paths: string[];
+}
+
+export interface HomeProfileSettings {
+  city?: string | null;
+  temp_unit?: string | null;
+  clock_format?: string | null;
+  idle_seconds?: number | null;
+  night_mode?: string | null;
+  burn_in_protection?: boolean | null;
+  lang?: string | null;
+  news_feed_url?: string | null;
+  calendar_feed_url?: string | null;
+  ui_style?: string | null;
+}
+
+export interface HomeProfileEvent {
+  id: string;
+  title: string;
+  time: string;
+  date: string;
+  recurring?: string | null;
+}
+
+export interface HomeProfileWidget {
+  type: string;
+  enabled: boolean;
+  order: number;
+}
+
+export interface HomeProfileTileLayout {
+  col: number;
+  row: number;
+  w: number;
+  h: number;
+}
+
+export interface HomeProfileConfig {
+  settings?: HomeProfileSettings | null;
+  events?: HomeProfileEvent[];
+  photos?: string[];
+  widgets?: HomeProfileWidget[];
+  metro_layout?: Record<string, HomeProfileTileLayout>;
+}
+
+export interface CloudTtsConfig {
+  appid?: string;
+  voice?: string;
+  cluster?: string;
+  encoding?: string;
+  endpoint?: string;
+}
+
+/** Per-profile smart-home bridge connection (self-hosted / same-LAN).
+ *  `token` comes back MASKED from the server; `save_with_merge` on the
+ *  backend restores a masked value, so echoing it back is safe. */
+export interface SmartHomeProfileConfig {
+  bridge_url?: string | null;
+  token?: string | null;
+  token_env?: string | null;
+}
+
+export interface ProfileConfig {
+  llm: {
+    primary: LlmPrimary;
+    fallbacks: LlmPrimary[];
+  };
+  home?: HomeProfileConfig | null;
+  channels: unknown[];
+  gateway: GatewayConfig;
+  env_vars: Record<string, string>;
+  hooks: unknown[];
+  email: string | null;
+  api_type: string | null;
+  admin_mode: boolean;
+  sandbox: SandboxConfig;
+  adaptive_routing: unknown;
+  content_routing: unknown;
+  plugins: { require_signed: boolean };
+  // `null` clears the per-profile override → inherit the server default.
+  tts_provider?: string | null;
+  tts_cloud?: CloudTtsConfig | null;
+  // `null` clears the per-profile ASR override → inherit server default.
+  asr_language?: string | null;
+  smart_home?: SmartHomeProfileConfig | null;
+}
+
+export interface ProfileStatus {
+  running: boolean;
+  pid: number | null;
+  started_at: string | null;
+  uptime_secs: number | null;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  enabled: boolean;
+  data_dir: string | null;
+  config: ProfileConfig;
+  created_at: string;
+  updated_at: string;
+  status: ProfileStatus;
+}
+
+export interface MatrixPendingInvite {
+  channel_index: number;
+  room_id: string;
+  room_name?: string | null;
+  canonical_alias?: string | null;
+  inviter?: string | null;
+  membership_event_id?: string | null;
+  received_at: string;
+  last_seen_at: string;
+  dismissed_at?: string | null;
+}
+
+export interface MatrixConnectionTestResult {
+  ok: boolean;
+  message?: string;
+  homeserver: string;
+  user_id: string;
+  device_id?: string | null;
+  joined_rooms: number;
+  pending_invites: number;
+  pending_invite_details?: MatrixConnectionInviteDetail[];
+  sync: {
+    ok: boolean;
+    has_next_batch: boolean;
+  };
+}
+
+export interface MatrixConnectionInviteDetail {
+  room_id: string;
+  room_name?: string | null;
+  canonical_alias?: string | null;
+  inviter?: string | null;
+  membership_event_id?: string | null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+const DEFAULT_GATEWAY_CONFIG: GatewayConfig = {
+  max_history: null,
+  max_iterations: null,
+  system_prompt: null,
+  max_concurrent_sessions: null,
+  browser_timeout_secs: null,
+  max_output_tokens: null,
+};
+
+const DEFAULT_SANDBOX_CONFIG: SandboxConfig = {
+  enabled: false,
+  mode: "auto",
+  allow_network: false,
+  docker: {
+    image: "ubuntu:24.04",
+    cpu_limit: null,
+    memory_limit: null,
+    pids_limit: null,
+    mount_mode: "rw",
+    extra_binds: [],
+  },
+  read_allow_paths: [],
+};
+
+const DEFAULT_PROFILE_CONFIG: ProfileConfig = {
+  llm: {
+    primary: { family_id: "", model_id: "" },
+    fallbacks: [],
+  },
+  home: null,
+  channels: [],
+  gateway: DEFAULT_GATEWAY_CONFIG,
+  env_vars: {},
+  hooks: [],
+  email: null,
+  api_type: null,
+  admin_mode: false,
+  sandbox: DEFAULT_SANDBOX_CONFIG,
+  adaptive_routing: null,
+  content_routing: null,
+  plugins: { require_signed: false },
+};
+
+export function normalizeProfileConfig(config: Partial<ProfileConfig> | null | undefined): ProfileConfig {
+  const source = asRecord(config);
+  const llm = asRecord(source.llm);
+  const primary = asRecord(llm.primary);
+  const gateway = asRecord(source.gateway);
+  const sandbox = asRecord(source.sandbox);
+  const docker = asRecord(sandbox.docker);
+  const plugins = asRecord(source.plugins);
+
+  return {
+    ...DEFAULT_PROFILE_CONFIG,
+    ...source,
+    llm: {
+      primary: {
+        family_id: typeof primary.family_id === "string" ? primary.family_id : "",
+        model_id: typeof primary.model_id === "string" ? primary.model_id : "",
+        route:
+          primary.route && typeof primary.route === "object"
+            ? (primary.route as LlmPrimary["route"])
+            : null,
+      },
+      fallbacks: Array.isArray(llm.fallbacks) ? (llm.fallbacks as LlmPrimary[]) : [],
+    },
+    channels: Array.isArray(source.channels) ? source.channels : [],
+    gateway: {
+      ...DEFAULT_GATEWAY_CONFIG,
+      ...gateway,
+    },
+    env_vars: asRecord(source.env_vars) as Record<string, string>,
+    hooks: Array.isArray(source.hooks) ? source.hooks : [],
+    email: typeof source.email === "string" ? source.email : null,
+    api_type: typeof source.api_type === "string" ? source.api_type : null,
+    admin_mode: source.admin_mode === true,
+    sandbox: {
+      ...DEFAULT_SANDBOX_CONFIG,
+      ...sandbox,
+      docker: {
+        ...DEFAULT_SANDBOX_CONFIG.docker,
+        ...docker,
+        extra_binds: Array.isArray(docker.extra_binds) ? (docker.extra_binds as string[]) : [],
+      },
+      read_allow_paths: Array.isArray(sandbox.read_allow_paths)
+        ? (sandbox.read_allow_paths as string[])
+        : [],
+    },
+    plugins: {
+      require_signed: plugins.require_signed === true,
+    },
+  };
+}
+
+export function normalizeProfile(profile: Profile): Profile {
+  return {
+    ...profile,
+    config: normalizeProfileConfig(profile.config),
+  };
+}
+
+export interface ProviderModelsRequest {
+  provider: string;
+  model?: string;
+  api_key?: string;
+  api_key_env?: string;
+  base_url?: string;
+  profile_id?: string;
+}
+
+export interface SkillInfo {
+  name: string;
+  source_repo: string | null;
+  tool_count: number;
+  version: string | null;
+}
+
+// ── API calls (self-service: /api/my/...) ──
+
+export async function getMyProfile(): Promise<Profile | null> {
+  try {
+    return normalizeProfile(await request<Profile>("/api/my/profile"));
+  } catch {
+    return null;
+  }
+}
+
+export async function updateMyProfile(
+  patch: { name?: string; enabled?: boolean; config?: Partial<ProfileConfig> },
+): Promise<Profile> {
+  return normalizeProfile(await request<Profile>("/api/my/profile", {
+    method: "PUT",
+    body: JSON.stringify(patch),
+  }));
+}
+
+export function mergeProfileConfig(
+  current: ProfileConfig,
+  patch: Partial<ProfileConfig>,
+): ProfileConfig {
+  const next: ProfileConfig = {
+    ...current,
+    ...patch,
+  };
+
+  if (patch.llm) {
+    next.llm = {
+      ...current.llm,
+      ...patch.llm,
+      primary: patch.llm.primary ?? current.llm.primary,
+      fallbacks: patch.llm.fallbacks ?? current.llm.fallbacks,
+    };
+  }
+  if (patch.gateway) {
+    next.gateway = { ...current.gateway, ...patch.gateway };
+  }
+  if (patch.sandbox) {
+    next.sandbox = patch.sandbox;
+  }
+  if (patch.home !== undefined) {
+    next.home = patch.home;
+  }
+  if (patch.env_vars) {
+    next.env_vars = patch.env_vars;
+  }
+  if (patch.channels) {
+    next.channels = patch.channels;
+  }
+  if (patch.hooks) {
+    next.hooks = patch.hooks;
+  }
+  if (patch.plugins) {
+    next.plugins = { ...current.plugins, ...patch.plugins };
+  }
+  if (patch.tts_provider !== undefined) {
+    next.tts_provider = patch.tts_provider;
+  }
+  if (patch.tts_cloud !== undefined) {
+    next.tts_cloud = patch.tts_cloud;
+  }
+  if (patch.asr_language !== undefined) {
+    next.asr_language = patch.asr_language;
+  }
+  if (patch.smart_home !== undefined) {
+    next.smart_home = patch.smart_home;
+  }
+
+  return next;
+}
+
+export async function updateMyProfileConfig(
+  profile: Profile,
+  config: Partial<ProfileConfig>,
+  patch: { name?: string; enabled?: boolean } = {},
+): Promise<Profile> {
+  return await updateMyProfile({
+    ...patch,
+    config: mergeProfileConfig(profile.config, config),
+  });
+}
+
+export async function fetchProviderModels(
+  body: ProviderModelsRequest,
+  options: Pick<RequestInit, "signal"> = {},
+): Promise<string[]> {
+  return await request<string[]>("/api/my/provider-models", {
+    method: "POST",
+    body: JSON.stringify(body),
+    signal: options.signal,
+  });
+}
+
+export async function getMyProfileSkills(): Promise<SkillInfo[]> {
+  const resp = await request<{ skills: SkillInfo[] }>("/api/my/profile/skills");
+  return resp.skills ?? [];
+}
+
+export async function getMyProfileStatus(): Promise<ProfileStatus | null> {
+  try {
+    return await request<ProfileStatus>("/api/my/profile/status");
+  } catch {
+    return null;
+  }
+}
+
+export async function startMyGateway(): Promise<{ ok: boolean; message?: string }> {
+  return await request<{ ok: boolean; message?: string }>("/api/my/profile/start", {
+    method: "POST",
+  });
+}
+
+export async function stopMyGateway(): Promise<{ ok: boolean; message?: string }> {
+  return await request<{ ok: boolean; message?: string }>("/api/my/profile/stop", {
+    method: "POST",
+  });
+}
+
+export async function restartMyGateway(): Promise<{ ok: boolean; message?: string }> {
+  return await request<{ ok: boolean; message?: string }>("/api/my/profile/restart", {
+    method: "POST",
+  });
+}
+
+export async function getMatrixInvites(): Promise<MatrixPendingInvite[]> {
+  const resp = await request<{ invites: MatrixPendingInvite[] }>("/api/my/profile/matrix/invites");
+  return resp.invites ?? [];
+}
+
+export async function testMatrixConnection(body: {
+  channel_index?: number;
+  channel?: Record<string, unknown>;
+}): Promise<MatrixConnectionTestResult> {
+  return await request<MatrixConnectionTestResult>("/api/my/profile/matrix/test", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function acceptMatrixInvite(
+  roomId: string,
+  body: { channel_index?: number; add_to_allowed_rooms?: boolean } = {},
+): Promise<{ ok: boolean; message?: string; allowlist_updated?: boolean }> {
+  return await request<{ ok: boolean; message?: string; allowlist_updated?: boolean }>(
+    `/api/my/profile/matrix/invites/${encodeURIComponent(roomId)}/accept`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function rejectMatrixInvite(
+  roomId: string,
+  body: { channel_index?: number } = {},
+): Promise<{ ok: boolean; message?: string }> {
+  return await request<{ ok: boolean; message?: string }>(
+    `/api/my/profile/matrix/invites/${encodeURIComponent(roomId)}/reject`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function dismissMatrixInvite(
+  roomId: string,
+  body: { channel_index?: number } = {},
+): Promise<{ ok: boolean; message?: string; dismissed?: boolean }> {
+  return await request<{ ok: boolean; message?: string; dismissed?: boolean }>(
+    `/api/my/profile/matrix/invites/${encodeURIComponent(roomId)}/dismiss`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function removeSkill(name: string): Promise<void> {
+  await request<void>(`/api/my/profile/skills/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+  });
+}
+
+export interface InstallSkillResponse {
+  ok: boolean;
+  installed: string[];
+  skipped: string[];
+  deps_installed: string[];
+  message?: string;
+  error?: string;
+  detail?: string;
+}
+
+export async function installSkill(source: string): Promise<InstallSkillResponse> {
+  return await request<InstallSkillResponse>("/api/my/profile/skills", {
+    method: "POST",
+    body: JSON.stringify({ repo: source }),
+  });
+}
+
+// ── Hub / Registry ──
+
+export interface HubPackage {
+  name: string;
+  repo: string;
+  description: string | null;
+  author: string | null;
+  license: string | null;
+  version: string | null;
+  provides_tools: boolean;
+  skills: string[];
+  tags: string[];
+  requires: string[];
+}
+
+export async function getSkillRegistry(): Promise<HubPackage[]> {
+  const resp = await request<{ packages: HubPackage[] }>("/api/my/profile/skills/registry");
+  return resp.packages ?? [];
+}
+
+// ── Admin: Users management ──
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+  last_login: string | null;
+}
+
+interface AdminUserResponse {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  created_at: string;
+  last_login?: string | null;
+  last_login_at?: string | null;
+}
+
+interface ProfileResponseEnvelope {
+  email: string | null;
+  profile: Profile;
+  status: ProfileStatus;
+}
+
+function normalizeAdminUser(user: AdminUserResponse): AdminUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    created_at: user.created_at,
+    last_login: user.last_login ?? user.last_login_at ?? null,
+  };
+}
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const resp = await request<AdminUserResponse[] | { users: AdminUserResponse[] }>("/api/admin/users");
+  const users = Array.isArray(resp) ? resp : (resp.users ?? []);
+  return users.map(normalizeAdminUser);
+}
+
+export async function createAdminUser(parentProfileId: string, body: {
+  email: string;
+  name: string;
+  sub_account_id: string;
+  public_subdomain: string;
+  note?: string;
+}): Promise<ProfileResponseEnvelope> {
+  return await request<ProfileResponseEnvelope>(
+    `/api/admin/profiles/${encodeURIComponent(parentProfileId)}/accounts`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        sub_account_id: body.sub_account_id,
+        public_subdomain: body.public_subdomain,
+        name: body.name,
+        email: body.email,
+      }),
+    },
+  );
+}
+
+export async function deleteAdminUser(id: string): Promise<void> {
+  await request<void>(`/api/admin/users/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// ── Admin: Allowed Emails ──
+
+export interface AllowedEmail {
+  email: string;
+  note?: string | null;
+  created_at?: string;
+  claimed_user_id?: string | null;
+  claimed_at?: string | null;
+  registered?: boolean;
+  registered_user_id?: string | null;
+  registered_name?: string | null;
+  last_login_at?: string | null;
+}
+
+export async function getAllowedEmails(): Promise<AllowedEmail[]> {
+  const resp = await request<AllowedEmail[] | { emails?: AllowedEmail[]; entries?: AllowedEmail[] }>("/api/admin/allowed-emails");
+  return Array.isArray(resp) ? resp : (resp.entries ?? resp.emails ?? []);
+}
+
+export async function addAllowedEmail(email: string): Promise<void> {
+  await request<void>("/api/admin/allowed-emails", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function removeAllowedEmail(email: string): Promise<void> {
+  await request<void>(`/api/admin/allowed-emails/${encodeURIComponent(email)}`, {
+    method: "DELETE",
+  });
+}
+
+// ── Admin: Authentication ──
+
+export interface AuthenticationSettings {
+  host: string;
+  port: number;
+  username: string;
+  from_address: string;
+  password_configured: boolean;
+  allow_self_registration: boolean;
+}
+
+export interface SaveAuthenticationSettingsBody {
+  host: string;
+  port: number;
+  username: string;
+  from_address: string;
+  password?: string;
+  allow_self_registration: boolean;
+}
+
+export interface AuthenticationTestResult {
+  ok: boolean;
+  message?: string;
+  error?: string;
+}
+
+export async function fetchAuthenticationSettings(): Promise<AuthenticationSettings> {
+  return await request<AuthenticationSettings>("/api/admin/smtp");
+}
+
+export async function saveAuthenticationSettings(
+  body: SaveAuthenticationSettingsBody,
+): Promise<void> {
+  await request<void>("/api/admin/smtp", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function sendAuthenticationTestEmail(
+  to: string,
+): Promise<AuthenticationTestResult> {
+  return await request<AuthenticationTestResult>("/api/admin/smtp/test", {
+    method: "POST",
+    body: JSON.stringify({ to }),
+  });
+}
+
+// ── Admin API types ──
+
+export interface BreakdownEntry {
+  count: number;
+  [key: string]: unknown;
+}
+
+export interface OperatorSource {
+  scope: string;
+  scrape_status: string;
+  available: boolean;
+  sample_count: number;
+  totals: Record<string, number>;
+}
+
+export interface OperatorSummary {
+  available: boolean;
+  collection: {
+    running_gateways: number;
+    gateways_with_api_port: number;
+    gateways_missing_api_port: number;
+    scrape_failures: number;
+    sources_observed: number;
+    sources_with_metrics: number;
+    sources_without_metrics: number;
+    partial: boolean;
+  };
+  totals: Record<string, number>;
+  breakdowns: Record<string, BreakdownEntry[]>;
+  sources: OperatorSource[];
+}
+
+export interface OperatorTask {
+  id: string;
+  profile_id: string;
+  tool_name: string;
+  status: "queued" | "running" | "verifying" | "ready" | "failed";
+  started_at: string;
+  completed_at?: string | null;
+  error?: string | null;
+}
+
+export interface OperatorTasksResponse {
+  generated_at: string;
+  stale_threshold_secs: number;
+  tasks: OperatorTask[];
+  totals_by_lifecycle: Record<string, number>;
+  stale_count: number;
+  missing_artifact_count: number;
+  validator_failed_count: number;
+  sources: unknown[];
+  partial: boolean;
+}
+
+// ── Admin API calls ──
+
+export async function fetchOperatorSummary(): Promise<OperatorSummary | null> {
+  return await request<OperatorSummary>("/api/admin/operator/summary");
+}
+
+export async function fetchOperatorTasks(): Promise<OperatorTasksResponse | null> {
+  return await request<OperatorTasksResponse>("/api/admin/operator/tasks");
+}
+
+export async function fetchAllProfiles(): Promise<Profile[]> {
+  const profiles = await request<Profile[]>("/api/admin/profiles");
+  return profiles.map(normalizeProfile);
+}
+
+export async function startProfile(profileId: string): Promise<string | null> {
+  try {
+    await request<unknown>(`/api/admin/profiles/${encodeURIComponent(profileId)}/start`, {
+      method: "POST",
+    });
+    return null;
+  } catch (err) {
+    return formatSettingsError(err, "Failed to start");
+  }
+}
+
+export async function stopProfile(profileId: string): Promise<string | null> {
+  try {
+    await request<unknown>(`/api/admin/profiles/${encodeURIComponent(profileId)}/stop`, {
+      method: "POST",
+    });
+    return null;
+  } catch (err) {
+    return formatSettingsError(err, "Failed to stop");
+  }
+}
+
+export async function deleteAdminProfile(profileId: string): Promise<void> {
+  await request<void>(`/api/admin/profiles/${encodeURIComponent(profileId)}`, {
+    method: "DELETE",
+  });
+}
+
+// ── Admin: OminiX platform skills ──
+
+export interface PlatformSkillInfo {
+  name: string;
+  installed: boolean;
+}
+
+export interface OminixApiStatus {
+  url: string;
+  healthy: boolean;
+  service_registered: boolean;
+  runtime?: OminixRuntimeStatus;
+}
+
+export interface OminixRuntimeIssue {
+  code: string;
+  severity: string;
+  message: string;
+  fixable: boolean;
+}
+
+export interface OminixHealthProbe {
+  healthy: boolean;
+  http_status?: number;
+  error?: string;
+  detail?: unknown;
+}
+
+export interface OminixRuntimeStatus {
+  state: string;
+  url: string;
+  url_source: string;
+  port?: number;
+  home_dir: string;
+  ominix_dir: string;
+  binary_path: string;
+  binary_installed: boolean;
+  metallib_path: string;
+  metallib_installed: boolean;
+  models_dir: string;
+  models_dir_exists: boolean;
+  plist_path: string;
+  plist_exists: boolean;
+  plist_port?: number;
+  discovery_path: string;
+  discovery_url?: string;
+  service_registered: boolean;
+  service_running: boolean;
+  launchctl_skipped: boolean;
+  health: OminixHealthProbe;
+  voice_models_ready?: boolean;
+  voice_models?: Array<{
+    id: string;
+    role: string;
+    status: string;
+    ready: boolean;
+    name?: string;
+    size?: string;
+  }>;
+  issues: OminixRuntimeIssue[];
+  can_repair: boolean;
+  suggested_action: string;
+}
+
+export interface PlatformModelsStatus {
+  dir: string;
+  asr: string[];
+  tts: string[];
+}
+
+export interface PlatformSkillsStatus {
+  platform_skills: PlatformSkillInfo[];
+  skills_dir: string;
+  ominix_api: OminixApiStatus;
+  models: PlatformModelsStatus;
+}
+
+export interface OminixLogResponse {
+  log_path: string;
+  total_lines?: number;
+  lines: string[];
+  error?: string;
+}
+
+export interface PlatformSkillHealth {
+  name: string;
+  status: string;
+  url: string;
+  detail?: unknown;
+}
+
+export interface OminixCatalogModel {
+  id: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+  status?: string;
+  role?: string;
+  enabled_for_octos?: boolean;
+  source?: {
+    primary_url?: string;
+    backup_urls?: string[];
+    source_type?: string;
+    repo_id?: string | null;
+    revision?: string;
+  };
+  storage?: {
+    local_path?: string;
+    total_size_bytes?: number | null;
+    total_size_display?: string | null;
+  };
+  runtime?: {
+    memory_required_mb?: number;
+    quantization?: string | null;
+    inference_engine?: string | null;
+  };
+}
+
+export interface OminixModelsResponse {
+  models: OminixCatalogModel[];
+}
+
+export interface AdminActionResponse {
+  ok: boolean;
+  message?: string;
+}
+
+export interface OminixRepairResponse extends AdminActionResponse {
+  dry_run: boolean;
+  actions: string[];
+  status: OminixRuntimeStatus;
+}
+
+export interface OminixBootstrapResponse extends AdminActionResponse {
+  actions: string[];
+  status?: OminixRuntimeStatus;
+  models_ready?: boolean;
+  models?: Array<{
+    id: string;
+    role: string;
+    ready: boolean;
+    action: string;
+    status_before: string;
+    status_after: string;
+    size?: string;
+    message?: string;
+  }>;
+}
+
+export type OminixServiceAction = "start" | "stop" | "restart";
+
+const OMINIX_ADMIN_BASE = "/api/admin/platform-skills/ominix-api";
+const OMINIX_RUNTIME_BASE = "/api/admin/ominix";
+
+export async function fetchPlatformSkillsStatus(): Promise<PlatformSkillsStatus> {
+  return await request<PlatformSkillsStatus>("/api/admin/platform-skills");
+}
+
+export async function fetchPlatformSkillHealth(
+  name: string,
+): Promise<PlatformSkillHealth> {
+  return await request<PlatformSkillHealth>(
+    `/api/admin/platform-skills/${encodeURIComponent(name)}/health`,
+  );
+}
+
+export async function fetchOminixLogs(lines = 80): Promise<OminixLogResponse> {
+  const safeLines = Math.max(1, Math.min(200, Math.round(lines)));
+  return await request<OminixLogResponse>(
+    `${OMINIX_ADMIN_BASE}/logs?lines=${safeLines}`,
+  );
+}
+
+export async function fetchOminixRuntimeStatus(): Promise<OminixRuntimeStatus> {
+  return await request<OminixRuntimeStatus>(`${OMINIX_RUNTIME_BASE}/runtime`);
+}
+
+/** Readiness of one voice-pipeline leg. */
+export interface VoiceLeg {
+  ready: boolean;
+  /** Human-readable status, surfaced as the label when this leg blocks. */
+  detail: string;
+}
+
+/** Readiness of the TTS leg, plus the effective route for this profile. */
+export interface VoiceTtsLeg {
+  ready: boolean;
+  /** "cloud" (Volcano) or "local" (on-device GPT-SoVITS). */
+  mode: "cloud" | "local" | string;
+  detail: string;
+}
+
+/**
+ * Per-tenant voice-assistant pre-flight: ASR + LLM + (route-aware) TTS.
+ * `ready` is true only when all three legs are usable under the caller's
+ * current config (e.g. cloud TTS counts its credentials, not a local model).
+ */
+export interface VoiceReadiness {
+  ready: boolean;
+  asr: VoiceLeg;
+  llm: VoiceLeg;
+  tts: VoiceTtsLeg;
+}
+
+export async function fetchVoiceReadiness(): Promise<VoiceReadiness> {
+  return await request<VoiceReadiness>("/api/voice/readiness");
+}
+
+export async function repairOminixRuntime(): Promise<OminixRepairResponse> {
+  return await request<OminixRepairResponse>(`${OMINIX_RUNTIME_BASE}/repair`, {
+    method: "POST",
+  });
+}
+
+export async function installOminixRuntime(): Promise<OminixRepairResponse> {
+  return await request<OminixRepairResponse>(`${OMINIX_RUNTIME_BASE}/install`, {
+    method: "POST",
+  });
+}
+
+export async function bootstrapOminixRuntime(): Promise<OminixBootstrapResponse> {
+  return await request<OminixBootstrapResponse>(`${OMINIX_RUNTIME_BASE}/bootstrap`, {
+    method: "POST",
+  });
+}
+
+export async function fetchOminixPlatformModels(): Promise<OminixCatalogModel[]> {
+  const resp = await request<OminixModelsResponse>(`${OMINIX_ADMIN_BASE}/models`);
+  return resp.models ?? [];
+}
+
+export async function fetchOminixAvailableModels(): Promise<OminixCatalogModel[]> {
+  const resp = await request<OminixModelsResponse>(
+    `${OMINIX_ADMIN_BASE}/models/available`,
+  );
+  return resp.models ?? [];
+}
+
+export async function runOminixServiceAction(
+  action: OminixServiceAction,
+): Promise<AdminActionResponse> {
+  return await request<AdminActionResponse>(`${OMINIX_ADMIN_BASE}/${action}`, {
+    method: "POST",
+  });
+}
+
+export async function installPlatformSkill(name: string): Promise<AdminActionResponse> {
+  return await request<AdminActionResponse>(
+    `/api/admin/platform-skills/${encodeURIComponent(name)}/install`,
+    { method: "POST" },
+  );
+}
+
+export async function removePlatformSkill(name: string): Promise<AdminActionResponse> {
+  return await request<AdminActionResponse>(
+    `/api/admin/platform-skills/${encodeURIComponent(name)}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function downloadOminixModel(modelId: string): Promise<unknown> {
+  return await request<unknown>(`${OMINIX_ADMIN_BASE}/models/download`, {
+    method: "POST",
+    body: JSON.stringify({ model_id: modelId }),
+  });
+}
+
+export async function removeOminixModel(modelId: string): Promise<unknown> {
+  return await request<unknown>(`${OMINIX_ADMIN_BASE}/models/remove`, {
+    method: "POST",
+    body: JSON.stringify({ model_id: modelId }),
+  });
+}
+
+export async function enableOminixModel(
+  modelId: string,
+  role: "asr" | "tts",
+): Promise<AdminActionResponse> {
+  return await request<AdminActionResponse>(`${OMINIX_ADMIN_BASE}/models/enable`, {
+    method: "POST",
+    body: JSON.stringify({ model_id: modelId, role }),
+  });
+}
+
+export async function disableOminixModel(modelId: string): Promise<AdminActionResponse> {
+  return await request<AdminActionResponse>(`${OMINIX_ADMIN_BASE}/models/disable`, {
+    method: "POST",
+    body: JSON.stringify({ model_id: modelId }),
+  });
+}
+
+// ── Memory panel (read-only viewer: `memory/overview` + `memory/entity`) ──
+//
+// The memory + cron panels ride the ui-protocol WS bridge (octos PR
+// #1621) rather than the tokened REST surface. The settings page
+// mounts OUTSIDE `OctosRuntimeProvider`, so there is no chat-scoped
+// bridge here — `ensureAuxBridge` reuses a connected chat bridge when
+// one exists and otherwise lazily starts the SESSIONLESS auxiliary
+// singleton (codex web#268 r1 P1). Unlike `src/api/content.ts`'s
+// wrapper, this helper deliberately does NOT flatten `BridgeRpcError`
+// into a plain `Error`: the typed `data` payload (`data.detail`,
+// `data.rest_status`) is the contract `cronToggleRefusalReason`
+// branches on for the gateway-owns-the-store refusal, and flattening
+// would reduce it to string matching.
+
+async function callAuxWs<T>(method: string, params: unknown): Promise<T> {
+  const bridge = await ensureAuxBridge();
+  return await bridge.callMethod<T>(method, params);
+}
+
+export interface MemoryDailyNote {
+  date: string;
+  content: string;
+  /** WS wire only (octos #1621 codex r1): note capped at the RPC-layer
+   *  byte budget — `content` is a clean prefix, never spliced. */
+  content_truncated?: boolean;
+  content_total_bytes?: number;
+}
+
+export interface MemoryEntitySummary {
+  name: string;
+  summary: string;
+}
+
+export interface MemoryOverview {
+  ok: boolean;
+  long_term: string;
+  long_term_updated_at?: string;
+  today: string;
+  recent: MemoryDailyNote[];
+  entities: MemoryEntitySummary[];
+  /** Bank enumeration stopped at the server cap — list is partial. */
+  entities_truncated?: boolean;
+  staging_notes: number;
+  /** Staging scan stopped early — `staging_notes` is a lower bound. */
+  staging_truncated?: boolean;
+  refresh_enabled: boolean;
+  /** WS wire only (octos #1621 codex r1): the RPC layer caps each
+   *  document field so the result fits one WS frame; capped fields are
+   *  clean prefixes DECLARED here, never silently spliced. */
+  long_term_truncated?: boolean;
+  long_term_total_bytes?: number;
+  today_truncated?: boolean;
+  today_total_bytes?: number;
+}
+
+export interface MemoryEntityPage {
+  name: string;
+  content: string;
+  /** True when `content` is the RPC-layer capped prefix of the page. */
+  content_truncated?: boolean;
+  content_total_bytes?: number;
+}
+
+export async function getMyMemory(): Promise<MemoryOverview> {
+  // `memory/overview` forwards the REST panel body whole under
+  // `overview`, so the interface above stays byte-compatible.
+  const result = await callAuxWs<{ overview: MemoryOverview }>(
+    METHODS.MEMORY_OVERVIEW,
+    {},
+  );
+  return result.overview;
+}
+
+export async function getMyMemoryEntity(name: string): Promise<MemoryEntityPage> {
+  return await callAuxWs<MemoryEntityPage>(METHODS.MEMORY_ENTITY, { name });
+}
+
+// ── Cron panel (`cron/list` + `cron/toggle`) ──
+
+export type CronScheduleWire =
+  | { kind: "At"; at_ms: number }
+  | { kind: "Every"; every_ms: number }
+  | { kind: "Cron"; expr: string };
+
+export interface CronJobRow {
+  id: string;
+  name: string;
+  enabled: boolean;
+  schedule: CronScheduleWire;
+  message: string;
+  channel: string | null;
+  last_run: string | null;
+  last_status: string | null;
+  next_in: string | null;
+  timezone: string | null;
+}
+
+export interface CronOverview {
+  count: number;
+  jobs: CronJobRow[];
+  gateway_running: boolean;
+}
+
+export async function getMyCron(): Promise<CronOverview> {
+  return await callAuxWs<CronOverview>(METHODS.CRON_LIST, {});
+}
+
+/**
+ * Refusal reason when `cron/toggle` is rejected. The server forwards
+ * the REST error body's `reason` as the RPC error's `data.detail`
+ * (octos PR #1621): `"gateway_running"` when a spawned gateway owns
+ * `cron.json` (rest_status 409), `"job_not_found"` on a stale row.
+ */
+export function cronToggleRefusalReason(err: unknown): string | null {
+  if (!(err instanceof BridgeRpcError)) return null;
+  const data = err.data as { detail?: unknown } | null | undefined;
+  return typeof data?.detail === "string" ? data.detail : null;
+}
+
+export async function setMyCronEnabled(
+  jobId: string,
+  enabled: boolean,
+): Promise<{ job: CronJobRow }> {
+  return await callAuxWs<{ job: CronJobRow }>(METHODS.CRON_TOGGLE, {
+    job_id: jobId,
+    enabled,
+  });
+}

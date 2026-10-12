@@ -1,0 +1,121 @@
+.voice-orb { position: relative; width: 160px; height: 160px;
+  display: flex; align-items: center; justify-content: center; }
+.voice-orb-core { width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e0b076, #c47445 48%, #4f6d4c 86%);
+  box-shadow: 0 0 54px 4px rgba(196,116,69,.32), inset 0 0 24px rgba(255,246,234,.18);
+  transition: all .4s ease; }
+.voice-orb-ring { position: absolute; border-radius: 50%;
+  border: 2px solid rgba(196,116,69,.35); opacity: 0; }
+.voice-orb.is-idle .voice-orb-core { width: 90px; height: 90px;
+  filter: saturate(.6) brightness(.8); animation: vo-breathe 4s ease-in-out infinite; }
+.voice-orb.is-listening .voice-orb-core { animation: vo-breathe 1.4s ease-in-out infinite; }
+.voice-orb.is-listening .voice-orb-ring {
+  width: 120px; height: 120px;
+  animation: vo-ripple 1.8s ease-out infinite;
+}
+.voice-orb.is-listening .voice-orb-ring.r2 { animation-delay: .9s; }
+.voice-orb.is-thinking .voice-orb-core { animation: vo-breathe 2s ease-in-out infinite; }
+.voice-orb.is-speaking .voice-orb-core { animation: vo-talk .45s ease-in-out infinite; }
+.voice-orb.is-error .voice-orb-core {
+  background: radial-gradient(circle at 35% 30%, #ffb3b3, #ff5a5a 60%, #b02a2a);
+  box-shadow: 0 0 50px 4px rgba(255,80,80,.5); }
+.voice-runtime-pill {
+  margin-top: 18px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, .58);
+  background: rgba(255, 255, 255, .06);
+}
+.voice-runtime-pill.is-success {
+  border-color: rgba(45, 212, 121, .3);
+  color: rgba(123, 211, 154, .95);
+  background: rgba(45, 212, 121, .08);
+}
+.voice-runtime-pill.is-warning {
+  border-color: rgba(245, 202, 118, .3);
+  color: rgba(245, 202, 118, .95);
+  background: rgba(245, 202, 118, .08);
+}
+.voice-runtime-pill.is-danger {
+  border-color: rgba(248, 113, 113, .32);
+  color: rgba(248, 113, 113, .95);
+  background: rgba(248, 113, 113, .08);
+}
+.voice-runtime-action {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(245, 202, 118, .24);
+  border-radius: 999px;
+  padding: 8px 13px;
+  font-size: 13px;
+  color: rgba(245, 202, 118, .96);
+  background: rgba(245, 202, 118, .08);
+}
+.voice-error-panel {
+  margin-top: 10px;
+  max-width: min(520px, 80vw);
+  border: 1px solid rgba(248, 113, 113, .28);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  color: rgba(254, 202, 202, .92);
+  background: rgba(127, 29, 29, .22);
+}
+.voice-transcript-stack {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent 0, black 24px, black 100%);
+}
+.voice-transcript-turn {
+  text-align: center;
+  transform: translateY(var(--voice-turn-y, 0)) scale(var(--voice-turn-scale, 1));
+  opacity: var(--voice-turn-opacity, 1);
+  filter: blur(var(--voice-turn-blur, 0));
+  transition:
+    opacity .34s ease,
+    transform .34s ease,
+    filter .34s ease;
+}
+.voice-transcript-user {
+  margin-bottom: 7px;
+  font-size: 16px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, .46);
+}
+.voice-transcript-assistant {
+  font-size: 21px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, .9);
+}
+@keyframes vo-breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+@keyframes vo-talk { 0%,100%{transform:scale(1)} 25%{transform:scale(1.14)} 60%{transform:scale(.95)} }
+@keyframes vo-ripple {
+  0%{transform:scale(1);opacity:0}
+  12%{opacity:.55}
+  70%{opacity:.18}
+  100%{transform:scale(1.92);opacity:0}
+}
+
+/* Camera capture feedback: a one-shot border flash on the live preview when a
+   frame is sent to the AI, and a pop-in for the sent-frame thumbnail. Replayed
+   on each send via a changing React `key`. */
+.cam-sent-flash { animation: cam-flash .5s ease-out 1; }
+@keyframes cam-flash {
+  0%{opacity:1;box-shadow:0 0 0 2px rgba(196,116,69,.9),0 0 16px 2px rgba(196,116,69,.6)}
+  100%{opacity:0;box-shadow:0 0 0 2px rgba(196,116,69,0)}
+}
+.cam-sent-pop { animation: cam-pop .24s ease-out 1; }
+@keyframes cam-pop {
+  0%{transform:translateY(8px) scale(.94);opacity:0}
+  100%{transform:none;opacity:1}
+}

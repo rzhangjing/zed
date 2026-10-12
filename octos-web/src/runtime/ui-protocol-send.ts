@@ -1,0 +1,844 @@
+/**
+ * UI Protocol v1 send-path entry point for /chat.
+ *
+ * The composer ghost is the temporary local overlay; durable rows arrive only
+ * through canonical projection envelopes after `bridge.sendTurn(...)`.
+ *
+ * M9-α-5/α-6 (ADR PR #830 / audit issue #845): the legacy SSE bridge
+ * (`sse-bridge.ts`) has been deleted along with the server-side SSE
+ * chat transport. `/api/ui-protocol/ws` is now the sole chat transport.
+ *
+ * M9-β-1 (UPCR-2026-015 / server PR #860): `TurnStartParams` gained
+ * three optional fields — `media: FileRef[]`, `topic: string`,
+ * `rewrite_for: client_message_id`. The web client populates them
+ * from the existing `SendOptions.media` / `historyTopic` /
+ * `requestText` fields; the bridge serialises only the populated
+ * extras onto the wire so the on-wire shape stays byte-identical to
+ * a pre-β-1 build for text-only sends.
+ */
+
+import {
+  getThinkingEffort,
+  whenThinkingSeeded,
+} from "@/store/thinking-store";
+import { getActiveBridge, startBridgeForSession } from "./ui-protocol-runtime";
+import { isRollbackBusy, whenRollbackIdle } from "./session-rollback";
+import {
+  BridgeStartupError,
+  BridgeStoppedError,
+  BridgeTimeoutError,
+  METHODS,
+  type UiProtocolBridge,
+} from "./ui-protocol-bridge";
+import type {
+  TurnStartExtras,
+  TurnStartMediaRef,
+  VoiceAdmissionResult,
+  VoiceCommitAdmissionResult,
+} from "./ui-protocol-types";
+import { request } from "@/api/client";
+
+/** Per-turn send options for the canonical WS turn/start path. */
+export interface SendOptions {
+  sessionId: string;
+  /** Sub-topic suffix (`/new <slug>` surfaces, slides/sites scoping).
+   *  M9-β-1 (UPCR-2026-015): forwarded to the server as `topic` on
+   *  `turn/start` so history / ledger / `task/list` see the per-topic
+   *  bucket. Empty / undefined sends to the default-topic bucket. */
+  historyTopic?: string;
+  text: string;
+  /** Optional rewrite (e.g. `/queue` slash-commands). M9-β-1:
+   *  forwarded as `rewrite_for: <client_message_id>` so the server
+   *  can replace the queued user message in place rather than
+   *  appending. (β-1 server logs the field; durable in-place ledger
+   *  replace lands in a follow-up — the wire field is forward-
+   *  compatible.) Sends where `requestText === text` (or undefined)
+   *  carry no `rewrite_for`. */
+  requestText?: string;
+  /** Pre-uploaded media paths from `/api/upload`. M9-β-1: forwarded
+   *  as `media: FileRef[]` on `turn/start`. The server feeds the
+   *  paths to `Agent::process_message`, the same entry the
+   *  gateway-mode `ApiChannel` and `octos chat` CLI use. */
+  media: string[];
+  clientMessageId?: string;
+  /** #1478: mark this turn as a live video call (camera on) so the server
+   *  treats the attached frame as the user's current camera view. Omitted /
+   *  false for ordinary sends. */
+  liveVideo?: boolean;
+  /** Model tool context for this turn. Set by Notebook Studio only. */
+  toolContext?: string;
+  /** Recording vs upload (audio surface). Unused on the WS path today. */
+  audioUploadMode?: "recording" | "upload";
+  onSessionActive?: (firstMessage: string) => void;
+  onComplete?: () => void;
+  /** Explicit optimistic-overlay failure; v2 never silently removes a
+   * ghost when turn/start rejects or its canonical terminal fails. */
+  onError?: (error: Error) => void;
+}
+
+/** Re-validate the stored auth token after a send failure. The api/client
+ *  `request()` helper has a built-in 401-interceptor that calls
+ *  `clearToken()` + hard-redirects to `/login`, so a successful 401 here
+ *  drives the user to re-authenticate instead of leaving them on a /chat
+ *  page where the WS will never accept their next send.
+ *
+ *  Bug we're closing: token expiry mid-session yielded a "WS connection
+ *  rejected" close (1008) which surfaces here as a `bridge.sendTurn`
+ *  rejection. Pre-fix, the SPA marked the assistant bubble as error and
+ *  stopped — the user was stuck on /chat with a dead token, no signal
+ *  to re-login. Yue hit this 2026-05-08 testing mini1 (Q1 worked, Q2
+ *  vanished into a dead WS).
+ *
+ *  Probe is best-effort: if /api/auth/me succeeds, the token is still
+ *  valid and the WS rejection was for a different reason (server
+ *  hiccup, transient race) — we don't want to redirect spuriously.
+ *  If /api/auth/me 401s, request()'s interceptor handles cleanup. */
+function probeAuthAfterSendFailure(): void {
+  void request<unknown>("/api/auth/me").catch(() => {
+    // Swallowed — request() already handled redirect via its 401
+    // interceptor. Anything we add here would race with that.
+  });
+}
+
+export function sendMessage(opts: SendOptions): void {
+  void enqueueSendV1(opts);
+}
+
+/** Read the capability acknowledged by the active session socket. */
+export function supportsVoiceAdmission(
+  sessionId: string,
+  historyTopic?: string,
+): boolean {
+  return getActiveBridge(sessionId, historyTopic)?.supportsVoiceAdmission() ?? false;
+}
+
+/** Run ASR without creating a turn. `no_speech` is a terminal admission
+ * decision: callers must discard every sibling text/image input and return to
+ * capture without invoking `voice/commit_admission`. */
+export async function admitVoiceMessage(
+  opts: SendOptions,
+): Promise<VoiceAdmissionResult> {
+  await startBridgeForSession(opts.sessionId, opts.historyTopic, {
+    ownership: "observe",
+  });
+  await whenThinkingSeeded(opts.sessionId, opts.historyTopic);
+  const bridge = getActiveBridge(opts.sessionId, opts.historyTopic);
+  if (!bridge) throw new Error("WebSocket connection is unavailable.");
+  const turnId = opts.clientMessageId ?? crypto.randomUUID();
+  const extras = buildTurnStartExtras({ ...opts, clientMessageId: turnId });
+  const raw = await bridge.callMethod<{
+    status: "speech" | "no_speech";
+    admission_id?: string;
+    transcript?: string;
+    turn_id: string;
+    reject_reasons?: string[];
+  }>(METHODS.VOICE_ADMIT, {
+    session_id: opts.sessionId,
+    request_id: turnId,
+    turn_id: turnId,
+    media: extras?.media ?? [],
+    ...(extras?.topic ? { topic: extras.topic } : {}),
+  });
+  if (raw.turn_id !== turnId) {
+    throw new Error("Octos Core returned a mismatched voice admission.");
+  }
+  if (raw.status === "no_speech") {
+    return {
+      status: "no_speech",
+      turnId: raw.turn_id,
+      rejectReasons: raw.reject_reasons,
+    };
+  }
+  if (
+    raw.status !== "speech" ||
+    !raw.admission_id ||
+    !raw.transcript?.trim()
+  ) {
+    throw new Error("Octos Core returned an invalid voice admission.");
+  }
+  return {
+    status: "speech",
+    admissionId: raw.admission_id,
+    transcript: raw.transcript,
+    turnId: raw.turn_id,
+  };
+}
+
+/** Consume a speech admission and install the same canonical-terminal
+ * lifecycle ownership as an ordinary send. The server performs the optional
+ * old-turn interrupt and new-turn start in this one RPC. */
+export async function commitAdmittedVoiceMessage(
+  opts: SendOptions,
+  admissionId: string,
+  supersedesTurnId?: string,
+): Promise<VoiceCommitAdmissionResult> {
+  await startBridgeForSession(opts.sessionId, opts.historyTopic, {
+    ownership: "observe",
+  });
+  await whenThinkingSeeded(opts.sessionId, opts.historyTopic);
+  let bridge = getActiveBridge(opts.sessionId, opts.historyTopic);
+  if (!bridge) throw new Error("WebSocket connection is unavailable.");
+  const turnId = opts.clientMessageId ?? crypto.randomUUID();
+  const extras = buildTurnStartExtras({ ...opts, clientMessageId: turnId });
+  let completed = false;
+  let offTerminal: (() => void) | null = null;
+  let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+  const finish = (error?: Error) => {
+    if (completed) return;
+    completed = true;
+    if (activeTurnControlsBySession.get(queueKey(opts.sessionId))?.turnId === turnId) {
+      activeTurnControlsBySession.delete(queueKey(opts.sessionId));
+    }
+    offTerminal?.();
+    offTerminal = null;
+    if (safetyTimer !== null) clearTimeout(safetyTimer);
+    safetyTimer = null;
+    try {
+      if (error) opts.onError?.(error);
+    } finally {
+      opts.onComplete?.();
+    }
+  };
+  activeTurnControlsBySession.set(queueKey(opts.sessionId), {
+    turnId,
+    complete: () => finish(),
+  });
+  const attachLifecycle = (targetBridge: UiProtocolBridge) => {
+    offTerminal?.();
+    offTerminal = targetBridge.onProjectionTerminal((event) => {
+      if (event.client_message_id !== turnId && event.turn_id !== turnId) return;
+      finish(
+        event.outcome === "completed"
+          ? undefined
+          : new Error(event.error?.message ?? "Voice turn failed."),
+      );
+    });
+  };
+  attachLifecycle(bridge);
+  safetyTimer = setTimeout(
+    () => finish(new Error("Voice turn timed out.")),
+    15 * 60 * 1000,
+  );
+  const turn: Record<string, unknown> = {
+    session_id: opts.sessionId,
+    turn_id: turnId,
+    input: [{ kind: "text", text: opts.text }],
+  };
+  if (extras?.media?.length) turn.media = extras.media;
+  if (extras?.topic) turn.topic = extras.topic;
+  if (extras?.rewrite_for) turn.rewrite_for = extras.rewrite_for;
+  if (extras?.live_video) turn.live_video = true;
+  if (extras?.reasoning_effort) turn.reasoning_effort = extras.reasoning_effort;
+  const commitParams = {
+    admission_id: admissionId,
+    ...(supersedesTurnId ? { supersedes_turn_id: supersedesTurnId } : {}),
+    turn,
+  };
+  const invokeCommit = (targetBridge: UiProtocolBridge) =>
+    targetBridge.callMethod<VoiceCommitAdmissionResult>(
+      METHODS.VOICE_COMMIT_ADMISSION,
+      commitParams,
+    );
+  try {
+    opts.onSessionActive?.(opts.text);
+    let result: VoiceCommitAdmissionResult;
+    try {
+      result = await invokeCommit(bridge);
+    } catch (firstError) {
+      if (
+        !(firstError instanceof BridgeStoppedError) &&
+        !(firstError instanceof BridgeTimeoutError)
+      ) {
+        throw firstError;
+      }
+      // The server-side admission is single-use but same-turn idempotent. If
+      // the commit response vanished during a reconnect, repeat the SAME RPC:
+      // it either starts a released claim or observes the already-started turn.
+      await startBridgeForSession(opts.sessionId, opts.historyTopic, {
+        ownership: "observe",
+      });
+      const retryBridge = getActiveBridge(opts.sessionId, opts.historyTopic);
+      if (!retryBridge) throw firstError;
+      bridge = retryBridge;
+      attachLifecycle(retryBridge);
+      result = await invokeCommit(retryBridge);
+    }
+    if (
+      !result.accepted ||
+      !result.committed ||
+      result.turn_id !== turnId
+    ) {
+      throw new Error("The server rejected this admitted voice turn.");
+    }
+    return result;
+  } catch (error) {
+    const normalized = error instanceof Error ? error : new Error(String(error));
+    finish(normalized);
+    throw normalized;
+  }
+}
+
+function markSendFailure(
+  opts: SendOptions,
+  _clientMessageId: string,
+  error: Error,
+): void {
+  opts.onError?.(error);
+}
+
+/** UPCR-2026-015 (M9-β-1): build the `TurnStartParams` extras envelope
+ *  from `SendOptions`. Returns `undefined` when no extras are
+ *  populated so the bridge omits all three fields and the on-wire
+ *  shape stays byte-identical to a pre-β-1 text-only send. */
+export function buildTurnStartExtras(
+  opts: SendOptions,
+): TurnStartExtras | undefined {
+  const extras: TurnStartExtras = {};
+
+  if (opts.media.length > 0) {
+    // The `/api/upload` endpoint returns paths only — `mime` and
+    // `size_bytes` are not propagated through `SendOptions.media`. Surface
+    // what we know and let the server resolve metadata at consume time.
+    // The wire-shape requires the fields, so synthesise placeholders
+    // The server's `process_message` only reads `path`, so the placeholders
+    // never leak into render.
+    const media: TurnStartMediaRef[] = opts.media.map((path) => ({
+      path,
+      mime: "application/octet-stream",
+      size_bytes: 0,
+    }));
+    extras.media = media;
+  }
+
+  const topic = opts.historyTopic?.trim();
+  if (topic && topic.length > 0) {
+    extras.topic = topic;
+  }
+
+  // `rewrite_for` carries the client_message_id of the original
+  // queued send. The Composer's `/queue` slash-command flow stashes
+  // the user-edited prompt in `requestText` while `text` keeps the
+  // original-with-attached-files form. When the two diverge, treat
+  // it as a rewrite and pass the cmid for the original turn.
+  if (
+    opts.requestText !== undefined &&
+    opts.requestText !== opts.text &&
+    opts.clientMessageId !== undefined
+  ) {
+    extras.rewrite_for = opts.clientMessageId;
+  }
+
+  // #1478: forward the explicit live-video flag (camera on) so the server
+  // treats the attached frame as a real-time camera view. Only set when true
+  // so non-video sends stay byte-identical on the wire.
+  if (opts.liveVideo) {
+    extras.live_video = true;
+  }
+
+  // Thinking-effort parity (TUI `/thinking`): read the per-session store
+  // HERE — centrally — rather than in each send surface. The server
+  // clears its persisted override whenever a user turn omits the field,
+  // so a single surface (voice, studio rail) sending without it would
+  // silently reset the user's choice. "Default" is expressed by absence.
+  const effort = getThinkingEffort(opts.sessionId, opts.historyTopic);
+  if (effort !== null) {
+    extras.reasoning_effort = effort;
+  }
+
+  const toolContext = opts.toolContext?.trim();
+  if (toolContext) {
+    extras.tool_context = toolContext;
+  }
+
+  if (
+    (extras.media === undefined || extras.media.length === 0) &&
+    (extras.topic === undefined || extras.topic.length === 0) &&
+    extras.rewrite_for === undefined &&
+    extras.live_video === undefined &&
+    extras.reasoning_effort === undefined &&
+    extras.tool_context === undefined
+  ) {
+    return undefined;
+  }
+  return extras;
+}
+
+// ---------------------------------------------------------------------------
+// Per-session turn-start queue (M10 follow-up Bug B)
+// ---------------------------------------------------------------------------
+//
+// Background: the WS `turn/start` handler enforces "one turn at a time" per
+// session — a second `turn/start` arriving while the previous turn's
+// foreground phase is still running is rejected with the error
+// `"a turn is already running for this session"`
+// (see `crates/octos-cli/src/api/ui_protocol.rs::handle_turn_start`).
+//
+// Pre-fix, `sendMessageV1` called `bridge.sendTurn(...)` immediately. When
+// the user (or a soak test) sent a second prompt before the first turn's
+// foreground phase finished, the server rejected the RPC. The queue keeps
+// those starts ordered until the matching canonical terminal is admitted.
+//
+// Implementation: a per-session promise chain. `enqueueSendV1` pushes the
+// next send onto the chain; each send awaits BOTH (a) the prior send's
+// completion AND (b) the prior turn's canonical `turn_terminal` envelope
+// before issuing `bridge.sendTurn`. The chain is keyed
+// by `sessionId` to match the server-side lock scope.
+
+const turnQueues = new Map<string, Promise<void>>();
+const activeTurnControlsBySession = new Map<
+  string,
+  {
+    turnId: string;
+    complete: () => void;
+  }
+>();
+
+// Per-session lock scope. Codex P2: the server's
+// `handle_turn_start` "one turn at a time" lock is keyed by `session_id`
+// only — `bridge.sendTurn` doesn't carry the SPA-side `historyTopic`,
+// so switching topic mid-turn would not relax the server's rejection
+// rule. Key the queue on `sessionId` to match the server lock scope
+// exactly; otherwise a topic switch lets a fresh prompt through to the
+// same-session lock and reproduces the orphan-bubble shape this fix
+// targets.
+function queueKey(sessionId: string): string {
+  return sessionId;
+}
+
+// ---------------------------------------------------------------------------
+// Wave4-A: client-side `crew:queue_state` emission
+// ---------------------------------------------------------------------------
+//
+// The server PR #946 protocol added a `queue/state` notification variant
+// but explicitly does NOT emit it server-side — the per-session FIFO
+// lives here on the client. We mirror push / drain transitions onto a
+// window CustomEvent so `session-context.tsx` can surface queue depth in
+// the toolbar without consulting the runtime internals (which are
+// module-scope and not React-reactive).
+//
+// `queueTotalBySession` carries the TOTAL number of entries on the chain
+// (in-flight + parked-behind). The dispatched `pendingCount` is
+// `max(0, total - 1)` — the in-flight turn does NOT count toward queue
+// backpressure (codex Wave4-A P2 review fix: a lone send used to render
+// "1 queued" even when nothing was waiting). The pill in
+// `chat-thread.tsx:1630` only renders when `pendingCount > 0` so the
+// indicator is visible only when there's true backpressure.
+
+const queueTotalBySession = new Map<string, number>();
+const queueHeadBySession = new Map<string, string | null>();
+
+function pendingBacklog(sessionId: string): number {
+  const total = queueTotalBySession.get(sessionId) ?? 0;
+  return total > 0 ? total - 1 : 0;
+}
+
+function dispatchQueueState(sessionId: string): void {
+  if (typeof window === "undefined") return;
+  const pendingCount = pendingBacklog(sessionId);
+  const head = queueHeadBySession.get(sessionId) ?? null;
+  try {
+    window.dispatchEvent(
+      new CustomEvent("crew:queue_state", {
+        detail: {
+          sessionId,
+          pendingCount,
+          head,
+        },
+      }),
+    );
+  } catch {
+    // best-effort — some sandbox modes block CustomEvent.
+  }
+}
+
+function incrementQueueTotal(sessionId: string, head: string): void {
+  const prev = queueTotalBySession.get(sessionId) ?? 0;
+  queueTotalBySession.set(sessionId, prev + 1);
+  // Head is the cmid of the IN-FLIGHT turn — the first entry to land on
+  // a fresh queue is treated as in-flight and recorded so a future
+  // consumer (e.g. a "cancel queued" button) can identify it. Subsequent
+  // pushes leave the head pinned until release.
+  if (!queueHeadBySession.has(sessionId)) {
+    queueHeadBySession.set(sessionId, head);
+  }
+  dispatchQueueState(sessionId);
+}
+
+function decrementQueueTotal(sessionId: string): void {
+  const prev = queueTotalBySession.get(sessionId) ?? 0;
+  const next = Math.max(0, prev - 1);
+  if (next === 0) {
+    queueTotalBySession.delete(sessionId);
+    queueHeadBySession.delete(sessionId);
+  } else {
+    queueTotalBySession.set(sessionId, next);
+  }
+  dispatchQueueState(sessionId);
+}
+
+export async function interruptActiveTurn(opts: {
+  sessionId: string;
+  historyTopic?: string;
+  turnId?: string;
+  reason?: string;
+}): Promise<boolean> {
+  const key = queueKey(opts.sessionId);
+  const control = activeTurnControlsBySession.get(key);
+  const turnId = opts.turnId ?? control?.turnId ?? queueHeadBySession.get(key);
+  const bridge = getActiveBridge(opts.sessionId, opts.historyTopic);
+  if (!bridge || !turnId) return false;
+
+  // codex #261 rounds 2-3 P1: the send path parks `turn/start` behind
+  // `whenThinkingSeeded` during the initial `session/open` handshake. An
+  // interrupt issued in that window must NOT reach the bridge queue
+  // ahead of the still-parked start — it would no-op server-side and
+  // the supposedly cancelled turn would run. Gating on the SAME promise
+  // preserves pairwise order (waiters resolve in registration order and
+  // the send always registered first). EVERY cancel surface must route
+  // through this helper rather than calling `bridge.interruptTurn`
+  // directly, or it re-opens the race (round 3: /home ConversationView).
+  await whenThinkingSeeded(opts.sessionId, opts.historyTopic);
+  const result = await bridge.interruptTurn(turnId, opts.reason);
+  if (result.interrupted && control?.turnId === turnId) {
+    control.complete();
+  }
+  return result.interrupted;
+}
+
+async function enqueueSendV1(opts: SendOptions): Promise<void> {
+  // codex #262 P1: a rollback's suffix trim is RELATIVE to the thread
+  // list — a turn mirrored/sent while the trim applies would be wiped
+  // locally (and re-appended server-side against the trimmed state the
+  // user hasn't seen yet). Park the whole send behind the applying
+  // rollback. Conditional so the idle path stays FULLY synchronous —
+  // the Wave4-A queue-state dispatch below must fire before any await;
+  // the wait itself fails open after 5s so a stuck lock cannot wedge
+  // sends.
+  if (isRollbackBusy(opts.sessionId, opts.historyTopic)) {
+    await whenRollbackIdle(opts.sessionId, opts.historyTopic);
+  }
+  const key = queueKey(opts.sessionId);
+  const prev = turnQueues.get(key) ?? Promise.resolve();
+
+  // Pin the clientMessageId once so the ghost overlay, turn/start request,
+  // and canonical terminal use the same identity.
+  const clientMessageId = opts.clientMessageId ?? crypto.randomUUID();
+  const pinnedOpts: SendOptions = { ...opts, clientMessageId };
+
+  // The signal we hand to `sendMessageV1`. Its canonical-terminal handler
+  // resolves it (or an early failure inside
+  // `sendMessageV1`). The next chained call awaits this signal before
+  // issuing its own `bridge.sendTurn`.
+  let release!: () => void;
+  const lifecycleDone = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // Build the chain entry as a fresh promise we keep a stable reference to,
+  // so the cleanup compare-and-delete is correct. Issue #109.1: the chain
+  // entry must be installed SYNCHRONOUSLY (before the bridge-start await)
+  // so that rapid back-to-back sendMessage() calls observe each other in
+  // `turnQueues.get(key)` and serialise correctly. Pre-fix, awaiting the
+  // bridge start before `turnQueues.set` let two rapid sends each read
+  // `Promise.resolve()` as their `prev`, defeating the per-session FIFO.
+  const chained = prev.then(() => lifecycleDone);
+  turnQueues.set(key, chained);
+  // Wave4-A: surface the push BEFORE awaiting the prior turn so the
+  // toolbar pill updates synchronously with the user's submit. The
+  // matching `decrementQueueTotal` runs in the `finally` block below.
+  incrementQueueTotal(key, clientMessageId);
+
+  try {
+    await prev;
+    // Ensure the bridge is usable before marking the session active. A failed
+    // start leaves no local render row; the ghost's error callback is the
+    // only optimistic failure surface.
+    try {
+      await startBridgeForSession(
+        pinnedOpts.sessionId,
+        pinnedOpts.historyTopic,
+        // Fire-and-forget: the send only needs a usable bridge, it never
+        // tears one down — so it OBSERVES any in-flight same-scope start
+        // instead of claiming it. Claiming here stole `latestCaller` from
+        // the runtime provider effect mid-handshake; the effect's start
+        // then rejected and its cleanup ownership +
+        // `onSessionTitleUpdated` forwarding never installed. (#292)
+        { ownership: "observe" },
+      );
+    } catch (err) {
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn(
+          "ui-protocol-send: bridge start failed; aborting optimistic projection",
+        );
+      }
+      markSendFailure(
+        pinnedOpts,
+        clientMessageId,
+        err instanceof BridgeStartupError
+          ? err
+          : new Error("Unable to connect to Octos Core. Please retry."),
+      );
+      pinnedOpts.onComplete?.();
+      release();
+      return;
+    }
+
+    pinnedOpts.onSessionActive?.(pinnedOpts.text);
+
+    // M9-β-1 (UPCR-2026-015 / server PR #860): the three previously
+    // unsupported variants — media-bearing, /queue-rewrite, and
+    // topic-scoped sends — are now first-class on the WS path.
+    // `sendMessageV1` builds a `TurnStartExtras` envelope from the
+    // populated `SendOptions` fields and the bridge serialises only
+    // the populated extras onto the wire (so the on-wire shape stays
+    // byte-identical to a pre-β-1 build for text-only sends).
+    await sendMessageV1(pinnedOpts, release);
+    // Wait for the canonical terminal before we let the chain advance.
+    // `sendMessageV1` always calls `release()` — on success via the
+    // `turn_terminal` listener, on early failure or RPC
+    // failure inline (including the connection-state `closed` listener
+    // for codex P2 round 2: bridge teardown cascades release through
+    // every parked entry without the 15-min safety wait). So this
+    // resolves promptly rather than parking the chain forever.
+    await lifecycleDone;
+  } catch {
+    // Defensive: if `sendMessageV1` ever rejects without calling release,
+    // unblock the chain so a transient failure doesn't wedge subsequent
+    // sends.
+    release();
+  } finally {
+    if (turnQueues.get(key) === chained) {
+      turnQueues.delete(key);
+    }
+    // Wave4-A: drain signal — fires on every send-path termination
+    // (happy path, transport drop, queue-wedge safety release).
+    // Symmetric with the push above so the pill ticks down to 0 when
+    // the in-flight turn lands.
+    decrementQueueTotal(key);
+  }
+}
+
+
+/** Test-only reset for the per-session queue map. */
+export function __resetSendQueueForTest(): void {
+  turnQueues.clear();
+  queueTotalBySession.clear();
+  queueHeadBySession.clear();
+  activeTurnControlsBySession.clear();
+}
+
+async function sendMessageV1(
+  opts: SendOptions,
+  // Bug B (M10 follow-up): per-session FIFO queue gate. Resolves on the
+  // server's canonical terminal for THIS turn so the next
+  // `enqueueSendV1` call can issue its own `bridge.sendTurn` without
+  // racing the server's "one turn at a time" rule. Always called exactly
+  // once on every code path (including the unsupported-send and bridge-
+  // unavailable early returns) so the chain never wedges. Defaults to a
+  // no-op for backward compatibility / direct test calls.
+  releaseLifecycleGate: () => void = () => {},
+): Promise<void> {
+  const {
+    sessionId,
+    historyTopic,
+    text,
+    clientMessageId = crypto.randomUUID(),
+    onComplete,
+  } = opts;
+
+  // The composer owns the temporary ghost overlay. Durable user and
+  // assistant rows arrive only through canonical projection envelopes.
+
+  const bridge = getActiveBridge(sessionId, historyTopic);
+  if (!bridge) {
+    // Bridge was torn down between the queue gate and now. Surface the error
+    // through the caller's ghost callback so the user can retry.
+    if (typeof console !== "undefined" && console.warn) {
+      console.warn(
+        "ui-protocol-send: WS bridge unavailable; cannot send turn",
+      );
+    }
+    markSendFailure(
+      opts,
+      clientMessageId,
+      new Error("WebSocket connection is unavailable."),
+    );
+    onComplete?.();
+    releaseLifecycleGate();
+    return;
+  }
+
+  // Subscribe to the canonical terminal BEFORE calling `sendTurn`. A fast
+  // terminal can arrive
+  // between the RPC ack and the post-await `finally` block, leaving
+  // `sendingRef` (the chat input lock) stuck-true if we install the
+  // listener afterwards. The handler also fires `onComplete` on RPC
+  // rejection so the input never spins forever on a network failure.
+  let completed = false;
+  let lifecycleSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+  let offState: (() => void) | null = null;
+  let offProjectionTerminal: (() => void) | null = null;
+  // A transient transport failure can race an accepted turn/start reply.
+  // Give canonical replay a short grace period before surfacing a ghost error.
+  let graceTimer: ReturnType<typeof setTimeout> | null = null;
+  // Latest known connection state. Used at the moment of an error to
+  // distinguish terminal `closed`/`error` (finalize immediately) from
+  // mid-flight `reconnecting` (apply the grace window so an
+  // accepted-but-not-acked turn can complete via canonical replay
+  // after reconnect). Codex round-2 BLOCK F: seed from the
+  // bridge synchronously. `onConnectionStateChange` only fires on
+  // TRANSITIONS, so seeding `"connected"` masks the case where the
+  // bridge is ALREADY terminal at send-start — a sync
+  // `BridgeStoppedError` would then take the 45s grace path instead
+  // of fast-rejecting. `getActiveBridge` no longer gates on
+  // `connectionState === "connected"` (runtime change for M10.5
+  // Wave A round-3), so this can happen in practice.
+  let lastConnState: string = bridge.getConnectionState();
+  const fireComplete = () => {
+    if (completed) return;
+    completed = true;
+    const key = queueKey(sessionId);
+    if (activeTurnControlsBySession.get(key)?.turnId === clientMessageId) {
+      activeTurnControlsBySession.delete(key);
+    }
+    if (lifecycleSafetyTimer !== null) {
+      clearTimeout(lifecycleSafetyTimer);
+      lifecycleSafetyTimer = null;
+    }
+    if (graceTimer !== null) {
+      clearTimeout(graceTimer);
+      graceTimer = null;
+    }
+    if (offState !== null) {
+      offState();
+      offState = null;
+    }
+    if (offProjectionTerminal !== null) {
+      offProjectionTerminal();
+      offProjectionTerminal = null;
+    }
+    // Codex round 3 P2: invoke onComplete inside try/finally so a
+    // throwing callback cannot wedge the per-session queue. The bridge
+    // swallows subscriber exceptions inside its `Subscribers.emit`, so
+    // pre-fix a thrown callback unwound past `releaseLifecycleGate`
+    // here, the lifecycle promise never resolved, and every subsequent
+    // send for the session blocked on the 15-min safety timer.
+    try {
+      onComplete?.();
+    } finally {
+      // Bug B: unblock the per-session turn queue so the next
+      // `enqueueSendV1` can issue its `bridge.sendTurn`. Calling
+      // release multiple times is a no-op.
+      releaseLifecycleGate();
+    }
+  };
+  activeTurnControlsBySession.set(queueKey(sessionId), {
+    turnId: clientMessageId,
+    complete: fireComplete,
+  });
+  // Canonical `turn_terminal` is the sole turn-settlement signal. Match the
+  // explicit cmid when present; the turn id is the fallback identity.
+  offProjectionTerminal = bridge.onProjectionTerminal((event) => {
+    if (
+      event.client_message_id !== clientMessageId &&
+      event.turn_id !== clientMessageId
+    ) {
+      return;
+    }
+    if (event.outcome !== "completed") {
+      markSendFailure(
+        opts,
+        clientMessageId,
+        new Error(
+          event.error?.message ??
+            (event.outcome === "interrupted"
+              ? "Turn interrupted."
+              : "Turn failed."),
+        ),
+      );
+    }
+    fireComplete();
+  });
+
+  // Codex P2 round 2: if the bridge stops (user navigates away from this
+  // session/topic, runtime tears down), release the FIFO instead of waiting
+  // for a terminal that can no longer arrive. `fireComplete` is idempotent.
+  offState = bridge.onConnectionStateChange((s) => {
+    lastConnState = s;
+    if (s === "closed") {
+      fireComplete();
+    }
+  });
+
+  // Safety net: if no canonical terminal arrives (server crash or a replay
+  // failure), release the FIFO after a generous upper bound.
+  lifecycleSafetyTimer = setTimeout(
+    () => {
+      if (!completed) {
+        fireComplete();
+      }
+    },
+    15 * 60 * 1000,
+  );
+
+  try {
+    // M9-β-1 (UPCR-2026-015): build the `TurnStartExtras` envelope
+    // from the populated `SendOptions` fields. The bridge serialises
+    // only the populated extras onto the wire, so a text-only send
+    // produces the same bytes a pre-β-1 build did.
+    // codex #261 P2: a send racing the `session/open` handshake must not
+    // serialise its frame before the server-persisted thinking effort has
+    // been observed — the frame would omit `reasoning_effort` and the
+    // server treats user-turn omission as "clear the stored override".
+    // Bounded fail-open (3s) so a broken handshake can't wedge sends.
+    await whenThinkingSeeded(opts.sessionId, opts.historyTopic);
+    const extras = buildTurnStartExtras(opts);
+    const result = await bridge.sendTurn(
+      clientMessageId,
+      [{ kind: "text", text }],
+      extras,
+    );
+    // Codex round 7 P2: if the server's RPC reply is structurally
+    // valid but reports `{ accepted: false }`, no canonical terminal will
+    // ever arrive — release immediately.
+    if (!result?.accepted) {
+      markSendFailure(
+        opts,
+        clientMessageId,
+        new Error("The server rejected this turn."),
+      );
+      fireComplete();
+    }
+  } catch (err) {
+    // Distinguish a reconnectable transport drop from a terminal fast reject.
+    // The former gets a grace period for canonical replay; all other errors
+    // surface immediately through the ghost callback.
+    const finalizeAsError = () => {
+      if (completed) return;
+      markSendFailure(
+        opts,
+        clientMessageId,
+        err instanceof Error ? err : new Error(String(err)),
+      );
+      fireComplete();
+    };
+    const isTransportClose = err instanceof BridgeStoppedError;
+    const isRpcTimeout = err instanceof BridgeTimeoutError;
+    const terminalConnState =
+      lastConnState === "closed" || lastConnState === "error";
+    if ((isTransportClose || isRpcTimeout) && !terminalConnState) {
+      // Reconnectable mid-flight drop: give canonical replay a chance to
+      // deliver the terminal before declaring the optimistic ghost failed.
+      graceTimer = setTimeout(() => {
+        graceTimer = null;
+        finalizeAsError();
+      }, 45_000);
+    } else {
+      finalizeAsError();
+    }
+    // Token may have been rejected at WS upgrade — probe `/api/auth/me`
+    // to surface dead-token cases via api/client's 401 interceptor (which
+    // hard-redirects to /login). If the token is still good, this is a
+    // no-op and the user can retry.
+    probeAuthAfterSendFailure();
+  }
+}

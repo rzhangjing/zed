@@ -1,0 +1,58 @@
+name: check-author-email
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  reject-blocked-emails:
+    name: reject blocked author/committer emails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - name: scan commits for blocked emails
+        shell: bash
+        env:
+          BLOCKED_EMAIL_DOMAINS: ${{ vars.BLOCKED_EMAIL_DOMAINS }}
+        run: |
+          set -euo pipefail
+          # Blocked email domains come from the BLOCKED_EMAIL_DOMAINS Actions
+          # variable (space- or comma-separated, e.g. "example.com other.org"),
+          # so the list itself is not published in this repo. Each domain is
+          # matched as `@<domain>` anchored at the end, so `user@<domain>.evil.tld`
+          # and `x@not<domain>` are handled correctly.
+          BLOCKED_DOMAINS="${BLOCKED_EMAIL_DOMAINS:-}"
+          if [ -z "${BLOCKED_DOMAINS//[ ,]/}" ]; then
+            echo "::warning::BLOCKED_EMAIL_DOMAINS is not set; skipping the blocked-domain check."
+            exit 0
+          fi
+          BLOCKED=$(printf '%s\n' "${BLOCKED_DOMAINS}" | tr ', ' '\n\n' | awk 'NF { d = tolower($0); gsub(/\./, "\\.", d); printf "%s@%s$", (n++ ? "|" : ""), d }')
+
+          if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+            BASE="origin/${GITHUB_BASE_REF}"
+            HEAD="${GITHUB_SHA}"
+            git fetch origin "${GITHUB_BASE_REF}" --depth=1 || true
+            RANGE="${BASE}...${HEAD}"
+          else
+            BEFORE="${GITHUB_EVENT_BEFORE:-}"
+            if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+              RANGE="HEAD~100..HEAD"
+            else
+              RANGE="${BEFORE}..${GITHUB_SHA}"
+            fi
+          fi
+
+          echo "Scanning range: ${RANGE}"
+          OFFENDERS=$(git log "${RANGE}" --format='%H|%ae|%ce|%s' | awk -F'|' -v re="${BLOCKED}" 'tolower($2) ~ re || tolower($3) ~ re')
+          if [ -n "${OFFENDERS}" ]; then
+            echo ""
+            echo "FAIL: the following commits carry blocked author/committer emails:"
+            echo "${OFFENDERS}"
+            echo ""
+            echo "Fix: rebase + amend each offending commit with an approved git identity."
+            exit 1
+          fi
+          echo "OK: no blocked emails in commit range."

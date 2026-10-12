@@ -1,0 +1,52 @@
+name: Build Linux x86_64
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or tag to build'
+        required: false
+        default: 'main'
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+
+      - name: Set build metadata
+        run: |
+          echo "OCTOS_GIT_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          echo "OCTOS_BUILD_DATE=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+          # Keep build-machine paths (home dir, cargo registry, checkout) out
+          # of the shipped binaries' panic messages and file!() strings.
+          home_dir="$HOME"; cargo_dir="${CARGO_HOME:-$HOME/.cargo}"; ws_dir="$GITHUB_WORKSPACE"
+          if command -v cygpath >/dev/null 2>&1; then
+            home_dir=$(cygpath -w "$home_dir"); cargo_dir=$(cygpath -w "$cargo_dir"); ws_dir=$(cygpath -w "$ws_dir")
+          fi
+          echo "RUSTFLAGS=${RUSTFLAGS:+$RUSTFLAGS }--remap-path-prefix=${home_dir}=~ --remap-path-prefix=${cargo_dir}=/cargo --remap-path-prefix=${ws_dir}=." >> "$GITHUB_ENV"
+
+      - name: Build octos CLI and sandbox helper
+        run: |
+          cargo build --release -p octos-cli --features "api,telegram,discord,feishu,twilio,wecom,wecom-bot,audio_mp3"
+          cargo build --release -p octos-sandbox
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: octos-linux-x86_64
+          path: |
+            target/release/octos
+            target/release/octos-sandbox
+          retention-days: 7

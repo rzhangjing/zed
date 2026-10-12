@@ -1,0 +1,1880 @@
+/**
+ * UI Protocol compatibility-event router (Phase C-2, issue #68).
+ *
+ * Canonical projection envelopes bypass this module and are the only chat
+ * render source. The retained handlers keep compatibility task/tool
+ * bookkeeping and DOM control-plane notifications in sync after bridge-level
+ * fail-closed guards accept their typed events.
+ *
+ * Side-effects this module is allowed to perform:
+ *   - mutate ThreadStore compatibility bookkeeping
+ *   - dispatch DOM CustomEvents (`crew:thinking`, `crew:approval_requested`,
+ *     `crew:bg_tasks`) so existing listeners (sidebar spinner, future
+ *     approval modal) keep working without per-listener flag-gating.
+ *
+ * Side-effects this module deliberately does NOT perform:
+ *   - mutate ProjectionStore (the bridge owns canonical envelope admission)
+ *   - mutate session-context state directly (callers wire that up)
+ */
+
+import type {
+  LoopUpdatedEvent,
+  LoopFiredEvent,
+  LoopCompletedEvent,
+  SessionGoalUpdatedEvent,
+  SessionGoalClearedEvent,
+
+  ApprovalRequestedEvent,
+  ApprovalAutoResolvedEvent,
+  UserQuestionRequestedEvent,
+  FileAttachedEvent,
+  MessageDeltaEvent,
+  ProgressUpdatedEvent,
+  QueueStateEvent,
+  RouterFailoverEvent,
+  RouterStatusEvent,
+  TaskOutputDeltaEvent,
+  TaskUpdatedEvent,
+  SkillActionJobUpdatedEvent,
+  ToolCompletedEvent,
+  ToolProgressEvent,
+  ToolStartedEvent,
+  TurnCompletedEvent,
+  TurnErrorEvent,
+  TurnSpawnCompleteEvent,
+  TurnStartedEvent,
+  UiProtocolBridge,
+  VisualGeneratingEvent,
+  VisualSucceededEvent,
+  VisualFailedEvent,
+  VoiceExitEvent,
+} from "./ui-protocol-bridge";
+import * as ThreadStore from "@/store/thread-store";
+import * as TaskStore from "@/store/task-store";
+import type { MessageMeta } from "@/store/thread-store";
+import { recordRuntimeCounter } from "./observability";
+import { isSpawnOnlyToolName } from "./spawn-only-tools";
+import { aggregateCallStatus } from "./task-rollup";
+import * as AutonomyStore from "@/store/autonomy-store";
+
+// ---------------------------------------------------------------------------
+// Per-turn meta snapshot
+// ---------------------------------------------------------------------------
+//
+// Regression-#2 fix (chat-thread `ThreadMessageMeta` footer):
+//
+// Model + tokens + duration arrive in `progress/updated` notifications
+// carrying `metadata.kind === "token_cost_update"`. The legacy
+// `ThreadMessageMeta` renderer reads `message.meta.{model, tokens_in,
+// tokens_out, duration_s}` and goes blank when meta is absent.
+//
+// We accumulate the latest cost snapshot per `turn_id` here and stamp it
+// onto the finalised assistant bubble via `finalizeAssistant({ meta })`
+// when `turn/completed` lands. The snapshot survives across multiple
+// `progress/updated` frames in a turn so a late cost frame between the
+// first delta and the completion doesn't drop fields. Clear on
+// `turn/completed` / `turn/error` so a stale snapshot can't leak into a
+// following turn.
+
+interface TurnMetaSnapshot {
+  /** Last model string we saw. Primary source is
+   *  `metadata.token_cost.model` (added server-side in PR
+   *  `feat/cost-update-carry-model` —
+   *  `crates/octos-cli/src/api/ui_protocol_progress.rs::map_cost_update`
+   *  threads the field from `LlmProvider::provider_metadata_for_index`).
+   *  Falls back to the legacy `metadata.label` carrier for daemons that
+   *  haven't been upgraded yet. Optional — some turns don't carry a
+   *  model. */
+  model?: string;
+  /** Per-turn delta of `input_tokens`. Codex round-2 P2 fix: the
+   *  `progress/updated{kind:"token_cost_update"}` frame carries SESSION
+   *  cumulative counters (server `emit_cost_update`'s
+   *  `total_usage.input_tokens` —
+   *  `crates/octos-agent/src/agent/streaming.rs:256`), so stamping the
+   *  raw counter onto `message.meta` would show session-total tokens on
+   *  every assistant bubble after the first turn. We derive the
+   *  per-turn delta by anchoring on `baselineInputTokens` (the
+   *  cumulative value at the first frame we see for this turn) and
+   *  subtracting it from every subsequent frame.
+   */
+  tokensIn?: number;
+  tokensOut?: number;
+  /** Baseline session-cumulative tokens at the start of the turn.
+   *  `tokensIn` / `tokensOut` are derived as `latest - baseline`. */
+  baselineInputTokens?: number;
+  baselineOutputTokens?: number;
+  /** Latest session-cumulative tokens seen on a `progress/updated`
+   *  frame for this turn. Used by `handleTurnCompleted` to roll the
+   *  session baseline forward for the next turn. */
+  latestCumulativeInputTokens?: number;
+  latestCumulativeOutputTokens?: number;
+  /** Turn duration in seconds, rounded to one decimal place. Computed
+   *  from the first `progress/updated{kind:"token_cost_update"}` arrival
+   *  time relative to either `turn/started` or, lacking that, the first
+   *  meta snapshot we ever recorded for the turn. */
+  durationS?: number;
+  /** Performance.now() (or Date.now()) at the first frame for this turn —
+   *  used to derive `durationS` on `turn/completed`. */
+  firstSeenAtMs?: number;
+}
+
+const turnMetaByTurnId = new Map<string, TurnMetaSnapshot>();
+
+/** Session-cumulative token totals at the close of the most recent
+ *  turn. The next turn's baseline = this value, so its per-turn delta
+ *  comes out as `latest - lastTurnEndCumulative`. Keyed by `sessionId`
+ *  so cross-session leakage can't happen. Codex round-2 P2 fix.
+ *
+ *  Codex round-4: each counter is independently optional — a server
+ *  frame may carry only `output_tokens` (or only `session_cost` and
+ *  no token counters at all). We seed each counter's baseline ONLY
+ *  when that specific counter is observed. Otherwise a later frame's
+ *  first `input_tokens` value would get attributed in full to the
+ *  current turn (as if baseline=0), which is exactly the
+ *  session-cumulative-leak the round-3 self-seeding heuristic tried
+ *  to prevent. */
+const lastTurnEndCumulativeBySession = new Map<
+  string,
+  { inputTokens?: number; outputTokens?: number }
+>();
+
+/** `tool_call_id` → `tool_name` map, populated by `tool/started` so a
+ *  subsequent `tool/progress` (which carries no `tool_name` on the wire)
+ *  can still render the friendly tool label in the spinner row. Codex
+ *  P3 fix: the spinner used to flip from e.g. `shell` to `tc-abc...`
+ *  the moment the first `tool/progress` arrived. The map is bounded by
+ *  the number of in-flight tool calls per session (~tens, never
+ *  thousands); we clear an entry on `tool/completed` to keep it tight.
+ */
+const toolNameByCallId = new Map<string, string>();
+
+/** Reset the per-turn meta map + tool-name cache + cumulative
+ *  baseline. Tests call this between cases; production code does not
+ *  need it because all three maps are bounded by the number of live
+ *  turns + tool calls + sessions. */
+export function __resetTurnMetaForTest(): void {
+  turnMetaByTurnId.clear();
+  toolNameByCallId.clear();
+  lastTurnEndCumulativeBySession.clear();
+}
+
+function nowMs(): number {
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function metaFromSnapshot(snap: TurnMetaSnapshot | undefined): MessageMeta | undefined {
+  if (!snap) return undefined;
+  if (!snap.model && !snap.tokensIn && !snap.tokensOut && !snap.durationS) {
+    return undefined;
+  }
+  return {
+    model: snap.model ?? "",
+    tokens_in: snap.tokensIn ?? 0,
+    tokens_out: snap.tokensOut ?? 0,
+    duration_s: snap.durationS ?? 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Per-task state-transition de-dupe
+// ---------------------------------------------------------------------------
+
+/** Last-seen task state + label per `task_id`. Mirrors the SSE-side
+ *  `lastTaskStatusById` map in `runtime-provider.tsx` so a `task/updated`
+ *  replay (e.g. on reconnect) doesn't inflate the in-bubble timeline.
+ *  Tracking the rendered label too (codex round-3) lets a stream of
+ *  `running` updates with refreshed `title`/`runtime_detail` through —
+ *  pre-fix the state-only dedupe stuck spawn_only spinners on the
+ *  very first label they emitted. */
+interface LastTaskState {
+  state: string;
+  label?: string;
+}
+const lastTaskStateById = new Map<string, LastTaskState>();
+
+/**
+ * Codex P2 round (2026-05-25) — dedupe set for `file/attached`
+ * envelopes. A `turn/spawn_complete` compatibility event may redeliver the
+ * same artefact, and the
+ * envelope itself can replay across reconnects. Without a dedupe layer
+ * the file would attach twice to the owning bubble (`appendAssistantFile`
+ * is path-deduplicated but `appendAssistantFileToToolCall` was added to
+ * target a specific assistant message, and a turn with multiple
+ * spawn_only completions can produce identical `(threadId, path)` keys
+ * for DIFFERENT bubbles — so we key on `tool_call_id` too).
+ *
+ * Key shape: `${threadId}|${toolCallId ?? ""}|${path}`. Bounded by the
+ * number of artefacts the active sessions have delivered — for chat
+ * sessions that's tens, even after long-running soaks.
+ *
+ * Reset between tests via `__resetRouterStateForTest`. Production memory
+ * is reclaimed when a session is cleared via the host-app session
+ * lifecycle; the router itself doesn't observe session lifecycle so it
+ * keeps a single flat set.
+ */
+const seenFileAttachments = new Set<string>();
+
+function fileAttachKey(
+  threadId: string,
+  toolCallId: string | undefined,
+  path: string,
+): string {
+  return `${threadId}|${toolCallId ?? ""}|${path}`;
+}
+
+/** Reset the per-task state map. Tests call this between cases; production
+ *  code does not need it because the map is bounded by the number of live
+ *  tasks per session (~tens, never thousands). */
+export function __resetRouterStateForTest(): void {
+  lastTaskStateById.clear();
+  seenFileAttachments.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+export interface RouterConfig {
+  sessionId: string;
+  /** Optional thread topic (matches the SSE-bridge `historyTopic`). */
+  topic?: string;
+  /** Override window event dispatch for tests / SSR. */
+  dispatchEvent?: (event: Event) => void;
+}
+
+function dispatch(cfg: RouterConfig, event: Event): void {
+  const fn = cfg.dispatchEvent ?? defaultDispatch;
+  fn(event);
+}
+
+function defaultDispatch(event: Event): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(event);
+}
+
+// ---------------------------------------------------------------------------
+// Mappers
+// ---------------------------------------------------------------------------
+
+export function handleMessageDelta(
+  _cfg: RouterConfig,
+  event: MessageDeltaEvent,
+): void {
+  // turn_id is the thread_id key per the v1 contract. The bridge already
+  // rejected events with a missing/empty turn_id at the guard layer.
+  // The wire field is `text` (see `MessageDeltaEvent`) — using the wrong
+  // field name silently drops every spawn-ack delta and leaves an empty
+  // timestamp-only bubble (M10 Phase 6.2 regression).
+  if (!event.text) return;
+  ThreadStore.appendAssistantToken(event.turn_id, event.text);
+}
+
+function filenameFromPath(path: string): string {
+  const idx = path.lastIndexOf("/");
+  return idx === -1 ? path : path.slice(idx + 1);
+}
+
+/**
+ * M10 Phase 2: handle the `turn/spawn_complete` envelope.
+ *
+ * Each envelope is structurally complete and represents a NEW assistant
+ * bubble under the originating user prompt — no merging into an existing
+ * bubble and no reconstruction across events.
+ *
+ * Placement strategy (per the migration plan): use `event.thread_id` as
+ * the placement key — server PR #680 made `thread_id` the
+ * server-authoritative identifier on persisted rows, so the SPA reducer
+ * binds the new bubble against it directly. We deliberately do NOT key
+ * off `response_to_client_message_id`: Phase 1 server emits a
+ * thread-id-flavoured value there until Phase 4 plumbing introduces a
+ * typed `originating_client_message_id`. Reading it as advisory only
+ * matches the server's documented Phase 1 contract.
+ *
+ * Legacy fallback: if `thread_id` is missing (older callers, or paths
+ * that don't propagate origination), use `response_to_client_message_id`
+ * as a best-effort placement key. If neither is present, the envelope
+ * cannot be attributed and is dropped — better than orphaning the bubble
+ * under an arbitrary thread.
+ */
+export function handleSpawnComplete(
+  cfg: RouterConfig,
+  event: TurnSpawnCompleteEvent,
+): void {
+  const placementKey =
+    event.thread_id ?? event.response_to_client_message_id;
+  if (!placementKey) {
+    return;
+  }
+
+  // Bug 2026-05-15 (codex): flip the originating tool call's status to
+  // `complete` BEFORE appending the new completion bubble. Pre-fix
+  // `handleSpawnComplete` appended the bubble and dropped the
+  // toolNameByCallId cache but never updated ThreadStore's tool-call
+  // `status` field — so `addToolCall(..., status:"running")` left the
+  // chip stuck at "running" forever after the background work finished.
+  // Every spinner/icon gated on `toolCall.status === "running"`
+  // (`ToolProgressIndicator`, `ToolCallBubble` per-tool icon,
+  // streaming-dots placeholder) kept spinning.
+  //
+  // The `turn/spawn_complete` envelope is only emitted on SUCCESS (see
+  // `TurnSpawnCompleteEvent` in `crates/octos-core/src/ui_protocol.rs`
+  // — no `success` field); failures travel through `task/updated
+  // state="failed"|"errored"` which `handleTaskUpdated` already maps
+  // to `setToolCallStatus(..., "error")`. So this site is
+  // unconditionally `"complete"`.
+  //
+  // Ordering matters: `setToolCallStatus` walks the host thread's
+  // assistant slots via `pickAssistantSlot`, which returns the MOST
+  // RECENT assistant response. If we appended the new completion
+  // bubble first, that bubble would become the "most recent" slot —
+  // and the tool call lives on the EARLIER ack bubble, so the lookup
+  // would miss and the status flip would no-op. Run the status flip
+  // first, while the ack bubble is still the topmost finalized slot.
+  //
+  // Locator strategy: resolve by the originating `tool_call_id` after
+  // translating from the envelope's `task_id`.
+  //
+  // Bug 2026-05-15 (codex final-3 bonus check): the envelope's
+  // `task_id` is the supervisor's `TaskId::new()` UUID (see
+  // `crates/octos-agent/src/task_supervisor.rs::register_full`), NOT
+  // the LLM's `tool_call_id`. The `BackgroundTask` struct keeps them
+  // as separate fields, and `tool/started` registered the LLM's
+  // `tool_call_id`. Passing `event.task_id` directly to ThreadStore's
+  // by-tool-call-id lookup misses (different identifier shapes), and
+  // the spinner stays stuck. We translate `task_id → tool_call_id`
+  // through `TaskStore` (which the task watcher's
+  // `crew:task_status` poll populates with `BackgroundTaskInfo`
+  // rows carrying both `id` and `tool_call_id`). When the mapping is
+  // not yet known (the task watcher hasn't polled, or the task is
+  // brand new) fall back to treating `event.task_id` as the
+  // tool_call_id — the older test fixtures used identical values
+  // there and a fraction of legacy daemons still emit them equal.
+  //
+  // The previous defence (use `findThreadIdForToolCall` not
+  // `setToolCallStatus(thread_id, ...)`) is still required: the
+  // envelope's `turn_id` / `thread_id` may be a foreign id (codex
+  // orphan-thread scenario in
+  // `chat-thread-tool-failure-preserves-user-prompt.test`) that
+  // does NOT contain the tool call — passing such an id to
+  // `setToolCallStatus` would mint an empty-user orphan thread via
+  // `ensureOrphanThread` and steal attribution from the user's real
+  // prompt.
+  //
+  // Bug 2026-05-15 (codex round 2): the TaskStore lookup that
+  // `resolveToolCallIdForTask` relies on races against the task watcher's
+  // poll loop. In production the watcher only runs when the bridge's
+  // `task/updated` envelope first dispatches `crew:bg_tasks` — but the
+  // pre-fix bridge guard dropped EVERY `task/updated` (server emits no
+  // `turn_id`), so the store stayed empty and the resolver fell back to
+  // the raw supervisor UUID. The chip then never flipped. Prefer the
+  // wire-borne `tool_call_id` (parallel server PR adds it) and use the
+  // TaskStore lookup only as a fallback for legacy daemons.
+  const resolvedToolCallId =
+    event.tool_call_id ??
+    resolveToolCallIdForTask(cfg.sessionId, cfg.topic, event.task_id);
+  const statusHostThreadId = ThreadStore.findThreadIdForToolCall(
+    cfg.sessionId,
+    cfg.topic,
+    resolvedToolCallId,
+  );
+  if (statusHostThreadId) {
+    ThreadStore.setToolCallStatus(
+      statusHostThreadId,
+      resolvedToolCallId,
+      "complete",
+    );
+  }
+
+  // Belt-and-braces: clear the sidebar spinner at completion even if
+  // the terminal `task/updated state="completed"` envelope is missed
+  // (it already happens in practice — `turn/spawn_complete` is the
+  // durable completion signal). Run unconditionally so the helper
+  // works for tasks the running-state envelope was never delivered
+  // for (e.g. reorder / replay where completion lands first).
+  mergeLiveTask(
+    cfg.sessionId,
+    cfg.topic,
+    event.task_id,
+    resolvedToolCallId,
+    "completed",
+  );
+
+  ThreadStore.appendCompletionBubble(placementKey, {
+    text: event.content,
+    media: event.media ?? [],
+    spawnComplete: true,
+    sourceClientMessageId: event.response_to_client_message_id,
+    historySeq: event.seq,
+    messageId: event.message_id,
+    // Server-side commit time. Without this, the row's display timestamp
+    // is client receipt time and shifts on reconnect (codex round-4 P3).
+    persistedAt: event.persisted_at,
+    // Pass the router's active scope so unknown-thread orphan
+    // completions land in THIS session's bucket rather than an
+    // arbitrary stale one (codex P2 fix).
+    sessionId: cfg.sessionId,
+    topic: cfg.topic,
+  });
+  // Drop the cache entry — the BG task is done. The per-bubble
+  // `ToolProgressIndicator` reads from ThreadStore (not window
+  // events), so no terminal dispatch is needed here. Drop both
+  // identifier shapes so the cache cannot leak through the
+  // task_id-vs-tool_call_id divergence.
+  toolNameByCallId.delete(event.task_id);
+  if (resolvedToolCallId !== event.task_id) {
+    toolNameByCallId.delete(resolvedToolCallId);
+  }
+}
+
+/**
+ * UPCR-2026-014 M9-α-9 — route a `file/attached` envelope to the
+ * bubble that hosts the originating `spawn_only` tool call.
+ *
+ * Redundancy contract: this handler is the slides-soak safety net.
+ * `turn/spawn_complete` may carry the same `media[]`; this typed event keeps
+ * artifact ownership attached to the matching compatibility tool state when
+ * that delivery is delayed or omitted.
+ *
+ * Placement priority:
+ *   1. `tool_call_id` → ThreadStore.findThreadIdForToolCall →
+ *      `appendAssistantFileToToolCall` on the assistant message that
+ *      OWNS the tool call. Pre-fix (codex P2, 2026-05-25) the handler
+ *      called `appendAssistantFile`, which targets the latest sibling
+ *      in the thread — when a turn has multiple spawn_only completions
+ *      OR the envelope replays after another assistant response has
+ *      landed, the file would attach to the wrong bubble. Targeting
+ *      by `tool_call_id` is correctness-critical.
+ *   2. `turn_id` → `appendAssistantFile` (which falls back to pending
+ *      assistant or the most-recent finalized response on the thread).
+ *      Scoped to `cfg.sessionId` / `cfg.topic` (codex P2 round 2,
+ *      2026-05-25): pre-fix the fallback walked every loaded session
+ *      and could route an artefact to a stale session that was still
+ *      resident. If the thread is missing from the active scope, the
+ *      event is DROPPED rather than silently routed to the wrong
+ *      session.
+ *   3. No placement context → drop. Better than minting an orphan
+ *      bubble that would confuse the user.
+ *
+ * Dedupe contract (codex P2 round, 2026-05-25): keyed by
+ * `(threadId, tool_call_id, path)`. A replay of the same envelope (or a
+ * same-path compatibility delivery after this handler ran) is a no-op. The
+ * underlying store mutators
+ * are path-deduplicated, but the dedupe set here is the canonical guard
+ * so the metric / log only fires once per unique artefact.
+ */
+export function handleFileAttached(
+  cfg: RouterConfig,
+  event: FileAttachedEvent,
+): void {
+  if (!event.path || event.path.length === 0) {
+    return;
+  }
+  // #1477 voice rich output: `file/attached` is a pure artifact-delivery
+  // signal — visual lifecycle SUCCESS is carried by the typed
+  // `visual/succeeded` event (see `handleVisualSucceeded`), so nothing visual
+  // is derived from a file extension here.
+  const file = {
+    filename: filenameFromPath(event.path),
+    path: event.path,
+    caption: "",
+  };
+
+  // Priority 1: route by tool_call_id (strongest placement signal).
+  // Target the SPECIFIC assistant message that owns the tool call,
+  // not just the latest assistant message in the thread.
+  if (event.tool_call_id) {
+    const hostThreadId = ThreadStore.findThreadIdForToolCall(
+      cfg.sessionId,
+      cfg.topic,
+      event.tool_call_id,
+    );
+    if (hostThreadId) {
+      const dedupeKey = fileAttachKey(
+        hostThreadId,
+        event.tool_call_id,
+        event.path,
+      );
+      if (seenFileAttachments.has(dedupeKey)) {
+        recordRuntimeCounter("octos_file_attached_dedup_total", {
+          surface: "router_v1",
+          path: "tool_call",
+        });
+        return;
+      }
+      const attached = ThreadStore.appendAssistantFileToToolCall(
+        hostThreadId,
+        event.tool_call_id,
+        file,
+      );
+      if (attached) {
+        seenFileAttachments.add(dedupeKey);
+
+        // Cross-slot cleanup: strip the path from "naive media
+        // siblings" — assistant slots with NO tool_calls that absorbed the
+        // path via the latest-sibling fallback. That is the mis-placement
+        // pattern `file/attached` exists to correct.
+        //
+        // Codex round 5 (2026-05-25): deliberately do NOT strip from
+        // siblings that HAVE their own tool_calls. Absence from the
+        // router's in-memory claim set is not proof of staleness — a
+        // sibling owner may have received the path via its own
+        // `media[]` delivery (the documented redundant channel
+        // `file/attached` complements) before its own claim envelope
+        // arrives, or its `file/attached` may be absent entirely on
+        // hydrate/fallback paths. The redundancy contract treats both
+        // delivery channels as authoritative for their respective owners;
+        // cleanup is limited to the narrow mis-placement target.
+        ThreadStore.stripFileFromNaiveSiblings(
+          hostThreadId,
+          event.tool_call_id,
+          event.path,
+        );
+      }
+      return;
+    }
+  }
+
+  // Priority 2: fall back to turn_id. Scope the lookup to the active
+  // (sessionId, topic) — if the thread is missing from active scope,
+  // DROP rather than silently route to a stale session.
+  if (!event.turn_id) {
+    return;
+  }
+  if (!ThreadStore.hasThreadInScope(cfg.sessionId, cfg.topic, event.turn_id)) {
+    recordRuntimeCounter("octos_file_attached_dropped_out_of_scope_total", {
+      surface: "router_v1",
+    });
+    return;
+  }
+  const dedupeKey = fileAttachKey(event.turn_id, event.tool_call_id, event.path);
+  if (seenFileAttachments.has(dedupeKey)) {
+    recordRuntimeCounter("octos_file_attached_dedup_total", {
+      surface: "router_v1",
+      path: "turn_id",
+    });
+    return;
+  }
+  const attached = ThreadStore.appendAssistantFile(event.turn_id, file);
+  if (attached) {
+    seenFileAttachments.add(dedupeKey);
+  }
+}
+
+export function handleTaskUpdated(
+  cfg: RouterConfig,
+  event: TaskUpdatedEvent,
+): void {
+  const previous = lastTaskStateById.get(event.task_id);
+  // Dedupe ONLY when both state AND label are unchanged. The legacy
+  // by-state-only dedupe meant a stream of `running` updates with
+  // refreshed titles (e.g. "synthesising 1/3" → "synthesising 2/3")
+  // was dropped — spawn_only progress would stay frozen on the
+  // first label on the lifted spinner. Compare the rendered label
+  // for running/spawned; terminal states don't carry one so the
+  // state alone is enough.
+  const stateUnchanged = previous?.state === event.state;
+  const labelUnchanged =
+    previous?.label === (event.title ?? event.runtime_detail);
+  if (stateUnchanged && labelUnchanged) return;
+  lastTaskStateById.set(event.task_id, {
+    state: event.state,
+    label: event.title ?? event.runtime_detail,
+  });
+
+  // For spawn_only background tools (podcast_generate / fm_tts /
+  // deep_search / mofa_slides etc.) the running-state updates arrive
+  // exclusively via `task/updated`, NOT `tool/progress` — the parent
+  // LLM turn already settled at `turn/completed` before the
+  // background work started. The lifted `ToolProgressIndicator`
+  // therefore needs the spinner-progress fan-out here as well, with
+  // the terminal flag set on the completion legs so the row clears.
+  //
+  // Bug 2026-05-15 (codex round 2): prefer the wire-borne
+  // `event.tool_call_id` (parallel server PR adds it). Falls back to
+  // the TaskStore `task_id → tool_call_id` lookup for legacy daemons,
+  // which itself falls back to the raw `task_id` when the watcher
+  // hasn't populated the store yet. The fallback chain handles all
+  // three wire generations (modern carries tool_call_id, mid-tier has
+  // separate task_id+tool_call_id with a watcher poll bridging them,
+  // legacy emits them equal).
+  const resolvedToolCallId =
+    event.tool_call_id ??
+    resolveToolCallIdForTask(cfg.sessionId, cfg.topic, event.task_id);
+
+  // Bug 2026-05-15 (codex round 2): server-side `TaskUpdatedEvent`
+  // carries NO `turn_id` — pre-fix bridge guard dropped every such
+  // envelope. With the guard relaxed, `event.turn_id` is now
+  // `undefined` in production. Route via `findThreadIdForToolCall`
+  // (which scans every thread's pending + finalized assistant slots
+  // for a tool call matching `resolvedToolCallId`) instead of trusting
+  // `event.turn_id`. Falls back to a (likely-undefined) `event.turn_id`
+  // only if no thread is found — `setToolCallStatus`/`appendToolProgress`
+  // then no-op cleanly via the `ensureOrphanThread(undefined)` path
+  // (`findThreadById(undefined)` returns null, and pickHostSessionForOrphan
+  // would mint a placeholder thread but with no matching tool call it
+  // exits without mutation).
+  const hostThreadId =
+    ThreadStore.findThreadIdForToolCall(
+      cfg.sessionId,
+      cfg.topic,
+      resolvedToolCallId,
+    ) ?? event.turn_id;
+
+  // The `tool_name` lookup falls back to the task_id when no preceding
+  // `tool/started` cached a name (e.g. a server-side flow that skips
+  // `tool/started` entirely and only emits `task/updated`); same shape
+  // `handleToolProgress` uses on the synchronous path. Try both the
+  // resolved tool_call_id and the raw task_id so we hit the cache
+  // whichever shape `tool/started` populated.
+  const toolLabel =
+    toolNameByCallId.get(resolvedToolCallId) ??
+    toolNameByCallId.get(event.task_id) ??
+    event.task_id;
+
+  // Hydrate TaskStore directly from the live envelope so the sidebar
+  // session-row spinner (`useAllTasksBySession()` in `chat-thread.tsx`)
+  // lights within ms instead of waiting on the 2.5 s task-watcher poll
+  // — which is currently broken upstream by a server-side session_key
+  // filter mismatch (see `task_supervisor.rs:1753-1758`: the WS-side
+  // `snapshot_excluding` path clears the supervisor's session_key, so
+  // `/api/sessions/.../tasks` returns `[]` for the very tasks the
+  // running session has). The poll path remains intact as redundant
+  // safety net once the server bug is fixed.
+  mergeLiveTask(
+    cfg.sessionId,
+    cfg.topic,
+    event.task_id,
+    resolvedToolCallId,
+    event.state,
+    event.title,
+    event.runtime_detail,
+  );
+
+  switch (event.state) {
+    case "spawned":
+    case "running": {
+      const label = event.title ?? event.runtime_detail ?? event.state;
+      if (hostThreadId) {
+        ThreadStore.appendToolProgress(hostThreadId, resolvedToolCallId, label);
+      }
+      // Mirror the legacy SSE bridge's `crew:bg_tasks` dispatch so any
+      // listener that gates a session-level "background work" indicator
+      // off the same event keeps firing.
+      dispatch(
+        cfg,
+        new CustomEvent("crew:bg_tasks", {
+          detail: { sessionId: cfg.sessionId, topic: cfg.topic },
+        }),
+      );
+      // Light / refresh the spinner with the latest task state label.
+      dispatchToolProgressEvent(cfg, hostThreadId, toolLabel, label);
+      break;
+    }
+    // All terminal states share one path: the tool card must stop
+    // animating, a terminal progress frame must fire, and the cache
+    // entry dropped — otherwise the tool card + spinner keep spinning
+    // after the dock row disappears (codex review). `cancelled` maps its
+    // store status to `completed` in `mergeLiveTask`.
+    //
+    // Pipeline members share one tool card (`resolvedToolCallId`) but
+    // `task/updated` fires per raw task, and a cancel or failure can
+    // terminate one member while siblings keep running — an explicitly
+    // supported task/cancel outcome. Settling the card on the FIRST
+    // terminal member freezes it while the dock still shows active work,
+    // and later running frames never restore it (codex rounds 2–3).
+    // Defer the card's terminal transition while any active member
+    // shares the call id — `mergeLiveTask` above already flipped THIS
+    // task's store row terminal, so an active match is a different,
+    // still-live member. A deferred failure is retained by its store
+    // row: when the last sibling settles, the aggregate reports
+    // "failed" and the card lands on error.
+    case "completed":
+    case "cancelled":
+    case "canceled":
+    case "failed":
+    case "errored": {
+      const isFailureEvent =
+        event.state === "failed" || event.state === "errored";
+      const aggregate =
+        aggregateCallStatus(
+          TaskStore.getTasks(cfg.sessionId, cfg.topic),
+          resolvedToolCallId,
+        ) ?? (isFailureEvent ? "failed" : "settled");
+      if (aggregate === "active") break;
+      const isError = aggregate === "failed";
+      if (hostThreadId) {
+        ThreadStore.setToolCallStatus(
+          hostThreadId,
+          resolvedToolCallId,
+          isError ? "error" : "complete",
+        );
+      }
+      dispatchToolProgressEvent(
+        cfg,
+        hostThreadId,
+        toolLabel,
+        isError ? "error" : "done",
+        /* terminal */ true,
+      );
+      // Drop the cache entry — the call is done, no further frames
+      // should land on this id (mirrors `handleToolCompleted`). Drop
+      // both identifier shapes.
+      toolNameByCallId.delete(event.task_id);
+      if (resolvedToolCallId !== event.task_id) {
+        toolNameByCallId.delete(resolvedToolCallId);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+/** Map a server-emitted `task_id` (supervisor UUID) to the LLM
+ *  `tool_call_id` the ThreadStore registered via `tool/started`.
+ *
+ *  Codex final-3 bonus check: the server's `TurnSpawnCompleteEvent.task_id`
+ *  and `TaskUpdatedEvent.task_id` carry the supervisor's
+ *  `TaskId::new()` UUID, while `ToolStartedEvent.tool_call_id` carries
+ *  the LLM-emitted tool call id. They are different on the wire. The
+ *  task watcher's `crew:task_status` poll populates `TaskStore` with
+ *  `BackgroundTaskInfo` rows that carry BOTH fields, so we can
+ *  translate by walking the session's tasks for a matching `id`.
+ *
+ *  Falls back to the raw `taskId` when:
+ *  - the watcher hasn't polled yet (task list empty),
+ *  - the task is brand new and not yet in the store,
+ *  - a legacy daemon emits them equal (older tests / fixtures).
+ *
+ *  Returning the raw id is safe — `findThreadIdForToolCall` /
+ *  `setToolCallStatus` no-op cleanly when the lookup misses. */
+function resolveToolCallIdForTask(
+  sessionId: string,
+  topic: string | undefined,
+  taskId: string,
+): string {
+  if (!taskId) return taskId;
+  const tasks = TaskStore.getTasks(sessionId, topic);
+  for (const task of tasks) {
+    if (task.id === taskId && task.tool_call_id) {
+      return task.tool_call_id;
+    }
+  }
+  return taskId;
+}
+
+/** Hydrate TaskStore from a live `task/updated` (or terminal
+ *  `turn/spawn_complete`) envelope so the sidebar session-row spinner
+ *  (gated on `useAllTasksBySession()` reporting at least one
+ *  `spawned`/`running` task) fires immediately — no dependency on the
+ *  2.5 s task-watcher poll, which is currently broken upstream by a
+ *  server-side `session_key` filter mismatch in `task_supervisor.rs`
+ *  (the WS-side `snapshot_excluding` path clears the supervisor's
+ *  session_key, so `/api/sessions/.../tasks` returns `[]` for the very
+ *  tasks the running session has).
+ *
+ *  The watcher poll path is left intact upstream as a redundant safety
+ *  net once the server bug is fixed; this hydration is the primary
+ *  source of truth for the sidebar today.
+ *
+ *  Unknown / un-mappable states are ignored (no row written), so a
+ *  forward-compat server adding a new state cannot pollute the store
+ *  with `unknown`-status rows. */
+function mergeLiveTask(
+  sessionId: string,
+  topic: string | undefined,
+  taskId: string,
+  toolCallId: string,
+  state: string | undefined,
+  title?: string,
+  runtimeDetail?: string,
+): void {
+  const status =
+    state === "spawned" || state === "pending"
+      ? "spawned"
+      : state === "running"
+        ? "running"
+        : state === "completed"
+          ? "completed"
+          : state === "failed" || state === "errored"
+            ? "failed"
+            : // A `cancelled` task (harness.task_control.v1 task/cancel, or a
+              // channel-side cancel) is terminal-and-not-an-error. The web
+              // `BackgroundTaskInfo` status union has no `cancelled`, and
+              // dropping the update here (the pre-fix behavior) left a
+              // cancelled task stuck showing as running forever. Map it to
+              // `completed` so it leaves the active set without flashing red.
+              state === "cancelled" || state === "canceled"
+              ? "completed"
+              : null;
+  if (!status) return;
+
+  const existing = TaskStore.getTasks(sessionId, topic).find(
+    (t) => t.id === taskId,
+  );
+  const nowIso = new Date().toISOString();
+
+  TaskStore.mergeTask(
+    sessionId,
+    {
+      id: taskId,
+      tool_name: title ?? existing?.tool_name ?? "Background task",
+      tool_call_id: toolCallId || existing?.tool_call_id,
+      status,
+      started_at: existing?.started_at ?? nowIso,
+      completed_at:
+        status === "completed" || status === "failed" ? nowIso : null,
+      output_files: existing?.output_files ?? [],
+      error: status === "failed" ? (runtimeDetail ?? null) : null,
+      session_key: sessionId,
+    },
+    topic,
+  );
+}
+
+export function handleTaskOutputDelta(
+  cfg: RouterConfig,
+  event: TaskOutputDeltaEvent,
+): void {
+  if (!event.chunk) return;
+  // Codex round 2 wire alignment: prefer wire-borne `tool_call_id`,
+  // fall back to TaskStore mapping for legacy daemons. Route via
+  // `findThreadIdForToolCall` since `event.turn_id` is now optional
+  // (server-side struct doesn't carry it).
+  const resolvedToolCallId =
+    event.tool_call_id ??
+    resolveToolCallIdForTask(cfg.sessionId, cfg.topic, event.task_id);
+  const hostThreadId =
+    ThreadStore.findThreadIdForToolCall(
+      cfg.sessionId,
+      cfg.topic,
+      resolvedToolCallId,
+    ) ?? event.turn_id;
+  // Surface live tool stdout into the bubble's progress timeline. Dedupe
+  // logic lives in ThreadStore.appendToolProgress (consecutive duplicates
+  // are dropped) so resending the same chunk on reconnect is safe.
+  if (hostThreadId) {
+    ThreadStore.appendToolProgress(
+      hostThreadId,
+      resolvedToolCallId,
+      event.chunk,
+    );
+  }
+  // Codex round-3: also fan out to the lifted spinner. Some spawn_only
+  // flows emit their real progress as output chunks, not `task/updated`
+  // running labels; without this dispatch the spinner text goes stale
+  // mid-task. Non-terminal — completion is signalled by `task/updated`
+  // completed/failed/errored.
+  const toolLabel =
+    toolNameByCallId.get(resolvedToolCallId) ??
+    toolNameByCallId.get(event.task_id) ??
+    event.task_id;
+  dispatchToolProgressEvent(cfg, hostThreadId, toolLabel, event.chunk);
+}
+
+export function handleTurnStarted(
+  cfg: RouterConfig,
+  event: TurnStartedEvent,
+): void {
+  // Mirror the legacy `crew:thinking` rising edge so the global indicator
+  // (sidebar spinner, header pulse) lights up the moment a turn begins.
+  // ThreadStore-side bookkeeping is handled by `addUserMessage` on send;
+  // we do not synthesize a placeholder here because the user bubble is
+  // already in place by the time the server confirms turn/started.
+  //
+  // Regression-#2 (bubble footer): seed a per-turn meta snapshot at
+  // turn-start so the duration timer has a starting point even if no
+  // intermediate `progress/updated` frame arrives.
+  const snap = turnMetaByTurnId.get(event.turn_id) ?? {};
+  snap.firstSeenAtMs = nowMs();
+  turnMetaByTurnId.set(event.turn_id, snap);
+  dispatch(
+    cfg,
+    new CustomEvent("crew:thinking", {
+      detail: {
+        thinking: true,
+        iteration: 0,
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+      },
+    }),
+  );
+}
+
+export function handleTurnCompleted(
+  cfg: RouterConfig,
+  event: TurnCompletedEvent,
+): void {
+  // Regression-#2 (bubble footer): stamp the accumulated per-turn meta
+  // snapshot onto the finalised bubble so `ThreadMessageMeta` can render
+  // model + tokens + duration. Compute the final duration from the
+  // `firstSeenAtMs` anchor we set on turn/started.
+  const snap = turnMetaByTurnId.get(event.turn_id);
+  if (snap && snap.firstSeenAtMs !== undefined) {
+    const elapsedMs = Math.max(0, nowMs() - snap.firstSeenAtMs);
+    snap.durationS = Math.round((elapsedMs / 1000) * 10) / 10;
+  }
+  // Codex round-2/4 P2: roll the session-cumulative baseline forward
+  // so the next turn's per-turn delta is correct. Use the latest
+  // cumulative we saw on a cost frame this turn (per-counter); if a
+  // counter never appeared this turn, preserve the existing baseline
+  // for that counter rather than zeroing it.
+  if (snap?.latestCumulativeInputTokens !== undefined || snap?.latestCumulativeOutputTokens !== undefined) {
+    const prior = lastTurnEndCumulativeBySession.get(cfg.sessionId) ?? {};
+    lastTurnEndCumulativeBySession.set(cfg.sessionId, {
+      inputTokens: snap.latestCumulativeInputTokens ?? prior.inputTokens,
+      outputTokens: snap.latestCumulativeOutputTokens ?? prior.outputTokens,
+    });
+  }
+  const meta = metaFromSnapshot(snap);
+  // `finalizeAssistant` is the happy path while the compatibility pending
+  // slot is live. Fall back to `patchLastResponseMeta` so the metadata also
+  // lands on an already-finalised response.
+  ThreadStore.finalizeAssistant(event.turn_id, meta ? { meta } : {});
+  if (meta) {
+    ThreadStore.patchLastResponseMeta(event.turn_id, { meta });
+  }
+  turnMetaByTurnId.delete(event.turn_id);
+  dispatch(
+    cfg,
+    new CustomEvent("crew:thinking", {
+      detail: {
+        thinking: false,
+        iteration: 0,
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+      },
+    }),
+  );
+}
+
+export function handleTurnError(
+  cfg: RouterConfig,
+  event: TurnErrorEvent,
+): void {
+  // Mark the bubble errored rather than leaving the pending slot dangling.
+  // `finalizeAssistant` accepts an explicit status override per its options
+  // surface — we use it so the v1 path produces the same terminal state
+  // shape (responses[].status === "error") as the v0 SSE `error` branch.
+  const snap = turnMetaByTurnId.get(event.turn_id);
+  if (snap && snap.firstSeenAtMs !== undefined) {
+    const elapsedMs = Math.max(0, nowMs() - snap.firstSeenAtMs);
+    snap.durationS = Math.round((elapsedMs / 1000) * 10) / 10;
+  }
+  if (snap?.latestCumulativeInputTokens !== undefined || snap?.latestCumulativeOutputTokens !== undefined) {
+    const prior = lastTurnEndCumulativeBySession.get(cfg.sessionId) ?? {};
+    lastTurnEndCumulativeBySession.set(cfg.sessionId, {
+      inputTokens: snap.latestCumulativeInputTokens ?? prior.inputTokens,
+      outputTokens: snap.latestCumulativeOutputTokens ?? prior.outputTokens,
+    });
+  }
+  const meta = metaFromSnapshot(snap);
+  ThreadStore.finalizeAssistant(event.turn_id, {
+    status: "error",
+    ...(meta ? { meta } : {}),
+  });
+  // Codex P2: same fall-back as `handleTurnCompleted` for the
+  // persisted-promoted ordering. Also stamp `status:"error"` so the
+  // bubble's status changes even when persisted promoted it to
+  // "complete".
+  ThreadStore.patchLastResponseMeta(event.turn_id, {
+    status: "error",
+    ...(meta ? { meta } : {}),
+  });
+  turnMetaByTurnId.delete(event.turn_id);
+  dispatch(
+    cfg,
+    new CustomEvent("crew:thinking", {
+      detail: {
+        thinking: false,
+        iteration: 0,
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+      },
+    }),
+  );
+  dispatch(
+    cfg,
+    new CustomEvent("crew:turn_error", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+        error: event.error,
+      },
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Synchronous tool-call lifecycle  (regression #1)
+// ---------------------------------------------------------------------------
+//
+// Handlers below feed the ThreadStore (via `addToolCall`,
+// `appendToolProgress`, `setToolCallStatus`) AND dispatch
+// `crew:tool_progress` window events for any external listeners. The
+// `ToolProgressIndicator` component (2026-05-14 redesign,
+// `src/components/tool-progress-indicator.tsx`) is now a pure
+// derivation of the bubble's `message.toolCalls` — no longer a
+// listener — so the window events here serve compatibility callers
+// (e.g. external automation hooks) and are dead code at the
+// indicator level. Removing the dispatches is a separate cleanup
+// (no risk: the indicator is data-driven).
+
+function dispatchToolProgressEvent(
+  cfg: RouterConfig,
+  turnId: string | undefined,
+  toolName: string,
+  message: string,
+  /** When true, the `ToolProgressIndicator` clears the spinner row.
+   *  Set on `tool/completed` (sync and spawn_only paths) because for
+   *  spawn_only tools the LLM `crew:thinking false` has already fired
+   *  at `turn/completed` BEFORE the background task starts emitting,
+   *  so it can no longer be relied upon to clear the row. Without an
+   *  explicit terminal signal the spinner would display the
+   *  "done"/"error"/"complete" message indefinitely. */
+  terminal: boolean = false,
+): void {
+  dispatch(
+    cfg,
+    new CustomEvent("crew:tool_progress", {
+      detail: {
+        tool: toolName,
+        message,
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId,
+        ...(terminal ? { terminal: true } : {}),
+      },
+    }),
+  );
+}
+
+export function handleToolStarted(
+  cfg: RouterConfig,
+  event: ToolStartedEvent,
+): void {
+  toolNameByCallId.set(event.tool_call_id, event.tool_name);
+  // Codex round-2 P2: mirror the synchronous tool-call lifecycle onto
+  // the ThreadStore so the finalised assistant bubble carries a tool
+  // card (`ToolCallBubble`), not just the transient spinner. Matches
+  // the pattern `handleTaskUpdated` uses for spawn_only / background
+  // tasks. `addToolCall` is idempotent on `(turn_id, tool_call_id)`,
+  // so a replayed `tool/started` is safe.
+  ThreadStore.addToolCall(
+    event.turn_id,
+    event.tool_call_id,
+    event.tool_name,
+    event.arguments,
+  );
+  dispatchToolProgressEvent(cfg, event.turn_id, event.tool_name, "running");
+}
+
+export function handleToolProgress(
+  cfg: RouterConfig,
+  event: ToolProgressEvent,
+): void {
+  // The wire shape carries no `tool_name` on `tool/progress`. Codex P3:
+  // the legacy SSE bridge kept rendering the tool name from the
+  // preceding `tool/started`; we mirror that by consulting our
+  // `toolNameByCallId` cache. Falling back to the `tool_call_id` only
+  // when no cached name exists (race: progress arrives before started,
+  // or a server-side bug omits the started frame entirely) keeps the
+  // spinner row populated rather than blank.
+  const toolLabel =
+    toolNameByCallId.get(event.tool_call_id) ?? event.tool_call_id;
+  const message = event.message ?? "running";
+  // Codex round-2 P2: feed progress chunks into the bubble's tool
+  // card timeline. `appendToolProgress` dedupes consecutive
+  // duplicates so resending the same chunk on reconnect is safe.
+  if (event.message) {
+    ThreadStore.appendToolProgress(
+      event.turn_id,
+      event.tool_call_id,
+      event.message,
+    );
+  }
+  dispatchToolProgressEvent(cfg, event.turn_id, toolLabel, message);
+}
+
+export function handleToolCompleted(
+  cfg: RouterConfig,
+  event: ToolCompletedEvent,
+): void {
+  const isSpawnOnly = isSpawnOnlyToolName(event.tool_name);
+  const message =
+    event.success === false
+      ? "error"
+      : event.success === true
+        ? "done"
+        : "complete";
+  // Defect A (M9 follow-up, 2026-05-22): for spawn_only background
+  // tools (run_pipeline / podcast_generate / mofa_* / fm_tts /
+  // deep_search / voice_synthesize) the foreground `tool/completed`
+  // envelope fires ~2ms after `tool/started` — it's only the supervisor
+  // acknowledging the work, not a signal that the background task has
+  // finished. Flipping the tool-card chip to "complete" here put a
+  // static check icon on a card whose work was still in flight (often
+  // for minutes). Defer the terminal flip to `task/updated:completed`,
+  // which `handleTaskUpdated` maps onto `setToolCallStatus(..., "complete")`.
+  //
+  // Failed (`success: false`) tool/completed events ARE genuine
+  // terminal signals — the supervisor refused to spawn the work, so
+  // the tool card SHOULD flip to "error" right away.
+  const shouldFlipStatus = !isSpawnOnly || event.success === false;
+  if (shouldFlipStatus) {
+    // Codex round-2 P2: persist the terminal tool-call status onto the
+    // bubble's tool card so the chip stops spinning. Failed calls
+    // surface as "error"; everything else as "complete" (matching the
+    // `handleTaskUpdated` `completed` / `failed` mapping).
+    ThreadStore.setToolCallStatus(
+      event.turn_id,
+      event.tool_call_id,
+      event.success === false ? "error" : "complete",
+    );
+  }
+  // Mark terminal so the lifted `ToolProgressIndicator` clears the
+  // spinner row. The bubble's `ToolCallBubble` reads the final
+  // status from `ThreadStore.setToolCallStatus` above and keeps the
+  // history-pill state intact — only the transient spinner row goes
+  // away. Critical for spawn_only flows where `crew:thinking false`
+  // already fired at `turn/completed` and cannot clean up.
+  //
+  // Defect A (continued): when we DEFER the status flip for a
+  // spawn_only success, the dispatched `crew:tool_progress` event is
+  // NOT terminal — the spinner row must keep alive until the real
+  // `task/updated:completed` arrives.
+  dispatchToolProgressEvent(
+    cfg,
+    event.turn_id,
+    event.tool_name,
+    message,
+    /* terminal */ shouldFlipStatus,
+  );
+  // Defect A: only drop the `tool_call_id` → `tool_name` cache entry
+  // when the chip actually settled. For deferred spawn_only completions
+  // we still need the cache so future `task/updated` heartbeats can
+  // surface the friendly tool name in the spinner row.
+  if (shouldFlipStatus) {
+    toolNameByCallId.delete(event.tool_call_id);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// progress/updated   (regressions #3 + #2 helper)
+// ---------------------------------------------------------------------------
+//
+// The server emits `progress/updated` for every cost telemetry frame
+// (`metadata.kind === "token_cost_update"`). The legacy SSE bridge was
+// the sole dispatcher of `crew:cost` (header cost badge) and
+// `crew:message_meta` (assistant-bubble footer). After PR #96 nobody
+// fired them — so the header model badge and bubble footer went blank.
+//
+// Wire shape (see `crates/octos-core/src/ui_protocol.rs`):
+//   metadata = {
+//     kind: "token_cost_update",
+//     label?: model display name,
+//     token_cost: { input_tokens?, output_tokens?, session_cost?, ... }
+//   }
+//
+// We dispatch two DOM events:
+//
+//   (a) `crew:cost` — every cost frame, with the wire field names the
+//       legacy listener in `session-context.tsx:702-744` expects
+//       (`input_tokens`, `output_tokens`, `session_cost`).
+//
+//   (b) `crew:message_meta` — only when the frame carries a model name
+//       AND we already have a turn anchor (so a duration can be
+//       computed). This is the cheap path for regression #2 the
+//       diagnostic flagged: rather than re-architecting the bubble
+//       renderer to read from `useSession()`, we keep stamping
+//       `message.meta` on `finalizeAssistant` (the `handleTurnCompleted`
+//       branch above) and let the legacy `crew:message_meta` listener
+//       also keep flowing for any subscribers that read off the global
+//       window event.
+
+export function handleProgressUpdated(
+  cfg: RouterConfig,
+  event: ProgressUpdatedEvent,
+): void {
+  // Status word: the server's `StatusIndicator` rotates a creative
+  // word every ~8s during an agent turn (`Pondering`, `Brewing`, etc.,
+  // from the per-persona pool generated by `PersonaService`). The web
+  // `ThinkingIndicator` listens for `crew:status_word` to swap the
+  // word in the in-flight bubble. The wire envelope reuses
+  // `progress/updated` with `kind="status_word"` and carries the word
+  // in `metadata.label` to keep the protocol surface flat.
+  if (event.metadata.kind === "status_word") {
+    const word =
+      typeof event.metadata.label === "string" && event.metadata.label.length > 0
+        ? event.metadata.label
+        : undefined;
+    if (word) {
+      dispatch(
+        cfg,
+        new CustomEvent("crew:status_word", {
+          detail: {
+            sessionId: cfg.sessionId,
+            topic: cfg.topic,
+            turnId: event.turn_id,
+            word,
+          },
+        }),
+      );
+    }
+    return;
+  }
+  if (event.metadata.kind === "stream_end") {
+    // stream_end signals text deltas are done but must not finalise the
+    // compatibility assistant slot. Its terminal event owns that lifecycle;
+    // canonical rendering is settled by `turn_terminal`.
+    return;
+  }
+  if (event.metadata.kind === "voice_transcript") {
+    const transcript =
+      typeof event.metadata.transcript === "string"
+        ? event.metadata.transcript
+        : typeof event.metadata.message === "string"
+          ? event.metadata.message
+          : "";
+    const threadId =
+      typeof event.metadata.client_message_id === "string" &&
+      event.metadata.client_message_id.length > 0
+        ? event.metadata.client_message_id
+        : event.turn_id;
+    if (transcript.trim().length > 0 && threadId) {
+      ThreadStore.applyVoiceTranscript(
+        cfg.sessionId,
+        cfg.topic,
+        threadId,
+        transcript,
+      );
+      dispatch(
+        cfg,
+        new CustomEvent("crew:voice_transcript", {
+          detail: {
+            sessionId: cfg.sessionId,
+            topic: cfg.topic,
+            turnId: event.turn_id,
+            threadId,
+            transcript,
+          },
+        }),
+      );
+    }
+    return;
+  }
+  if (event.metadata.kind === "voice_no_speech") {
+    const threadId =
+      typeof event.metadata.client_message_id === "string" &&
+      event.metadata.client_message_id.length > 0
+        ? event.metadata.client_message_id
+        : event.turn_id;
+    if (threadId) {
+      ThreadStore.discardOptimisticVoiceTurn(cfg.sessionId, cfg.topic, threadId);
+      dispatch(
+        cfg,
+        new CustomEvent("crew:voice_no_speech", {
+          detail: {
+            sessionId: cfg.sessionId,
+            topic: cfg.topic,
+            turnId: event.turn_id,
+            threadId,
+          },
+        }),
+      );
+    }
+    return;
+  }
+  if (event.metadata.kind !== "token_cost_update") return;
+  const cost = event.metadata.token_cost;
+  const inputTokens = cost?.input_tokens;
+  const outputTokens = cost?.output_tokens;
+  const sessionCost = cost?.session_cost;
+  // Server PR `feat/cost-update-carry-model` adds an authoritative
+  // `metadata.token_cost.model` field, populated from
+  // `LlmProvider::provider_metadata_for_index(...).model` so failover /
+  // routed responses surface the model that actually answered. Prefer
+  // that field; fall back to the legacy `metadata.label` carrier so
+  // older daemons (the field is opt-in additive) continue to work.
+  const costModel =
+    typeof cost?.model === "string" && cost.model.length > 0
+      ? cost.model
+      : undefined;
+  const labelModel =
+    typeof event.metadata.label === "string" && event.metadata.label.length > 0
+      ? event.metadata.label
+      : undefined;
+  const modelLabel = costModel ?? labelModel;
+
+  // -- (a) crew:cost -------------------------------------------------------
+  dispatch(
+    cfg,
+    new CustomEvent("crew:cost", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        session_cost: sessionCost,
+      },
+    }),
+  );
+
+  // -- Update per-turn meta snapshot for regression #2 ---------------------
+  //
+  // Codex round-2 P2: `input_tokens` / `output_tokens` from the
+  // `progress/updated{kind:"token_cost_update"}` payload are SESSION
+  // cumulative counters (see `crates/octos-agent/src/agent/streaming.rs`
+  // `emit_cost_update` — they're sourced from `total_usage`). For the
+  // legacy `crew:cost` listener (header cost badge) that's exactly the
+  // right shape — it tracks session-wide totals. For
+  // `message.meta.{tokens_in, tokens_out}` (the per-bubble footer) we
+  // need PER-TURN deltas, otherwise after the 2nd turn the footer
+  // shows all tokens used in the session.
+  //
+  // The per-turn delta is `current_cumulative - baseline`, where
+  // `baseline` is the cumulative total at the end of the previous turn
+  // for THIS session. The first turn's baseline is 0 (no prior turns,
+  // so the cumulative IS the per-turn count). `handleTurnCompleted` /
+  // `handleTurnError` snapshot the session totals into
+  // `lastTurnEndCumulativeBySession` so the next turn's baseline is
+  // available.
+  //
+  // We also remember the latest cumulative counters on the snapshot
+  // itself (`latestCumulativeInputTokens` / `Output`) so
+  // `handleTurnCompleted` can roll the session baseline forward
+  // without depending on whether the last cost frame ran first.
+  if (event.turn_id) {
+    const snap = turnMetaByTurnId.get(event.turn_id) ?? {};
+    if (modelLabel) snap.model = modelLabel;
+    // Codex round-3/4 P2: when no per-counter baseline exists yet
+    // (first turn after page reload / fresh session restore), the
+    // `progress/updated` payload's cumulative counters include
+    // pre-reload history we never saw. Self-seed from the FIRST
+    // observed value of EACH counter independently — a frame that
+    // carries only `output_tokens` should NOT pin
+    // `inputTokens.baseline = 0` (round-4 fix), because the next
+    // frame's first `input_tokens` would then be attributed in full
+    // to this turn (defeating the round-3 anti-leak).
+    const existing = lastTurnEndCumulativeBySession.get(cfg.sessionId) ?? {};
+    let baselineIn = existing.inputTokens;
+    let baselineOut = existing.outputTokens;
+    if (typeof inputTokens === "number" && baselineIn === undefined) {
+      baselineIn = inputTokens;
+    }
+    if (typeof outputTokens === "number" && baselineOut === undefined) {
+      baselineOut = outputTokens;
+    }
+    // Persist the self-seeded baselines back to the session map so a
+    // later frame in the same turn doesn't re-seed against a fresh
+    // initial value.
+    lastTurnEndCumulativeBySession.set(cfg.sessionId, {
+      inputTokens: baselineIn,
+      outputTokens: baselineOut,
+    });
+    if (typeof inputTokens === "number") {
+      snap.baselineInputTokens = baselineIn;
+      snap.latestCumulativeInputTokens = inputTokens;
+      // `baselineIn` is guaranteed defined when `inputTokens` is a
+      // number because we seed it on the same frame.
+      snap.tokensIn = Math.max(0, inputTokens - (baselineIn ?? 0));
+    }
+    if (typeof outputTokens === "number") {
+      snap.baselineOutputTokens = baselineOut;
+      snap.latestCumulativeOutputTokens = outputTokens;
+      snap.tokensOut = Math.max(0, outputTokens - (baselineOut ?? 0));
+    }
+    if (snap.firstSeenAtMs === undefined) snap.firstSeenAtMs = nowMs();
+    turnMetaByTurnId.set(event.turn_id, snap);
+  }
+
+  // -- (b) crew:message_meta ----------------------------------------------
+  // Only emit if we have a model name AND at least one token count.
+  // The legacy listener reads `model`, `tokens_in`, `tokens_out`,
+  // `session_cost` — verify field-name mapping in
+  // `session-context.tsx:720-735`.
+  if (modelLabel && (inputTokens !== undefined || outputTokens !== undefined)) {
+    dispatch(
+      cfg,
+      new CustomEvent("crew:message_meta", {
+        detail: {
+          sessionId: cfg.sessionId,
+          topic: cfg.topic,
+          turnId: event.turn_id,
+          model: modelLabel,
+          tokens_in: inputTokens,
+          tokens_out: outputTokens,
+          session_cost: sessionCost,
+        },
+      }),
+    );
+  }
+}
+
+export function handleApprovalRequested(
+  cfg: RouterConfig,
+  event: ApprovalRequestedEvent,
+): void {
+  // ChatLayout consumes this typed CustomEvent to render the approval
+  // dialog and respond via `approval/respond`. Keep the event shape as
+  // the bridge's `ApprovalRequestedEvent` so the UI does not parse
+  // ad-hoc string payloads.
+  dispatch(
+    cfg,
+    new CustomEvent("crew:approval_requested", { detail: event }),
+  );
+}
+
+export function handleApprovalAutoResolved(
+  cfg: RouterConfig,
+  event: ApprovalAutoResolvedEvent,
+): void {
+  // A standing scope grant (e.g. "Approve for session") fired for a later
+  // request. Surface it as a toast so the grant is visible instead of the
+  // command silently running.
+  dispatch(
+    cfg,
+    new CustomEvent("crew:approval_auto_resolved", { detail: event }),
+  );
+}
+
+export function handleUserQuestionRequested(
+  cfg: RouterConfig,
+  event: UserQuestionRequestedEvent,
+): void {
+  // ChatLayout consumes this typed CustomEvent to render the multiple-choice
+  // dialog and respond via `user_question/respond`. Same shape as the bridge's
+  // `UserQuestionRequestedEvent` so the UI never parses ad-hoc payloads.
+  dispatch(
+    cfg,
+    new CustomEvent("crew:user_question_requested", { detail: event }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Wave4-A: router/status, router/failover, queue/state
+// ---------------------------------------------------------------------------
+//
+// Server PR #946 added three new notifications so the SPA can render the
+// adaptive routing pill / failover banner / queue-depth indicator without
+// polling. We fan each out into a `crew:*` DOM event so existing listeners
+// (the dormant `crew:mode_update` subscriber in `useModeState()` plus the
+// dead `queueMode` pill at `chat-thread.tsx:1642`) finally light up.
+//
+//   - `router/status`   → `crew:mode_update`  ({ adaptiveMode, providerName,
+//                          qosRanking, laneScores, circuitBreakers })
+//   - `router/failover` → `crew:router_failover` ({ from, to, reason,
+//                          elapsedMs }) — chat-layout pops a 4 s banner.
+//   - `queue/state`     → `crew:queue_state` ({ pendingCount, head })
+//                          — also dispatched by the client-side FIFO in
+//                          `ui-protocol-send.ts`, this branch covers a
+//                          future server emission.
+
+/**
+ * Normalize the `router/status` adaptive mode wire value (`"off"` |
+ * `"hedge"` | `"lane"`) into the `AdaptiveMode` shape `useModeState()`
+ * expects. Unknown values map back to `null` so a server-side schema
+ * extension doesn't render a stale pill.
+ */
+function normalizeAdaptiveMode(mode: string): "off" | "hedge" | "lane" | null {
+  if (mode === "off" || mode === "hedge" || mode === "lane") return mode;
+  return null;
+}
+
+export function handleRouterStatus(
+  cfg: RouterConfig,
+  event: RouterStatusEvent,
+): void {
+  // `crew:mode_update` shape was historically `{ queueMode?, adaptiveMode? }`
+  // — the listener in `useModeState()` switches on each independently
+  // (see `session-context.tsx:131-138`). The router-status path drives
+  // the adaptive leg; queue depth flows via `crew:queue_state` below.
+  // We additionally surface provider / score / breaker context so the
+  // future routing-pill detail view can render a tooltip without an
+  // extra round-trip.
+  dispatch(
+    cfg,
+    new CustomEvent("crew:mode_update", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        adaptiveMode: normalizeAdaptiveMode(event.mode),
+        providerName: event.provider_name,
+        qosRanking: event.qos_ranking,
+        laneScores: event.lane_scores,
+        circuitBreakers: event.circuit_breakers,
+      },
+    }),
+  );
+}
+
+export function handleRouterFailover(
+  cfg: RouterConfig,
+  event: RouterFailoverEvent,
+): void {
+  // Pop a transient banner. The chat-layout listens for this event and
+  // renders a 4 s auto-dismiss notice describing the lane change. Field
+  // names follow the existing camelCase DOM-event convention used by
+  // `crew:tool_progress`, `crew:cost`, etc.
+  dispatch(
+    cfg,
+    new CustomEvent("crew:router_failover", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        from: event.from_provider,
+        to: event.to_provider,
+        reason: event.reason,
+        elapsedMs: event.elapsed_ms,
+      },
+    }),
+  );
+}
+
+export function handleQueueState(
+  cfg: RouterConfig,
+  event: QueueStateEvent,
+): void {
+  // `ui-protocol-send.ts` dispatches the same shape directly because the
+  // queue is client-side today (server PR #946 leaves the variant
+  // unemitted). The bridge-routed branch covers a future server-side
+  // emission and keeps the schema unified.
+  dispatch(
+    cfg,
+    new CustomEvent("crew:queue_state", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        pendingCount: event.pending_count,
+        head: event.head_client_message_id,
+      },
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Wiring
+// ---------------------------------------------------------------------------
+
+export interface RouterAttachment {
+  /** Detach all subscriptions registered on the bridge. Idempotent. */
+  detach(): void;
+}
+
+/**
+ * #1477 voice rich output: fan the typed `visual/generating` /
+ * `visual/failed` events onto `crew:visual_*` DOM events. Mirrors how the
+ * other bridge streams surface (e.g. `crew:turn_error`). The voice hook
+ * consumes these window events rather than subscribing to the bridge
+ * directly, so the "generating" placeholder is immune to the bridge-start
+ * race (the router is attached AT bridge startup, before the bridge becomes
+ * `active`) and to reconnects (the router re-attaches and keeps dispatching).
+ */
+function handleVisualGenerating(
+  cfg: RouterConfig,
+  event: VisualGeneratingEvent,
+): void {
+  dispatch(
+    cfg,
+    new CustomEvent("crew:visual_generating", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+        kind: event.kind,
+      },
+    }),
+  );
+}
+
+function handleVisualSucceeded(
+  cfg: RouterConfig,
+  event: VisualSucceededEvent,
+): void {
+  dispatch(
+    cfg,
+    new CustomEvent("crew:visual_succeeded", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+        kind: event.kind,
+        files: event.files ?? [],
+      },
+    }),
+  );
+}
+
+function handleVisualFailed(cfg: RouterConfig, event: VisualFailedEvent): void {
+  dispatch(
+    cfg,
+    new CustomEvent("crew:visual_failed", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+        reason: event.reason,
+      },
+    }),
+  );
+}
+
+/**
+ * UPCR-2026-025 voice exit intent: fan the typed `voice/exit` event onto a
+ * `crew:voice_exit` DOM event. The voice hook consumes this window event and
+ * leaves the `/voice` screen — gating the actual navigation on its own reply-
+ * audio queue draining, so the farewell is heard first. Mirrors the visual
+ * lifecycle fan-out so it is immune to the bridge-start race and to reconnects.
+ */
+function handleVoiceExit(cfg: RouterConfig, event: VoiceExitEvent): void {
+  dispatch(
+    cfg,
+    new CustomEvent("crew:voice_exit", {
+      detail: {
+        sessionId: cfg.sessionId,
+        topic: cfg.topic,
+        turnId: event.turn_id,
+      },
+    }),
+  );
+}
+
+export function handleSkillActionJobUpdated(
+  cfg: RouterConfig,
+  event: SkillActionJobUpdatedEvent,
+): void {
+  dispatch(
+    cfg,
+    new CustomEvent("crew:skill_action_job_updated", { detail: event }),
+  );
+}
+
+/**
+ * Subscribe the router to all relevant streams on a started bridge. The
+ * caller owns bridge lifecycle (start/stop). Returns a detacher that
+ * removes every listener registered here — call it before swapping the
+ * bridge out (e.g. session change) to avoid event leaks.
+ */
+/** M15 autonomy visibility — merge loop/goal notifications into the
+ *  autonomy store the header chip reads. Scoped by the router cfg (same
+ *  convention as `handleTaskUpdated`): the bridge only delivers this
+ *  scope's envelopes. A `loop/updated` carrying `deleted` (or a
+ *  tombstone `status === "deleted"`) removes the row. */
+export function handleLoopUpdated(
+  cfg: RouterConfig,
+  event: LoopUpdatedEvent,
+): void {
+  if (event.deleted === true || event.loop.status === "deleted") {
+    AutonomyStore.removeLoop(cfg.sessionId, event.loop.loop_id, cfg.topic);
+    return;
+  }
+  AutonomyStore.upsertLoop(cfg.sessionId, event.loop, cfg.topic);
+}
+
+export function handleLoopFired(
+  cfg: RouterConfig,
+  event: LoopFiredEvent,
+): void {
+  if (event.loop) {
+    AutonomyStore.upsertLoop(cfg.sessionId, event.loop, cfg.topic);
+  }
+}
+
+export function handleLoopCompleted(
+  cfg: RouterConfig,
+  event: LoopCompletedEvent,
+): void {
+  if (event.loop) {
+    AutonomyStore.upsertLoop(cfg.sessionId, event.loop, cfg.topic);
+    return;
+  }
+  // Terminal without a record — drop the row so the chip clears.
+  AutonomyStore.removeLoop(cfg.sessionId, event.loop_id, cfg.topic);
+}
+
+export function handleGoalUpdated(
+  cfg: RouterConfig,
+  event: SessionGoalUpdatedEvent,
+): void {
+  AutonomyStore.setGoal(cfg.sessionId, event.goal, cfg.topic);
+}
+
+export function handleGoalCleared(
+  cfg: RouterConfig,
+  // The event payload carries no state the store needs — a clear is a
+  // clear. Keep the param for the uniform (cfg, event) handler shape.
+  event: SessionGoalClearedEvent,
+): void {
+  void event;
+  AutonomyStore.setGoal(cfg.sessionId, null, cfg.topic);
+}
+
+export function attachRouter(
+  bridge: UiProtocolBridge,
+  cfg: RouterConfig,
+): RouterAttachment {
+  const offMessageDelta = bridge.onMessageDelta((e) =>
+    handleMessageDelta(cfg, e),
+  );
+  const offSpawnComplete = bridge.onSpawnComplete((e) =>
+    handleSpawnComplete(cfg, e),
+  );
+  const offFileAttached = bridge.onFileAttached((e) =>
+    handleFileAttached(cfg, e),
+  );
+  const offTaskUpdated = bridge.onTaskUpdated((e) => handleTaskUpdated(cfg, e));
+  const offTaskOutputDelta = bridge.onTaskOutputDelta((e) =>
+    handleTaskOutputDelta(cfg, e),
+  );
+  const offSkillActionJobUpdated = bridge.onSkillActionJobUpdated((e) =>
+    handleSkillActionJobUpdated(cfg, e),
+  );
+  const offTurnLifecycle = bridge.onTurnLifecycle((e) => {
+    // The bridge muxes the three lifecycle events through a single
+    // subscriber for ergonomics. Discriminate by the field that is unique
+    // per event variant: `error` only on `TurnErrorEvent`, `reason` only
+    // on `TurnCompletedEvent`. `TurnStartedEvent` is the residual.
+    if ("error" in e) {
+      handleTurnError(cfg, e);
+      return;
+    }
+    if ("reason" in e) {
+      handleTurnCompleted(cfg, e);
+      return;
+    }
+    handleTurnStarted(cfg, e);
+  });
+  const offApprovalRequested = bridge.onApprovalRequested((e) =>
+    handleApprovalRequested(cfg, e),
+  );
+  const offApprovalAutoResolved = bridge.onApprovalAutoResolved((e) =>
+    handleApprovalAutoResolved(cfg, e),
+  );
+  const offUserQuestionRequested = bridge.onUserQuestionRequested((e) =>
+    handleUserQuestionRequested(cfg, e),
+  );
+  // UPCR-2026-026: fan the context-compaction lifecycle out as a scoped
+  // `crew:compaction` DOM event; `CompactionIndicator` consumes it the
+  // same way ThinkingIndicator consumes `crew:thinking`. Discriminate by
+  // the field unique per variant (`threshold_tokens` only on started).
+  // Optional-call: older bridge mocks/instances may predate the method
+  // (same defensive rule as `onReopened` in the runtime).
+  const offContextCompaction = bridge.onContextCompaction?.((e) => {
+    // `topic` rides every detail so `eventMatchesScope` accepts the
+    // event in topic-scoped chats (`/new <topic>` sessions) too.
+    const detail =
+      "threshold_tokens" in e
+        ? {
+            session_id: e.session_id,
+            topic: cfg.topic,
+            phase: "started" as const,
+            token_estimate: e.token_estimate,
+            threshold_tokens: e.threshold_tokens,
+            trigger: e.trigger,
+          }
+        : {
+            session_id: e.session_id,
+            topic: cfg.topic,
+            phase: "completed" as const,
+            token_estimate_before: e.token_estimate_before,
+            token_estimate_after: e.token_estimate_after,
+            retained_count: e.retained_count,
+            dropped_count: e.dropped_count,
+            error: e.error,
+          };
+    dispatch(cfg, new CustomEvent("crew:compaction", { detail }));
+  });
+  // M15 autonomy chip feeds. Optional-called — test mocks predating the
+  // loop/goal surface simply don't wire them.
+  const offLoopUpdated = bridge.onLoopUpdated?.((e) =>
+    handleLoopUpdated(cfg, e),
+  );
+  const offLoopFired = bridge.onLoopFired?.((e) => handleLoopFired(cfg, e));
+  const offLoopCompleted = bridge.onLoopCompleted?.((e) =>
+    handleLoopCompleted(cfg, e),
+  );
+  const offGoalUpdated = bridge.onGoalUpdated?.((e) =>
+    handleGoalUpdated(cfg, e),
+  );
+  const offGoalCleared = bridge.onGoalCleared?.((e) =>
+    handleGoalCleared(cfg, e),
+  );
+  const offToolStarted = bridge.onToolStarted((e) => handleToolStarted(cfg, e));
+  const offToolProgress = bridge.onToolProgress((e) =>
+    handleToolProgress(cfg, e),
+  );
+  const offToolCompleted = bridge.onToolCompleted((e) =>
+    handleToolCompleted(cfg, e),
+  );
+  const offProgressUpdated = bridge.onProgressUpdated((e) =>
+    handleProgressUpdated(cfg, e),
+  );
+  // Wave4-A: adaptive router + queue depth surfaces. Three independent
+  // subscriptions so each one's detach is local; the chat-layout's
+  // banner listener and `useModeState()`'s pill listener consume the
+  // dispatched DOM events directly.
+  const offRouterStatus = bridge.onRouterStatus((e) =>
+    handleRouterStatus(cfg, e),
+  );
+  const offRouterFailover = bridge.onRouterFailover((e) =>
+    handleRouterFailover(cfg, e),
+  );
+  const offQueueState = bridge.onQueueState((e) => handleQueueState(cfg, e));
+  // #1477 voice rich output: fan visual lifecycle onto `crew:visual_*` DOM
+  // events (see `handleVisualGenerating` / `handleVisualFailed`).
+  const offVisualGenerating = bridge.onVisualGenerating((e) =>
+    handleVisualGenerating(cfg, e),
+  );
+  const offVisualSucceeded = bridge.onVisualSucceeded((e) =>
+    handleVisualSucceeded(cfg, e),
+  );
+  const offVisualFailed = bridge.onVisualFailed((e) =>
+    handleVisualFailed(cfg, e),
+  );
+  // UPCR-2026-025 voice exit intent: fan `voice/exit` onto a `crew:voice_exit`
+  // DOM event (see `handleVoiceExit`).
+  const offVoiceExit = bridge.onVoiceExit((e) => handleVoiceExit(cfg, e));
+
+  let detached = false;
+  return {
+    detach() {
+      if (detached) return;
+      detached = true;
+      offMessageDelta();
+      offSpawnComplete();
+      offFileAttached();
+      offVisualGenerating();
+      offVisualSucceeded();
+      offVisualFailed();
+      offVoiceExit();
+      offTaskUpdated();
+      offTaskOutputDelta();
+      offSkillActionJobUpdated();
+      offTurnLifecycle();
+      offApprovalRequested();
+      offApprovalAutoResolved();
+      offUserQuestionRequested();
+      offToolStarted();
+      offToolProgress();
+      offToolCompleted();
+      offProgressUpdated();
+      offContextCompaction?.();
+      offLoopUpdated?.();
+      offLoopFired?.();
+      offLoopCompleted?.();
+      offGoalUpdated?.();
+      offGoalCleared?.();
+      offRouterStatus();
+      offRouterFailover();
+      offQueueState();
+    },
+  };
+}

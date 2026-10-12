@@ -1,0 +1,1155 @@
+/* eslint-disable react-refresh/only-export-components -- This context module intentionally exports hooks and shared types. */
+
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
+import {
+  listSessions,
+  getMessages,
+  getSessionTasks,
+  deleteSession as apiDeleteSession,
+  forkSession,
+  setSessionTitle as apiSetSessionTitle,
+} from "@/api/sessions";
+import type { BackgroundTaskInfo, SessionInfo } from "@/api/types";
+import { nextTopicForCommand } from "@/lib/slash-commands";
+import { eventMatchesScope } from "@/runtime/event-scope";
+import * as ThreadStore from "@/store/thread-store";
+import * as ProjectionStore from "@/store/projection-store";
+import * as TaskStore from "@/store/task-store";
+import * as FileStore from "@/store/file-store";
+
+const SESSION_TITLE_STORAGE_KEY = "octos_session_titles";
+const SESSION_STATS_STORAGE_KEY = "octos_session_stats";
+const SESSION_TOPIC_STORAGE_KEY = "octos_session_topics";
+const SESSION_SYNC_STORAGE_KEY = "octos_sessions_sync";
+const SESSION_DELETED_STORAGE_KEY = "octos_deleted_sessions";
+const MAX_DELETED_SESSION_TOMBSTONES = 200;
+const BACKGROUND_TASK_REHYDRATE_SESSION_CAP = 50;
+
+function isTaskActive(task: BackgroundTaskInfo): boolean {
+  return task.status === "spawned" || task.status === "running";
+}
+
+function loadDeletedSessionIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(SESSION_DELETED_STORAGE_KEY) || "[]",
+    );
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDeletedSessionIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  const bounded = [...ids].slice(-MAX_DELETED_SESSION_TOMBSTONES);
+  localStorage.setItem(SESSION_DELETED_STORAGE_KEY, JSON.stringify(bounded));
+}
+
+function rememberDeletedSession(sessionId: string) {
+  const ids = loadDeletedSessionIds();
+  ids.delete(sessionId);
+  ids.add(sessionId);
+  persistDeletedSessionIds(ids);
+}
+
+function publishSessionDeleted(sessionId: string) {
+  localStorage.setItem(
+    SESSION_SYNC_STORAGE_KEY,
+    JSON.stringify({ type: "deleted", sessionId, ts: Date.now() }),
+  );
+}
+
+function parseDeletedSessionSync(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as { type?: unknown; sessionId?: unknown };
+    if (parsed.type === "deleted" && typeof parsed.sessionId === "string") {
+      return parsed.sessionId;
+    }
+  } catch {
+    // Older clients wrote a timestamp only; keep refresh compatibility below.
+  }
+  return null;
+}
+
+/** Extract a short title from message content, handling JSON content parts. */
+function extractTitle(content: string): string {
+  let text = content;
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) {
+      const textPart = parsed.find(
+        (p: { type?: string; text?: string }) => p.type === "text" && p.text,
+      );
+      if (textPart) text = textPart.text;
+    }
+  } catch {
+    // plain text
+  }
+  return text.slice(0, 50).trim() || "";
+}
+
+/** Session with a display title derived from the first user message. */
+export interface SessionWithTitle extends SessionInfo {
+  title?: string;
+  /** True if this session was created locally and not yet in the API. */
+  _local?: boolean;
+}
+
+export interface SessionRunStats {
+  model?: string;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number | null;
+  /** Wave4-A — current send-queue depth as observed by the client-side
+   *  FIFO in `ui-protocol-send.ts`. Zero / absent means nothing queued
+   *  behind the in-flight turn. Surfaced into the toolbar pill at
+   *  `chat-thread.tsx:1642` so the "N queued" indicator is finally
+   *  driven by something live. */
+  queue_depth?: number;
+}
+
+export interface SessionSendRequest {
+  sessionId: string;
+  text: string;
+  requestText: string;
+  media: string[];
+  audioUploadMode?: "recording" | "upload";
+  toolContext?: string;
+}
+
+export interface SessionBeforeSendResult extends Partial<SessionSendRequest> {
+  handled?: boolean;
+}
+
+export type QueueMode = "followup" | "collect" | "steer" | "interrupt" | "speculative" | null;
+export type AdaptiveMode = "off" | "hedge" | "lane" | null;
+
+/** Shared hook that listens for crew:mode_update events and returns
+ *  reactive mode state. Scoped to `sessionId` + `topic` via the shared
+ *  `eventMatchesScope` helper — events for a different scope are
+ *  dropped, and switching to a different scope resets the mode state
+ *  so stale RouterStatus pushes from the previous scope can't bleed
+ *  through (codex Wave4-A P1 + round-3 P2 review fixes). When called
+ *  without arguments (legacy call shape — pre-router unscoped queue
+ *  mode), accept every event so back-compat tests keep working. */
+export function useModeState(sessionId?: string, topic?: string) {
+  const [queueMode, setQueueMode] = useState<QueueMode>(null);
+  const [adaptiveMode, setAdaptiveMode] = useState<AdaptiveMode>(null);
+
+  useEffect(() => {
+    // Reset on scope change so a stale mode from the prior session/topic
+    // doesn't persist into the active pill / switcher highlight.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- A scope change must clear mode state before scoped events are accepted.
+    setQueueMode(null);
+    setAdaptiveMode(null);
+  }, [sessionId, topic]);
+
+  useEffect(() => {
+    function onMode(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      // Codex Wave4-A P1 + round-3 P2: drop events whose `sessionId` /
+      // `topic` don't match. `eventMatchesScope` parses
+      // `detail.{sessionId, topic}` (the camelCase shape the
+      // event-router dispatches) and tolerates absent topic on both
+      // sides. Legacy callers (sessionId undefined) accept every event.
+      if (sessionId !== undefined && !eventMatchesScope(detail, sessionId, topic)) {
+        return;
+      }
+      if (detail.queueMode !== undefined) setQueueMode(detail.queueMode);
+      if (detail.adaptiveMode !== undefined) setAdaptiveMode(detail.adaptiveMode);
+    }
+    window.addEventListener("crew:mode_update", onMode);
+    return () => window.removeEventListener("crew:mode_update", onMode);
+  }, [sessionId, topic]);
+
+  return { queueMode, adaptiveMode };
+}
+
+export interface SessionContextValue {
+  sessions: SessionWithTitle[];
+  currentSessionId: string;
+  historyTopic?: string;
+  currentSessionTitle: string;
+  currentSessionStats: SessionRunStats | null;
+  /** True if the current session has background work pending on the server. */
+  activeTaskOnServer: boolean;
+  /** Current queue mode as reported by backend /queue response. */
+  queueMode: QueueMode;
+  /** Current adaptive routing mode as reported by backend /adaptive response. */
+  adaptiveMode: AdaptiveMode;
+  setServerTaskActive: (sessionId: string, active: boolean) => void;
+  renameSession: (sessionId: string, title: string) => void;
+  updateSessionStats: (sessionId: string, stats: Partial<SessionRunStats>) => void;
+  switchSession: (id: string) => void;
+  goBack: () => Promise<boolean>;
+  createSession: (title?: string) => string;
+  /** Fork `sourceId` into a fresh session (full history copied,
+   *  parent lineage recorded server-side) and switch to it. Resolves
+   *  to the new session id. */
+  branchSession: (sourceId: string) => Promise<string>;
+  removeSession: (id: string) => Promise<void>;
+  refreshSessions: () => Promise<void>;
+  /** Mark the current session as active (has sent at least one message). */
+  markSessionActive: (firstMessage?: string) => void;
+  /** Optional per-surface hook that can initialize or rewrite a send before it hits the SSE bridge. */
+  beforeSend?: (
+    request: SessionSendRequest,
+  ) => Promise<SessionBeforeSendResult | void>;
+}
+
+export const SessionContext = createContext<SessionContextValue | null>(null);
+
+export function useSession() {
+  const ctx = useContext(SessionContext);
+  if (!ctx) throw new Error("useSession must be used within SessionProvider");
+  return ctx;
+}
+
+function generateSessionId(): string {
+  return `web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function loadStoredTitles(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SESSION_TITLE_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistStoredTitles(titles: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SESSION_TITLE_STORAGE_KEY, JSON.stringify(titles));
+}
+
+function loadStoredStats(): Record<string, SessionRunStats> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SESSION_STATS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistStoredStats(stats: Record<string, SessionRunStats>) {
+  if (typeof window === "undefined") return;
+  // Wave4-A codex round-2 review fix: strip transient `queue_depth`
+  // before persisting. The depth is owned by `ui-protocol-send.ts`'s
+  // in-memory FIFO and is meaningless after a page reload — leaving
+  // it on disk would resurrect a stale "N queued" badge for a queue
+  // that no longer exists. Other stats (model / token counters /
+  // cost) survive the reload because they reflect server-side state.
+  const sanitized: Record<string, SessionRunStats> = {};
+  for (const [id, s] of Object.entries(stats)) {
+    sanitized[id] = {
+      model: s.model,
+      inputTokens: s.inputTokens,
+      outputTokens: s.outputTokens,
+      cost: s.cost,
+      // intentionally NOT copying `queue_depth`
+    };
+  }
+  localStorage.setItem(SESSION_STATS_STORAGE_KEY, JSON.stringify(sanitized));
+}
+
+function loadStoredTopics(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SESSION_TOPIC_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistStoredTopics(topics: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SESSION_TOPIC_STORAGE_KEY, JSON.stringify(topics));
+}
+
+function mergeNullableCost(
+  nextCost: number | null | undefined,
+  currentCost: number | null,
+): number | null {
+  return nextCost === undefined ? currentCost : nextCost;
+}
+
+function setSessionActiveFlag(
+  current: Record<string, boolean>,
+  sessionId: string,
+  active: boolean,
+): Record<string, boolean> {
+  if (current[sessionId] === active) return current;
+  const next = { ...current };
+  if (active) {
+    next[sessionId] = true;
+  } else {
+    delete next[sessionId];
+  }
+  return next;
+}
+
+async function rehydrateBackgroundTasksForSessions(
+  sessions: SessionInfo[],
+  onActiveChange: (sessionId: string, active: boolean) => void,
+): Promise<void> {
+  await Promise.all(
+    sessions
+      .slice(0, BACKGROUND_TASK_REHYDRATE_SESSION_CAP)
+      .map(async (session) => {
+        try {
+          const tasks = await getSessionTasks(session.id);
+          TaskStore.replaceTasks(session.id, tasks);
+          onActiveChange(session.id, tasks.some(isTaskActive));
+        } catch {
+          // A task probe failure should not block the sidebar session list.
+        }
+      }),
+  );
+}
+
+/** Extract a sortable timestamp from a session ID.
+ *  Handles both formats:
+ *    web-{timestamp}-{random}  → timestamp directly (milliseconds)
+ *    web-{uuid-v7}             → extract ms from UUID v7 first 48 bits
+ */
+export function sessionTimestamp(s: SessionInfo): number {
+  const id = s.id.replace("web-", "");
+  // UUID v7: 019d044f-aa95-7d92-...  (first 12 hex chars = 48-bit timestamp)
+  if (id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-7/)) {
+    const hex = id.replace(/-/g, "").slice(0, 12);
+    return parseInt(hex, 16);
+  }
+  // Timestamp: 1773856707984-nt380h
+  const ts = parseInt(id.split("-")[0], 10);
+  if (!isNaN(ts) && ts > 1700000000000) return ts;
+  // Fallback: use created_at if available, or 0
+  return 0;
+}
+
+/** Soft cap on how many sessions the sidebar will render at once.
+ *  Sized so a heavy user (hundreds of chats) sees their full history without
+ *  hammering the DOM. If a user ever crosses this, virtualization is the next
+ *  step; a hard slice was the original Bug A — newest sessions silently
+ *  dropped behind a `.slice(0, 20)` window.
+ */
+export const SESSION_LIST_RENDER_CAP = 500;
+
+/** Pure merge step extracted from `refreshSessions` so it can be unit-tested.
+ *
+ *  Filters the raw `list` from the `session/list` WS method to web-prefixed
+ *  sessions with at least one persisted message that aren't tombstoned,
+ *  sorts newest-first, caps to {@link SESSION_LIST_RENDER_CAP}, and overlays
+ *  any locally-tracked sessions that haven't yet been observed by the
+ *  server (e.g. a brand-new chat whose first turn is still mid-flight).
+ *
+ *  Bug A (M10 follow-up): the original implementation hard-sliced to 20
+ *  sessions before merging. Users with 20+ historical chats saw the newest
+ *  one push an old one out, but on a later refresh — when other sessions
+ *  bumped — the newest could fall out of the top 20 and vanish, since
+ *  `_local` was cleared by the first successful merge. The fix is to use
+ *  a much higher cap and to preserve sessions that are present in `prev`
+ *  but missing from the current API response (so a transient API delay
+ *  doesn't wipe them either).
+ */
+export function mergeSessionLists(
+  prev: SessionWithTitle[],
+  list: SessionInfo[],
+  deletedIds: Set<string>,
+  titles: Record<string, string>,
+): SessionWithTitle[] {
+  const webSessions = list
+    .filter(
+      (s) =>
+        s.id.startsWith("web-") &&
+        (s.message_count ?? 0) > 0 &&
+        !deletedIds.has(s.id),
+    )
+    .sort((a, b) => sessionTimestamp(b) - sessionTimestamp(a))
+    .slice(0, SESSION_LIST_RENDER_CAP);
+
+  const fromApi: SessionWithTitle[] = webSessions.map((s) => ({
+    ...s,
+    title: titles[s.id],
+  }));
+  const apiIds = new Set(fromApi.map((s) => s.id));
+  // Issue #113.1: carry over ALL non-deleted previously-rendered web
+  // sessions (not just `_local` rows). Pre-fix the carryover was
+  // restricted to `s._local === true`, so a transient `listSessions`
+  // blip (empty/short payload during reconnect) silently wiped every
+  // server-known session from the sidebar until the next 15s refresh
+  // landed. The comment above the original filter even said "any
+  // session we've previously rendered" — only the `_local` clause was
+  // actually applied. The wider net here is safe because:
+  //   - tombstoned (`deletedIds`) sessions are still excluded;
+  //   - non-web ids and zero-message-count ids never enter `prev`
+  //     (refreshSessions filters them upstream);
+  //   - the next non-blip refresh re-derives the list from the API
+  //     and naturally evicts anything truly gone.
+  const carryover = prev.filter(
+    (s) =>
+      !apiIds.has(s.id) &&
+      !deletedIds.has(s.id) &&
+      s.id.startsWith("web-"),
+  );
+  return [...carryover, ...fromApi];
+}
+
+/** Apply a rename optimistically to the sidebar `sessions[]` list.
+ *
+ *  If `sessionId` is already in the list, patches its `title`. Otherwise
+ *  prepends a `_local: true` placeholder so the user sees their rename
+ *  immediately even before the API list has caught up.
+ *
+ *  Extracted from `renameSession` so the optimistic + rollback paths are
+ *  unit-testable without rendering the full provider.
+ */
+export function applyOptimisticRename(
+  prev: SessionWithTitle[],
+  sessionId: string,
+  newTitle: string,
+): SessionWithTitle[] {
+  const existing = prev.find((s) => s.id === sessionId);
+  if (existing) {
+    return prev.map((s) =>
+      s.id === sessionId ? { ...s, title: newTitle } : s,
+    );
+  }
+  return [
+    { id: sessionId, message_count: 0, title: newTitle, _local: true },
+    ...prev,
+  ];
+}
+
+/** Roll back an optimistic rename in `sessions[]`.
+ *
+ *  When `previousTitle` is `undefined` the rename created a placeholder
+ *  `_local: true` row (no prior cache entry, no prior sessions entry);
+ *  drop it. Otherwise restore the prior title onto the existing row.
+ */
+export function rollbackOptimisticRename(
+  prev: SessionWithTitle[],
+  sessionId: string,
+  previousTitle: string | undefined,
+): SessionWithTitle[] {
+  if (previousTitle === undefined) {
+    // The optimistic write either replaced an unset title or inserted a
+    // brand-new `_local: true` placeholder. In both cases the right
+    // rollback is to clear the title back to undefined; if the row was
+    // a pure placeholder (no prior server row) we also drop it so the
+    // sidebar matches the pre-rename state.
+    return prev
+      .filter((s) => !(s.id === sessionId && s._local && s.message_count === 0))
+      .map((s) => (s.id === sessionId ? { ...s, title: undefined } : s));
+  }
+  return prev.map((s) =>
+    s.id === sessionId ? { ...s, title: previousTitle } : s,
+  );
+}
+
+/**
+ * Resolve which server-side bucket a sidebar session id denotes — THE
+ * single authority shared by `switchSession` (what clicking a row
+ * shows) and `branchSession` (what forking a row copies), so the two
+ * can never diverge (codex web#267 r1 P1 + r2 P1).
+ *
+ * A session opened under a topic (e.g. `/new slides …`) lives in its
+ * own `id#topic` SessionKey server-side. The SPA keys sidebar rows by
+ * BARE id and tracks the active topic in `sessionTopics`; clicking a
+ * bare row loads `(id, topics[id])` — i.e. the row denotes the TOPIC
+ * bucket whenever the map holds one, and the default bucket under that
+ * base id is not reachable from that row. Forking follows the same
+ * resolution: it copies exactly the conversation the row opens.
+ *
+ * An id that already carries a `#` scope (a server list row for a
+ * topic bucket) is authoritative as-is — the topic map never overrides
+ * it, mirroring the bridge's `requireScopedSessionId` pass-through.
+ * The server derives a fork child from `base_key` (topic dropped), so
+ * the child is always a fresh raw conversation regardless of scope.
+ */
+export function resolveSessionScope(
+  id: string,
+  topics: Record<string, string>,
+): { scopedId: string; topic: string | undefined } {
+  if (id.includes("#")) {
+    return { scopedId: id, topic: undefined };
+  }
+  const topic = topics[id] || undefined;
+  return { scopedId: topic ? `${id}#${topic}` : id, topic };
+}
+
+export function SessionProvider({ children }: { children: ReactNode }) {
+  const [sessions, setSessions] = useState<SessionWithTitle[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState(() => {
+    // Restore last session on refresh, or generate a new one
+    const saved = localStorage.getItem("octos_current_session");
+    return saved || generateSessionId();
+  });
+  const [activeHistoryTopic, setActiveHistoryTopic] = useState<string | undefined>(() => {
+    // Through the resolver, NOT a raw map read (codex web#267 r3 P2):
+    // a restored scoped id (`web-123#slides`) is authoritative as-is,
+    // and a stale map entry under that scoped key must not expose a
+    // different topic to children's mount effects for the first render
+    // — the restore effect would only correct it AFTER mount.
+    const saved = localStorage.getItem("octos_current_session");
+    return saved
+      ? resolveSessionScope(saved, loadStoredTopics()).topic
+      : undefined;
+  });
+  const [serverTaskActiveBySession, setServerTaskActiveBySession] = useState<
+    Record<string, boolean>
+  >({});
+  const { queueMode, adaptiveMode } = useModeState(
+    currentSessionId,
+    activeHistoryTopic,
+  );
+  const previousSessionIdRef = useRef<string | null>(null);
+  const titleCache = useRef<Record<string, string>>(loadStoredTitles());
+  // Codex NIT G: track per-session title-fetch state to prevent the
+  // top-10 cap from starving later sessions. Without this, the same
+  // 10 failed / no-user-msg rows would dominate `needTitle` forever,
+  // blocking every later session's title from ever being fetched.
+  //
+  // `titleFetchInflight` carries every session id whose fetch has
+  // been launched but not yet resolved. `titleFetchAttempted` carries
+  // sessions whose fetch RESOLVED without producing a title (no user
+  // msg in the first 10 / extractTitle returned empty / API error)
+  // — those are effectively permanent failures from the SPA's
+  // perspective and stay out of `needTitle` to let later sessions
+  // win the next refresh tick. The maps are populated synchronously
+  // before launching the async fetch so a quick second refreshSessions
+  // pass within the same JS tick can't double-launch.
+  const titleFetchInflight = useRef<Set<string>>(new Set());
+  const titleFetchAttempted = useRef<Set<string>>(new Set());
+  const statsCache = useRef<Record<string, SessionRunStats>>(loadStoredStats());
+  const [currentSessionStatsState, setCurrentSessionStatsState] =
+    useState<SessionRunStats | null>(() => statsCache.current[currentSessionId] ?? null);
+  const [sessionTopics, setSessionTopics] = useState<Record<string, string>>(() =>
+    loadStoredTopics(),
+  );
+
+  useEffect(() => {
+    setCurrentSessionStatsState(statsCache.current[currentSessionId] ?? null);
+  }, [currentSessionId]);
+
+  const storeSessionStats = useCallback(
+    (sessionId: string, stats: SessionRunStats) => {
+      statsCache.current[sessionId] = stats;
+      persistStoredStats(statsCache.current);
+      if (sessionId === currentSessionId) {
+        setCurrentSessionStatsState(stats);
+      }
+    },
+    [currentSessionId],
+  );
+
+  const forgetSessionLocalState = useCallback((sessionId: string) => {
+    if (titleCache.current[sessionId]) {
+      delete titleCache.current[sessionId];
+      persistStoredTitles(titleCache.current);
+    }
+    // Codex NIT G: also clear the in-flight / attempted markers so a
+    // session that's recreated under the same id is allowed to retry.
+    titleFetchInflight.current.delete(sessionId);
+    titleFetchAttempted.current.delete(sessionId);
+    if (statsCache.current[sessionId]) {
+      delete statsCache.current[sessionId];
+      persistStoredStats(statsCache.current);
+    }
+    setSessionTopics((prev) => {
+      if (!prev[sessionId]) return prev;
+      const next = { ...prev };
+      delete next[sessionId];
+      persistStoredTopics(next);
+      return next;
+    });
+    setServerTaskActiveBySession((prev) =>
+      setSessionActiveFlag(prev, sessionId, false),
+    );
+    ThreadStore.clearSession(sessionId);
+    ProjectionStore.clearProjection(sessionId);
+    TaskStore.clearTasks(sessionId);
+    FileStore.clearSessionFiles(sessionId);
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+  }, []);
+
+  // Persist current session ID for refresh recovery
+  useEffect(() => {
+    localStorage.setItem("octos_current_session", currentSessionId);
+  }, [currentSessionId]);
+
+  // Restore the active scope and its task status. Canonical chat history is
+  // hydrated by the v2 bridge after its session/open acknowledgement.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const saved = localStorage.getItem("octos_current_session");
+    if (saved && saved.startsWith("web-")) {
+      const { topic: restoredTopic } = resolveSessionScope(saved, sessionTopics);
+      getSessionTasks(saved, restoredTopic)
+        .then((tasks) => {
+          setServerTaskActiveBySession((prev) =>
+            setSessionActiveFlag(prev, saved, tasks.some(isTaskActive)),
+          );
+        })
+        .catch(() => {});
+      setActiveHistoryTopic(restoredTopic);
+    }
+  }, [sessionTopics]);
+
+  const refreshSessions = useCallback(async () => {
+    try {
+      const deletedIds = loadDeletedSessionIds();
+      const list = await listSessions();
+      // Server-supplied title wins: populate the title cache from
+      // `session/list` directly so the sidebar paints with real titles
+      // on first render — no per-session `messages_page` round-trip
+      // needed. Pre-fix, `SessionInfo` had no `title` field so the
+      // server's title was silently discarded and the SPA derived
+      // titles from the first user message via N (≤10) serial
+      // `messages_page` calls, adding 1–5 s of latency on `/chat` load.
+      let titleCacheDirty = false;
+      for (const s of list) {
+        const t = s.title?.trim();
+        if (t && titleCache.current[s.id] !== t) {
+          titleCache.current[s.id] = t;
+          titleCacheDirty = true;
+        }
+      }
+      if (titleCacheDirty) {
+        persistStoredTitles(titleCache.current);
+      }
+      // Pre-merge filter + sort just to decide which sessions need a title
+      // fetch. The actual merge runs again inside `setSessions` so it sees
+      // the latest `prev`.
+      const visibleCandidates = list
+        .filter(
+          (s) =>
+            s.id.startsWith("web-") &&
+            (s.message_count ?? 0) > 0 &&
+            !deletedIds.has(s.id),
+        )
+        .sort((a, b) => sessionTimestamp(b) - sessionTimestamp(a))
+        .slice(0, SESSION_LIST_RENDER_CAP);
+
+      // Issue #110.2: render the session list IMMEDIATELY using
+      // whatever titles are cached locally. Title fetches for newly
+      // observed sessions run as background fire-and-forget — they
+      // do not block the sidebar render so a slow per-session
+      // /messages call does not hold up the refresh path. When a
+      // background fetch completes it patches both the cache and the
+      // visible `sessions[]` so the sidebar updates without waiting
+      // for the next 15s refresh tick.
+      setSessions((prev) =>
+        mergeSessionLists(prev, list, deletedIds, titleCache.current),
+      );
+      void rehydrateBackgroundTasksForSessions(
+        visibleCandidates,
+        (sessionId, active) => {
+          setServerTaskActiveBySession((prev) =>
+            setSessionActiveFlag(prev, sessionId, active),
+          );
+        },
+      );
+
+      // Codex NIT G: skip sessions whose fetch is already in flight or
+      // already resolved without producing a title — otherwise the
+      // top-10 cap parks on the same head-of-list failures forever and
+      // later sessions never get a title fetch.
+      const needTitle = visibleCandidates.filter(
+        (s) =>
+          !titleCache.current[s.id] &&
+          !titleFetchInflight.current.has(s.id) &&
+          !titleFetchAttempted.current.has(s.id),
+      );
+      for (const s of needTitle.slice(0, 10)) {
+        titleFetchInflight.current.add(s.id);
+        void (async () => {
+          try {
+            const msgs = await getMessages(s.id, 10);
+            const firstUser = msgs.find(
+              (m) => m.role === "user" && m.content?.trim(),
+            );
+            if (!firstUser) {
+              // No user message in first 10 — mark as attempted so we
+              // don't keep parking on this row at every refresh tick.
+              titleFetchAttempted.current.add(s.id);
+              return;
+            }
+            const title = extractTitle(firstUser.content);
+            if (!title) {
+              titleFetchAttempted.current.add(s.id);
+              return;
+            }
+            titleCache.current[s.id] = title;
+            persistStoredTitles(titleCache.current);
+            // Patch the visible list so the sidebar reflects the new
+            // title without waiting for the next 15s refresh tick.
+            setSessions((curr) =>
+              curr.map((row) =>
+                row.id === s.id && !row.title ? { ...row, title } : row,
+              ),
+            );
+          } catch {
+            // API error: mark as attempted so this row doesn't block
+            // later sessions. A subsequent refresh after the user
+            // navigates back through `forgetSessionLocalState`-friendly
+            // flows (e.g. delete + recreate) clears the marker.
+            titleFetchAttempted.current.add(s.id);
+          } finally {
+            titleFetchInflight.current.delete(s.id);
+          }
+        })();
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSessions();
+  }, [refreshSessions]);
+
+  // The first `refreshSessions()` on mount races the bridge transition
+  // to "connected". When it loses, `getAnyConnectedBridge()` returns
+  // null, so `listSessions()` (and the other aux REST→WS wrappers)
+  // falls back to legacy REST `/api/sessions` — a route retired in
+  // M12 Phase D-5 that now returns 404. The sidebar then stays empty
+  // until the 15 s polling interval below ticks. Re-fire as soon as
+  // `ui-protocol-runtime` reports the bridge is ready so the sidebar
+  // paints within ~1 s of `session/open`, not 15.
+  useEffect(() => {
+    const onBridgeReady = () => {
+      void refreshSessions();
+    };
+    window.addEventListener("crew:bridge_connected", onBridgeReady);
+    return () => {
+      window.removeEventListener("crew:bridge_connected", onBridgeReady);
+    };
+  }, [refreshSessions]);
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshSessions();
+      }
+    };
+    const refreshOnFocus = () => {
+      void refreshSessions();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === SESSION_SYNC_STORAGE_KEY) {
+        const deletedSessionId = parseDeletedSessionSync(event.newValue);
+        if (deletedSessionId) {
+          rememberDeletedSession(deletedSessionId);
+          forgetSessionLocalState(deletedSessionId);
+          if (deletedSessionId === currentSessionId) {
+            setActiveHistoryTopic(undefined);
+            setCurrentSessionId(generateSessionId());
+          }
+        }
+        void refreshSessions();
+      }
+    };
+
+    const interval = window.setInterval(refreshIfVisible, 15_000);
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [currentSessionId, forgetSessionLocalState, refreshSessions]);
+
+  // Issue #113.2: subscribe to bridge-forwarded `session/title-updated`
+  // notifications so server-side or cross-tab title updates patch the
+  // sidebar idempotently. The bridge fires the typed event for every
+  // such notification; RuntimeProvider lifts it onto a window event so
+  // SessionProvider stays decoupled from the bridge instance.
+  useEffect(() => {
+    function onTitleUpdated(e: Event) {
+      const detail = (e as CustomEvent).detail as
+        | { session_id: string; title: string }
+        | undefined;
+      if (!detail || !detail.session_id) return;
+      const sessionId = detail.session_id;
+      const title = detail.title;
+      if (titleCache.current[sessionId] === title) return;
+      titleCache.current[sessionId] = title;
+      persistStoredTitles(titleCache.current);
+      setSessions((prev) =>
+        prev.map((row) =>
+          row.id === sessionId ? { ...row, title } : row,
+        ),
+      );
+    }
+    window.addEventListener("crew:session_title_updated", onTitleUpdated);
+    return () => {
+      window.removeEventListener(
+        "crew:session_title_updated",
+        onTitleUpdated,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleCost(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      const sessionId = detail?.sessionId;
+      if (!sessionId) return;
+      const current = statsCache.current[sessionId] ?? {
+        inputTokens: 0,
+        outputTokens: 0,
+        cost: null,
+      };
+      storeSessionStats(sessionId, {
+        ...current,
+        inputTokens: detail.input_tokens ?? current.inputTokens,
+        outputTokens: detail.output_tokens ?? current.outputTokens,
+        cost: mergeNullableCost(detail.session_cost, current.cost),
+      });
+    }
+
+    function handleMeta(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      const sessionId = detail?.sessionId;
+      if (!sessionId) return;
+      const current = statsCache.current[sessionId] ?? {
+        inputTokens: 0,
+        outputTokens: 0,
+        cost: null,
+      };
+      // `crew:message_meta` carries PER-TURN token deltas (the event
+      // router baselines the cumulative counters for the bubble footer),
+      // while this store is SESSION-scoped and fed session-cumulative
+      // counts by `crew:cost` (octos#1632 made those truthful across
+      // turns/model switches). Merging tokens_in/tokens_out here snapped
+      // the cost bar back to the latest turn's counts after every turn —
+      // take only the model label and the (session-scoped) cost.
+      storeSessionStats(sessionId, {
+        ...current,
+        model: detail.model || current.model,
+        cost: mergeNullableCost(detail.session_cost, current.cost),
+      });
+    }
+
+    window.addEventListener("crew:cost", handleCost);
+    window.addEventListener("crew:message_meta", handleMeta);
+    return () => {
+      window.removeEventListener("crew:cost", handleCost);
+      window.removeEventListener("crew:message_meta", handleMeta);
+    };
+  }, [storeSessionStats]);
+
+  // Wave4-A — listen for the per-session client-side queue depth
+  // dispatched by `ui-protocol-send.ts` and stamp it onto
+  // `currentSessionStats.queue_depth` so the toolbar pill renders the
+  // live count. The send-path dispatches on every push (synchronous
+  // with the user submit) and every drain (turn lifecycle completed
+  // OR transport drop).
+  useEffect(() => {
+    function handleQueue(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      const sessionId = detail?.sessionId;
+      if (!sessionId) return;
+      const pendingCount =
+        typeof detail.pendingCount === "number"
+          ? detail.pendingCount
+          : 0;
+      const current = statsCache.current[sessionId] ?? {
+        inputTokens: 0,
+        outputTokens: 0,
+        cost: null,
+      };
+      storeSessionStats(sessionId, {
+        ...current,
+        queue_depth: pendingCount,
+      });
+    }
+    window.addEventListener("crew:queue_state", handleQueue);
+    return () => {
+      window.removeEventListener("crew:queue_state", handleQueue);
+    };
+  }, [storeSessionStats]);
+
+  const switchRequestRef = useRef(0);
+  const setServerTaskActive = useCallback(
+    (sessionId: string, active: boolean) => {
+      setServerTaskActiveBySession((prev) =>
+        setSessionActiveFlag(prev, sessionId, active),
+      );
+    },
+    [],
+  );
+
+  const renameSession = useCallback((sessionId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    // Capture the pre-update state so we can roll the optimistic write
+    // back if the server-side wrapper rejects. `previousTitle` is
+    // `undefined` when no cached title existed yet — in that case the
+    // rollback path deletes the cache entry so the next
+    // `refreshSessions()` re-fetches from the server instead of pinning
+    // the stale optimistic value.
+    const previousTitle: string | undefined = titleCache.current[sessionId];
+    // Optimistic local update: always update the in-memory cache and
+    // sessions list first, so the UI re-renders immediately regardless
+    // of the wrapper's eventual outcome.
+    titleCache.current[sessionId] = trimmed;
+    persistStoredTitles(titleCache.current);
+    setSessions((prev) => applyOptimisticRename(prev, sessionId, trimmed));
+    // Persist the rename server-side via the `setSessionTitle` wrapper,
+    // which calls the WS `session/title.set` method. The legacy REST
+    // PATCH `/api/sessions/:id/title` fallback was retired in M12
+    // Phase D-5. On rejection we roll the optimistic cache + sessions
+    // write back so the UI does not end up with a stale title that
+    // `refreshSessions()` would never overwrite (it skips title
+    // fetches while `titleCache.current[id]` is populated).
+    void apiSetSessionTitle(sessionId, trimmed).catch((err: unknown) => {
+      // Roll back cache. Restore the previous value if one existed,
+      // otherwise drop the entry entirely so the next refresh can
+      // re-fetch from the server.
+      if (previousTitle !== undefined) {
+        titleCache.current[sessionId] = previousTitle;
+      } else {
+        delete titleCache.current[sessionId];
+      }
+      persistStoredTitles(titleCache.current);
+      // Roll back the optimistic sidebar update.
+      setSessions((curr) =>
+        rollbackOptimisticRename(curr, sessionId, previousTitle),
+      );
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`renameSession failed for ${sessionId}: ${message}`);
+    });
+  }, []);
+
+  const updateSessionStats = useCallback(
+    (sessionId: string, stats: Partial<SessionRunStats>) => {
+      const current = statsCache.current[sessionId] ?? {
+        inputTokens: 0,
+        outputTokens: 0,
+        cost: null,
+      };
+      storeSessionStats(sessionId, {
+        ...current,
+        ...stats,
+      });
+    },
+    [storeSessionStats],
+  );
+
+  const switchSession = useCallback((id: string) => {
+    if (id !== currentSessionId) {
+      previousSessionIdRef.current = currentSessionId;
+    }
+    // Switch the visible session/topic synchronously. The scoped v2 bridge
+    // hydrates canonical history after its session/open acknowledgement.
+    const requestId = ++switchRequestRef.current;
+    // Shared bucket resolution with branchSession — see
+    // resolveSessionScope.
+    const { topic } = resolveSessionScope(id, sessionTopics);
+    setCurrentSessionId(id);
+    setActiveHistoryTopic(topic);
+
+    void getSessionTasks(id, topic)
+      .then((tasks) => {
+        if (switchRequestRef.current !== requestId) return;
+        setServerTaskActive(id, tasks.some(isTaskActive));
+      })
+      .catch(() => {
+        if (switchRequestRef.current !== requestId) return;
+        setServerTaskActive(id, false);
+      });
+  }, [currentSessionId, sessionTopics, setServerTaskActive]);
+
+  const createSession = useCallback((title?: string) => {
+    const nextId = generateSessionId();
+    previousSessionIdRef.current = currentSessionId;
+    const trimmedTitle = title?.trim();
+    if (trimmedTitle) {
+      titleCache.current[nextId] = trimmedTitle;
+      persistStoredTitles(titleCache.current);
+      setSessions((prev) => [
+        { id: nextId, message_count: 0, title: trimmedTitle, _local: true },
+        ...prev,
+      ]);
+    }
+    setActiveHistoryTopic(undefined);
+    setCurrentSessionId(nextId);
+    return nextId;
+  }, [currentSessionId]);
+
+  const branchSession = useCallback(
+    async (sourceId: string) => {
+      // Fork the bucket the row DENOTES — the same resolution
+      // switchSession uses (see resolveSessionScope), so a fork always
+      // copies exactly the conversation clicking that row shows: the
+      // topic bucket when the map holds a topic for a bare id, the
+      // scoped id as-is for a topic-bucket row, the default bucket
+      // otherwise (codex web#267 r1 P1 + r2 P1). Server-side fork
+      // copies the parent's FULL message history and records
+      // parent_key lineage — matching the CLI `/new` fork. Workspace
+      // artifacts (uploads, generated files) intentionally stay with
+      // the parent, same as the CLI: the child inherits the
+      // conversation, not the parent's on-disk resources. The child id
+      // is minted client-side (raw `web-*` convention); the server
+      // echoes it back for raw parents.
+      const { scopedId: scopedSource } = resolveSessionScope(
+        sourceId,
+        sessionTopics,
+      );
+      const result = await forkSession(scopedSource, generateSessionId());
+      const newId = result.new_session_id;
+      await refreshSessions();
+      switchSession(newId);
+      return newId;
+    },
+    [sessionTopics, refreshSessions, switchSession],
+  );
+
+  const goBack = useCallback(async () => {
+    const previous = previousSessionIdRef.current;
+    if (!previous || previous === currentSessionId) return false;
+    switchSession(previous);
+    return true;
+  }, [currentSessionId, switchSession]);
+
+  const markSessionActive = useCallback(
+    (firstMessage?: string) => {
+      const existingTitle = titleCache.current[currentSessionId];
+      const title =
+        !existingTitle && firstMessage ? extractTitle(firstMessage) : existingTitle;
+      const nextTopic = firstMessage ? nextTopicForCommand(firstMessage) : undefined;
+      if (nextTopic !== undefined) {
+        const normalizedNext = nextTopic?.trim() || undefined;
+        setActiveHistoryTopic(normalizedNext);
+        setSessionTopics((prev) => {
+          const current = prev[currentSessionId];
+          const normalizedStored = normalizedNext || "";
+          if (!normalizedStored && !current) return prev;
+          if (normalizedStored && current === normalizedStored) return prev;
+          const next = { ...prev };
+          if (normalizedStored) {
+            next[currentSessionId] = normalizedStored;
+          } else {
+            delete next[currentSessionId];
+          }
+          persistStoredTopics(next);
+          return next;
+        });
+      }
+      if (title && !existingTitle) {
+        titleCache.current[currentSessionId] = title;
+        persistStoredTitles(titleCache.current);
+      }
+      setSessions((prev) => {
+        const existing = prev.find((s) => s.id === currentSessionId);
+        if (existing) {
+          // Update title if it was missing
+          if (!existing.title && title) {
+            return prev.map((s) =>
+              s.id === currentSessionId ? { ...s, title } : s,
+            );
+          }
+          return prev;
+        }
+        return [
+          { id: currentSessionId, message_count: 1, title, _local: true },
+          ...prev,
+        ];
+      });
+    },
+    [currentSessionId],
+  );
+
+  const removeSession = useCallback(async (id: string) => {
+    await apiDeleteSession(id);
+    rememberDeletedSession(id);
+    forgetSessionLocalState(id);
+    if (id === currentSessionId) {
+      setActiveHistoryTopic(undefined);
+      setCurrentSessionId(generateSessionId());
+    }
+    publishSessionDeleted(id);
+    await refreshSessions();
+  }, [currentSessionId, forgetSessionLocalState, refreshSessions]);
+
+  const currentSessionTitle =
+    sessions.find((s) => s.id === currentSessionId)?.title ||
+    titleCache.current[currentSessionId] ||
+    formatSessionName(currentSessionId);
+  const currentSessionStats = currentSessionStatsState;
+  const activeTaskOnServer = serverTaskActiveBySession[currentSessionId] ?? false;
+
+  return (
+    <SessionContext.Provider
+      value={{
+        sessions,
+        currentSessionId,
+        historyTopic: activeHistoryTopic,
+        currentSessionTitle,
+        currentSessionStats,
+        activeTaskOnServer,
+        queueMode,
+        adaptiveMode,
+        setServerTaskActive,
+        renameSession,
+        updateSessionStats,
+        switchSession,
+        goBack,
+        createSession,
+        branchSession,
+        removeSession,
+        refreshSessions,
+        markSessionActive,
+      }}
+    >
+      {children}
+    </SessionContext.Provider>
+  );
+}
+
+function formatSessionName(id: string): string {
+  if (id.startsWith("web-")) {
+    const parts = id.split("-");
+    if (parts.length >= 2) {
+      const ts = parseInt(parts[1], 10);
+      if (!isNaN(ts)) {
+        const d = new Date(ts);
+        return d.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+    }
+  }
+  return id;
+}

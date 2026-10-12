@@ -1,0 +1,114 @@
+name: CI (self-hosted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag, or SHA to test"
+        required: false
+        default: "main"
+      include_arm:
+        description: "Run ARM64 self-hosted validation"
+        required: false
+        type: boolean
+        default: false
+      include_windows:
+        description: "Run Windows self-hosted validation"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_TERM_COLOR: always
+  FEATURES: "api,telegram,discord,whatsapp,feishu,twilio,wecom,wecom-bot,audio_mp3"
+
+jobs:
+  fast-linux:
+    name: fast-linux
+    runs-on: [self-hosted, linux, x64, octos-fast]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # The serve_sigterm / serve_ws_liveness / serve_solo_gateway_guard e2e
+      # spawn real `octos serve` children that starve under default test
+      # parallelism; ci.yml runs them in a dedicated serial step (see the #21
+      # outer-loop ruling there).
+      - name: Test
+        run: cargo test --workspace -- --skip serve_sigterm --skip serve_ws_liveness --skip serve_solo_gateway_guard --skip serve_host_managed
+
+      # ci-api-filter-test.sh fails the step when a filter selects zero
+      # tests — a bare `cargo test <filter>` would report `ok` (#2029).
+      - name: API feature tests
+        run: ./scripts/ci-api-filter-test.sh api::auth_handlers
+
+      # Feature-gated §6 catalog guard — `cargo test --workspace` above never
+      # compiles the `api` module, so run it explicitly to catch spec drift.
+      - name: UI Protocol §6 catalog guard (octos-cli)
+        run: ./scripts/ci-api-filter-test.sh spec_section6_catalog_lists_every_advertised_method -- --nocapture
+
+      - name: QoS adaptive/runtime catalog regressions
+        run: |
+          cargo test -p octos-llm test_qos_ranking_changes_lane_selection -- --nocapture
+          cargo test -p octos-llm test_derive_cold_start_catalog_assigns_non_zero_scores -- --nocapture
+          cargo test -p octos-llm test_compatible_fallbacks_prefers_lower_seeded_qos_score -- --nocapture
+          ./scripts/ci-api-filter-test.sh gateway_runtime::tests -- --nocapture
+
+  linux-arm:
+    name: linux-arm
+    if: ${{ inputs.include_arm }}
+    runs-on: [self-hosted, linux, arm64, octos-arm]
+    env:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: self-hosted-arm64
+
+      - name: Build and test
+        run: |
+          cargo build --workspace
+          cargo build -p octos-cli --features ${{ env.FEATURES }}
+          cargo test --workspace --no-run
+          # serve_sigterm / serve_ws_liveness / serve_solo_gateway_guard e2e:
+          # serial-only (see the ci.yml #21 ruling); the broad run skips them.
+          cargo test --workspace -- --skip serve_sigterm --skip serve_ws_liveness --skip serve_solo_gateway_guard --skip serve_host_managed
+
+  windows:
+    name: windows
+    if: ${{ inputs.include_windows }}
+    runs-on: [self-hosted, windows, x64, octos-windows]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: self-hosted-windows
+
+      - name: Build and test
+        run: |
+          cargo build --workspace
+          cargo build -p octos-cli --features ${{ env.FEATURES }}
+          cargo test --workspace

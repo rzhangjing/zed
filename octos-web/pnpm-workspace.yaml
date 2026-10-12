@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+  octos-lesson-language: true
+  protobufjs: true
+patchedDependencies:
+  octos-lesson-language@0.1.0-rc.1: patches/octos-lesson-language@0.1.0-rc.1.patch

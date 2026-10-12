@@ -1,0 +1,1144 @@
+/**
+ * UI Protocol v1 typed event/result shapes used by the strict client bridge.
+ *
+ * Required fields are non-optional `string` — runtime guards in the bridge
+ * reject events missing them and emit a `warning` rather than synthesizing
+ * defaults. This is the fail-closed property called out in PR #63 review.
+ */
+
+export type ConnectionState =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "closed"
+  | "error";
+
+export type ApprovalDecision = "approve" | "deny";
+
+export type ApprovalScope = "request" | "turn" | "session";
+
+export interface UiCursor {
+  stream: string;
+  seq: number;
+}
+
+export interface TurnStartInput {
+  kind: "text";
+  text: string;
+}
+
+/**
+ * UPCR-2026-015 (M9-β-1): wire-form file reference carried on
+ * `TurnStartParams.media`. Mirrors the Rust `FileRef` reused from
+ * UPCR-2026-014 (γ-1) — `path` is the durable filesystem handle
+ * returned from `POST /api/upload`; `mime` and `size_bytes` are
+ * captured at upload time. The web client populates all three.
+ *
+ * Note: the projection-side `FileRef` (lower in this file) leaves
+ * `mime` and `size_bytes` optional to tolerate envelopes the server
+ * emits with bare paths. The send-side shape here keeps them required
+ * because the upload endpoint always returns them.
+ */
+export interface TurnStartMediaRef {
+  path: string;
+  mime: string;
+  size_bytes: number;
+}
+
+/**
+ * UPCR-2026-015 (M9-β-1): the full `turn/start` params envelope the
+ * bridge serialises onto the wire. Strict-additive on top of the legacy
+ * `{ session_id, turn_id, input }` shape — every new field is optional
+ * and serialised only when populated.
+ *
+ * Mirrors the Rust `TurnStartParams` struct in
+ * `crates/octos-core/src/ui_protocol.rs`. Keep these in lockstep —
+ * `tsc --noEmit` is the only structural check; a drift between the
+ * two is a wire bug.
+ */
+export interface TurnStartExtras {
+  /** Pre-uploaded media references the user attached. Empty / omitted
+   *  for text-only sends. */
+  media?: TurnStartMediaRef[];
+  /** Sub-topic suffix that scopes this send to a per-topic session
+   *  bucket (`<session>#<topic>` form). Server folds it into the
+   *  resolved `SessionKey` before scope validation. */
+  topic?: string;
+  /** When set, this turn rewrites an existing queued user message
+   *  identified by its `client_message_id` (the `/queue` slash-command
+   *  flow). β-1 server logs the field; durable in-place ledger
+   *  replace lands in a follow-up. */
+  rewrite_for?: string;
+  /** #1478: explicit "this is a live video call" signal — the attached
+   *  image is the user's current camera frame, not an uploaded file. Set
+   *  by the voice screen when the camera is on. Omitted (≡ false) otherwise;
+   *  the server never infers live-video from attachment types. */
+  live_video?: boolean;
+  /** Per-session reasoning/thinking effort (TUI `/thinking` parity).
+   *  Server precedence: a USER turn carrying the field wins AND
+   *  persists it for the session; a user turn OMITTING it clears the
+   *  stored override ("default"); server-initiated continuations fall
+   *  back to the stored value. So once the user picks a non-default
+   *  effort the send path must attach it to EVERY turn (see
+   *  `buildTurnStartExtras` reading the thinking store).
+   *  Typed wider than the known union: a NEWER server may have
+   *  persisted a tier this client does not know, and it must
+   *  round-trip verbatim rather than be destroyed by omission. */
+  reasoning_effort?: ReasoningEffortLevel | (string & {});
+  /** Per-turn model tool context. Notebook Studio sends `notebook`;
+   *  ordinary chat and voice sends omit the field. */
+  tool_context?: string;
+}
+
+/** Wire values of `octos_core::ui_protocol::ReasoningEffortLevel`
+ *  (snake_case strings; `max` is the DeepSeek tier). */
+export type ReasoningEffortLevel = "low" | "medium" | "high" | "max";
+
+export interface SessionOpenedResult {
+  session_id: string;
+  active_profile_id?: string;
+  cursor?: UiCursor;
+  /** Features actually accepted by the server for this connection. The
+   * request list is only an offer; rendering may select v2 only from this
+   * negotiated response. Older servers simply omit this field. */
+  capabilities?: {
+    supported_features?: string[];
+  };
+  workspace_root?: string;
+  panes?: unknown;
+  /** Server-persisted per-session reasoning effort, surfaced on the
+   *  open ack so a (re)connecting client restores its thinking
+   *  selector. Absent/null when the session never set one. May carry
+   *  a tier newer than this client's known union. */
+  reasoning_effort?: ReasoningEffortLevel | (string & {}) | null;
+}
+
+export interface SessionOpenResult {
+  opened: SessionOpenedResult;
+}
+
+// ─── M15 autonomy surfaces: recurring loops + persisted goal ───────────────
+// Wire mirrors of `octos_core::ui_protocol::{UiLoopRecord, UiGoalRecord}`
+// and the loop/goal notification structs. Negotiated behind
+// `coding.loop_runtime.v1` / `coding.goal_runtime.v1`.
+
+export interface UiLoopRecord {
+  loop_id: string;
+  session_id: string;
+  profile_id?: string | null;
+  prompt: string;
+  mode: string;
+  interval_seconds?: number | null;
+  status: string;
+  next_run_at_ms?: number | null;
+  last_run_at_ms?: number | null;
+  expires_at_ms: number;
+  created_at_ms: number;
+  updated_at_ms: number;
+}
+
+export interface UiGoalRecord {
+  profile_id?: string | null;
+  goal_id: string;
+  objective: string;
+  status: string;
+  token_budget: number;
+  tokens_used: number;
+  time_used_seconds: number;
+  created_at_ms: number;
+  updated_at_ms: number;
+}
+
+/** `loop/updated` — control-plane transitions (create/pause/resume/delete).
+ *  The wire field is `loop` (serde rename of `loop_state`). */
+export interface LoopUpdatedEvent {
+  session_id: string;
+  loop_id?: string;
+  loop: UiLoopRecord;
+  ok?: boolean;
+  status?: string;
+  deleted?: boolean;
+}
+
+/** `loop/fired` — the scheduler queued a continuation for the loop. */
+export interface LoopFiredEvent {
+  session_id: string;
+  loop_id: string;
+  loop?: UiLoopRecord;
+  status?: string;
+}
+
+/** `loop/completed` — a loop reached a terminal state. */
+export interface LoopCompletedEvent {
+  session_id: string;
+  loop_id: string;
+  loop?: UiLoopRecord;
+  status?: string;
+  error?: string;
+}
+
+export interface SessionGoalUpdatedEvent {
+  session_id: string;
+  goal: UiGoalRecord;
+  transition_actor?: string;
+}
+
+export interface SessionGoalClearedEvent {
+  session_id: string;
+  cleared?: boolean;
+  goal?: UiGoalRecord | null;
+  transition_actor?: string;
+}
+
+export interface LoopListResult {
+  loops: UiLoopRecord[];
+}
+
+/** Result of loop/pause | loop/resume | loop/delete. */
+export interface LoopControlResult {
+  ok?: boolean;
+  status?: string;
+  loop_id?: string;
+  loop?: UiLoopRecord;
+}
+
+export interface SessionGoalGetResult {
+  goal: UiGoalRecord | null;
+}
+
+export interface TurnStartResult {
+  accepted: boolean;
+}
+
+export type VoiceAdmissionResult =
+  | {
+      status: "speech";
+      admissionId: string;
+      transcript: string;
+      turnId: string;
+    }
+  | {
+      status: "no_speech";
+      turnId: string;
+      rejectReasons?: string[];
+    };
+
+export interface VoiceCommitAdmissionResult extends TurnStartResult {
+  committed: boolean;
+  turn_id: string;
+  idempotent?: boolean;
+}
+
+export interface TurnInterruptResult {
+  interrupted: boolean;
+}
+
+export interface ApprovalRespondResult {
+  approval_id: string;
+  accepted: boolean;
+  status: string;
+  runtime_resumed?: boolean;
+}
+
+/**
+ * Result of `task/cancel` (harness.task_control.v1). `status` is the task's
+ * authoritative post-cancel runtime state — a task that had already finished
+ * comes back `completed`/`failed` rather than `cancelled`, so the caller
+ * renders truth instead of assuming the cancel took.
+ */
+export interface TaskCancelResult {
+  task_id: string;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
+}
+
+/**
+ * `message/delta` notification per UI Protocol v1 spec § 6 / § 9.
+ *
+ * The wire payload's text-bearing field is named `text` to match
+ * `octos_core::ui_protocol::MessageDeltaEvent` (see
+ * `crates/octos-core/src/ui_protocol.rs`). An earlier version of this
+ * type called the field `delta`; the guard then required `params.delta:
+ * string` and silently rejected every real server frame, which left the
+ * spawn-ack `pendingAssistant` empty (the M10 Phase 6.2 root cause —
+ * empty-timestamp ghost bubble in the SPA). Keep this struct in lockstep
+ * with the server enum or the bridge will fail closed without a visible
+ * error.
+ */
+export interface MessageDeltaEvent {
+  session_id: string;
+  turn_id: string;
+  text: string;
+  message_id?: string;
+}
+
+/**
+ * `turn/spawn_complete` notification per M10 Phase 1 (server PR #772).
+ *
+ * Emitted by the server when a `spawn_only` background tool finishes. Each
+ * envelope is structurally complete on arrival — the client renders it as a
+ * NEW assistant bubble under the originating user prompt rather than
+ * splice-merging late content into an existing bubble (the bug class M10
+ * eliminates: sticky-map drift, phantom-chunk drop, etc.).
+ *
+ * `task_id` is required because every spawn completion has an originating
+ * `spawn_only` task. `content` carries the full completion text inline.
+ *
+ * The SPA treats `response_to_client_message_id` as advisory placement
+ * metadata and keys the completion by `thread_id`.
+ */
+export interface TurnSpawnCompleteEvent {
+  session_id: string;
+  /** Optional per server-side schema; `None` from `run_standalone_turn`
+   *  until Phase 4 plumbing surfaces a real turn id. */
+  turn_id?: string;
+  /** Optional per server-side schema; absent on legacy callers. */
+  thread_id?: string;
+  /** Always populated. Identifies the originating `spawn_only` task —
+   *  used by Phase 4's `read_task_output` flow. */
+  task_id: string;
+  /** Optional. The LLM-emitted `tool_call_id` of the originating
+   *  `spawn_only` tool call. Added in the parallel server PR so the
+   *  client can flip the right chip without the supervisor-UUID-to-LLM-id
+   *  TaskStore round-trip (which races against the task watcher's poll
+   *  and silently mis-resolves when the store is empty). Falls back to
+   *  the existing `resolveToolCallIdForTask(task_id)` helper on legacy
+   *  daemons that don't carry the field yet. */
+  tool_call_id?: string;
+  /** Optional in Phase 1 (server emits a thread-id-flavoured value); used
+   *  as advisory placement only. Phase 4 will populate this with the real
+   *  user-prompt cmid. */
+  response_to_client_message_id?: string;
+  /** Per-session committed-row index. Strictly monotonic. */
+  seq: number;
+  /** Server-assigned message id reused from the persisted row (since
+   *  Phase 1 codex round 3 fix). Stable across replays. */
+  message_id: string;
+  /** Source of the completion. Always `"background"` today; reserved as
+   *  string so future variants (`"recovery_background"`, etc.) extend the
+   *  vocabulary without a wire-breaking change. */
+  source: string;
+  /** Durable cursor pointing at this commit in the UI ledger. */
+  cursor: UiCursor;
+  /** RFC 3339 wall-clock time the row was committed. */
+  persisted_at: string;
+  /** REQUIRED. Full assistant text for the completion bubble. */
+  content: string;
+  /** File attachments persisted with this completion (e.g.
+   *  `_report.md`, `output.mp3`, `.pptx`). */
+  media?: string[];
+}
+
+/**
+ * UPCR-2026-014 M9-α-9 `file/attached` notification — one envelope per
+ * artefact delivered by a `spawn_only` background tool.
+ *
+ * Capability-gated on `event.file_attached.v1`. Servers that negotiate
+ * the feature emit ONE envelope per unique path across the background
+ * payload's persist-media + envelope-only-media lists, deduplicated
+ * server-side. The envelope rides on the per-session WS broadcast and is
+ * filtered out for clients that did not negotiate the capability.
+ *
+ * The SPA treats this as a placement-tolerant delivery signal, appending
+ * the file to the host bubble identified by
+ * `tool_call_id` (preferred) or `turn_id` (fallback), and silently
+ * dropping when the host can't be located rather than minting an
+ * orphan bubble. Mirrors the server's slides soak motivation: when
+ * the richer-envelope reducers drop a delivery (placement bug,
+ * sticky-thread drift, etc.), this signal still surfaces a clickable
+ * button.
+ */
+export interface FileAttachedEvent {
+  session_id: string;
+  /** REQUIRED — placement context. The originating `spawn_only` tool
+   *  call landed under this turn. */
+  turn_id: string;
+  /** Absolute or workspace-relative path the server resolved for the
+   *  artefact. Clients route through `buildAuthenticatedFileUrl()` for
+   *  the actual fetch URL. */
+  path: string;
+  /** Optional. The LLM-emitted `tool_call_id` of the originating
+   *  `spawn_only` tool call. Strongest placement signal — when
+   *  present, the SPA reducer attaches the file to the bubble that
+   *  hosts this tool call. Absent on edge-case callers without a
+   *  tracked tool call (rare). */
+  tool_call_id?: string;
+  /** Optional MIME hint. Server populates from extension for the
+   *  artefact families spawn_only producers actually emit (`.pptx`,
+   *  `.md`, `.mp3`, `.html`, image/video). Clients fall back to
+   *  extension-based detection when absent. */
+  mime?: string;
+}
+
+/** #1477 voice rich output — a background visual artifact began generating for
+ *  the turn. The client shows a "generating" placeholder keyed off this typed
+ *  event instead of scraping an in-band `[[VISUAL:...]]` marker out of the
+ *  assistant text (the backend now keeps that marker off the wire entirely).
+ *  The lifecycle terminates on the typed `visual/succeeded` or `visual/failed`
+ *  — never on `file/attached` (a pure artifact-delivery signal). */
+export interface VisualGeneratingEvent {
+  session_id: string;
+  turn_id: string;
+  /** `html` | `illustrated` | `image` | `infographic`. */
+  kind: string;
+}
+
+/** #1477 voice rich output — the background visual task produced its
+ *  artifact(s). The structured success counterpart of VisualGeneratingEvent:
+ *  the client clears the "generating" placeholder off this, NOT off
+ *  `file/attached` (which stays a pure artifact-delivery signal). Emitted
+ *  alongside `file/attached` on the success branch. */
+export interface VisualSucceededEvent {
+  session_id: string;
+  turn_id: string;
+  /** `html` | `illustrated` | `image` | `infographic`. */
+  kind: string;
+  /** Workspace-relative filenames of the delivered artifact(s). */
+  files?: string[];
+}
+
+/** #1477 voice rich output — the background visual task failed / timed out, so
+ *  the client should clear the "generating" placeholder. */
+export interface VisualFailedEvent {
+  session_id: string;
+  turn_id: string;
+  reason?: string;
+}
+
+/** UPCR-2026-025 voice exit intent — the voice turn detected an end / goodbye /
+ *  mute intent (the model appended an in-band `[[EXIT]]` control marker, which
+ *  the backend strips from every model-/client-facing surface). The client
+ *  leaves the `/voice` screen and returns home — but only AFTER the turn's
+ *  farewell audio finishes playing, so the goodbye is heard before navigation. */
+export interface VoiceExitEvent {
+  session_id: string;
+  turn_id: string;
+}
+
+export type SkillActionJobStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "abandoned";
+
+export interface SkillActionJob {
+  job_id: string;
+  batch_id: string;
+  profile_id: string;
+  session_id: string;
+  action_id: string;
+  skill_id: string;
+  status: SkillActionJobStatus;
+  input_path?: string;
+  filename?: string;
+  materialized_path?: string;
+  output?: string;
+  error?: string;
+  result?: unknown;
+  source_id?: string;
+  source_path?: string;
+  metadata_path?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SkillActionJobUpdatedEvent = SkillActionJob;
+
+export interface TaskUpdatedEvent {
+  session_id: string;
+  /** Optional. Server's `TaskUpdatedEvent` struct does NOT carry
+   *  `turn_id` (the supervisor publishes by `task_id` directly), so the
+   *  field is `undefined` on the wire today. Kept optional rather than
+   *  removed for forward compatibility with a future server PR that
+   *  threads it through. */
+  turn_id?: string;
+  task_id: string;
+  /** Optional. The LLM-emitted `tool_call_id` of the originating
+   *  `spawn_only` tool call. Added in the parallel server PR so the
+   *  client can flip the right chip directly from the wire instead of
+   *  via the TaskStore poll lookup. Falls back to
+   *  `resolveToolCallIdForTask(task_id)` for legacy daemons. */
+  tool_call_id?: string;
+  state: string;
+  title?: string;
+  runtime_detail?: string;
+  output_tail?: string;
+}
+
+export interface TaskOutputDeltaEvent {
+  session_id: string;
+  /** Optional. Same rationale as `TaskUpdatedEvent.turn_id` — server's
+   *  output-delta envelope has no `turn_id`; the field is preserved for
+   *  forward compatibility. */
+  turn_id?: string;
+  task_id: string;
+  /** Optional. Same rationale as `TaskUpdatedEvent.tool_call_id`. */
+  tool_call_id?: string;
+  chunk: string;
+  cursor?: { offset: number };
+}
+
+export interface TurnStartedEvent {
+  session_id: string;
+  turn_id: string;
+}
+
+/** UPCR-2026-026: emitted immediately BEFORE a server-owned context
+ * compaction pass. `token_estimate` is the PRE-compaction size (flattened
+ * from the wire's `context_state.token_estimate` by the bridge guard);
+ * `threshold_tokens` is the limit that tripped the pass — an honest
+ * fullness denominator for the indicator bar. May arrive in the same
+ * delivery batch as the completed event (the pass is synchronous today).
+ */
+export interface ContextCompactionStartedEvent {
+  session_id: string;
+  token_estimate: number;
+  threshold_tokens: number;
+  trigger: string;
+}
+
+/** Completion record for a compaction pass (flattened from the wire's
+ * `compaction` object by the bridge guard). `token_estimate_after` is
+ * absent on failed passes (`error` set). */
+export interface ContextCompactionCompletedEvent {
+  session_id: string;
+  token_estimate_before: number;
+  token_estimate_after: number | null;
+  retained_count: number;
+  dropped_count: number;
+  error: string | null;
+}
+
+export interface TurnCompletedEvent {
+  session_id: string;
+  turn_id: string;
+  reason?: string;
+}
+
+export interface TurnErrorEvent {
+  session_id: string;
+  turn_id: string;
+  error: { code: number | string; message: string; data?: unknown };
+}
+
+/**
+ * `tool/started` notification per UI Protocol v1 spec. Server emits this when
+ * the agent begins executing a synchronous (non-spawn) tool call. Wire shape
+ * mirrors `octos_core::ui_protocol::ToolStartedEvent` —
+ * `session_id`, `turn_id`, `tool_call_id`, `tool_name` are required;
+ * `arguments` is optional.
+ *
+ * The web client lifts this onto the legacy `crew:tool_progress` DOM event
+ * (the spinner under the streaming assistant bubble) so the
+ * `ToolProgressIndicator` component lights up the moment a tool starts —
+ * the SSE bridge predecessor of this surface was the sole dispatcher prior
+ * to PR #96, and the new event-router restores parity.
+ */
+export interface ToolStartedEvent {
+  session_id: string;
+  turn_id: string;
+  tool_call_id: string;
+  tool_name: string;
+  arguments?: unknown;
+}
+
+/**
+ * `tool/progress` notification — mid-execution status frames a tool emits
+ * while it runs. Mirrors `octos_core::ui_protocol::ToolProgressEvent`.
+ * `message` and `progress_pct` are both optional on the wire (server emits
+ * whichever is meaningful for the tool surface).
+ */
+export interface ToolProgressEvent {
+  session_id: string;
+  turn_id: string;
+  tool_call_id: string;
+  message?: string;
+  progress_pct?: number;
+}
+
+/**
+ * `tool/completed` notification — terminal status frame for a synchronous
+ * tool call. Mirrors `octos_core::ui_protocol::ToolCompletedEvent`.
+ * `success`, `output_preview`, and `duration_ms` are all optional on the
+ * wire (server emits whichever is meaningful for the tool surface).
+ */
+export interface ToolCompletedEvent {
+  session_id: string;
+  turn_id: string;
+  tool_call_id: string;
+  tool_name: string;
+  success?: boolean;
+  output_preview?: string;
+  duration_ms?: number;
+}
+
+/**
+ * Token / cost counters carried on `progress/updated` notifications whose
+ * `metadata.kind === "token_cost_update"`. Mirrors
+ * `octos_core::ui_protocol::UiTokenCostUpdate`. All fields are optional on
+ * the wire — the server populates whichever counters changed for the
+ * frame.
+ */
+export interface UiTokenCostUpdate {
+  input_tokens?: number;
+  output_tokens?: number;
+  reasoning_tokens?: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
+  total_tokens?: number;
+  response_cost?: number;
+  session_cost?: number;
+  currency?: string;
+  /**
+   * Model identifier that produced this response. Populated by the server's
+   * agent emit layer from `LlmProvider::model_id()` so chat clients can
+   * render the assistant bubble footer
+   * (`model · tokens_in / tokens_out · duration`) without scraping the
+   * legacy `metadata.label` field. Older servers omit this field; the
+   * router falls back to `metadata.label` for back-compat.
+   */
+  model?: string;
+}
+
+/**
+ * Retry / backoff counters carried on `progress/updated` notifications
+ * whose `metadata.kind === "retry_backoff"`. Mirrors
+ * `octos_core::ui_protocol::UiRetryBackoff`. All fields are optional on
+ * the wire.
+ */
+export interface UiRetryBackoff {
+  attempt?: number;
+  max_attempts?: number;
+  backoff_ms?: number;
+  reason?: string;
+  provider?: string;
+  next_provider?: string;
+}
+
+/**
+ * File-mutation notice carried on `progress/updated` notifications whose
+ * `metadata.kind === "file_mutation"`. Mirrors
+ * `octos_core::ui_protocol::UiFileMutationNotice`. `path` and `operation`
+ * are required; the rest are optional.
+ */
+export interface UiFileMutationNotice {
+  path: string;
+  operation: string;
+  tool_call_id?: string;
+  bytes_written?: number;
+}
+
+/**
+ * Metadata envelope on `progress/updated` notifications. Mirrors
+ * `octos_core::ui_protocol::UiProgressMetadata`. The wire shape carries an
+ * open `kind` discriminator plus per-kind structured payloads; legacy
+ * `extra` fields are passed through via the `[key: string]: unknown`
+ * index signature so future server-side extensions don't trip the
+ * fail-closed reject path.
+ */
+export interface UiProgressMetadata {
+  kind: string;
+  label?: string;
+  message?: string;
+  detail?: string;
+  iteration?: number;
+  progress_pct?: number;
+  retry?: UiRetryBackoff;
+  file_mutation?: UiFileMutationNotice;
+  token_cost?: UiTokenCostUpdate;
+  [extra: string]: unknown;
+}
+
+/**
+ * `progress/updated` notification — the canonical UI Protocol v1 channel
+ * for non-message-stream progress signals (cost telemetry, status pings,
+ * retry/backoff frames, file-mutation notices, ...). Mirrors
+ * `octos_core::ui_protocol::UiProgressEvent` /
+ * `ProgressUpdatedEvent`. `session_id` is required; `turn_id` is optional
+ * because some progress kinds (e.g. session-scoped status) emit outside a
+ * turn context.
+ *
+ * The web client lifts this onto two legacy DOM events: `crew:cost`
+ * (header model + token / cost badge) and, when model + duration are
+ * available, `crew:message_meta` (assistant bubble footer model + tokens
+ * + duration). The SSE bridge predecessor of this surface was the sole
+ * dispatcher prior to PR #96.
+ */
+export interface ProgressUpdatedEvent {
+  session_id: string;
+  turn_id?: string;
+  metadata: UiProgressMetadata;
+}
+
+export interface ApprovalRenderHints {
+  default_decision?: ApprovalDecision;
+  primary_label?: string;
+  secondary_label?: string;
+  danger?: boolean;
+  monospace_fields?: string[];
+}
+
+export interface ApprovalTypedDetails {
+  kind?: string;
+  [field: string]: unknown;
+}
+
+export interface ApprovalRequestedEvent {
+  session_id: string;
+  topic?: string;
+  approval_id: string;
+  turn_id: string;
+  tool_name: string;
+  title: string;
+  body: string;
+  approval_kind?: string;
+  approval_scope?: ApprovalScope;
+  risk?: string;
+  typed_details?: ApprovalTypedDetails;
+  render_hints?: ApprovalRenderHints;
+}
+
+/**
+ * Emitted when a later approval request auto-resolves against a standing
+ * scope grant (e.g. a prior "Approve for session"), instead of prompting
+ * again. Lets the client show that the grant fired rather than silently
+ * running the command.
+ */
+export interface ApprovalAutoResolvedEvent {
+  session_id: string;
+  topic?: string;
+  approval_id: string;
+  turn_id: string;
+  tool_name: string;
+  scope: string;
+  scope_match: string;
+  decision: ApprovalDecision;
+}
+
+// --- Structured multiple-choice questions (user_question.v1, UPCR-2026-023) ---
+
+export interface UserQuestionOption {
+  label: string;
+  description: string;
+}
+
+export interface UserQuestion {
+  /** Short chip label (≤ 12 chars). */
+  header: string;
+  question: string;
+  options: UserQuestionOption[];
+  multi_select: boolean;
+  /** Server-forced true — a free-text "Other" is always offered. */
+  allow_free_text: boolean;
+}
+
+export interface UserQuestionRequestedEvent {
+  session_id: string;
+  topic?: string;
+  question_id: string;
+  turn_id: string;
+  /** Mandatory generic fallback text. */
+  title: string;
+  body: string;
+  /** 1–4 structured questions. */
+  questions: UserQuestion[];
+}
+
+/** One per-question answer, in question order. */
+export interface UserQuestionAnswer {
+  /** 0..1 for single-select, 0..N for multi_select; must match option labels. */
+  selected_labels: string[];
+  free_text?: string;
+}
+
+export interface UserQuestionRespondResult {
+  question_id: string;
+  accepted: boolean;
+  runtime_resumed: boolean;
+  status?: string;
+}
+
+export interface WarningEvent {
+  reason: string;
+  context?: unknown;
+}
+
+/**
+ * Wave4-A `router/status` notification — adaptive routing snapshot
+ * pushed alongside `turn/started` and `turn/completed` so clients can
+ * render the routing pill / lane debug view without polling. Mirrors
+ * `octos_core::ui_protocol::RouterStatusEvent` (server PR #946).
+ *
+ * `lane_scores` keys are `"<provider_name>/<model_id>"`. `circuit_breakers`
+ * carries the same keys mapped to a string-rendered breaker state
+ * (`"closed"`, `"open"`, `"half_open"`). Both wire as deterministic
+ * `BTreeMap`s on the server side so re-renders stay diff-stable.
+ */
+export interface RouterStatusEvent {
+  session_id: string;
+  /** Currently selected provider, in `"<provider_name>/<model_id>"` form. */
+  provider_name: string;
+  /** Active adaptive mode (`"off"` | `"hedge"` | `"lane"`). */
+  mode: string;
+  /** QoS quality-ranking toggle (orthogonal to mode). */
+  qos_ranking: boolean;
+  /** Per-lane scores, keyed by `"<provider_name>/<model_id>"`. */
+  lane_scores: Record<string, number>;
+  /** Per-lane breaker state — `"closed"` / `"open"` / `"half_open"`. */
+  circuit_breakers: Record<string, string>;
+}
+
+/**
+ * Wave4-A `router/failover` notification — emitted when the adaptive
+ * router crosses lanes. Mirrors `octos_core::ui_protocol::RouterFailoverEvent`.
+ *
+ * `from_provider` / `to_provider` use the same `"<provider_name>/<model_id>"`
+ * key shape as `RouterStatusEvent.lane_scores`. `reason` is free-text
+ * (e.g. `"circuit_breaker_open"`, `"score_drop"`). `elapsed_ms` is the
+ * wall time from initial provider attempt to failover decision.
+ */
+export interface RouterFailoverEvent {
+  session_id: string;
+  from_provider: string;
+  to_provider: string;
+  reason: string;
+  elapsed_ms: number;
+}
+
+/**
+ * Wave4-A `queue/state` notification — pending-queue snapshot.
+ * Client-emitted today (the queue lives in
+ * `src/runtime/ui-protocol-send.ts`'s per-session FIFO). The server
+ * never emits this variant — the web bridge manufactures it locally so
+ * other clients can observe queue depth uniformly. Mirrors
+ * `octos_core::ui_protocol::QueueStateEvent`.
+ */
+export interface QueueStateEvent {
+  session_id: string;
+  pending_count: number;
+  /** Identifies the in-flight turn whose completion will release the
+   *  next queued frame. `null` when the queue is empty. */
+  head_client_message_id: string | null;
+}
+
+/**
+ * Wave4-A `router/set_mode` params + result. Mirrors
+ * `octos_core::ui_protocol::RouterSetModeParams` /
+ * `RouterSetModeResult`. `mode` is the lowercase string rendering of
+ * `octos_llm::AdaptiveMode` — `"off"`, `"hedge"`, or `"lane"`.
+ */
+export interface RouterSetModeParams {
+  session_id: string;
+  mode: string;
+}
+
+export interface RouterSetModeResult {
+  /** New mode actually committed by the router. Echo of `params.mode`
+   *  when the call succeeded. */
+  mode: string;
+}
+
+/**
+ * Wave4-A `router/get_metrics` result. Identical wire shape to
+ * `RouterStatusEvent` minus the `session_id` echo. When no adaptive
+ * router is attached to the session (single-provider profile), the
+ * server returns an `invalid_params` RPC error whose
+ * `data.kind === "runtime_unavailable"` — clients use that signal to
+ * grey out the router-mode switcher.
+ */
+export interface RouterGetMetricsResult {
+  provider_name: string;
+  mode: string;
+  qos_ranking: boolean;
+  lane_scores: Record<string, number>;
+  circuit_breakers: Record<string, string>;
+}
+
+/**
+ * UPCR-2026-016 (M9-β-2) `session/closed` notification.
+ *
+ * Server emits this after a successful `session/delete` clears at
+ * least one entry from the standalone session store. Web clients use
+ * it to remove the row from the sidebar in real time so a delete
+ * action on one tab reflects on every other open tab without polling.
+ *
+ * `reason` is a free-form discriminator; the canonical value today is
+ * `"deleted"`. Future producers may emit `"expired"`, `"forked"`, etc.
+ * Treat unknown values as opaque so a server upgrade does not break
+ * the client.
+ */
+export interface SessionClosedEvent {
+  session_id: string;
+  reason?: string;
+  timestamp?: string;
+  cursor?: UiCursor;
+}
+
+/**
+ * UPCR-2026-016 (M9-β-2) `session/title-updated` notification.
+ *
+ * Server emits this after a successful `session/title.set` call. Web
+ * clients re-render the sidebar row in place — the auto-titler fires
+ * the same JSON-RPC method from its caller, so this event covers both
+ * manual rename and auto-naming flows the user perceives.
+ *
+ * `reason` is `"manual"` for direct user-driven renames today. Future
+ * producers may emit `"auto"`, `"bulk_rename"`, etc.
+ */
+export interface SessionTitleUpdatedEvent {
+  session_id: string;
+  title: string;
+  reason?: string;
+  timestamp?: string;
+  cursor?: UiCursor;
+}
+
+export interface RpcErrorPayload {
+  code: number;
+  message: string;
+  data?: unknown;
+}
+
+/** Durable transcript row returned by the currently deployed server. */
+export interface HydratedMessage {
+  seq: number;
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  turn_id?: string;
+  thread_id?: string;
+  client_message_id?: string;
+  persisted_at: string;
+  message_id?: string;
+  source?: string;
+  media?: string[];
+}
+
+/** Canonical `session/hydrate` result for the v2 projection snapshot. */
+export interface SessionHydrateResult {
+  session_id: string;
+  cursor: UiCursor;
+  /**
+   * Compatibility carrier used by the deployed Stage-5 server. The web
+   * runtime converts these durable rows into the canonical projection model;
+   * render surfaces still consume ProjectionStore exclusively.
+   */
+  messages?: HydratedMessage[];
+  replayed_envelopes?: unknown[];
+  replayed_tool_envelopes?: unknown[];
+  /** Canonical snapshot carrier. */
+  projection_envelopes?: unknown[];
+  projection_snapshot?: {
+    envelopes?: unknown[];
+    cursor?: UiCursor;
+  };
+}
+
+/** Result of `session/rollback` — conversation-only rewind. The server
+ *  drops the last `num_turns` USER turns (persisted + in-memory,
+ *  idempotent append-only marker) and returns the trimmed thread
+ *  projected in the same shape as `session/hydrate`. `dropped_turns` is
+ *  clamped to the session's actual turn count. Rejected with
+ *  `invalid_params { kind: "turn_in_progress" }` while a turn is live. */
+export interface SessionRollbackResult {
+  dropped_turns: number;
+  thread: SessionHydrateResult;
+}
+
+// ─── M9-γ canonical projection envelope (UPCR-2026-014) ────────────────────
+//
+// Mirrors `crates/octos-core/src/ui_protocol.rs` (Rust enum uses
+// `serde(tag = "type", content = "data", rename_all = "snake_case")`).
+//
+// Spec: `api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md` § 14
+// "M9-γ Envelope".
+// ADR: `docs/M9-GAMMA-SERVER-PROJECTION-ADR.md`.
+//
+// **Hard barrier**: per the ADR, `turn_completed` is the terminal
+// payload for a `thread_id`. No further `assistant_*`/`tool_*`
+// payloads on the same thread are valid after it.
+//
+// These types are sourced verbatim from γ-1 PR #848
+// (`feat/m9-gamma-1-envelope-spec`). When that PR's web mirror lands
+// upstream, this block becomes the import surface for the M9-γ-2
+// projection function (`src/store/projection.ts`) and the M9-γ-3
+// `ThreadStore` cutover.
+
+/** Multi-turn cluster identity — the chat thread this envelope projects
+ *  into. All envelopes for one logical conversation share a `thread_id`. */
+export type ThreadId = string;
+
+/** Server-assigned UUID of a durable message row. Stable across replays.
+ *  Mirrors `MessageMeta.message_id` in the Rust types. */
+export type EnvelopeMessageId = string;
+
+/** Client optimism + idempotency token. Web client mints; UUIDv7 in prod.
+ *  ONLY the optimistic <GhostBubble> overlay consults this — the
+ *  projection itself never does. */
+export type ClientMessageId = string;
+
+/** RFC 3339 timestamp string (e.g. "2026-05-09T18:30:01Z"). */
+export type IsoTimestamp = string;
+
+/** Sub-typed numeric for the strict per-thread server ordering. */
+export type Seq = number;
+
+/** Token usage carried on `turn_completed` envelopes. Mirrors
+ *  `EnvelopeTokenUsage` in the Rust types. All fields default to zero
+ *  and are omitted on the wire when zero (serde
+ *  `skip_serializing_if = "is_zero_u64"`). */
+export interface EnvelopeTokenUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  reasoning_tokens?: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
+}
+
+/** Metadata carried on `assistant_persisted` envelopes. Mirrors
+ *  `MessageMeta` in the Rust types. */
+export interface MessageMeta {
+  /** Server-assigned UUID of the durable row. */
+  message_id: EnvelopeMessageId;
+  /** Wall-clock RFC 3339 commit time. */
+  persisted_at: IsoTimestamp;
+  /** File attachments persisted with the message — typically a single
+   *  `.md` / `.mp3` / `.pptx` artefact. Empty for assistant rows that
+   *  carry only text. Omitted on the wire when empty. */
+  media?: string[];
+}
+
+/** Status carried on `tool_end` payloads. Mirrors `EnvelopeToolEndStatus`
+ *  (snake_case wire form) in the Rust types. */
+export type EnvelopeToolEndStatus = "complete" | "error";
+
+/** File attachment carried on `user_message` envelopes. Mirrors `FileRef`
+ *  in the Rust types (γ-1 PR #848 commit `ac589b73`). The `path` field
+ *  is the durable filesystem path the server can resolve; `mime` and
+ *  `size_bytes` are optional metadata captured at upload time. */
+export interface FileRef {
+  path: string;
+  mime?: string;
+  size_bytes?: number;
+}
+
+interface UserMessagePayload {
+  type: "user_message";
+  data: { text: string; files: FileRef[] };
+}
+
+interface AssistantDeltaPayload {
+  type: "assistant_delta";
+  data: { text: string };
+}
+
+interface AssistantPersistedPayload {
+  type: "assistant_persisted";
+  data: { text: string; meta: MessageMeta };
+}
+
+interface ToolStartPayload {
+  type: "tool_start";
+  data: { tool_call_id: string; name: string; arguments?: unknown };
+}
+
+interface ToolProgressPayload {
+  type: "tool_progress";
+  data: { tool_call_id: string; message: string };
+}
+
+interface ToolEndPayload {
+  type: "tool_end";
+  data: {
+    tool_call_id: string;
+    status: EnvelopeToolEndStatus;
+    /** Set iff `status === 'error'`. Omitted on the wire when null. */
+    error?: string;
+  };
+}
+
+interface FileAttachedPayload {
+  type: "file_attached";
+  data: { path: string; mime: string; size_bytes: number };
+}
+
+interface TurnCompletedPayload {
+  type: "turn_completed";
+  data: { token_usage: EnvelopeTokenUsage };
+}
+
+/** Sealed tagged union of payloads carried by the M9-γ projection
+ *  envelope. The discriminator is `type`; payload data lives under
+ *  `data`. Variant names are snake_case to match the wire / Rust shape. */
+export type Payload =
+  | UserMessagePayload
+  | AssistantDeltaPayload
+  | AssistantPersistedPayload
+  | ToolStartPayload
+  | ToolProgressPayload
+  | ToolEndPayload
+  | FileAttachedPayload
+  | TurnCompletedPayload;
+
+/** Canonical M9-γ projection envelope.
+ *
+ *  Per UPCR-2026-014 and the M9-γ ADR, this is the single shape the
+ *  web client's deterministic projection consumes. The committed
+ *  envelope log is `Envelope[]` indexed by `(thread_id, seq)`; the
+ *  projection is a pure function from that log to `ChatViewModel`.
+ *
+ *  Identity collapses to `seq` — the only key the projection cares
+ *  about. `client_message_id` lives ONLY on user-message-rooted
+ *  envelopes so the optimistic `<GhostBubble>` overlay can match its
+ *  server reflection and unmount; the projection itself NEVER consults
+ *  it. */
+export interface Envelope {
+  thread_id: ThreadId;
+  seq: Seq;
+  /** Present on user-message-rooted envelopes (the optimistic
+   *  `<GhostBubble>` overlay matches its server reflection here).
+   *  Absent on internal events (assistant deltas, tool events,
+   *  turn_completed). The projection MUST NOT consult this field. */
+  client_message_id?: ClientMessageId;
+  payload: Payload;
+}
+
+// ── Type guards (optional ergonomic helpers) ─────────────────────────────
+//
+// The projection function will switch on `envelope.payload.type` and
+// rely on TS's discriminated-union narrowing. These helpers exist for
+// callers that need a runtime check (e.g. a debug overlay rendering a
+// raw envelope).
+
+export function isUserMessage(p: Payload): p is UserMessagePayload {
+  return p.type === "user_message";
+}
+
+export function isAssistantDelta(p: Payload): p is AssistantDeltaPayload {
+  return p.type === "assistant_delta";
+}
+
+export function isAssistantPersisted(p: Payload): p is AssistantPersistedPayload {
+  return p.type === "assistant_persisted";
+}
+
+export function isToolStart(p: Payload): p is ToolStartPayload {
+  return p.type === "tool_start";
+}
+
+export function isToolProgress(p: Payload): p is ToolProgressPayload {
+  return p.type === "tool_progress";
+}
+
+export function isToolEnd(p: Payload): p is ToolEndPayload {
+  return p.type === "tool_end";
+}
+
+export function isFileAttached(p: Payload): p is FileAttachedPayload {
+  return p.type === "file_attached";
+}
+
+export function isTurnCompleted(p: Payload): p is TurnCompletedPayload {
+  return p.type === "turn_completed";
+}

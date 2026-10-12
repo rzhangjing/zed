@@ -1,0 +1,249 @@
+/**
+ * Weather hook -- fetches current weather from Open-Meteo.
+ *
+ * Location resolution waterfall:
+ *   1. City name from settings (geocoded via Open-Meteo Geocoding API)
+ *   2. Timezone-derived city fallback (no IP lookup)
+ *   3. Browser Geolocation API
+ *   4. Weather unavailable if no trusted location source resolves
+ *
+ * Refreshes every 15 minutes. If all location sources fail, the hook reports
+ * an error instead of calling a third-party IP geolocation endpoint.
+ */
+
+import { useState, useEffect, useRef } from "react";
+import { WMO_WEATHER } from "./constants";
+import { useHomeSettings } from "./home-settings-context";
+
+export interface HourlyForecastItem {
+  hour: string;
+  temp: number;
+  emoji: string;
+}
+
+export interface WeatherState {
+  temperature: number;
+  weatherCode: number;
+  emoji: string;
+  label: string;
+  city: string | null;
+  hourly: HourlyForecastItem[];
+  loading: boolean;
+  error: string | null;
+}
+
+const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 min
+
+const TIMEZONE_CITY_FALLBACKS: Record<string, string> = {
+  "Asia/Tokyo": "Tokyo",
+  "Asia/Shanghai": "Shanghai",
+  "Asia/Hong_Kong": "Hong Kong",
+  "Asia/Singapore": "Singapore",
+  "Europe/London": "London",
+  "Europe/Paris": "Paris",
+  "America/Los_Angeles": "Los Angeles",
+  "America/Denver": "Denver",
+  "America/Chicago": "Chicago",
+  "America/New_York": "New York",
+};
+
+interface ResolvedLocation {
+  lat: number;
+  lon: number;
+  city: string | null;
+}
+
+async function geocodeCity(
+  city: string,
+): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      results?: { latitude: number; longitude: number }[];
+    };
+    if (!data.results?.length) return null;
+    return { lat: data.results[0].latitude, lon: data.results[0].longitude };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWeather(
+  lat: number,
+  lon: number,
+): Promise<{
+  temperature: number;
+  weatherCode: number;
+  hourly: HourlyForecastItem[];
+}> {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&hourly=temperature_2m,weather_code&forecast_hours=6&timezone=auto`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as {
+    current: { temperature_2m: number; weather_code: number };
+    hourly?: {
+      time?: string[];
+      temperature_2m?: number[];
+      weather_code?: number[];
+    };
+  };
+
+  const hourly: HourlyForecastItem[] = [];
+  if (data.hourly?.time && data.hourly.temperature_2m && data.hourly.weather_code) {
+    const len = Math.min(
+      data.hourly.time.length,
+      data.hourly.temperature_2m.length,
+      data.hourly.weather_code.length,
+      6,
+    );
+    for (let i = 0; i < len; i++) {
+      const dt = new Date(data.hourly.time[i]);
+      const wmo = WMO_WEATHER[data.hourly.weather_code[i]] ?? {
+        emoji: "\u2600\uFE0F",
+        label: "Unknown",
+      };
+      hourly.push({
+        hour: String(dt.getHours()).padStart(2, "0") + ":00",
+        temp: Math.round(data.hourly.temperature_2m[i]),
+        emoji: wmo.emoji,
+      });
+    }
+  }
+
+  return {
+    temperature: Math.round(data.current.temperature_2m),
+    weatherCode: data.current.weather_code,
+    hourly,
+  };
+}
+
+function timezoneFallbackCity(): string | null {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return timeZone ? (TIMEZONE_CITY_FALLBACKS[timeZone] ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function useWeather(): WeatherState {
+  const { city } = useHomeSettings();
+  const [state, setState] = useState<WeatherState>({
+    temperature: 0,
+    weatherCode: 0,
+    emoji: "",
+    label: "",
+    city: null,
+    hourly: [],
+    loading: true,
+    error: null,
+  });
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const locationRef = useRef<ResolvedLocation | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load(loc: ResolvedLocation) {
+      try {
+        const w = await fetchWeather(loc.lat, loc.lon);
+        if (cancelled) return;
+        const wmo = WMO_WEATHER[w.weatherCode] ?? {
+          emoji: "\u2600\uFE0F",
+          label: "Unknown",
+        };
+        setState({
+          temperature: w.temperature,
+          weatherCode: w.weatherCode,
+          emoji: wmo.emoji,
+          label: wmo.label,
+          city: loc.city,
+          hourly: w.hourly,
+          loading: false,
+          error: null,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: err instanceof Error ? err.message : "fetch failed",
+        }));
+      }
+    }
+
+    async function resolveLocation(): Promise<ResolvedLocation> {
+      // 1. City from settings (geocoded)
+      if (city.trim()) {
+        const geo = await geocodeCity(city.trim());
+        if (geo) {
+          return { lat: geo.lat, lon: geo.lon, city: city.trim() };
+        }
+      }
+
+      // 2. Timezone-derived fallback. This avoids the "unavailable until the
+      // user grants geolocation" dead end without calling IP geolocation.
+      const fallbackCity = timezoneFallbackCity();
+      if (fallbackCity) {
+        const geo = await geocodeCity(fallbackCity);
+        if (geo) {
+          return { lat: geo.lat, lon: geo.lon, city: fallbackCity };
+        }
+      }
+
+      // 3. Browser geolocation
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("geolocation_unsupported"));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000,
+            maximumAge: 5 * 60 * 1000,
+          });
+        });
+        return {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          city: null,
+        };
+      } catch {
+        // Geolocation denied or unavailable
+      }
+
+      throw new Error("location_unavailable");
+    }
+
+    void (async () => {
+      try {
+        const loc = await resolveLocation();
+        if (cancelled) return;
+        locationRef.current = loc;
+        await load(loc);
+      } catch (err) {
+        if (cancelled) return;
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: err instanceof Error ? err.message : "location_unavailable",
+        }));
+      }
+    })();
+
+    timerRef.current = setInterval(() => {
+      if (locationRef.current) {
+        void load(locationRef.current);
+      }
+    }, REFRESH_INTERVAL);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timerRef.current);
+    };
+  }, [city]);
+
+  return state;
+}

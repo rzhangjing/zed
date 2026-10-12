@@ -1,0 +1,277 @@
+# Operations
+
+This chapter covers day-to-day operational tasks: upgrading, credential management, and service management.
+
+---
+
+## Upgrading
+
+Pull the latest source and rebuild:
+
+```bash
+cd octos
+git pull origin main
+./scripts/local-tenant-deploy.sh --full   # Rebuilds and reinstalls
+```
+
+If running as a service, restart it after the upgrade:
+
+```bash
+# macOS (launchd system daemon):
+sudo launchctl unload /Library/LaunchDaemons/io.octos.serve.plist
+sudo launchctl load /Library/LaunchDaemons/io.octos.serve.plist
+
+# Linux (systemd):
+sudo systemctl restart octos-serve
+```
+
+---
+
+## Session Storage Capacity
+
+Sessions are stored as rolling JSONL segments, not one ever-growing file. When the active file reaches `OCTOS_SESSION_SEGMENT_BYTES` (default 8 MiB), it is sealed into a sibling `<name>.segments/NNNNNN.jsonl` and a fresh active file starts. A plain load reads the active file plus as many sealed segments, newest first, as fit within `OCTOS_SESSION_LOAD_BUDGET_BYTES` (default 32 MiB; `0` = unlimited) — history beyond the budget stays on disk and remains reachable through full-history loads and `/undo`.
+
+**Memory planning**: the budget bounds the file bytes one resident session holds; parsed rows cost roughly 1.5–3× their file size, so a process caching N long sessions needs up to about `N × 32 MiB × 3`. Memory-limited hosts should lower the budget (e.g. `OCTOS_SESSION_LOAD_BUDGET_BYTES=16777216`) or the session cache size (`gateway.max_sessions`).
+
+**Mixed-version overlap** (e.g. a Kubernetes rolling upgrade on a shared data directory): an old binary does not see `.segments/`; its `*.jsonl` walks show only the active file, which looks like a short session. Sessions this build has written carry schema version 2, which older builds refuse to load — but never let an old binary *rewrite* (rename, summary) any rolled session: a rewrite replaces the active file with whatever the old build could read. For an older (schema 1) session, a legacy rewrite that erases `sealed_segments` makes the sealed segments invisible to loads; while that unnamed state stands, rewrites refuse and the seal refuses to replace the unnamed segments, so the files stay on disk but the session stops rolling until the state is reconciled.
+
+**Interrupted seals** (a crash or kill between sealing a segment and starting the fresh active file) leave the sealed segments on disk with no (or an empty) active file. The state self-heals on the read path: the next load of the session rebuilds a missing or empty active file from the sealed segments, and on a gateway `/new <name>` recovers a missing active file the same way, so the session resumes its history instead of starting empty. An unreadable active file is left untouched for manual recovery. Deliberately erasing history remains `/clear` (or bare `/new`).
+
+---
+
+## Keychain Integration
+
+Octos supports storing API keys in the OS secret store instead of plaintext in profile JSON files: the macOS Keychain on macOS (hardware-backed, per-user access control), a 0600 file under `~/.octos/secrets` on Linux, and no store on Windows yet — use the process environment or plain `env_vars` there. The diagram below shows the macOS backend.
+
+### Architecture
+
+```
+                     +------------------------------+
+  octos auth set-key |     macOS Keychain            |
+  -----------------> |  (AES encrypted, per-user)    |
+                     |                               |
+                     |  service: "octos"             |
+                     |  account: "OPENAI_API_KEY"    |
+                     |  password: "sk-proj-abc..."   |
+                     +---------------+--------------+
+                                     | get_password()
+  Profile JSON                       |
+  +------------------+               v
+  | env_vars: {      |   resolve_env_vars()
+  |   "OPENAI_API_   |   if "keychain:" ->
+  |    KEY":          |   lookup from Keychain
+  |    "keychain:"   |   else -> use literal
+  | }                |
+  +------------------+               |
+                                     v
+                               Gateway process
+```
+
+**Resolution chain**: `"keychain:"` marker in profile config triggers a Keychain lookup (3-second timeout). If the Keychain is unavailable, the key is skipped with a warning.
+
+**Backward compatible**: Literal values in `env_vars` pass through unchanged. No migration is required -- adopt keychain per-key at your own pace. Mixed plaintext and keychain entries are fully supported.
+
+### CLI Commands
+
+```bash
+# Unlock keychain for SSH sessions (required before set-key via SSH)
+octos auth unlock --password <login-password>
+octos auth unlock                               # interactive prompt
+
+# Store a key in Keychain + update profile to use keychain marker
+octos auth set-key OPENAI_API_KEY sk-proj-abc123
+octos auth set-key OPENAI_API_KEY              # interactive prompt
+
+# With specific profile
+octos auth set-key GEMINI_API_KEY AIzaSy... -p my-profile
+
+# List all keys and their storage status
+octos auth keys
+octos auth keys -p my-profile
+
+# Remove from Keychain + clean up profile
+octos auth remove-key OPENAI_API_KEY
+```
+
+### Keychain Entry Format
+
+- **Service**: `octos` (constant for all entries)
+- **Account**: The environment variable name (e.g., `OPENAI_API_KEY`)
+- **Password**: The actual secret value
+
+Verify with:
+
+```bash
+security find-generic-password -s octos -a OPENAI_API_KEY -w
+```
+
+### SSH and Headless Server Setup
+
+The macOS Keychain is tied to the GUI login session. SSH sessions cannot access a locked keychain -- macOS tries to show a dialog, which hangs on a headless server.
+
+**Why SSH fails by default**: macOS `securityd` unlocks the keychain per-session. The GUI session's unlock does not automatically propagate to SSH sessions.
+
+**Solution**: Unlock the keychain and disable auto-lock. Run once per boot (or add to your deploy script):
+
+```bash
+ssh user@<host>
+
+# Unlock the keychain (requires login password)
+octos auth unlock --password <login-password>
+
+# That's it -- auto-lock is disabled automatically.
+# The keychain stays unlocked until reboot.
+# Auto-login will re-unlock it on reboot.
+```
+
+Or with raw `security` commands:
+
+```bash
+# Unlock
+security unlock-keychain -p '<password>' ~/Library/Keychains/login.keychain-db
+
+# Disable auto-lock timer (so it doesn't re-lock after idle)
+security set-keychain-settings ~/Library/Keychains/login.keychain-db
+```
+
+**Common issues:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "User interaction is not allowed" | Keychain locked (SSH session) | `octos auth unlock --password <pw>` |
+| Keychain lookup timed out (3s) | Keychain locked (LaunchDaemon) | Enable auto-login, reboot |
+| "keychain marker found but no secret" | Key never stored or wrong keychain | Re-run `octos auth set-key` after unlock |
+| Gateway hangs at startup | Keychain lookup blocking | Update to latest octos binary |
+
+### Security Comparison
+
+| Threat | Plaintext JSON | Keychain |
+|--------|---------------|----------|
+| File stolen (backup, git, scp) | All keys exposed | Only `"keychain:"` markers visible |
+| Malware reads disk | Simple file read exposes keys | Must bypass OS Keychain ACL |
+| Other user on machine | File permissions help, root can read | Encrypted per-user |
+| Process memory dump | Keys in env vars | Keys only briefly in memory |
+| Accidental log output | Profile JSON leaks keys | Only reference strings logged |
+
+### Server Deployment Recommendations
+
+The macOS Keychain was designed for interactive desktop use. On headless servers, it introduces reliability issues. Choose your credential storage based on deployment type:
+
+| Deployment | Recommended Storage | Reason |
+|------------|-------------------|--------|
+| **Developer laptop** | Keychain (`"keychain:"`) | GUI session keeps keychain unlocked; ACL prompts are fine |
+| **Mac with auto-login + GUI** | Keychain (`"keychain:"`) | Works if ACL dialogs were approved once via screen sharing |
+| **Headless Mac (SSH only)** | Plain text in `env_vars` or launchd plist | Most reliable; no unlock/ACL dependencies |
+| **Linux server** | Secret store (0600 files under `~/.octos/secrets`) | File store needs no unlock or D-Bus; plain env vars also work |
+| **Windows** | Plain text in `env_vars` or env vars | No secret store yet (#2234) |
+
+**Why Keychain is unreliable on headless servers:**
+
+1. **Requires the macOS login password** -- To unlock the keychain via SSH, you need the user's login password stored somewhere, reducing the security benefit.
+2. **Re-locks on reboot/sleep** -- The LaunchDaemon that starts `octos serve` runs before GUI login, so the keychain is locked at that point.
+3. **Re-locks after idle timeout** -- Even after unlock, macOS may re-lock. The `set-keychain-settings` workaround can be reset by macOS updates.
+4. **ACL prompts block headless access** -- If the binary was not the one that originally stored the secret, macOS may pop an unanswerable GUI dialog.
+5. **Session isolation** -- Unlocking from SSH does not unlock for the LaunchDaemon session, and vice versa.
+
+**Plain text setup for servers:**
+
+```json
+{
+  "env_vars": {
+    "OPENAI_API_KEY": "sk-proj-abc123",
+    "SMTP_PASSWORD": "xxxx xxxx xxxx xxxx",
+    "SMTP_HOST": "smtp.gmail.com",
+    "SMTP_PORT": "587",
+    "SMTP_USERNAME": "user@gmail.com",
+    "SMTP_FROM": "user@gmail.com"
+  }
+}
+```
+
+Protect the files with filesystem permissions:
+
+```bash
+chmod 600 ~/.octos/profiles/*.json
+sudo chmod 600 /Library/LaunchDaemons/io.octos.serve.plist
+```
+
+---
+
+## Work Secrets (Session Ingress)
+
+An external CLI or scripted agent should not hold your dashboard bearer token. A *work secret* is a short-lived credential that grants one agent access to exactly one session, over the session-ingress WebSocket route (`/v1/session_ingress/ws/{session_id}`).
+
+Issue one (operator notes go to stderr, the encoded secret to stdout):
+
+```bash
+octos auth issue-work-secret \
+  --session "dspfac:local:tui#coding" \
+  --profile dspfac \
+  --ttl 1h \
+  --api-base-url http://127.0.0.1:50080
+```
+
+- `--ttl` accepts values like `15m`, `1h`, or `3600s` (default `1h`).
+- Re-issuing for the same session replaces the earlier grant; grants are persisted as SHA-256 hashes in the serve data directory (`~/.octos/work_secrets.json` by default — the token itself is never stored).
+- `octos auth list-work-secrets` lists recorded grants; `octos auth revoke-work-secret '<secret>'` revokes one.
+
+The guest decodes the secret and connects to `/v1/session_ingress/ws/<url-encoded session id>` with `Authorization: Bearer <token>`. WebSocket clients that cannot set headers may fall back to `?token=<token>`; that form is deprecated and logged by the server. The socket speaks normal UI Protocol frames, the grant is revalidated before every client request, and the socket closes with code 1008 once the grant no longer validates (revoked, expired, or replaced). Only methods scoped to the granted session are accepted.
+
+Full walkthrough (including a minimal Python client): `docs/OCTOS_WORK_SECRET_SESSION_INGRESS.md`.
+
+---
+
+## Service Management
+
+### macOS (launchd)
+
+The deploy script installs octos as a **system LaunchDaemon** at `/Library/LaunchDaemons/io.octos.serve.plist` (so it survives logout and starts before GUI login). Manage it with `sudo`:
+
+```bash
+# Load the service
+sudo launchctl load /Library/LaunchDaemons/io.octos.serve.plist
+
+# Unload the service
+sudo launchctl unload /Library/LaunchDaemons/io.octos.serve.plist
+
+# Check status
+sudo launchctl print system/io.octos.serve
+```
+
+If the service needs environment variables (e.g., SMTP credentials), add them to the plist:
+
+```xml
+<key>EnvironmentVariables</key>
+<dict>
+    <key>SMTP_PASSWORD</key>
+    <string>xxxx xxxx xxxx xxxx</string>
+</dict>
+```
+
+Check logs at `~/.octos/serve.log`.
+
+### Linux (systemd)
+
+The deploy script installs a **system unit** at `/etc/systemd/system/octos-serve.service`. Manage it with `sudo`:
+
+```bash
+# Start / stop / restart
+sudo systemctl start octos-serve
+sudo systemctl stop octos-serve
+sudo systemctl restart octos-serve
+
+# Enable on boot
+sudo systemctl enable octos-serve
+
+# Check status and logs
+sudo systemctl status octos-serve
+sudo journalctl -u octos-serve -f
+```
+
+### Stopping via `server/shutdown` (Local Solo)
+
+The server stops three ways: Ctrl+C in the terminal running the foreground `octos serve`, the platform service manager (`launchctl` / `systemctl`, above), and the `server/shutdown` UI Protocol method described here.
+
+A UI Protocol client connected over the authenticated WebSocket (`/api/ui-protocol/ws`) can stop the server with the `server/shutdown` method. It stops the process exactly like Ctrl+C: connections drain, gateways stop, the process exits. The call is idempotent, and the stop fires ~250 ms after the request is handled so the acknowledgement still gets a chance to reach the client (under outbound backpressure the client may miss it; the stop still happens).
+
+The method is only accepted on a local deployment (`config.mode = "local"`) with solo login opted in (`octos serve --solo` / `OCTOS_SOLO_LOGIN=1`) and only by an HTTP serve (`octos serve` without `--stdio`). One call stops the process for every connected client and cancels their running turns. Fleet/hosted servers and `--stdio` serve reject the call with `invalid_request` (-32600) and `data.kind: "server_shutdown_unavailable"` and stop nothing; session-scoped (session-ingress) connections can never call it and are refused with a plain `invalid_request`. Note the local-solo trust model: on a solo serve, any local process -- or any page on an allowed origin -- that can open the WebSocket can stop the server.

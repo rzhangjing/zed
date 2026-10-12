@@ -1,0 +1,271 @@
+# LLM 服务商与路由
+
+Octos 开箱即用地支持 17 家 LLM 服务商。每个服务商需要一个存储在环境变量中的 API 密钥（本地服务商如 Ollama、以及使用服务账号 JSON 的 Vertex AI 除外）。
+
+## 支持的服务商
+
+| 服务商 | 环境变量 | 默认模型 | API 格式 | 别名 |
+|----------|-------------|---------------|------------|---------|
+| `anthropic` | `ANTHROPIC_API_KEY` | claude-sonnet-4-20250514 | Native Anthropic | -- |
+| `openai` | `OPENAI_API_KEY` | gpt-4o | Native OpenAI | -- |
+| `gemini` | `GEMINI_API_KEY` | gemini-2.5-flash | Native Gemini | `google` |
+| `vertex` | `VERTEX_SA_JSON` | gemini-2.5-flash | Vertex AI（Gemini） | `vertex-ai`、`vertexai` |
+| `openrouter` | `OPENROUTER_API_KEY` | anthropic/claude-sonnet-4-20250514 | Native OpenRouter | -- |
+| `deepseek` | `DEEPSEEK_API_KEY` | deepseek-chat | OpenAI 兼容 | -- |
+| `groq` | `GROQ_API_KEY` | llama-3.3-70b-versatile | OpenAI 兼容 | -- |
+| `moonshot` | `MOONSHOT_API_KEY` | kimi-k2.5 | OpenAI 兼容 | `kimi` |
+| `dashscope` | `DASHSCOPE_API_KEY` | qwen-max | OpenAI 兼容 | `qwen` |
+| `minimax` | `MINIMAX_API_KEY` | MiniMax-M3 | OpenAI 兼容 | -- |
+| `minimax-cn` | `MINIMAX_CN_API_KEY` | MiniMax-M3 | OpenAI 兼容 | `minimaxi` |
+| `zhipu` | `ZHIPU_API_KEY` | glm-4-plus | OpenAI 兼容 | `glm` |
+| `zai` | `ZAI_API_KEY` | glm-5-turbo | OpenAI 兼容 | `z.ai` |
+| `r9s` | `R9S_API_KEY` | claude-sonnet-4-6 | 自动（Anthropic/OpenAI） | `r9s.ai` |
+| `nvidia` | `NVIDIA_API_KEY` | meta/llama-3.3-70b-instruct | OpenAI 兼容 | `nim` |
+| `ollama` | *（无需）* | llama3.2 | OpenAI 兼容 | -- |
+| `vllm` | `VLLM_API_KEY` | *（须指定）* | OpenAI 兼容 | -- |
+
+**`vertex`** 使用 Google 服务账号 JSON 认证（通过 `VERTEX_SA_JSON` 解析——钥匙串标记、配置值或环境变量），而非 API 密钥；GCP 项目从 JSON 中读取，区域固定为 `global`。必须显式选择（`provider: "vertex"`）——裸的 `gemini-*` 模型名仍会解析到 AI Studio 的 `gemini` 服务商。**`r9s`** 是多协议代理：`claude-*` 模型自动走 Anthropic Messages API，其余走 OpenAI Chat Completions。
+
+**`minimax-cn`** 是 MiniMax 的中国区服务商（`https://api.minimaxi.com/v1`，而非国际站 `https://api.minimax.io/v1`）。MiniMax Token 套餐订阅密钥由中国平台（platform.minimaxi.com）签发且有区域绑定，只能用于 `minimax-cn`；国际站密钥仍使用 `minimax`。MiniMax Coding 套餐密钥（`sk-cp-` 前缀）还必须使用 Anthropic 协议：在 `octos init` 中选择 **Anthropic** 协议，或设置 `api_type: "anthropic"` 并将 `base_url` 指向 `https://api.minimaxi.com/anthropic`——走默认的 OpenAI 协议会返回 401（见 octos#2115）。
+
+其他任何 OpenAI 或 Anthropic 兼容端点（如 `wisemodel`、Together、Fireworks、Azure）可通过在服务商上设置 `base_url` 接入——见[自定义端点](#自定义端点)。
+
+## 配置方式
+
+### 配置文件
+
+在 `config.json` 中设置 `provider` 和 `model`：
+
+```json
+{
+  "provider": "moonshot",
+  "model": "kimi-2.5",
+  "api_key_env": "KIMI_API_KEY"
+}
+```
+
+`api_key_env` 字段可覆盖服务商默认的环境变量名。例如，Moonshot 默认使用 `MOONSHOT_API_KEY`，但你可以将其指向 `KIMI_API_KEY`。
+
+### 命令行参数
+
+```bash
+octos chat --provider deepseek --model deepseek-chat
+octos chat --model gpt-4o  # 根据模型名自动检测服务商
+```
+
+### 凭证存储
+
+原生深度研究（native deep research）使用 Rust `search` 应用技能（包括 OctoScript 元搜索引擎）和 `deep_crawl` 进行渲染站点抓取。将 `deep-search` 与 `deep_crawl` 可执行文件部署在 `octos` 旁边，启动时即可安装这些捆绑工具。它不需要 DOT 图，也不需要 `run_pipeline`。宿主会把已保存的 `strong` 车道注入原生研究的综合阶段；没有该车道时则使用聊天服务商。搜索引擎与抓取不需要单独的 LLM 车道。`run_pipeline` 与 DOT 执行已从 CLI/服务器运行时中移除（包括子智能体）。磁盘上已有的图文件不会被加载或执行。
+
+原生研究的综合可以使用 `sub_providers` 中名为 `strong` 的条目。在服务器与网关中，将研究车道的 `api_key_env`、`base_url` 与 `api_type` 留空，即可复用 profile 聊天配置（主用或备用）中匹配的服务商。多条已保存路由使用同一服务商时，模型精确匹配优先。显式的车道覆盖仍然生效；不同的端点不会继承已保存路由的自定义凭证。未匹配到路由的服务商使用自身默认值，绝不会使用其他服务商的密钥。
+
+凭证仍保存在共享的 profile 环境/凭证存储中。因此当 profile 运行时重载后，更新已保存的服务商凭证会同时作用于聊天与研究。独立的模型车道保留各自的运行时状态；共享凭证不会切换当前聊天模型。被拒绝的凭证仍然需要更换：HTTP 401 是认证失败，既不是缺少研究工具，也不是反复重试同一密钥的理由。
+
+除了环境变量，你也可以通过 auth 命令行存储 API 密钥：
+
+```bash
+# OAuth PKCE (OpenAI)
+octos auth login --provider openai
+
+# Device code 流程 (OpenAI)
+octos auth login --provider openai --device-code
+
+# 粘贴令牌（其他所有服务商）
+octos auth login --provider anthropic
+# -> 提示: "Paste your API key:"
+
+# 查看已存储的凭证
+octos auth status
+
+# 删除凭证
+octos auth logout --provider openai
+```
+
+凭证存储在 `~/.octos/auth.json`（文件权限 0600）。解析 API 密钥时，凭证存储的优先级**高于**环境变量。
+
+## 自动检测
+
+省略 `--provider` 时，Octos 会根据模型名推断服务商：
+
+| 模型名模式 | 检测到的服务商 |
+|--------------|-------------------|
+| `claude-*` | anthropic |
+| `gpt-*`, `o1-*`, `o3-*`, `o4-*` | openai |
+| `gemini-*` | gemini |
+| `deepseek-*` | deepseek |
+| `kimi-*`, `moonshot-*` | moonshot |
+| `qwen-*` | dashscope |
+| `glm-*` | zhipu |
+| `llama-*` | groq |
+
+```bash
+octos chat --model gpt-4o           # -> openai
+octos chat --model claude-sonnet-4-20250514  # -> anthropic
+octos chat --model deepseek-chat    # -> deepseek
+octos chat --model glm-4-plus       # -> zhipu
+octos chat --model qwen-max         # -> dashscope
+```
+
+## 自定义端点
+
+使用 `base_url` 指向自部署或代理端点：
+
+```json
+{
+  "provider": "openai",
+  "model": "gpt-4o",
+  "base_url": "https://your-azure-endpoint.openai.azure.com/v1"
+}
+```
+
+```json
+{
+  "provider": "ollama",
+  "model": "llama3.2",
+  "base_url": "http://localhost:11434/v1"
+}
+```
+
+```json
+{
+  "provider": "vllm",
+  "model": "meta-llama/Llama-3-70b",
+  "base_url": "http://localhost:8000/v1"
+}
+```
+
+### API 类型覆盖
+
+`api_type` 字段可在服务商使用非标准协议时强制指定传输格式：
+
+```json
+{
+  "provider": "zai",
+  "model": "glm-5-turbo",
+  "api_type": "anthropic"
+}
+```
+
+- `"openai"` -- OpenAI Chat Completions 格式（大多数服务商的默认值）
+- `"anthropic"` -- Anthropic Messages 格式（用于 Anthropic 兼容代理）。`zai` / `zai-coding` 路由设置 `api_type: "anthropic"` 且未指定 `base_url` 时，使用 Z.AI 的 Anthropic 兼容根地址（`https://api.z.ai/api/anthropic`），该地址不报告提示缓存命中；默认的 OpenAI 兼容通道在长会话中更省钱
+
+## 降级链
+
+配置一个按优先级排列的降级链。当主服务商请求失败时，自动尝试列表中的下一个服务商：
+
+```json
+{
+  "provider": "moonshot",
+  "model": "kimi-2.5",
+  "fallback_models": [
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "api_key_env": "DEEPSEEK_API_KEY"
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-2.5-flash",
+      "api_key_env": "GEMINI_API_KEY"
+    }
+  ]
+}
+```
+
+**故障转移规则：**
+
+- **401/403**（认证错误）-- 立即转移，不在同一服务商上重试
+- **429**（限流）/ **5xx**（服务端错误）-- 指数退避重试，之后转移
+- **400**（内容格式错误）-- 当错误包含 `"must not be empty"`、`"reasoning_content"`、`"API key not valid"` 或 `"invalid_value"` 时转移（不同服务商的验证规则可能不同）
+- **超时** -- 立即转移（不在无响应的服务商上浪费 120s × 重试次数）
+- **熔断器** -- 连续 3 次失败将标记该服务商为降级状态
+
+**重试配置**（指数退避）：
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `max_retries` | 3 | 每个服务商的重试次数 |
+| `initial_delay` | 1s | 首次重试延迟 |
+| `max_delay` | 60s | 最大重试延迟 |
+| `backoff_multiplier` | 2.0 | 指数倍增系数 |
+
+429 错误会从响应体中解析 `"try again in Xs"` 以实现更智能的退避（回退默认：30s）。
+
+## 自适应路由
+
+当配置了多个降级模型时，自适应路由会以指标驱动的动态选择取代静态优先级链。
+
+### 路由模式
+
+三种互斥模式，通过 `adaptive_routing.mode` 设置：
+
+| 模式 | 说明 |
+|------|------|
+| `off`（默认） | 静态优先级顺序。仅在熔断器打开（3 次连续失败）时才转移。 |
+| `hedge` | **对冲竞速**：同时向 2 个服务商发送请求，取先到的结果，取消后到的。两者都累积 QoS 指标。 |
+| `lane` | **评分选道**：基于 4 因子评分公式动态选择最优服务商。比对冲更省（无重复请求）。 |
+
+```json
+{
+  "adaptive_routing": {
+    "mode": "hedge",
+    "qos_ranking": true,
+    "latency_threshold_ms": 10000,
+    "error_rate_threshold": 0.3,
+    "probe_probability": 0.1,
+    "probe_interval_secs": 60,
+    "failure_threshold": 3
+  }
+}
+```
+
+| 配置项 | 默认值 | 说明 |
+|---------|---------|-------------|
+| `mode` | `"off"` | `"off"`、`"hedge"` 或 `"lane"` |
+| `qos_ranking` | `false` | 启用 QoS 质量排名（使用模型目录评分） |
+| `latency_threshold_ms` | 10000 | 内部使用的软惩罚阈值 |
+| `error_rate_threshold` | 0.3 | 错误率超过此值的服务商将被降低优先级 |
+| `probe_probability` | 0.1 | 发送至非主服务商作为健康探测的请求比例 |
+| `probe_interval_secs` | 60 | 对同一服务商两次探测之间的最小间隔（秒） |
+| `failure_threshold` | 3 | 连续失败多少次后触发熔断 |
+
+### 评分公式（Lane 模式）
+
+每个服务商通过加权 4 因子公式评分，**越低越好**。所有权重可通过 `adaptive_routing` 配置：
+
+```
+score = w_stability × blended_error_rate
+      + w_quality  × (0.6 × norm_quality + 0.4 × norm_throughput)
+      + w_priority × norm_config_order
+      + w_cost      × norm_output_price
+```
+
+| 因子 | 权重键 | 默认 | 说明 |
+|------|--------|------|------|
+| 稳定性 | `weight_error_rate` | 0.3 | 混合基线 + 实时错误率。EMA 混合权重在 10 次调用中从 0 渐变到 1。 |
+| 质量 | `weight_latency` | 0.3 | 60% 归一化 ds_output 质量 + 40% 归一化吞吐量（输出 tokens/秒 EMA） |
+| 优先级 | `weight_priority` | 0.2 | 配置顺序偏好（0=主服务商，越高越靠后）。归一化到 [0, 1]。 |
+| 成本 | `weight_cost` | 0.2 | 归一化的每百万 token 输出价格。未知成本 → 0（无惩罚）。 |
+
+目录可以从 `model_catalog.json` 基准文件预填充，使路由器在启动时即具备参考评分而非冷启动启发。
+
+### 自动升级
+
+当检测到持续的延迟恶化时，会话 actor 会自动激活对冲模式 + 投机队列：
+
+- `ResponsivenessObserver` 从前 5 次请求学习**中位数**基线（对异常值鲁棒），然后通过 80/20 EMA 每隔 20 个样本**自适应调整**基线。
+- 如果连续 3 次 LLM 响应超过 **3×基线** 延迟，对冲竞速和投机队列同时启用。
+- 当服务商恢复（一次正常延迟响应）时，两者都恢复为 Followup 和静态路由。
+
+### 服务商包装栈
+
+路由系统由分层包装器组成：
+
+| 包装器 | 用途 |
+|--------|------|
+| `AdaptiveRouter` | 顶层：指标驱动评分、对冲/选道模式、熔断器、探测请求 |
+| `ProviderChain` | 有序故障转移，带每服务商熔断器（失败次数 >= 阈值 → 降级） |
+| `FallbackProvider` | 主服务商 + 按QoS排名的备选，通过 `ProviderRouter` 追踪冷却 |
+| `RetryProvider` | 429/5xx 指数退避。超时 → 不重试（改为转移） |
+| `ProviderRouter` | 子 Agent 多模型路由。前缀键解析、冷却、QoS评分备选 |
+| `SwappableProvider` | 通过 `RwLock` 实现运行时模型切换（如 `switch_model` 工具）。每次切换泄漏约 50 字节 |

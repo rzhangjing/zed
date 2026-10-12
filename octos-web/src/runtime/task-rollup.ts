@@ -1,0 +1,231 @@
+/**
+ * Pipeline task rollup helper (WEB-NEW-18).
+ *
+ * Pipelines emit a parent `run_pipeline` task plus N child
+ * `pipeline:<node>` tasks (e.g. `pipeline:analyze`,
+ * `pipeline:synthesize`, `pipeline:plan_and_search`). The server's
+ * `session/tasks.list` returns the flat set; all children share the
+ * parent's `tool_call_id` so the SPA can fold them into a single
+ * user-visible entry.
+ *
+ * Without this rollup the dock counter inflates: a 2-pipeline run
+ * with 4 worker nodes each renders as "8 tasks running" instead of
+ * "2 tasks running", and the constellation grows ragged.
+ *
+ * Rollup rules:
+ *   - Only collapse groups whose `tool_call_id` actually belongs to a
+ *     pipeline family — i.e. the group must contain a
+ *     `run_pipeline` parent OR at least one `pipeline:*` child. Two
+ *     unrelated non-pipeline tasks that happened to share the same
+ *     `tool_call_id` are left alone (defensive against future server
+ *     fanouts that reuse the field).
+ *   - Group keys are prefix-tagged (`call:<id>` vs `no_call:<id>`) so a
+ *     real `tool_call_id` literally equal to `no_call:xyz` cannot
+ *     collide with a null-tool_call_id task whose id is `xyz`.
+ *   - Within a pipeline group, prefer the parent (`tool_name ===
+ *     "run_pipeline"` or any name without the `pipeline:` prefix) so
+ *     the dock label says "run_pipeline" not "pipeline:analyze". If the
+ *     parent is absent (post-restart orphan case where only children
+ *     remain active), fall back to the first child — the count is
+ *     still rolled up to 1; the consumer is responsible for prettifying
+ *     the child label (see `displayLabelForRolled`).
+ */
+
+import type { BackgroundTaskInfo } from "@/api/types";
+
+const NULL_CALL_TAG = "no_call:";
+const CALL_TAG = "call:";
+
+function isPipelineChild(task: BackgroundTaskInfo): boolean {
+  return task.tool_name.startsWith("pipeline:");
+}
+
+function isPipelineParent(task: BackgroundTaskInfo): boolean {
+  return task.tool_name === "run_pipeline";
+}
+
+/**
+ * Synthesize a rollup key that never collides across null entries.
+ */
+export function rollupKey(task: BackgroundTaskInfo): string {
+  return task.tool_call_id != null
+    ? `${CALL_TAG}${task.tool_call_id}`
+    : `${NULL_CALL_TAG}${task.id}`;
+}
+
+/**
+ * Recover the raw tasks behind a rendered row. Mirrors the collapse rule
+ * in `rollupTasksByCall` exactly: only pipeline families fold into one
+ * representative, so only they expand back out. A non-pipeline task
+ * renders 1:1 even when it shares a `tool_call_id` with unrelated work —
+ * expanding those by key alone would let one row act on another visible
+ * row's task (codex review: Cancel on either row destroyed both).
+ */
+export function expandRolledGroup(
+  representative: BackgroundTaskInfo,
+  tasks: BackgroundTaskInfo[],
+): BackgroundTaskInfo[] {
+  const key = rollupKey(representative);
+  const members = tasks.filter((t) => rollupKey(t) === key);
+  const isPipelineGroup = members.some(
+    (t) => isPipelineParent(t) || isPipelineChild(t),
+  );
+  return isPipelineGroup ? members : [representative];
+}
+
+/**
+ * Aggregate status of every raw task sharing one tool call (codex round 3).
+ *
+ * Pipeline members emit per-task terminal transitions, but the thread's
+ * tool card is keyed by the shared `tool_call_id` — settling the card on
+ * the FIRST terminal member freezes it while siblings still run, and
+ * later running frames never restore it. Both terminal paths (the live
+ * `task/updated` router branch and the polling `crew:task_status`
+ * applier) consult this before flipping the card:
+ *
+ *   - "active"  → at least one member still spawned/running; defer.
+ *   - "failed"  → all settled with a failure outcome; settle error.
+ *   - "settled" → all settled successfully; settle complete.
+ *   - null      → no member carries this call id (store not hydrated);
+ *                 caller falls back to the event's own state.
+ *
+ * Outcome rule (codex rounds 4–6), matching the two REAL server flows
+ * that share a `tool_call_id` (elsewhere tcids are process-unique, see
+ * octos #1412):
+ *
+ *   1. Pipeline family (run_pipeline parent + pipeline:* children): the
+ *      parent's outcome is authoritative — a pipeline can RECOVER from
+ *      a node failure (failure edges, retries, `continue_on_error`), so
+ *      a retained failed child must not fail a successfully-settled
+ *      parent. The NEWEST parent by `started_at` wins so a relaunched
+ *      parent supersedes its failed predecessor. Orphan children (no
+ *      parent row) aggregate any-failure.
+ *   2. Relaunch chain (`TaskSupervisor::relaunch` registers a successor
+ *      with the SAME tool_call_id AND tool_name): the newest member's
+ *      outcome wins, so a successful relaunch clears its failed
+ *      predecessor. Detected as a non-pipeline group whose members all
+ *      share one tool_name.
+ *
+ * A non-pipeline group with MIXED tool names is the defensive
+ * unrelated-tasks case the rollup renders as separate rows — no member
+ * is a "parent" that can mask another member's failure, so any failure
+ * fails the call.
+ *
+ * Timestamp caveat: rows hydrated live by `mergeLiveTask` carry client
+ * receipt time (the `task/updated` wire has no server `started_at`), so
+ * a reconnect replay can momentarily misorder a relaunch chain; the
+ * task watcher's poll rewrites the store with server-authoritative
+ * timestamps within one tick. Ties (and unparseable timestamps) keep
+ * the FIRST seen member, which is the newest under
+ * `TaskStore.getTasks`'s newest-first ordering.
+ */
+export function aggregateCallStatus(
+  tasks: BackgroundTaskInfo[],
+  toolCallId: string,
+): "active" | "failed" | "settled" | null {
+  let sawMember = false;
+  let sawFailed = false;
+  let sawPipeline = false;
+  let sameToolName = true;
+  let firstToolName: string | null = null;
+  let parent: BackgroundTaskInfo | null = null;
+  let newest: BackgroundTaskInfo | null = null;
+  for (const t of tasks) {
+    if (t.tool_call_id !== toolCallId) continue;
+    sawMember = true;
+    if (t.status === "spawned" || t.status === "running") return "active";
+    if (t.status === "failed") sawFailed = true;
+    if (firstToolName === null) firstToolName = t.tool_name;
+    else if (t.tool_name !== firstToolName) sameToolName = false;
+    const child = isPipelineChild(t);
+    if (child || isPipelineParent(t)) sawPipeline = true;
+    if (!child && (parent === null || startedAtMs(t) > startedAtMs(parent))) {
+      parent = t;
+    }
+    if (newest === null || startedAtMs(t) > startedAtMs(newest)) {
+      newest = t;
+    }
+  }
+  if (!sawMember) return null;
+  if (sawPipeline) {
+    if (parent !== null) {
+      return parent.status === "failed" ? "failed" : "settled";
+    }
+    return sawFailed ? "failed" : "settled";
+  }
+  if (sameToolName && newest !== null) {
+    return newest.status === "failed" ? "failed" : "settled";
+  }
+  return sawFailed ? "failed" : "settled";
+}
+
+function startedAtMs(task: BackgroundTaskInfo): number {
+  const ms = Date.parse(task.started_at);
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+/**
+ * Fold pipeline children under the parent `run_pipeline` task by
+ * `tool_call_id`. The returned list preserves the input order of each
+ * group's representative (parent first, else first child seen).
+ *
+ * Groups that are NOT pipeline families (no `run_pipeline` parent and
+ * no `pipeline:*` child) are emitted unchanged — every member appears
+ * individually in the output, so two unrelated tasks sharing a
+ * `tool_call_id` won't silently collapse.
+ */
+export function rollupTasksByCall(
+  tasks: BackgroundTaskInfo[],
+): BackgroundTaskInfo[] {
+  // Partition into groups by rollup key, preserving group order via the
+  // insertion order of `Map`.
+  const groups = new Map<string, BackgroundTaskInfo[]>();
+  for (const task of tasks) {
+    const key = rollupKey(task);
+    const bucket = groups.get(key);
+    if (bucket === undefined) {
+      groups.set(key, [task]);
+    } else {
+      bucket.push(task);
+    }
+  }
+
+  const out: BackgroundTaskInfo[] = [];
+  for (const bucket of groups.values()) {
+    if (bucket.length === 1) {
+      out.push(bucket[0]);
+      continue;
+    }
+    const isPipelineGroup = bucket.some(
+      (t) => isPipelineParent(t) || isPipelineChild(t),
+    );
+    if (!isPipelineGroup) {
+      // Defensive: don't collapse unrelated tasks even if they share a
+      // `tool_call_id`. Emit each one.
+      out.push(...bucket);
+      continue;
+    }
+    // Pipeline family — collapse to one representative. Prefer the
+    // parent (`run_pipeline`, or any non-`pipeline:*` member) over a
+    // child. If only children are present, take the first child as the
+    // representative (orphan case).
+    const parent = bucket.find((t) => !isPipelineChild(t));
+    out.push(parent ?? bucket[0]);
+  }
+  return out;
+}
+
+/**
+ * Produce a user-friendly label for a rolled-up task. For pipeline
+ * children (the orphan-parent case) this strips the `pipeline:`
+ * prefix and falls back to `Pipeline` if the suffix is empty. The
+ * dock and Slides/Sites indicators call this so the orphan rendering
+ * isn't `pipeline:analyze running` but `Analyze running`.
+ */
+export function displayLabelForRolled(task: BackgroundTaskInfo): string {
+  if (isPipelineChild(task)) {
+    const suffix = task.tool_name.slice("pipeline:".length).trim();
+    return suffix.length === 0 ? "Pipeline" : suffix.replace(/_/gu, " ");
+  }
+  return task.tool_name.replace(/_/gu, " ");
+}

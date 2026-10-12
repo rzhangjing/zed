@@ -1,0 +1,346 @@
+import { API_BASE, TOKEN_KEY, ADMIN_TOKEN_KEY } from "@/lib/constants";
+import { getSettings } from "@/hooks/use-settings";
+
+// Session metadata is identity-bound but can be reconstructed from the
+// authenticated backend. Clear it whenever the token is cleared so a second
+// account using the same browser never inherits the previous account's
+// launcher cards, current-session pointer, or session decorations.
+const IDENTITY_BOUND_SESSION_STORAGE_KEYS = [
+  "octos_session_titles",
+  "octos_session_stats",
+  "octos_session_topics",
+  "octos_sessions_sync",
+  "octos_deleted_sessions",
+  "octos_current_session",
+  "octos_task_watcher_sessions_v1",
+] as const;
+
+function inferProfileIdFromHost(): string | null {
+  if (typeof window === "undefined") return null;
+  const hostname = window.location.hostname;
+  const suffixes = [".octos.ominix.io", ".crew.ominix.io"];
+  for (const suffix of suffixes) {
+    if (!hostname.endsWith(suffix)) continue;
+    const subdomain = hostname.slice(0, -suffix.length);
+    if (!subdomain || subdomain === "crew" || subdomain === "octos" || subdomain === "www") {
+      return null;
+    }
+    return subdomain;
+  }
+  return null;
+}
+
+function isLocalBrowserHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+export function getToken(): string | null {
+  return (
+    localStorage.getItem(TOKEN_KEY) || localStorage.getItem(ADMIN_TOKEN_KEY)
+  );
+}
+
+export function setToken(token: string, isAdmin = false) {
+  // Issue #111.2: when writing the new token, clear the OTHER slot
+  // first. Pre-fix, admin-token login wrote `octos_auth_token` but
+  // `getToken()` (which prefers `octos_session_token`) kept returning
+  // the stale session token — so subsequent requests used the wrong
+  // credentials. Always clearing the opposite slot guarantees
+  // `getToken()` returns the just-written value.
+  if (isAdmin) {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  for (const key of IDENTITY_BOUND_SESSION_STORAGE_KEYS) {
+    localStorage.removeItem(key);
+  }
+  // Issue #111.3: clear `selected_profile` on token change so a
+  // logout (or admin-login that follows a different account's
+  // session) does not surface the prior profile id into the next
+  // session's headers.
+  localStorage.removeItem("selected_profile");
+  // codex web#268 r2 P1: an ORDINARY logout clears the token without
+  // firing `crew:auth_expired`, so identity-bound singletons (the
+  // sessionless auxiliary bridge) would survive into the next login
+  // and keep serving RPCs under the PREVIOUS account's upgrade
+  // identity. Broadcast every token clear so they tear down with the
+  // token. Event-based on purpose — importing the runtime here would
+  // cycle (runtime → bridge → client).
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("crew:token_cleared"));
+    } catch {
+      // best-effort
+    }
+  }
+}
+
+export function getSelectedProfileId(includeStoredFallback = true): string | null {
+  // Exact-account portals must be driven by the current hostname, not stale
+  // browser state from a different account or sub-account tab.
+  return (
+    inferProfileIdFromHost() ||
+    (includeStoredFallback ? localStorage.getItem("selected_profile") : null)
+  );
+}
+
+export function setSelectedProfileId(profileId: string) {
+  localStorage.setItem("selected_profile", profileId);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+export function extractProfileIdFromPayload(payload: unknown): string | null {
+  const root = asRecord(payload);
+  if (!root) return null;
+
+  const profile = asRecord(root.profile);
+  const profileId = nonEmptyString(profile?.id);
+  if (profileId) return profileId;
+
+  const nestedProfile = asRecord(profile?.profile);
+  const nestedProfileId = nonEmptyString(nestedProfile?.id);
+  if (nestedProfileId) return nestedProfileId;
+
+  const portal = asRecord(root.portal);
+  const homeProfileId = nonEmptyString(portal?.home_profile_id);
+  if (homeProfileId) return homeProfileId;
+
+  return nonEmptyString(root.profile_id);
+}
+
+let selectedProfilePromise: Promise<string | null> | null = null;
+
+export async function ensureSelectedProfileId(): Promise<string | null> {
+  const existing = getSelectedProfileId();
+  if (existing) return existing;
+  if (selectedProfilePromise) return selectedProfilePromise;
+
+  selectedProfilePromise = (async () => {
+    const token = getToken();
+    if (!token) return null;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/my/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return null;
+      const payload = await resp.json();
+      const profileId = extractProfileIdFromPayload(payload);
+      if (profileId) {
+        setSelectedProfileId(profileId);
+        return profileId;
+      }
+      return null;
+    } finally {
+      selectedProfilePromise = null;
+    }
+  })();
+
+  return selectedProfilePromise;
+}
+
+export function buildApiHeaders(
+  extraHeaders: Record<string, string> = {},
+  profileIdOverride?: string | null,
+  includeStoredProfileFallback = true,
+): Record<string, string> {
+  const token = getToken();
+  const profileId =
+    profileIdOverride === undefined
+      ? getSelectedProfileId(includeStoredProfileFallback)
+      : profileIdOverride;
+
+  return {
+    ...extraHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(profileId ? { "X-Profile-Id": profileId } : {}),
+  };
+}
+
+export async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const settings = getSettings();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  const isAuthPath = path.startsWith("/api/auth/");
+  const includeStoredProfileFallback = !isAuthPath;
+  const profileHeaderOverride = isAuthPath && !isLocalBrowserHost() ? null : undefined;
+  Object.assign(
+    headers,
+    buildApiHeaders({}, profileHeaderOverride, includeStoredProfileFallback),
+  );
+  // Pass search engine preference (not sensitive)
+  headers["X-Search-Engine"] = settings.searchEngine;
+  // Sensitive keys (serperApiKey, crawl4aiUrl) are stored server-side
+  // via profile config — not sent per-request in headers.
+
+  const resp = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!resp.ok) {
+    // ───── Auth-flow-only 401/403 reaper (M12 Phase D-4) ─────
+    //
+    // Auto-logout on auth failure (expired/invalid token), but ONLY
+    // when the failing path is the auth flow itself (`/api/auth/*`).
+    //
+    // Pre-D-4 this reaper fired on EVERY 401/403 from EVERY REST call,
+    // which meant a 401 on an unrelated REST request would clear the
+    // user's tokens and hard-redirect them to `/login`. With the data
+    // plane on WS UI Protocol v1 (post-D-4 default-ON cutover),
+    // auxiliary REST calls are minimal — only blob/file ops and the
+    // auth flow itself. A 401 from a blob upload (e.g. expired session
+    // mid-stream) should propagate as a normal error so the upload UI
+    // can render a contextual retry, not nuke the user's tokens and
+    // boot them to /login.
+    //
+    // The mini5 user-incident motivating ADR PR octos-org/octos#910
+    // (a stale REST callsite on `/api/sessions/*` 401'd after a
+    // background token refresh, triggering this reaper and ejecting
+    // the user mid-rename) is the structural failure mode this
+    // tightening eliminates. See `docs/adr/m12-phase-d-auxiliary-rest-to-ws.md`
+    // for the full motivation, and `src/api/sessions.ts` /
+    // `src/api/content.ts` (`translateBridgeError`) for the WS-side
+    // counterpart that already declines to trigger this reaper.
+    //
+    // Paths under `/api/auth/*` (e.g. `/api/auth/me`, `/api/auth/status`)
+    // still trigger the reaper — a 401 there means the session token
+    // has truly expired, which is exactly the case the redirect was
+    // designed for.
+    const isAuthPath = path.startsWith("/api/auth/");
+    if ((resp.status === 401 || resp.status === 403) && isAuthPath) {
+      clearToken();
+      // Redirect to login unless already there
+      if (!window.location.pathname.endsWith("/login")) {
+        window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname + window.location.search);
+      }
+    }
+    const text = await resp.text();
+    throw new ApiError(resp.status, errorBodyMessage(resp.status, text));
+  }
+
+  if (resp.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await resp.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
+}
+
+/** Authenticated REST request whose successful response is binary data. */
+export async function requestBlob(
+  path: string,
+  options: RequestInit = {},
+): Promise<Blob> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  Object.assign(headers, buildApiHeaders());
+  const resp = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new ApiError(resp.status, errorBodyMessage(resp.status, text));
+  }
+  return resp.blob();
+}
+
+/**
+ * Error thrown by API requests. Carries the HTTP `status` so callers can
+ * branch structurally (`err instanceof ApiError && err.status === 404`)
+ * instead of matching on message text — the message is the human-readable
+ * body and is NOT a stable machine signal (a proxy can rewrite it, which
+ * previously broke the solo first-run fallthrough).
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+/** Pull a displayable message out of an error response body: prefers the
+ *  `{error}` / `{message}` fields of a JSON body; falls back to raw text,
+ *  then to a bare `HTTP <status>`. */
+function errorBodyMessage(status: number, text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed) as {
+        error?: unknown;
+        message?: unknown;
+        detail?: unknown;
+      };
+      const msg = parsed.error ?? parsed.message ?? parsed.detail;
+      if (typeof msg === "string" && msg.trim()) return msg;
+    } catch {
+      // not actually JSON — fall through to raw text
+    }
+  }
+  return trimmed || `HTTP ${status}`;
+}
+
+/**
+ * Like {@link request} but WITHOUT the `/api/auth/*` 401/403 token reaper, and
+ * without attaching the session token / profile headers. Used for pre-auth,
+ * policy-gated endpoints — specifically the no-password solo login, where a
+ * 403 is a POLICY denial (not opted in, proxied, non-loopback), NOT proof that
+ * an existing session token is dead. Routing those through `request()` would
+ * clear the user's tokens and bounce them to `/login` (see solo-login codex
+ * review). 404 (no solo profile yet) and 403 throw an {@link ApiError}.
+ */
+export async function publicRequest<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  const resp = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new ApiError(resp.status, errorBodyMessage(resp.status, text));
+  }
+  if (resp.status === 204) {
+    return undefined as T;
+  }
+  const text = await resp.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
+}

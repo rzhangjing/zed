@@ -1,0 +1,449 @@
+diff --git a/dist/packages/ink-runtime/src/runtime.js b/dist/packages/ink-runtime/src/runtime.js
+index e946f61df2552059f3d9490d5ff95dc5d01a3e8c..517a15d9609edee0be5a0464a8b671ae19092e4b 100644
+--- a/dist/packages/ink-runtime/src/runtime.js
++++ b/dist/packages/ink-runtime/src/runtime.js
+@@ -5,7 +5,6 @@ import { coalesceInkOccupiedBounds } from "./occupied-bounds.js";
+ import { createInkSelectionSnapshot } from "./selection.js";
+ import { inkSelectionPathRegion, inkSelectionRectangleRegion, inkSelectionSourceExists, } from "./selection-record.js";
+ import { lockSelectionTransform, } from "./selection-lock.js";
+-import { planInkWorldLayerBounds, viewportPointToInkSurface, } from "./world-layer.js";
+ export class InkRuntime {
+     options;
+     host;
+@@ -22,11 +21,12 @@ export class InkRuntime {
+     changeRevision = 0;
+     savedChangeRevision = 0;
+     saveTimer;
++    appliedPixelRatio;
+     saveQueue = Promise.resolve(null);
+     destroyPromise;
+     restoreFailure;
+     suppressSave = false;
+-    layerBounds;
++    renderedCamera;
+     expectedViewportTransform = Mat33.identity;
+     activePointers = new Map();
+     selectionGesture = [];
+@@ -34,10 +34,10 @@ export class InkRuntime {
+     unmountWorldLayer;
+     removeInputListeners;
+     unsubscribeCamera;
+-    constructor(options, host, layerBounds, unmountWorldLayer) {
++    constructor(options, host, renderedCamera, unmountWorldLayer) {
+         this.options = options;
+         this.host = host;
+-        this.layerBounds = layerBounds;
++        this.renderedCamera = renderedCamera;
+         this.editor = this.createEditor();
+         this.prepareEditor();
+         this.unmountWorldLayer = unmountWorldLayer;
+@@ -55,29 +55,20 @@ export class InkRuntime {
+         const host = options.viewport.ownerDocument.createElement("div");
+         host.className = "oll-ink-layer";
+         host.dataset.ollInkLayer = "";
+-        const layerBounds = planInkWorldLayerBounds({
+-            camera: options.board.getCameraState(),
+-            viewport: {
+-                width: options.viewport.clientWidth,
+-                height: options.viewport.clientHeight,
+-            },
+-        });
+-        InkRuntime.applyWorldLayerBounds(host, layerBounds);
+-        const unmountWorldLayer = options.board.mountWorldLayer(host);
++        host.style.inset = "0";
++        host.style.width = "100%";
++        host.style.height = "100%";
++        const renderedCamera = options.board.getCameraState();
++        options.viewport.append(host);
++        const unmountWorldLayer = () => host.remove();
+         try {
+-            return new InkRuntime(options, host, layerBounds, unmountWorldLayer);
++            return new InkRuntime(options, host, renderedCamera, unmountWorldLayer);
+         }
+         catch (cause) {
+             unmountWorldLayer();
+             throw cause;
+         }
+     }
+-    static applyWorldLayerBounds(host, bounds) {
+-        host.style.left = `${bounds.left}px`;
+-        host.style.top = `${bounds.top}px`;
+-        host.style.width = `${bounds.width}px`;
+-        host.style.height = `${bounds.height}px`;
+-    }
+     createEditor() {
+         const documentLocale = this.host.ownerDocument.documentElement.lang;
+         const userLocales = this.options.locale
+@@ -142,28 +133,26 @@ export class InkRuntime {
+         });
+     }
+     resetEditorViewport() {
+-        this.expectedViewportTransform = Mat33.translation(Vec2.of(-this.layerBounds.left, -this.layerBounds.top));
++        this.expectedViewportTransform = Mat33.translation(Vec2.of(this.renderedCamera.panX, this.renderedCamera.panY))
++            .rightMul(Mat33.scaling2D(this.renderedCamera.scale));
+         this.editor.viewport.resetTransform(this.expectedViewportTransform);
+     }
+     updateWorldLayer(camera) {
+-        const nextBounds = planInkWorldLayerBounds({
+-            camera,
+-            viewport: {
+-                width: this.options.viewport.clientWidth,
+-                height: this.options.viewport.clientHeight,
+-            },
+-            current: this.layerBounds,
+-        });
+-        if (nextBounds !== this.layerBounds) {
+-            this.layerBounds = nextBounds;
+-            InkRuntime.applyWorldLayerBounds(this.host, nextBounds);
+-            this.resetEditorViewport();
+-        }
+-        const hostWindow = this.options.viewport.ownerDocument.defaultView;
+-        if (hostWindow) {
+-            const effectivePixelRatio = Math.max(.1, Math.min(4, hostWindow.devicePixelRatio * camera.scale));
+-            void this.editor.display.setDevicePixelRatio(effectivePixelRatio);
+-        }
++        // Keep the viewport-sized drawing surface fixed. Moving this root with a
++        // temporary CSS transform exposes its physical right/bottom edges while
++        // panning or zooming. js-draw already coalesces queueRerender calls to an
++        // animation frame, so update its camera directly instead.
++        this.renderedCamera = { ...camera };
++        this.resetEditorViewport();
++        const hostWindow = this.options.viewport.ownerDocument.defaultView;
++        if (hostWindow) {
++            const ratio = Math.max(.1, Math.min(4, hostWindow.devicePixelRatio));
++            if (this.appliedPixelRatio === undefined || Math.abs(ratio - this.appliedPixelRatio) >= .02) {
++                this.appliedPixelRatio = ratio;
++                void this.editor.display.setDevicePixelRatio(ratio);
++            }
++        }
++        void this.editor.queueRerender();
+     }
+     prepareBoardInput() {
+         const inputTarget = this.options.viewport;
+@@ -192,10 +181,8 @@ export class InkRuntime {
+             return this.options.board.viewportToBoard(point);
+         };
+         const mappedPointer = (event, down) => {
+-            const camera = this.options.board.getCameraState();
+             const boardPoint = pointerBoardPoint(event);
+-            const surfacePoint = viewportPointToInkSurface(this.options.board.boardToViewport(boardPoint), camera, this.layerBounds);
+-            return Pointer.ofCanvasPoint(Vec2.of(surfacePoint.x + this.layerBounds.left, surfacePoint.y + this.layerBounds.top), down, this.editor.viewport, event.pointerId, pointerDevice(event), event.isPrimary, event.pressure, event.timeStamp);
++            return Pointer.ofCanvasPoint(Vec2.of(boardPoint.x, boardPoint.y), down, this.editor.viewport, event.pointerId, pointerDevice(event), event.isPrimary, event.pressure, event.timeStamp);
+         };
+         const allPointers = () => [...this.activePointers.values()];
+         const onPointerDown = (rawEvent) => {
+diff --git a/dist/packages/web-runtime/src/board-view.d.ts b/dist/packages/web-runtime/src/board-view.d.ts
+index 8749a9e3e24126d803e1805fbdf0f4107ddf2de6..aa26eac6f6763fb89774ebac11b7de58c2430dda 100644
+--- a/dist/packages/web-runtime/src/board-view.d.ts
++++ b/dist/packages/web-runtime/src/board-view.d.ts
+@@ -141,6 +141,7 @@ export declare class InfiniteBoardView {
+     setRegionLayouts(layouts: Record<string, RegionLayoutConstraint>): void;
+     getRegionBounds(regionId: string): Rect | undefined;
+     getRegionBoundsMap(): Record<string, Rect>;
++    getAttachmentBoundsMap(): Record<string, Rect>;
+     /**
+      * Adds a course-owned layer to the board's world coordinate space.
+      *
+diff --git a/dist/packages/web-runtime/src/board-view.js b/dist/packages/web-runtime/src/board-view.js
+index 08abe438e8b577514727d46e40c7a9322e77d11a..8f772aebebca386a26005b2bc535c14f9dac0e41 100644
+--- a/dist/packages/web-runtime/src/board-view.js
++++ b/dist/packages/web-runtime/src/board-view.js
+@@ -1172,6 +1172,9 @@ export class InfiniteBoardView {
+     getRegionBoundsMap() {
+         return structuredClone(this.layout?.regions ?? {});
+     }
++    getAttachmentBoundsMap() {
++        return structuredClone(this.layout?.attachments ?? {});
++    }
+     /**
+      * Adds a course-owned layer to the board's world coordinate space.
+      *
+@@ -1526,7 +1529,8 @@ export class InfiniteBoardView {
+     scheduleCameraNotifications() {
+         if (this.cameraListeners.size === 0)
+             return;
+-        this.cameraNotifyUntil = Math.max(this.cameraNotifyUntil, this.hostWindow.performance.now() + 760);
++        const transitionDuration = this.viewport.classList.contains("manual-navigation") ? 0 : 760;
++        this.cameraNotifyUntil = Math.max(this.cameraNotifyUntil, this.hostWindow.performance.now() + transitionDuration);
+         if (this.cameraFrame !== undefined)
+             return;
+         const notify = (timestamp) => {
+@@ -1582,7 +1586,7 @@ export class InfiniteBoardView {
+         this.transform();
+     }
+     onWheel(event) {
+-        if (this.inputOwner !== "runtime"
++        if (this.inputOwner === "course-object"
+             || boardInputTargetsInteractiveUi(event.composedPath()))
+             return;
+         event.preventDefault();
+diff --git a/dist/packages/web-runtime/src/layout.d.ts b/dist/packages/web-runtime/src/layout.d.ts
+index 70a9b74083d43d0e42b5f14a0e66ad496ce4c017..6d23207db7cfa1a9ac78655d298adeed85bec7fe 100644
+--- a/dist/packages/web-runtime/src/layout.d.ts
++++ b/dist/packages/web-runtime/src/layout.d.ts
+@@ -8,6 +8,8 @@ export interface Rect {
+ export interface BoardLayout {
+     nodes: Record<string, Rect>;
+     groups: Record<string, Rect>;
++    /** Host-rendered course UI that participates in board collision layout. */
++    attachments: Record<string, Rect>;
+     /** Actual rendered bounds for each logical course region. */
+     regions?: Record<string, Rect>;
+     bounds: Rect;
+@@ -18,6 +20,23 @@ export interface RegionLayoutConstraint {
+     y: number;
+     /** Space reserved for a progressively delivered course before every node exists. */
+     reservedWidth?: number;
++    /**
++     * Arrange top-level lesson cards as a stable visual lane plus a reading
++     * lane. This is computed at render time, so saved semantic boards also
++     * receive the updated course composition.
++     */
++    flow?: "semantic" | "reading";
++    /**
++     * Host-rendered controls or tasks attached to a semantic lesson node.
++     * Attachments reserve real board space without becoming lesson content.
++     */
++    attachments?: Array<{
++        id: string;
++        anchorNodeId: string;
++        width: number;
++        height: number;
++        gap?: number;
++    }>;
+ }
+ export interface BoardLayoutOptions {
+     regions?: Record<string, RegionLayoutConstraint>;
+diff --git a/dist/packages/web-runtime/src/layout.js b/dist/packages/web-runtime/src/layout.js
+index 9ecf2c58f2e93f6af42b4054475f4bf5decc2486..d64e18fc49b4c883e15dd9d7b1345f578a6e69be 100644
+--- a/dist/packages/web-runtime/src/layout.js
++++ b/dist/packages/web-runtime/src/layout.js
+@@ -1,5 +1,6 @@
+ const GAP = { compact: 28, normal: 54, spacious: 88 };
+ const TOPIC_GUTTER = 180;
++const VISUAL_LANE_KINDS = new Set(["geometry", "scene3d", "plot", "image", "diagram"]);
+ function visibleContentLength(value) {
+     if (value === null || value === undefined)
+         return 0;
+@@ -66,7 +67,38 @@ function union(rects, padding = 0) {
+ export function computeBoardLayout(state, measuredNodeSizes = {}, options = {}) {
+     const nodes = {};
+     const groups = {};
++    const attachments = {};
++    const attachmentRegions = {};
++    const attachmentsByAnchor = new Map();
++    for (const [regionId, constraint] of Object.entries(options.regions ?? {})) {
++        for (const attachment of constraint.attachments ?? []) {
++            const anchored = attachmentsByAnchor.get(attachment.anchorNodeId) ?? [];
++            anchored.push({ ...attachment, regionId });
++            attachmentsByAnchor.set(attachment.anchorNodeId, anchored);
++        }
++    }
+     const regionCursors = new Map();
++    const regionFlowProfiles = new Map();
++    for (const node of Object.values(state.nodes)) {
++        const regionId = typeof node.region_id === "string" && node.region_id
++            ? node.region_id
++            : "__legacy__";
++        if (options.regions?.[regionId]?.flow !== "reading")
++            continue;
++        if (["inside", "overlay"].includes(node.placement?.relation ?? ""))
++            continue;
++        const kind = String(node.kind ?? "text");
++        const profile = regionFlowProfiles.get(regionId) ?? {
++            hasVisual: false,
++            visualWidth: 0,
++        };
++        if (VISUAL_LANE_KINDS.has(kind)) {
++            const size = measuredNodeSizes[node.id] ?? measureSemanticNode(node);
++            profile.hasVisual = true;
++            profile.visualWidth = Math.max(profile.visualWidth, size.width);
++        }
++        regionFlowProfiles.set(regionId, profile);
++    }
+     const endpointId = (endpoint) => {
+         if (typeof endpoint === "string")
+             return endpoint;
+@@ -119,25 +151,93 @@ export function computeBoardLayout(state, measuredNodeSizes = {}, options = {})
+             groupRect(groupId);
+         return [
+             ...Object.values(nodes),
++            ...Object.values(attachments),
+             ...Object.entries(groups)
+                 .filter(([groupId]) => !groupContains(groupId, nodeId))
+                 .map(([, rect]) => rect),
+         ];
+     };
+     for (const node of Object.values(state.nodes)) {
+-        const size = measuredNodeSizes[node.id] ?? measureSemanticNode(node);
++        let size = measuredNodeSizes[node.id] ?? measureSemanticNode(node);
+         const placement = node.placement ?? { relation: "new_region" };
+         const anchor = placement.anchor ? nodes[placement.anchor] ?? groupRect(placement.anchor) : undefined;
+         const gap = GAP[placement.gap] ?? GAP.normal;
++        const regionId = typeof node.region_id === "string" && node.region_id
++            ? node.region_id
++            : "__legacy__";
++        const constraint = options.regions?.[regionId];
++        const authoredVisualRelationship = Boolean(anchor) && (Boolean(placement.anchor && state.groups[placement.anchor])
++            || (VISUAL_LANE_KINDS.has(String(node.kind ?? "text"))
++                && Boolean(placement.anchor && VISUAL_LANE_KINDS.has(String(state.nodes[placement.anchor]?.kind ?? "")))));
++        const readingFlow = constraint?.flow === "reading"
++            && !["inside", "overlay"].includes(placement.relation)
++            && !authoredVisualRelationship;
++        let flowLane;
++        let flowRegion;
+         let x = 100;
+         let y = 90;
+-        if (!anchor || placement.relation === "new_region") {
+-            const regionId = typeof node.region_id === "string" && node.region_id
+-                ? node.region_id
+-                : "__legacy__";
++        if (readingFlow) {
++            let region = regionCursors.get(regionId);
++            if (!region) {
++                const occupied = collisionRects(node.id);
++                const reservedRightEdges = [...regionCursors.values()].map((cursor) => cursor.x + cursor.reservedWidth);
++                const right = occupied.length || reservedRightEdges.length
++                    ? Math.max(...occupied.map((rect) => rect.x + rect.width), ...reservedRightEdges)
++                    : 100 - TOPIC_GUTTER;
++                region = {
++                    x: constraint?.x ?? (regionCursors.size === 0 ? 100 : right + TOPIC_GUTTER),
++                    y: constraint?.y ?? 90,
++                    reservedWidth: Math.max(0, constraint?.reservedWidth ?? 0),
++                    itemIndex: 0,
++                    rowY: constraint?.y ?? 90,
++                    rowHeight: 0,
++                    firstColumnWidth: 0,
++                    visualBottom: undefined,
++                    narrativeBottom: undefined,
++                };
++                regionCursors.set(regionId, region);
++            }
++            const profile = regionFlowProfiles.get(regionId) ?? {
++                hasVisual: false,
++                visualWidth: 0,
++            };
++            flowLane = VISUAL_LANE_KINDS.has(String(node.kind ?? "text"))
++                ? "visual"
++                : "narrative";
++            flowRegion = region;
++            if (
++                flowLane === "narrative"
++                && profile.hasVisual
++                && region.reservedWidth > profile.visualWidth + GAP.normal
++            ) {
++                // The host reserves one logical course region before the
++                // complete lesson has arrived. Keep both reading lanes inside
++                // that reservation so reflowing an older course cannot invade
++                // the next persisted course region on the infinite board.
++                const availableWidth = region.reservedWidth
++                    - profile.visualWidth
++                    - GAP.normal;
++                if (availableWidth >= 280)
++                    size = { ...size, width: Math.min(size.width, availableWidth) };
++            }
++            if (flowLane === "visual") {
++                x = region.x;
++                y = region.visualBottom === undefined
++                    ? region.y
++                    : region.visualBottom + GAP.normal;
++            }
++            else {
++                x = region.x + (profile.hasVisual
++                    ? profile.visualWidth + GAP.normal
++                    : 0);
++                y = region.narrativeBottom === undefined
++                    ? region.y
++                    : region.narrativeBottom + GAP.compact;
++            }
++        }
++        else if (!anchor || placement.relation === "new_region") {
+             let region = regionCursors.get(regionId);
+             if (!region) {
+-                const constraint = options.regions?.[regionId];
+                 const occupied = collisionRects(node.id);
+                 const reservedRightEdges = [...regionCursors.values()].map((cursor) => cursor.x + cursor.reservedWidth);
+                 const right = occupied.length || reservedRightEdges.length
+@@ -202,9 +302,9 @@ export function computeBoardLayout(state, measuredNodeSizes = {}, options = {})
+             x = anchor.x + 24;
+             y = anchor.y + 24;
+         }
+-        if (placement.align === "center" && anchor && ["below", "above"].includes(placement.relation))
++        if (!readingFlow && placement.align === "center" && anchor && ["below", "above"].includes(placement.relation))
+             x = anchor.x + (anchor.width - size.width) / 2;
+-        if (placement.align === "end" && anchor && ["below", "above"].includes(placement.relation))
++        if (!readingFlow && placement.align === "end" && anchor && ["below", "above"].includes(placement.relation))
+             x = anchor.x + anchor.width - size.width;
+         let candidate = { x, y, ...size };
+         if (!["inside", "overlay"].includes(placement.relation)) {
+@@ -215,15 +315,45 @@ export function computeBoardLayout(state, measuredNodeSizes = {}, options = {})
+             }
+         }
+         nodes[node.id] = candidate;
++        let attachedBottom = candidate.y + candidate.height;
++        for (const attachment of attachmentsByAnchor.get(node.id) ?? []) {
++            const attachmentWidth = Math.max(1, attachment.width);
++            const attachmentHeight = Math.max(1, attachment.height);
++            const attachmentGap = Math.max(12, attachment.gap ?? 42);
++            const attachmentConstraint = options.regions?.[attachment.regionId];
++            const regionLeft = attachmentConstraint?.x ?? flowRegion?.x ?? candidate.x;
++            const reservedWidth = Math.max(0, attachmentConstraint?.reservedWidth ?? 0);
++            const maximumX = reservedWidth > 0
++                ? Math.max(regionLeft, regionLeft + reservedWidth - attachmentWidth)
++                : candidate.x;
++            let attachmentCandidate = {
++                x: Math.min(Math.max(regionLeft, candidate.x), maximumX),
++                y: candidate.y + candidate.height + attachmentGap,
++                width: attachmentWidth,
++                height: attachmentHeight,
++            };
++            let guard = 0;
++            while (collisionRects(node.id).some((rect) => intersects(attachmentCandidate, rect)) && guard < 80) {
++                attachmentCandidate = { ...attachmentCandidate, y: attachmentCandidate.y + 36 };
++                guard += 1;
++            }
++            attachments[attachment.id] = attachmentCandidate;
++            attachmentRegions[attachment.id] = attachment.regionId;
++            attachedBottom = Math.max(attachedBottom, attachmentCandidate.y + attachmentCandidate.height);
++        }
++        if (flowRegion && flowLane === "visual")
++            flowRegion.visualBottom = attachedBottom;
++        if (flowRegion && flowLane === "narrative")
++            flowRegion.narrativeBottom = attachedBottom;
+     }
+     for (const groupId of Object.keys(state.groups))
+         groupRect(groupId);
+-    const all = [...Object.values(nodes), ...Object.values(groups)];
++    const all = [...Object.values(nodes), ...Object.values(groups), ...Object.values(attachments)];
+     const rawBounds = union(all, 100) ?? { x: 0, y: 0, width: 1200, height: 800 };
+     const shiftX = rawBounds.x < 20 ? 20 - rawBounds.x : 0;
+     const shiftY = rawBounds.y < 20 ? 20 - rawBounds.y : 0;
+     if (shiftX || shiftY) {
+-        for (const rect of [...Object.values(nodes), ...Object.values(groups)]) {
++        for (const rect of [...Object.values(nodes), ...Object.values(groups), ...Object.values(attachments)]) {
+             rect.x += shiftX;
+             rect.y += shiftY;
+         }
+@@ -268,12 +398,20 @@ export function computeBoardLayout(state, measuredNodeSizes = {}, options = {})
+         rects.push(rect);
+         regionRects.set(regionId, rects);
+     }
++    for (const [attachmentId, rect] of Object.entries(attachments)) {
++        const regionId = attachmentRegions[attachmentId];
++        if (!regionId)
++            continue;
++        const rects = regionRects.get(regionId) ?? [];
++        rects.push(rect);
++        regionRects.set(regionId, rects);
++    }
+     const regionBounds = Object.fromEntries([...regionRects.entries()].flatMap(([regionId, rects]) => {
+         const bounds = union(rects);
+         return bounds ? [[regionId, bounds]] : [];
+     }));
+-    const bounds = union([...Object.values(nodes), ...Object.values(groups)], 100) ?? rawBounds;
+-    return { nodes, groups, regions: regionBounds, bounds };
++    const bounds = union([...Object.values(nodes), ...Object.values(groups), ...Object.values(attachments)], 100) ?? rawBounds;
++    return { nodes, groups, attachments, regions: regionBounds, bounds };
+ }
+ export function targetRect(state, layout, target) {
+     if (!target)

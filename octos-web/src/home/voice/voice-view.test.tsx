@@ -1,0 +1,300 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { VoiceView } from "./voice-view";
+import type { VoiceConversation } from "./use-voice-conversation";
+
+const conversationMock = vi.hoisted(() => ({
+  state: "idle" as VoiceConversation["state"],
+  cameraActive: false,
+  cameraStream: null as MediaStream | null,
+  lastSentFrameUrl: null as string | null,
+  generating: false,
+  exiting: false,
+  visual: null as VoiceConversation["visual"],
+  turns: [] as VoiceConversation["turns"],
+  error: null as string | null,
+  start: vi.fn(),
+  stop: vi.fn(),
+  interrupt: vi.fn(),
+  toggleCamera: vi.fn(),
+  dismissVisual: vi.fn(),
+}));
+const navigateMock = vi.hoisted(() => vi.fn());
+const runtimeMock = vi.hoisted((): {
+  label: string;
+  tone: "default" | "success" | "warning" | "danger";
+  ready: boolean;
+  loading: boolean;
+  canRepair: boolean;
+  state: string;
+  needsAttention: boolean;
+  refresh: ReturnType<typeof vi.fn>;
+} => ({
+  label: "Voice engine ready",
+  tone: "success",
+  ready: true,
+  loading: false,
+  canRepair: true,
+  state: "healthy",
+  needsAttention: false,
+  refresh: vi.fn(),
+}));
+
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigateMock,
+}));
+
+vi.mock("./use-voice-conversation", () => ({
+  useVoiceConversation: () => ({
+    state: conversationMock.state,
+    lastUserText: "",
+    lastAssistantText: "",
+    turns: conversationMock.turns,
+    error: conversationMock.error,
+    start: conversationMock.start,
+    stop: conversationMock.stop,
+    interrupt: conversationMock.interrupt,
+    cameraActive: conversationMock.cameraActive,
+    cameraStream: conversationMock.cameraStream,
+    lastSentFrameUrl: conversationMock.lastSentFrameUrl,
+    cameraError: null,
+    toggleCamera: conversationMock.toggleCamera,
+    generating: conversationMock.generating,
+    exiting: conversationMock.exiting,
+    visual: conversationMock.visual,
+    dismissVisual: conversationMock.dismissVisual,
+  }),
+}));
+
+vi.mock("./voice-orb", () => ({
+  VoiceOrb: ({ state }: { state: string }) => (
+    <div data-testid="voice-orb-state">{state}</div>
+  ),
+}));
+
+vi.mock("./camera-preview", () => ({
+  CameraPreview: () => <div data-testid="camera-preview" />,
+}));
+
+vi.mock("./visual-panel", () => ({
+  VisualPanel: () => <div data-testid="visual-panel" />,
+}));
+
+vi.mock("./audio-playback", () => ({
+  unlockAudio: vi.fn(),
+}));
+
+vi.mock("../use-ominix-runtime-summary", () => ({
+  useOminixRuntimeSummary: () => runtimeMock,
+}));
+
+describe("VoiceView", () => {
+  beforeEach(() => {
+    cleanup();
+    conversationMock.state = "idle";
+    conversationMock.cameraActive = false;
+    conversationMock.cameraStream = null;
+    conversationMock.lastSentFrameUrl = null;
+    conversationMock.generating = false;
+    conversationMock.exiting = false;
+    conversationMock.visual = null;
+    conversationMock.turns = [];
+    conversationMock.error = null;
+    conversationMock.start.mockReset();
+    conversationMock.stop.mockReset();
+    conversationMock.interrupt.mockReset();
+    conversationMock.toggleCamera.mockReset();
+    conversationMock.dismissVisual.mockReset();
+    navigateMock.mockReset();
+    runtimeMock.label = "Voice engine ready";
+    runtimeMock.tone = "success";
+    runtimeMock.ready = true;
+    runtimeMock.loading = false;
+    runtimeMock.canRepair = true;
+    runtimeMock.state = "healthy";
+    runtimeMock.needsAttention = false;
+    runtimeMock.refresh.mockReset();
+  });
+
+  it("auto-starts microphone capture on mount", () => {
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    // Entering the voice view begins listening immediately — no orb tap needed.
+    expect(conversationMock.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries auto-start during StrictMode effect replay", () => {
+    render(
+      <StrictMode>
+        <VoiceView sessionId="voice-test" onBack={vi.fn()} />
+      </StrictMode>,
+    );
+
+    expect(conversationMock.start).toHaveBeenCalledTimes(2);
+    expect(conversationMock.stop).not.toHaveBeenCalled();
+  });
+
+  it("shows the generating indicator even while a prior visual is docked", () => {
+    conversationMock.generating = true;
+    conversationMock.visual = { path: "w/old.html", kind: "html" };
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.getByText("正在生成视觉内容…")).toBeTruthy();
+  });
+
+  it("renders recent ASR and assistant history", () => {
+    conversationMock.turns = [
+      {
+        id: "t1",
+        userText: "第一句",
+        assistantText: "第一个回答",
+        awaitingTranscript: false,
+      },
+      {
+        id: "t2",
+        userText: "第二句",
+        assistantText: "第二个回答",
+        awaitingTranscript: false,
+      },
+      {
+        id: "t3",
+        userText: "第三句",
+        assistantText: "第三个回答",
+        awaitingTranscript: false,
+      },
+      {
+        id: "t4",
+        userText: "第四句",
+        assistantText: "第四个回答",
+        awaitingTranscript: false,
+      },
+    ];
+
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.queryByText("第一句")).toBeNull();
+    expect(screen.getByText("第二句")).toBeTruthy();
+    expect(screen.getByText("第三个回答")).toBeTruthy();
+    expect(screen.getByText("第四个回答")).toBeTruthy();
+  });
+
+  it("renders ASR text before an assistant reply exists", () => {
+    conversationMock.turns = [
+      {
+        id: "t1",
+        userText: "帮我记住我喜欢乌龙茶",
+        assistantText: "",
+        awaitingTranscript: false,
+      },
+    ];
+
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.getByText("帮我记住我喜欢乌龙茶")).toBeTruthy();
+  });
+
+  it("shows microphone/VAD errors when the voice engine is ready", () => {
+    conversationMock.error = "VAD asset unavailable: /vad/silero_vad_legacy.onnx";
+
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.getByRole("alert").textContent).toContain("silero_vad_legacy.onnx");
+  });
+
+  it("toggles the camera when the camera button is clicked", () => {
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "toggle camera" }));
+
+    expect(conversationMock.toggleCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a starting indicator when the camera is on but the stream isn't ready", () => {
+    conversationMock.cameraActive = true;
+    conversationMock.cameraStream = null;
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.getByText("摄像头开启中…")).toBeTruthy();
+    expect(screen.queryByTestId("camera-preview")).toBeNull();
+  });
+
+  it("shows the self-preview once the stream is live", () => {
+    conversationMock.cameraActive = true;
+    conversationMock.cameraStream = {} as MediaStream;
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.getByTestId("camera-preview")).toBeTruthy();
+    expect(screen.getByText("实时画面")).toBeTruthy();
+    // starting indicator gone once the stream is present
+    expect(screen.queryByText("摄像头开启中…")).toBeNull();
+  });
+
+  it("hides the self-preview when the camera is off", () => {
+    conversationMock.cameraActive = false;
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.queryByTestId("camera-preview")).toBeNull();
+  });
+
+  it("shows the frame sent to the AI when a frame URL is present", () => {
+    conversationMock.lastSentFrameUrl = "blob:fake-frame";
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    const img = screen.getByAltText("frame sent to AI") as HTMLImageElement;
+    expect(img.getAttribute("src")).toBe("blob:fake-frame");
+    expect(screen.getByText("已发给 AI")).toBeTruthy();
+  });
+
+  it("hides the sent-frame thumbnail when there is none", () => {
+    conversationMock.lastSentFrameUrl = null;
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.queryByAltText("frame sent to AI")).toBeNull();
+  });
+
+  it("opens voice settings instead of starting capture when runtime is not ready", () => {
+    runtimeMock.label = "Voice engine needs repair";
+    runtimeMock.tone = "warning";
+    runtimeMock.ready = false;
+    runtimeMock.loading = false;
+    runtimeMock.canRepair = true;
+    runtimeMock.state = "missing_plist";
+    runtimeMock.needsAttention = true;
+
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    expect(screen.getByText("语音引擎未就绪，请先在 Settings 里安装或修复 OMiniX。")).toBeTruthy();
+    // The readiness pill surfaces only in a problem state.
+    expect(screen.getByText("Voice engine needs repair")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "open voice settings" }));
+
+    expect(conversationMock.start).not.toHaveBeenCalled();
+    // Non-admin reachable tab — the OminiX tab is admin-only (#313).
+    expect(navigateMock).toHaveBeenCalledWith("/settings?tab=voice");
+  });
+
+  it("does not show the readiness pill when the engine is ready", () => {
+    // Defaults from beforeEach: ready + needsAttention=false.
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+    expect(screen.queryByText("Voice engine ready")).toBeNull();
+  });
+
+  it("stays silent while the runtime is still checking", () => {
+    runtimeMock.label = "Checking voice engine";
+    runtimeMock.tone = "default";
+    runtimeMock.ready = false;
+    runtimeMock.loading = true;
+    runtimeMock.needsAttention = false;
+
+    render(<VoiceView sessionId="voice-test" onBack={vi.fn()} />);
+
+    // No not-ready guidance while still checking — the state is silent. (The
+    // orb keeps its not-ready affordance, but its click is a no-op until the
+    // check resolves, so no explicit settings CTA is shown either.)
+    expect(
+      screen.queryByText("语音引擎未就绪，请先在 Settings 里安装或修复 OMiniX。"),
+    ).toBeNull();
+    expect(screen.queryByText(/打开 OMiniX 设置/)).toBeNull();
+  });
+});
