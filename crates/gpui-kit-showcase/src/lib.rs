@@ -1296,6 +1296,56 @@ impl Render for StoryRoot {
     }
 }
 
+/// The Kit's window root, which owns the window-level component plugins.
+///
+/// A window that renders [`StoryRoot`] must be rooted at this type; see
+/// [`window_root`].
+pub use gpui_kit::base::Root as WindowRoot;
+
+/// Wraps [`StoryRoot`] in [`WindowRoot`] — the window root the gallery needs.
+///
+/// [`StoryRoot`] is not by itself a complete window root for the Kit: the
+/// window-level component state (notifications, dialogs, sheets, tooltips,
+/// window text selection) lives in plugins owned by [`WindowRoot`].
+/// `WindowExt::push_notification` and friends resolve that state by looking up
+/// the window's `gpui_base::Root`, and panic with "component window state is
+/// missing" when the window is rooted at anything else — which is what a bare
+/// [`StoryRoot`] window does the first time any gallery control touches that
+/// state (a notification button, a dialog, the theme palette, …).
+///
+/// `gpui_kit::open_window` installs this wrapper for the standalone binary. A
+/// host that opens its own window must do the same, by returning the entity
+/// this function builds from `cx.open_window`'s builder closure:
+///
+/// ```ignore
+/// cx.open_window(options, |window, cx| {
+///     let gallery = Gallery::view(None, window, cx);
+///     let story_root = cx.new(|cx| StoryRoot::embedded(gallery, window, cx));
+///     gpui_kit_showcase::window_root(story_root, window, cx)
+/// })
+/// ```
+pub fn window_root(
+    story_root: Entity<StoryRoot>,
+    window: &mut Window,
+    cx: &mut App,
+) -> Entity<WindowRoot> {
+    cx.new(|cx| WindowRoot::new(story_root, window, cx))
+}
+
+/// Whether `window` is a showcase window opened by [`window_root`], or the bare
+/// [`StoryRoot`] window earlier versions of this crate's `init`-only
+/// integration produced.
+pub fn is_showcase_window(window: &AnyWindowHandle, cx: &App) -> bool {
+    if window.downcast::<StoryRoot>().is_some() {
+        return true;
+    }
+
+    window
+        .downcast::<WindowRoot>()
+        .and_then(|root| root.read(cx).ok())
+        .is_some_and(|root| root.view().clone().downcast::<StoryRoot>().is_ok())
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(target_os = "linux")]

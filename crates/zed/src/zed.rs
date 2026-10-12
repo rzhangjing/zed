@@ -1355,7 +1355,7 @@ fn open_gpui_kit_showcase(cx: &mut App) {
     if let Some(existing) = cx
         .windows()
         .into_iter()
-        .find_map(|window| window.downcast::<gpui_kit_showcase::StoryRoot>())
+        .find(|window| gpui_kit_showcase::is_showcase_window(window, cx))
     {
         existing
             .update(cx, |_, window, _| window.activate_window())
@@ -1397,7 +1397,14 @@ fn open_gpui_kit_showcase(cx: &mut App) {
             let root = cx.new(|cx| gpui_kit_showcase::StoryRoot::embedded(gallery, window, cx));
             let focus_handle = root.read(cx).focus_handle(cx);
             window.defer(cx, move |window, cx| focus_handle.focus(window, cx));
-            root
+            // Wrap the gallery in the Kit's window root. Its plugins own the
+            // window-level component state — notifications, dialogs, sheets,
+            // tooltips, window text selection — that gallery controls reach
+            // through `WindowExt`. Without it the first such control (a
+            // notification button, a dialog, ctrl-k) panics with "component
+            // window state is missing", and a debug build turns any panic
+            // raised while handling a window message into `process::abort()`.
+            gpui_kit_showcase::window_root(root, window, cx)
         },
     )
     .log_err();
@@ -5643,11 +5650,7 @@ mod tests {
             cx.read(|cx| {
                 cx.windows()
                     .into_iter()
-                    .filter(|window| {
-                        window
-                            .downcast::<gpui_kit_showcase::StoryRoot>()
-                            .is_some()
-                    })
+                    .filter(|window| gpui_kit_showcase::is_showcase_window(window, cx))
                     .count()
             })
         }
@@ -5662,6 +5665,22 @@ mod tests {
 
         assert_eq!(showcase_windows(cx), 1);
         assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+
+        // The gallery reaches its window-level component state (notifications,
+        // dialogs, sheets, tooltips, window text selection) through the Kit's
+        // window root. Rooting the window at a bare `StoryRoot` instead makes
+        // the first such control panic with "component window state is
+        // missing", which a debug build turns into `process::abort()`.
+        assert!(
+            cx.read(|cx| {
+                cx.windows().into_iter().any(|window| {
+                    window
+                        .downcast::<gpui_kit_showcase::WindowRoot>()
+                        .is_some()
+                })
+            }),
+            "the showcase window is rooted at the Kit's window root"
+        );
 
         cx.update(|cx| cx.dispatch_action(&zed_actions::OpenGpuiKitShowcase));
         cx.run_until_parked();
