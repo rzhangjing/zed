@@ -14,4 +14,8 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 gpui.workspace = true
+# The GPUI Kit icon catalog, layered under this crate's own assets by
+# `AppAssets`. Apache-2.0 (ISC for the Lucide icons it embeds), which is
+# compatible with this crate's GPL-3.0-or-later.
+gpui-kit-assets.workspace = true
 util.workspace = true

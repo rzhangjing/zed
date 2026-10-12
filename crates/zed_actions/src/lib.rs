@@ -67,6 +67,8 @@ actions!(
         OpenDocs,
         /// Views open source licenses.
         OpenLicenses,
+        /// Opens the GPUI Kit component showcase in a window of its own.
+        OpenGpuiKitShowcase,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.

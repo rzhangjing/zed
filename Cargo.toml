@@ -201,6 +201,7 @@ members = [
     "crates/gpui-fps",
     "crates/gpui-kit",
     "crates/gpui-kit-assets",
+    "crates/gpui-kit-showcase",
     # The script host and everything built on it are vendored but kept out of the
     # build, because one pinned QuickJS revision could not be fetched into
     # cargo's git db on this machine (the object is absent, so both `--offline`
@@ -447,6 +448,7 @@ gpui-component-macros = { path = "crates/gpui-component-macros" }
 gpui-fps = { path = "crates/gpui-fps" }
 gpui-kit = { path = "crates/gpui-kit" }
 gpui-kit-assets = { path = "crates/gpui-kit-assets" }
+gpui-kit-showcase = { path = "crates/gpui-kit-showcase" }
 # Vendored, not members: see the comment in the `members` list above.
 #gpui-shell = { path = "crates/gpui-shell" }
 #gpui-component-shell = { path = "crates/gpui-component-shell" }

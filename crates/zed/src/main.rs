@@ -36,7 +36,7 @@ use onboarding::{FIRST_OPEN, show_onboarding_view};
 use prompt_store::PromptBuilder;
 use reqwest_client::ReqwestClient;
 
-use assets::Assets;
+use assets::{AppAssets, Assets};
 use node_runtime::{NodeBinaryOptions, NodeRuntime};
 use parking_lot::Mutex;
 use project::{project_settings::ProjectSettings, trusted_worktrees};
@@ -311,7 +311,10 @@ fn main() {
     check_for_conpty_dll();
 
     let app = build_application()
-        .with_assets(Assets)
+        // GPUI has one asset-source slot, so the GPUI Kit icon catalog that
+        // the `gpui-kit` showcase needs is layered here, under Zed's own
+        // assets. See `assets::AppAssets`.
+        .with_assets(AppAssets)
         .with_restart_arguments(restart_arguments);
 
     let app_db = db::AppDatabase::new();

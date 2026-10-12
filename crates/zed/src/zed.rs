@@ -292,6 +292,9 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &About, cx| {
         open_about_window(cx);
+    })
+    .on_action(|_: &zed_actions::OpenGpuiKitShowcase, cx| {
+        open_gpui_kit_showcase(cx);
     });
 }
 
@@ -1337,6 +1340,67 @@ fn initialize_pane(
             toolbar.add_item(image_view_toolbar, window, cx);
         })
     });
+}
+
+/// Opens the GPUI Kit component showcase — the vendored `gpui-kit` storybook
+/// gallery — in a window of its own.
+///
+/// The gallery is a guest view tree inside a normal Zed window: Zed's frame and
+/// window lifecycle, the Kit's own component state. See
+/// `crates/gpui-kit-showcase/PROVENANCE.md` for what the gallery contains and
+/// what upstream's copy has that this one does not.
+fn open_gpui_kit_showcase(cx: &mut App) {
+    // One showcase is enough; a second Help > gpui-kit focuses the first, the
+    // way the About window behaves.
+    if let Some(existing) = cx
+        .windows()
+        .into_iter()
+        .find_map(|window| window.downcast::<gpui_kit_showcase::StoryRoot>())
+    {
+        existing
+            .update(cx, |_, window, _| window.activate_window())
+            .log_err();
+        return;
+    }
+
+    // Idempotent, and scoped to the Kit's own globals plus key bindings under
+    // the gallery's key context, so Zed's theme, keymap and HTTP client are
+    // left alone. Deliberately *not* `gpui_kit_showcase::init_app`, which
+    // binds `alt-f4` to an action whose handler quits the process.
+    gpui_kit_showcase::init(cx);
+
+    let window_size = Size {
+        width: px(1280.),
+        height: px(860.),
+    };
+
+    cx.open_window(
+        WindowOptions {
+            titlebar: Some(TitlebarOptions {
+                title: Some("gpui-kit".into()),
+                appears_transparent: true,
+                traffic_light_position: Some(point(px(12.), px(12.))),
+            }),
+            window_bounds: Some(WindowBounds::centered(window_size, cx)),
+            kind: WindowKind::Normal,
+            app_id: Some(ReleaseChannel::global(cx).app_id().to_owned()),
+            ..Default::default()
+        },
+        |window, cx| {
+            // `StoryRoot::embedded` is the gallery without the storybook's own
+            // in-window title bar: Zed's frame already owns the window chrome,
+            // and a second set of window controls under this one would be
+            // wrong. The title bar's two menus stay reachable through the
+            // gallery's key context (ctrl-k for themes, ctrl-shift-p for the
+            // component palette).
+            let gallery = gpui_kit_showcase::Gallery::view(None, window, cx);
+            let root = cx.new(|cx| gpui_kit_showcase::StoryRoot::embedded(gallery, window, cx));
+            let focus_handle = root.read(cx).focus_handle(cx);
+            window.defer(cx, move |window, cx| focus_handle.focus(window, cx));
+            root
+        },
+    )
+    .log_err();
 }
 
 fn open_about_window(cx: &mut App) {
@@ -2510,8 +2574,9 @@ mod tests {
         DisplayPoint, Editor, MultiBufferOffset, SelectionEffects, display_map::DisplayRow,
     };
     use gpui::{
-        Action, AnyWindowHandle, App, AssetSource, BorrowAppContext, Modifiers, OwnedMenuItem,
-        TestAppContext, UpdateGlobal, VisualTestContext, WindowHandle, actions, point, px,
+        Action, AnyWindowHandle, App, AssetSource, BorrowAppContext, MenuItem, Modifiers,
+        OwnedMenuItem, TestAppContext, UpdateGlobal, VisualTestContext, WindowHandle, actions, point,
+        px,
     };
     use language::{markdown_lang, rust_lang};
     use pretty_assertions::{assert_eq, assert_ne};
@@ -5479,6 +5544,60 @@ mod tests {
                 "zed_actions",
                 "zed_predict_onboarding",
             ];
+
+            // Actions register themselves through `inventory`, so every library
+            // the binary links contributes to `all_action_names` — including the
+            // vendored GPUI Kit stack (`gpui-base`, `gpui-component` and the
+            // `gpui-kit-showcase` gallery behind Help > gpui-kit). Those
+            // namespaces are the Kit's, not Zed's, and are listed separately so
+            // that the list above stays a readable inventory of Zed's own.
+            //
+            // The consequence of listing them is that a *future* Zed namespace
+            // spelled exactly like one of these would not fail this test. Adding
+            // the Kit's namespaces here was chosen over filtering them out,
+            // because a filter would hide them from the check in the same way
+            // while keeping the set of what is ignored invisible.
+            let expected_namespaces = expected_namespaces
+                .into_iter()
+                .chain([
+                    "accordion_story",
+                    "button_story",
+                    "command_story",
+                    "data_table_story",
+                    "description_list_story",
+                    "dialog_story",
+                    "diff",
+                    "diff_story",
+                    "dock",
+                    "dropdown_button_story",
+                    "form_story",
+                    "input",
+                    "inspector",
+                    "label_story",
+                    "list_story",
+                    "menu_story",
+                    "native_menu_story",
+                    "number_input",
+                    "otp_input_story",
+                    "popover_story",
+                    "progress_story",
+                    "root",
+                    "scrollbar_story",
+                    "select_story",
+                    "sheet_story",
+                    "sidebar_story",
+                    "slider_story",
+                    "stepper_story",
+                    "story",
+                    "tabs_story",
+                    "theme_colors_story",
+                    "themes",
+                    "toolbar_story",
+                    "tooltip_story",
+                    "ui",
+                    "virtual_list_story",
+                ])
+                .collect::<Vec<_>>();
             assert_eq!(
                 all_namespaces,
                 expected_namespaces
@@ -5488,6 +5607,67 @@ mod tests {
                     .collect::<Vec<_>>()
             );
         });
+    }
+
+    /// The Help menu carries the GPUI Kit showcase, and the item dispatches the
+    /// action `open_gpui_kit_showcase` is registered for.
+    #[gpui::test]
+    fn test_gpui_kit_showcase_menu_item(cx: &mut App) {
+        settings::init(cx);
+        release_channel::init(Version::new(0, 0, 0), cx);
+
+        let help = app_menus(cx)
+            .into_iter()
+            .find(|menu| menu.name == "Help")
+            .expect("the Help menu exists");
+        let action = help
+            .items
+            .into_iter()
+            .find_map(|item| match item {
+                MenuItem::Action { name, action, .. } if name == "gpui-kit" => Some(action),
+                _ => None,
+            })
+            .expect("the Help menu has a gpui-kit item");
+
+        assert_eq!(
+            action.name(),
+            <zed_actions::OpenGpuiKitShowcase as Action>::name_for_type()
+        );
+    }
+
+    /// Help > gpui-kit opens the gallery in a window of its own, and a second
+    /// dispatch focuses that window rather than opening another.
+    #[gpui::test]
+    async fn test_gpui_kit_showcase_opens_one_window(cx: &mut TestAppContext) {
+        fn showcase_windows(cx: &TestAppContext) -> usize {
+            cx.read(|cx| {
+                cx.windows()
+                    .into_iter()
+                    .filter(|window| {
+                        window
+                            .downcast::<gpui_kit_showcase::StoryRoot>()
+                            .is_some()
+                    })
+                    .count()
+            })
+        }
+
+        init_test(cx);
+        cx.update(init);
+
+        // Dispatched the way the menu item dispatches it, so this covers the
+        // `on_action` registration as well as the window itself.
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenGpuiKitShowcase));
+        cx.run_until_parked();
+
+        assert_eq!(showcase_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenGpuiKitShowcase));
+        cx.run_until_parked();
+
+        assert_eq!(showcase_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
     }
 
     #[gpui::test]

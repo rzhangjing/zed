@@ -1,0 +1,61 @@
+[package]
+name = "gpui-kit-showcase"
+version = "0.7.1"
+description = "The GPUI Kit storybook gallery, mounted in a host application's window."
+publish = false
+edition.workspace = true
+
+[features]
+# Both optional Kit feature sets fail to compile against this repository's
+# `Cargo.lock`, so neither is enabled by default here:
+#   * `tree-sitter` — `gpui-component`'s language table reads
+#     `tree_sitter_yaml::HIGHLIGHTS_QUERY`, which the locked `tree-sitter-yaml
+#     0.7.2` does not export.
+#   * `speech` — `gpui-component`'s WinRT backend does not resolve
+#     `windows::Foundation::{IAsyncAction, IAsyncOperation, ...}` against the
+#     locked `windows` crate.
+# Neither is needed to render the gallery. See PROVENANCE.md.
+default = []
+inspector = ["gpui-kit/inspector"]
+speech = ["gpui-kit/speech"]
+tree-sitter = ["gpui-kit/tree-sitter-languages"]
+test-support = ["gpui-kit/test-support"]
+
+[dependencies]
+anyhow.workspace = true
+# The gallery speaks GPUI through the Kit facade only, so its macro output
+# resolves against one `gpui` (the workspace crate the Kit re-exports).
+# Deliberately *not* `gpui` itself: a direct dependency would put `gpui` in the
+# extern prelude, and the modules that glob-import `gpui_kit::*` would then see
+# two `gpui`s and fail with E0659.
+gpui-kit.workspace = true
+gpui-fps.workspace = true
+
+async-channel.workspace = true
+autocorrect = "2.14.2"
+chrono.workspace = true
+csv = "1.4"
+fake = { version = "2.10.0", features = ["dummy"] }
+itertools.workspace = true
+rand = "0.8"
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3.22", features = [
+  "env-filter",
+  "fmt",
+  "registry",
+], default-features = false }
+unindent.workspace = true
+rust-i18n.workspace = true
+dirs.workspace = true
+
+# `gpui-kit`'s test harness, for the `#[gpui_kit::test]` unit tests the stories
+# carry. The main dependency stays feature-free so the gallery can be embedded
+# without pulling the test harness into an application binary.
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true
