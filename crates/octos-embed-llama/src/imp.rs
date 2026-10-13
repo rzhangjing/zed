@@ -10,7 +10,7 @@ use llama_cpp_2::context::params::{LlamaContextParams, LlamaPoolingType};
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
-use llama_cpp_2::model::{AddBos, LlamaModel};
+use llama_cpp_2::model::LlamaModel;
 use octos_llm::EmbeddingProvider;
 
 use crate::prompt::{batch_plan, l2_normalize, mrl_truncate, with_prompt};
@@ -209,10 +209,18 @@ impl LlamaEmbedder {
         let mut tokens = Vec::with_capacity(texts.len());
         for &text in texts {
             let prompted = with_prompt(text, is_query);
+            // llama-cpp-2 0.1.134 -> 0.1.159: `LlamaModel::str_to_token(&str,
+            // AddBos)` and the `AddBos` enum were both removed; tokenization
+            // now lives on `LlamaVocab::tokenize(&[u8], add_special,
+            // parse_special)` and is infallible (the old `StringToTokenError`
+            // only guarded `CString::new` against interior NULs). This is
+            // behaviour-preserving: 0.1.134's `str_to_token` hardcoded
+            // `parse_special: true` and mapped `AddBos::Always` to
+            // `add_special: true`.
             let mut t = inner
                 .borrow_owner()
-                .str_to_token(&prompted, AddBos::Always)
-                .map_err(|e| eyre!("tokenizing: {e}"))?;
+                .vocab()
+                .tokenize(prompted.as_bytes(), true, true);
             t.truncate(self.max_tokens);
             if t.is_empty() {
                 return Err(eyre!("text tokenized to zero tokens"));

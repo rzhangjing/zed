@@ -70,6 +70,17 @@ fn main() {
         } else {
             // 与上面 MSVC 分支等价的 8MB 栈，GNU ld 的写法不同；delay-load 未在 GNU 下复刻。
             println!("cargo:rustc-link-arg=-Wl,--stack,{}", 8 * 1024 * 1024);
+
+            // Windows 加载器拒绝 `SizeOfImage >= 0x78000000`（1.875 GiB）的映像：这样的
+            // exe 启动时报「此应用无法在你的电脑上运行」（ERROR_BAD_EXE_FORMAT），
+            // 实测 1.850 GiB 可以加载、1.875 GiB 直接被拒（改头字段即可复现）。
+            // 合并 Octos 之后，dev 构建把整棵依赖树的 DWARF 一起链进来，已越过该线
+            // （0x7EA24000 = 1.978 GiB）。dev 配置下丢掉调试段把映像压回阈值以内；
+            // COFF 符号表保留，所以 panic backtrace 仍能解析出符号名。
+            // 想要源码级调试信息：改用 `[profile.dev] debug = 1`（只留行表）或 release 配置。
+            if std::env::var("PROFILE").as_deref() == Ok("debug") {
+                println!("cargo:rustc-link-arg=-Wl,--strip-debug");
+            }
         }
 
         if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {

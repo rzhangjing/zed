@@ -923,6 +923,12 @@ octos-swarm = { path = "crates/octos-swarm" }
 octos-fleet = { path = "crates/octos-fleet" }
 octos-fleet-worker = { path = "crates/octos-fleet-worker" }
 octos-embed-llama = { path = "crates/octos-embed-llama" }
+# The Octos kernel as a library. Zed embeds `octos_cli::embedded::serve_io`
+# in-process instead of spawning the `octos` binary; see
+# `crates/zed/src/zed/octos.rs`. `default-features = false` keeps the CLI's
+# default `embed-llama` (libclang) and `impersonate` (BoringSSL/cmake) builds
+# out of a host's build; consumers add the features they need (`api` for Zed).
+octos-cli = { path = "crates/octos-cli", default-features = false }
 
 # codex-rs crates (reused by Octos; fetched from the openai/codex git repo)
 codex-execpolicy = { git = "https://github.com/openai/codex", path = "codex-rs/execpolicy" }

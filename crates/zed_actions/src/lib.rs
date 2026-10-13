@@ -69,6 +69,8 @@ actions!(
         OpenLicenses,
         /// Opens the GPUI Kit component showcase in a window of its own.
         OpenGpuiKitShowcase,
+        /// Opens the Octos console for the embedded kernel.
+        OpenOctos,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.

@@ -152,6 +152,13 @@ miniprofiler_ui.workspace = true
 node_runtime.workspace = true
 notifications.workspace = true
 onboarding.workspace = true
+# The Octos kernel runs in this process, not as a child: `zed::octos` spawns
+# `octos_cli::embedded::serve_io` onto a Tokio runtime it owns. `api` is the OUP
+# runtime; the CLI's default `embed-llama` (libclang) and `impersonate`
+# (BoringSSL/cmake) features stay off so this dependency does not change what
+# Zed needs to build.
+octos-cli = { workspace = true, features = ["api"] }
+octos-core.workspace = true
 outline.workspace = true
 outline_panel.workspace = true
 parking_lot.workspace = true
@@ -194,6 +201,9 @@ theme_selector.workspace = true
 theme_settings.workspace = true
 time.workspace = true
 time_format.workspace = true
+# The embedded Octos runtime must be built with 8 MiB worker stacks (see
+# `octos_cli::embedded`); `zed::octos` owns that runtime.
+tokio.workspace = true
 title_bar.workspace = true
 toolchain_selector.workspace = true
 tracing.workspace = true

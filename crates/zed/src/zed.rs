@@ -7,6 +7,7 @@ mod migrate;
 pub(crate) mod move_to_applications;
 mod open_listener;
 mod open_url_modal;
+mod octos;
 mod quick_action_bar;
 #[cfg(all(target_os = "macos", feature = "visual-tests"))]
 pub mod visual_tests;
@@ -295,7 +296,15 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &zed_actions::OpenGpuiKitShowcase, cx| {
         open_gpui_kit_showcase(cx);
+    })
+    .on_action(|_: &zed_actions::OpenOctos, cx| {
+        octos::open_status(cx);
     });
+
+    // The Octos kernel is started here, as a library inside this process rather
+    // than as a child, and tied to Zed's lifetime; `Help > Octos` opens the
+    // console that drives it over the in-process connection. See `octos`.
+    octos::init(cx);
 }
 
 fn bind_on_window_closed(cx: &mut App) -> Option<gpui::Subscription> {
@@ -5639,6 +5648,32 @@ mod tests {
         assert_eq!(
             action.name(),
             <zed_actions::OpenGpuiKitShowcase as Action>::name_for_type()
+        );
+    }
+
+    /// The Help menu carries Octos, and the item dispatches the action
+    /// `octos::open_status` is registered for.
+    #[gpui::test]
+    fn test_octos_menu_item(cx: &mut App) {
+        settings::init(cx);
+        release_channel::init(Version::new(0, 0, 0), cx);
+
+        let help = app_menus(cx)
+            .into_iter()
+            .find(|menu| menu.name == "Help")
+            .expect("the Help menu exists");
+        let action = help
+            .items
+            .into_iter()
+            .find_map(|item| match item {
+                MenuItem::Action { name, action, .. } if name == "Octos" => Some(action),
+                _ => None,
+            })
+            .expect("the Help menu has an Octos item");
+
+        assert_eq!(
+            action.name(),
+            <zed_actions::OpenOctos as Action>::name_for_type()
         );
     }
 
