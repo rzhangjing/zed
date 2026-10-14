@@ -1,0 +1,79 @@
+# lod_junction_dwell — M0.5 perf baseline trajectory
+#
+# Oscillate the camera height around the LOD junction boundary (the height
+# at which MAX_TILE_SCREEN_PX = 288 triggers quadtree subdivision for
+# mid-level tiles). Hovering near this boundary makes the KICK rule
+# (all-four-children-or-keep-parent) flip back and forth, stressing:
+#   - the coarsening-blocked display retention path
+#   - the upsampled → sharpen atomic mesh+texture swap
+#   - the spawn_queue re-enqueue churn as tiles cross the junction
+#   - effective_tex / effective_uv inheritance composition
+#
+# The small longitude drift (0 → 10°) keeps the view from settling into a
+# perfectly static partition, so the junction logic is re-evaluated against
+# a slowly changing tile set rather than a frozen one.
+#
+# This is the most sensitive trajectory for LOD-smoothness regressions: a
+# change that makes the KICK rule more/less aggressive shows up as a shift
+# in the spawn_n / tex_upload_n oscillation amplitude.
+#
+# Duration: 60 s.
+
+[meta]
+name = "lod_junction_dwell"
+duration_s = 60.0
+description = "Oscillate height around the LOD subdivision junction (0.5-1.0) with slow lon drift. Stresses KICK + sharpen path."
+
+[[keyframe]]
+t = 0.0
+lon = 0.0
+lat = 23.0
+height = 1.0
+
+[[keyframe]]
+t = 8.0
+lon = 1.0
+lat = 23.0
+height = 0.6
+
+[[keyframe]]
+t = 16.0
+lon = 2.0
+lat = 23.0
+height = 1.0
+
+[[keyframe]]
+t = 24.0
+lon = 3.0
+lat = 23.0
+height = 0.55
+
+[[keyframe]]
+t = 32.0
+lon = 5.0
+lat = 23.0
+height = 0.95
+
+[[keyframe]]
+t = 40.0
+lon = 6.0
+lat = 23.0
+height = 0.5
+
+[[keyframe]]
+t = 48.0
+lon = 8.0
+lat = 23.0
+height = 0.85
+
+[[keyframe]]
+t = 56.0
+lon = 9.0
+lat = 23.0
+height = 0.6
+
+[[keyframe]]
+t = 60.0
+lon = 10.0
+lat = 23.0
+height = 0.8

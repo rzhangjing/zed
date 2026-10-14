@@ -1,0 +1,134 @@
+[workspace]
+resolver = "2"
+# 2026-09 P0 裁剪：`bevy-clipmap`（vendored 第三方 clipmap 实验，bevy 0.19 /
+# edition 2024，与工作区 bevy 0.15 / edition 2021 不兼容且无人引用）已删除，
+# 因此不再需要 exclude。
+members = [
+    # Domain layer (pure Rust, no framework dependency)
+    "domain/plot",
+    "domain/geospatial",
+    "domain/time",
+    "domain/camera",
+    "domain/event",
+    "domain/resource",
+    "domain/imagery",
+    "domain/datasource",
+    "domain/material",
+    "domain/atmosphere",
+    "domain/interaction",
+    "domain/shadow",
+    "domain/kml",
+    "domain/gpx",
+    "domain/globe",
+    "domain/quadtree",
+    "domain/animation",
+    "domain/scene-mode",
+    # Ports layer (trait contracts)
+    "ports/driven",
+    "ports/driving",
+    # Adapters layer (Bevy/IO implementations)
+    "adapters/bevy-render",
+    "adapters/plot-bevy",
+    "adapters/decoders",
+    "adapters/network",
+    "adapters/pipeline",
+    # Application layer (Bevy App assembly)
+    "application/cesium-app",
+    # Integration test suite (ported from CesiumJS Specs)
+    "specs",
+    # Tools
+    "tools/pixel_diff",
+    "tools/gen_offline_assets",
+]
+default-members = ["application/cesium-app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+# Math (f64 precision)
+# NOTE: glam's `fast-math` feature is intentionally DISABLED. It enables FMA
+# (fused multiply-add), which rounds `a*b+c` once instead of twice and produces
+# 1-ulp differences vs CesiumJS's standard IEEE-754 two-rounding arithmetic.
+# Bit-exact fidelity with the original CesiumJS Specs (the ground truth of the
+# verification plan) requires standard rounding. Do not re-enable fast-math.
+glam = { version = "0.29", features = ["serde"] }
+
+# Game engine / rendering
+# Default features disabled: audio (alsa-sys) and gilrs (libudev-sys) require
+# system libraries that may not be installed on headless build servers.
+bevy = { version = "0.15", default-features = false, features = [
+    "bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_gizmos",
+    "bevy_pbr", "bevy_picking", "bevy_render", "bevy_scene",
+    "bevy_sprite", "bevy_state", "bevy_text", "bevy_ui",
+    "bevy_window", "bevy_winit", "default_font", "multi_threaded",
+    "png", "x11",
+] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Error handling
+thiserror = "2"
+
+# Triangulation
+earcut = "0.4"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client
+ureq = "2"
+
+# Image decoding
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+# Internal domain crates
+cesium-geospatial = { path = "domain/geospatial" }
+cesium-plot = { path = "domain/plot" }
+cesium-time = { path = "domain/time" }
+cesium-camera = { path = "domain/camera" }
+cesium-event = { path = "domain/event" }
+cesium-resource = { path = "domain/resource" }
+# 2026-09 P1 裁剪：`cesium-terrain`（DOMAIN/terrain）、`cesium-tileset`、
+# `cesium-gltf` 已删除 —— 3D Tiles / 倾斜摄影 / glTF 内容链与地形高程链
+# 都不属于「2D/3D 地球影像 + 标绘」目标（标绘只贴 WGS84 椭球面）。
+cesium-imagery = { path = "domain/imagery" }
+cesium-datasource = { path = "domain/datasource" }
+cesium-material = { path = "domain/material" }
+cesium-atmosphere = { path = "domain/atmosphere" }
+cesium-interaction = { path = "domain/interaction" }
+cesium-shadow = { path = "domain/shadow" }
+cesium-kml = { path = "domain/kml" }
+cesium-gpx = { path = "domain/gpx" }
+# 2026-09 P1 裁剪：`cesium-styling`（Cesium3DTileStyle 表达式引擎）随
+# 3D Tiles 路线一同删除 —— 没有 tileset 就没有样式消费者。
+cesium-globe = { path = "domain/globe" }
+cesium-quadtree = { path = "domain/quadtree" }
+cesium-animation = { path = "domain/animation" }
+cesium-scene-mode = { path = "domain/scene-mode" }
+
+# Internal port crates
+cesium-ports-driven = { path = "ports/driven" }
+cesium-ports-driving = { path = "ports/driving" }
+
+# Internal adapter crates
+cesium-bevy-render = { path = "adapters/bevy-render" }
+cesium-plot-bevy = { path = "adapters/plot-bevy" }
+cesium-decoders = { path = "adapters/decoders" }
+cesium-network = { path = "adapters/network" }
+cesium-pipeline = { path = "adapters/pipeline" }
+
+[profile.dev]
+split-debuginfo = "unpacked"
+incremental = true
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = "limited"

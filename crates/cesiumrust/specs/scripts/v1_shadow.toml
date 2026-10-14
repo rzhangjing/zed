@@ -1,0 +1,62 @@
+# v1_shadow.toml — M4.1 day_night shadow baseline capture script
+# ================================================================
+# Four-view capture exercising the DayNight lighting rig (directional sun +
+# cascaded shadow maps). Run with:
+#
+#   CESIUM_LIGHTING_MODE=day_night
+#   FIXED_TIME=1
+#   OFFLINE_IMAGERY_ROOT=specs/fixtures/offline-imagery
+#   OFFLINE_TERRAIN_ROOT=specs/fixtures/offline-terrain
+#   STRICT_OFFLINE=1
+#   CESIUM_SCREENSHOT_SCRIPT=specs/scripts/v1_shadow.toml
+#   CESIUM_SCREENSHOT_DIR=specs/baselines/v1_shadow
+#   CESIUM_GIT_SHA=$(git rev-parse HEAD)
+#   cargo run --release -p cesium-app
+#
+# FIXED_TIME=1 freezes the AnimationClock at its default epoch
+# (2024-01-01T00:00:00 UTC), so compute_sun_direction_eci yields a
+# deterministic sun vector for every run.
+#
+# Views:
+#   shadow_default    — standard orbit (heading=0, pitch=0.4rad, dist=3.0)
+#   shadow_pole_north — north polar view (shows polar shadow angle)
+#   shadow_zoom_mid   — mid-zoom (closer, shadow detail visible)
+#   shadow_terminator — rotated 90° longitude to catch the terminator
+#
+# PSNR gate (target, DEFERRED): ≥ 40 dB once baselines exist. NOTE: the baselines
+# in specs/baselines/v1_shadow/ are NOT yet captured — the directory is empty on
+# headless CI (no GPU / window). Baseline capture is deferred to a GPU runner;
+# see docs/deferred.md #34. On a display/GPU environment this script generates the
+# four views, then tools/pixel_diff enforces PSNR ≥ 40 dB against them.
+
+[meta]
+name = "v1_shadow"
+description = "M4.1 day_night four-view shadow baseline (FIXED_TIME=1, offline assets)"
+
+[[shot]]
+frame = 180
+name = "shadow_default"
+pos = [2.763183, 0.000000, 1.168255]
+quat = [0.390699, 0.390699, 0.589368, 0.589368]
+fov_y = 60.0
+
+[[shot]]
+frame = 360
+name = "shadow_pole_north"
+pos = [0.520945, 0.000000, 2.954423]
+quat = [0.061628, 0.061628, 0.704416, 0.704416]
+fov_y = 60.0
+
+[[shot]]
+frame = 540
+name = "shadow_zoom_mid"
+pos = [1.841010, 0.000000, 0.781462]
+quat = [0.390278, 0.390278, 0.589646, 0.589646]
+fov_y = 60.0
+
+[[shot]]
+frame = 720
+name = "shadow_terminator"
+pos = [0.000000, 2.763183, 1.168255]
+quat = [0.589368, 0.390699, 0.390699, 0.589368]
+fov_y = 60.0

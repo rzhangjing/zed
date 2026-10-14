@@ -1,0 +1,26 @@
+# orbit_slow — M0.5 perf baseline trajectory
+#
+# Slow 360° equatorial orbit at constant latitude/height. Exercises the
+# steady-state tile streaming path: continuous longitude change forces the
+# quadtree to re-partition every frame, downloads stay saturated, and the
+# eviction FIFO churns at a moderate rate. This is the "cruise" baseline
+# against which burstier trajectories are compared.
+#
+# Duration: 60 s wall-clock. At ~120 fps (RTX 3080 vsync-off) → ~7234 CSV rows.
+
+[meta]
+name = "orbit_slow"
+duration_s = 60.0
+description = "Slow 360 deg equatorial orbit, constant height=2.0. Steady-state streaming baseline."
+
+[[keyframe]]
+t = 0.0
+lon = 0.0
+lat = 23.0
+height = 2.0
+
+[[keyframe]]
+t = 60.0
+lon = 360.0
+lat = 23.0
+height = 2.0

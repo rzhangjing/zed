@@ -1,0 +1,70 @@
+# v2_water.toml — M5-D Water material (faithful Water.glsl port) baseline capture
+# ================================================================================
+# Four-view capture exercising the MaterialShowcasePlugin Water sea states
+# (CESIUM_ENABLE_MATERIAL_SHOWCASE=1). The showcase spawns 10 Fabric-material
+# spheres on a 150° arc at radius 1.9; entries 7/8/9 are the three Water presets
+# (calm/medium/rough) at arc angles 41.67° / 58.33° / 75°. Each Water sphere is
+# driven by a domain cesium_shadow OceanSurface (Gerstner waves) with
+# procedurally-generated LINEAR (Rgba8Unorm) normal/specular maps, lit inline by
+# the ported czm_phong (case 17u of shaders/fabric_material.wgsl).
+#
+# The Water animation advances by czm_frameNumber (Water.glsl L18), so the three
+# close-ups are scheduled on NEARBY frames (185/190/195) to keep the animation
+# phase nearly identical — isolating SEA STATE (amplitude/frequency) as the only
+# variable between calm / medium / rough. Re-running at the same scripted frame
+# reproduces the same phase (PSNR=∞ vs a re-run).
+#
+# Camera poses: each close-up sits at radius 3.5 along the sphere's arc ray,
+# looking back at the origin (Bevy camera looks down -Z; quat = rotation about Y
+# by the arc angle). The sphere at radius 1.9 is therefore centred in frame.
+#   • calm   θ=41.67° → pos 3.5·(sinθ,0,cosθ), quat (0, sin θ/2, 0, cos θ/2)
+#   • medium θ=58.33°
+#   • rough  θ=75.00°
+#
+# Run with (gate ON):
+#   CESIUM_ENABLE_MATERIAL_SHOWCASE=1
+#   FIXED_TIME=1
+#   CESIUM_SCREENSHOT_SCRIPT=specs/scripts/v2_water.toml
+#   CESIUM_SCREENSHOT_DIR=specs/baselines/v2_water
+#   CESIUM_GIT_SHA=$(git rev-parse HEAD)
+#   cargo run --release -p cesium-app
+#
+# NOTE: headless CI has no GPU/window, so these 4 PNGs are NOT captured here
+# (specs/baselines/v2_water/ ships empty). Capture + PSNR measurement is deferred
+# to the xvfb e2e runner (`.github/workflows/cesiumrust-e2e.yml`, M11.2 ready) —
+# see docs/deferred.md. On headless, verification degrades to the compile-time +
+# texture/ECS structural assertions in adapters/bevy-render/src/fabric_material.rs
+# (water_a packing, Rgba8Unorm linear maps, preset wave counts). The Material
+# showcase is procedural (no tile/terrain streaming), so frames are consecutive.
+
+[meta]
+name = "v2_water"
+description = "M5-D Water material baseline (faithful Water.glsl port, calm/medium/rough sea states, CESIUM_ENABLE_MATERIAL_SHOWCASE=1, FIXED_TIME=1)"
+
+[[shot]]
+frame = 180
+name = "water_overview"
+pos = [0.000000, 0.000000, 5.500000]
+quat = [0.000000, 0.000000, 0.000000, 1.000000]
+fov_y = 60.0
+
+[[shot]]
+frame = 185
+name = "water_calm"
+pos = [2.326800, 0.000000, 2.614500]
+quat = [0.000000, 0.355600, 0.000000, 0.934600]
+fov_y = 60.0
+
+[[shot]]
+frame = 190
+name = "water_medium"
+pos = [2.978900, 0.000000, 1.839300]
+quat = [0.000000, 0.487300, 0.000000, 0.873200]
+fov_y = 60.0
+
+[[shot]]
+frame = 195
+name = "water_rough"
+pos = [3.380700, 0.000000, 0.905800]
+quat = [0.000000, 0.608800, 0.000000, 0.793400]
+fov_y = 60.0

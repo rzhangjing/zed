@@ -1,4 +1,6 @@
 mod app_menus;
+/// The cesiumrust globe window, opened from `Help > cesiumrust`.
+pub mod cesium;
 pub mod edit_prediction_registry;
 #[cfg(target_os = "macos")]
 pub(crate) mod mac_only_instance;
@@ -297,6 +299,9 @@ pub fn init(cx: &mut App) {
     .on_action(|_: &zed_actions::OpenGpuiKitShowcase, cx| {
         open_gpui_kit_showcase(cx);
     })
+    .on_action(|_: &zed_actions::OpenCesiumrust, cx| {
+        cesium::open_cesiumrust(cx);
+    })
     .on_action(|_: &zed_actions::OpenOctos, cx| {
         octos::open_status(cx);
     });
@@ -305,6 +310,10 @@ pub fn init(cx: &mut App) {
     // than as a child, and tied to Zed's lifetime; `Help > Octos` opens the
     // console that drives it over the in-process connection. See `octos`.
     octos::init(cx);
+
+    // The cesiumrust globe window is opened from `Help > cesiumrust`; this is
+    // only its startup override (`ZED_CESIUMRUST_OPEN`), and a no-op otherwise.
+    cesium::init(cx);
 }
 
 fn bind_on_window_closed(cx: &mut App) -> Option<gpui::Subscription> {
@@ -5721,6 +5730,70 @@ mod tests {
         cx.run_until_parked();
 
         assert_eq!(showcase_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+    }
+
+    /// The Help menu carries cesiumrust, and the item dispatches the action
+    /// `open_cesiumrust` is registered for.
+    #[gpui::test]
+    fn test_cesiumrust_menu_item(cx: &mut App) {
+        settings::init(cx);
+        release_channel::init(Version::new(0, 0, 0), cx);
+
+        let help = app_menus(cx)
+            .into_iter()
+            .find(|menu| menu.name == "Help")
+            .expect("the Help menu exists");
+        let action = help
+            .items
+            .into_iter()
+            .find_map(|item| match item {
+                MenuItem::Action { name, action, .. } if name == "cesiumrust" => Some(action),
+                _ => None,
+            })
+            .expect("the Help menu has a cesiumrust item");
+
+        assert_eq!(
+            action.name(),
+            <zed_actions::OpenCesiumrust as Action>::name_for_type()
+        );
+    }
+
+    /// Help > cesiumrust opens the globe in a window of its own, and a second
+    /// dispatch focuses that window rather than opening another.
+    ///
+    /// The window does no GPU work until its first paint, so this exercises the
+    /// action, the `on_action` registration and the window itself without
+    /// needing a render device.
+    #[gpui::test]
+    async fn test_cesiumrust_opens_one_window(cx: &mut TestAppContext) {
+        fn cesium_windows(cx: &mut TestAppContext) -> usize {
+            cx.read(|cx| {
+                cx.windows()
+                    .into_iter()
+                    .filter(|window| {
+                        window
+                            .downcast::<crate::zed::cesium::RendererView>()
+                            .is_some()
+                    })
+                    .count()
+            })
+        }
+        init_test(cx);
+        cx.update(init);
+
+        // Dispatched the way the menu item dispatches it, so this covers the
+        // `on_action` registration as well as the window itself.
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenCesiumrust));
+        cx.run_until_parked();
+
+        assert_eq!(cesium_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenCesiumrust));
+        cx.run_until_parked();
+
+        assert_eq!(cesium_windows(cx), 1);
         assert_eq!(cx.read(|cx| cx.windows().len()), 1);
     }
 

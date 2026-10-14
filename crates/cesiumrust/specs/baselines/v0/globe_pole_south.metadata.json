@@ -1,0 +1,44 @@
+﻿{
+    "env":  {
+                "CESIUM_CAM_LAT":  "-80",
+                "CESIUM_ENABLE_NEW_CHAINS":  "0",
+                "CESIUM_SCREENSHOT_AT_FRAME":  "600",
+                "CESIUM_SCREENSHOT":  "specs/baselines/v0/globe_pole_south.png",
+                "CESIUM_CAM_LON":  "0",
+                "CESIUM_CAM_HEIGHT":  "2.0"
+            },
+    "camera":  {
+                   "lon":  0,
+                   "pitch":  -80,
+                   "lat":  -80,
+                   "heading":  0,
+                   "height":  2
+               },
+    "git_diff_sha256":  "1C7FFF5B23AE02067EDD55F076F5028645712D6A139DA84DB31C7A1C04FD5FFE",
+    "frame":  600,
+    "camera_state":  {
+                         "pos":  [
+                                     0.520945,
+                                     0.000000,
+                                     -2.954423
+                                 ],
+                         "quat":  [
+                                      0.704416,
+                                      0.704416,
+                                      0.061628,
+                                      0.061628
+                                  ],
+                         "fov_y":  60.0000
+                     },
+    "git_sha":  "958b2e1e873c86391c29fcd9ca072dec3b30230c",
+    "captured_at":  "2026-09-15T01:02:18Z",
+    "name":  "globe_pole_south",
+    "git_dirty":  true,
+    "description":  "South pole view (lat=80S), Antarctic ice + polar cap mesh.",
+    "file_size_bytes":  429967,
+    "gpu":  "unknown",
+    "binary":  "target/release/cesium-app.exe",
+    "notes":  "Async Bing tile loading causes minor run-to-run variance (~0.001%). Visual content is stable. Resolution reflects physical pixels (DPI-dependent; see deferred DEFER-M0-DPI).",
+    "resolution":  "1920x1080",
+    "sha256":  "1BC31713A1FA0E2EF774E735176A8E7803CCBAFF273EC0382D0B4E69BDDD312D"
+}

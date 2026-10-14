@@ -23,7 +23,6 @@ track-project-leak = ["gpui/leak-detection"]
 test-support = [
     "gpui/test-support",
     "gpui_platform/screen-capture",
-    "dep:image",
     "workspace/test-support",
     "project/test-support",
     "editor/test-support",
@@ -37,7 +36,6 @@ visual-tests = [
     "gpui/test-support",
     "gpui_platform/screen-capture",
     "gpui_platform/test-support",
-    "dep:image",
     "dep:tempfile",
     "dep:action_log",
     "dep:agent_servers",
@@ -83,6 +81,24 @@ assets.workspace = true
 audio.workspace = true
 auto_update.workspace = true
 auto_update_ui.workspace = true
+# The cesiumrust 3D globe, shown from Help > cesiumrust in a window of its own
+# (see `src/zed/cesium.rs`). `bevy` is named directly, not only through
+# `cesium-app`, because the embedding drives a Bevy `App` of its own:
+# `cesium-app` is a binary without a library target, so its
+# `DefaultPlugins` assembly cannot be reused as a function call.
+#
+# `cesium-app` itself is *not* a dependency. Its `main.rs` is the only target it
+# has, and nothing in it is reachable as a library, so depending on the package
+# would add a build of a binary this crate cannot call. The plugin stack the
+# window needs is assembled from `cesium-bevy-render` instead.
+bevy.workspace = true
+cesium-bevy-render.workspace = true
+# The window's scene is assembled from these three, the way cesiumrust's own
+# `examples/minimal.rs` does: the domain camera and the WGS84 ellipsoid maths
+# place the eye, and `glam`'s f64 vectors carry the ECEF result across the
+# f64 -> f32 precision boundary at the render scale.
+cesium-camera.workspace = true
+cesium-geospatial.workspace = true
 breadcrumbs.workspace = true
 call_hierarchy.workspace = true
 chrono.workspace = true
@@ -118,7 +134,10 @@ gpui_platform = { workspace = true, features = [
     "x11",
 ] }
 gpui_tokio.workspace = true
-image = { workspace = true, optional = true }
+# Unconditional: the cesiumrust window builds its `RenderImage` from raw
+# readback bytes (`crate::zed::cesium`), which is a production path, not a test
+# one.
+image.workspace = true
 spin = "0.10.0"
 itertools.workspace = true
 rayon.workspace = true
@@ -186,6 +205,9 @@ settings_profile_selector.workspace = true
 settings_ui.workspace = true
 shellexpand.workspace = true
 sidebar.workspace = true
+# `RenderImage` is built from a `SmallVec<[image::Frame; 1]>`; the cesiumrust
+# window is the only place in this crate that constructs one from scratch.
+smallvec.workspace = true
 smol.workspace = true
 snippet_provider.workspace = true
 snippets_ui.workspace = true

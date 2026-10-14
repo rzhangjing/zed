@@ -1,0 +1,44 @@
+﻿{
+    "env":  {
+                "CESIUM_CAM_LAT":  "23",
+                "CESIUM_ENABLE_NEW_CHAINS":  "0",
+                "CESIUM_SCREENSHOT_AT_FRAME":  "600",
+                "CESIUM_SCREENSHOT":  "specs/baselines/v0/globe_zoom_close.png",
+                "CESIUM_CAM_LON":  "0",
+                "CESIUM_CAM_HEIGHT":  "0.2"
+            },
+    "camera":  {
+                   "lon":  0,
+                   "pitch":  23,
+                   "lat":  23,
+                   "heading":  0,
+                   "height":  0.2
+               },
+    "git_diff_sha256":  "1C7FFF5B23AE02067EDD55F076F5028645712D6A139DA84DB31C7A1C04FD5FFE",
+    "frame":  600,
+    "camera_state":  {
+                         "pos":  [
+                                     1.104606,
+                                     0.000000,
+                                     0.468877
+                                 ],
+                         "quat":  [
+                                      0.390278,
+                                      0.390278,
+                                      0.589646,
+                                      0.589646
+                                  ],
+                         "fov_y":  60.0000
+                     },
+    "git_sha":  "958b2e1e873c86391c29fcd9ca072dec3b30230c",
+    "captured_at":  "2026-09-15T01:02:18Z",
+    "name":  "globe_zoom_close",
+    "git_dirty":  true,
+    "description":  "Close zoom (height=0.2 above surface), high-detail tile LOD.",
+    "file_size_bytes":  2122054,
+    "gpu":  "unknown",
+    "binary":  "target/release/cesium-app.exe",
+    "notes":  "Async Bing tile loading causes minor run-to-run variance (~0.001%). Visual content is stable. Resolution reflects physical pixels (DPI-dependent; see deferred DEFER-M0-DPI).",
+    "resolution":  "1920x1080",
+    "sha256":  "53050818F675CEFD0E7BC0F75DF782B8A7634358E9BB6F8DEBEEB369885CD976"
+}

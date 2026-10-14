@@ -1,0 +1,44 @@
+﻿{
+    "env":  {
+                "CESIUM_CAM_LAT":  "48",
+                "CESIUM_ENABLE_NEW_CHAINS":  "0",
+                "CESIUM_SCREENSHOT_AT_FRAME":  "600",
+                "CESIUM_SCREENSHOT":  "specs/baselines/v0/globe_europe.png",
+                "CESIUM_CAM_LON":  "10",
+                "CESIUM_CAM_HEIGHT":  "1.5"
+            },
+    "camera":  {
+                   "lon":  10,
+                   "pitch":  48,
+                   "lat":  48,
+                   "heading":  10,
+                   "height":  1.5
+               },
+    "git_diff_sha256":  "1C7FFF5B23AE02067EDD55F076F5028645712D6A139DA84DB31C7A1C04FD5FFE",
+    "frame":  600,
+    "camera_state":  {
+                         "pos":  [
+                                     1.647412,
+                                     0.290483,
+                                     1.857862
+                                 ],
+                         "quat":  [
+                                      0.230354,
+                                      0.274526,
+                                      0.715164,
+                                      0.600094
+                                  ],
+                         "fov_y":  60.0000
+                     },
+    "git_sha":  "958b2e1e873c86391c29fcd9ca072dec3b30230c",
+    "captured_at":  "2026-09-15T01:02:18Z",
+    "name":  "globe_europe",
+    "git_dirty":  true,
+    "description":  "Europe view (lon=10E, lat=48N), mixed land/ocean tiles.",
+    "file_size_bytes":  947202,
+    "gpu":  "unknown",
+    "binary":  "target/release/cesium-app.exe",
+    "notes":  "Async Bing tile loading causes minor run-to-run variance (~0.001%). Visual content is stable. Resolution reflects physical pixels (DPI-dependent; see deferred DEFER-M0-DPI).",
+    "resolution":  "1920x1080",
+    "sha256":  "7EC4429B6A973AD435350DD9D654BF439C0548F0C8EE1AF0CA7B3A4183EEB53C"
+}

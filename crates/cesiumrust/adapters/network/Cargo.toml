@@ -1,0 +1,31 @@
+[package]
+name = "cesium-network"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+cesium-geospatial.workspace = true
+cesium-ports-driven.workspace = true
+cesium-resource.workspace = true
+# M8.3 (#66): the network `ResourceBackend` adapter (`resource_backend_impl.rs`)
+# reuses `PipelineResourceBackend` + `WorkerPool` (16 workers, keep-alive) +
+# `UreqBackend` from cesium-pipeline rather than building a parallel pool.
+# No cycle: cesium-pipeline does not depend on cesium-network.
+cesium-pipeline.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+ureq.workspace = true
+# M8.3 (#66): tokio removed from production dependencies. The pre-M8.3
+# `HttpTileFetcher::fetch` path used `tokio::sync::Mutex` /
+# `tokio::time::sleep` / `tokio::task::spawn_blocking`; all three were
+# replaced with a tokio-free `std::thread` + `std::sync::mpsc` + `Waker::noop`
+# bridge (`resource_backend_impl::spawn_blocking_fetch`). tokio survives only
+# as a dev-dependency for the `#[tokio::test]` harnesses in
+# `file_tile_fetcher.rs` / `file_terrain_fetcher.rs`, whose production paths
+# are already tokio-free (plain `std::fs::read` inside an `async move` block).
+# See docs/deferred.md #21 for the workspace-level tokio retirement ledger.
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }

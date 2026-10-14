@@ -1,0 +1,117 @@
+# ─── 前序代理杂散产物（防止误提交 / git add . 误入库）──────────────────────────
+# 说明：`app_err.log` / `app_out.log` / `test_run.txt` / `count_tests.ps1` /
+# `specs_output.txt` / `test_output.txt` / `test_output2.txt` 等根级转储**已于
+# 2026-10-10 深度清理轮物理删除并 `git rm --cached` 移出版本库**；此处保留
+# 同名/同类规则，防止后续代理再次生成后误入库。
+#
+# 未使用裸 `*.log` 通配：仓库存在已跟踪的 .log 文件（如 `verification_evidence/**`），
+# 按约定仅写作用域受限的根锚定模式。
+
+# 代理运行日志（Robin 重跑 app / M0 修复轮可能再生成同类文件）
+/app_err.log
+/app_out.log
+/build_*.log
+/clippy_*.log
+/demo_*.log
+/diag*.log
+
+# 代理测试/规格输出转储
+/specs_output.txt
+/test_output*.txt
+/*_output.txt
+
+# ─── pixel_diff 手工遗留测试图（F3：git add tools/ 会误入库）───────────────────
+/tools/pixel_diff/test_*.png
+
+# ─── M6 Wave A 集成（task #81）+ M11.3 headless 本机取证产物 ──────────────────
+# `headless_smoke.png` 是 Robin #80（M11.3）的 smoke 产物；其余 PNG 是 task #81
+# 的本机像素中性 / gate-ON 取证图（`v0_local` = 全 gate OFF 捕获，`v0_ctrl*` =
+# 同二进制双跑对照组，`det_*` = STRICT_OFFLINE + FIXED_TIME 确定性对照，
+# `m6_on` = M6 三 gate ON）。它们是**一次性本地证据**，不进版本库；权威取证基座
+# 仍是已 `git add` 的 `specs/baselines/**` 与 `verification_evidence/**`。
+# 同样不使用裸 `*.png` 通配（`specs/baselines`、`docs` 下有已跟踪 PNG）。
+/headless_smoke.png
+# FIX-GITIGNORE: M11.3 headless default capture name — `feature_flags::headless_output()`
+# defaults to `headless_capture.png`, which the repo root carries as untracked (not
+# ignored) evidence. Root-anchored, same style as `headless_smoke.png`; no bare `*.png`
+# (would risk `specs/baselines` / `docs` tracked PNGs).
+/headless_capture.png
+/v0_local.png
+/v0_off_post.png
+/v0_ctrl*.png
+/m6_on.png
+/det_*.png
+# 已删 harness `tools/m6wa_pixel_evidence.ps1`（task #81 取证；随 M6 Wave A 计划作废，
+# 于 2026-10-10 深度清理轮删除）当年三次捕获的产物名，规则保留以防复现。
+/fin_off*.png
+/fin_on.png
+
+# 上述取证轮的 cargo / pixel_diff 输出转储（沿用「作用域受限模式，不用裸 *.log」约定）
+/det_*.log
+/fin_*.log
+/m6_*_run.log
+/m6_off_post.log
+/ctrl*.log
+/chk*.log
+/chk_*.txt
+# 本轮及后续代理在仓库根转储的 cargo test/clippy 日志（根锚定，不影响已跟踪的
+# `verification_evidence/**/*.log`）。旧写法 `/test_m6wa*.log` 漏了 `test_fin.log`，
+# 经 `git status --porcelain` 实测发现后改为 `/test_*.log`。
+/test_*.log
+# ─── 前序代理遗留的待删目录（已于 2026-10-10 深度清理轮删除）─────────────────
+# `_obsolete_to_delete/` 曾暂存前序代理（M0/M2 视觉验证轮）的 5 张废弃取证 PNG
+# （约 2.7 MB：`d2_terrain_dual*.png` / `d2_terrain_solo2.png` / `d3_dual.png` /
+# `_diag_moved.png`），前一轮仅防护未处置；本轮按用户授权**物理删除**。规则保留，
+# 防止同名目录再次出现时被 `git add .` 误入库。
+/_obsolete_to_delete/
+
+# 注：`test_run.txt` 已随 2026-10-10 深度清理轮 `git rm --cached` 移出版本库（同
+# `app_err.log` / `app_out.log` / `count_tests.ps1` / `specs_output.txt` /
+# `test_output.txt` / `test_output2.txt`），规则保留以防同名产物复发。
+
+# ─── 阶段八补充：本仓代理转储的一次性日志（前一轮漏网，现物理删除 + 预防性忽略）───
+# 下划线前缀的临时 check/smoke 日志、`d_cluster_*`/`e_*` 集群测跑转储。沿用
+# 「作用域受限模式，不用裸 *.log」约定。
+/_cctest.log
+/_hl.log
+/d_cluster_*.log
+/e_clippy*.log
+/e_cluster_test.log
+/e_ff_test.log
+
+# ─── 运行时本地瓦片磁盘缓存（tile_cache.rs 默认落盘目录）─────────────────────
+# 在线下载并缓存的 Bing 瓦片（`{root}/bing/{z}/{x}/{y}.jpg`）是本机可再生
+# 的运行时缓存，非源码/非取证基线，绝不入版本库。可用 CESIUM_TILE_CACHE_DIR
+# 重定向到其他位置。
+/tile_cache/
+
+# ─── 2026-10-10 深度清理轮（用户 m01792）：本轮物理删除的根级一次性产物 ──────────
+# 全部为根锚定模式（`git ls-files` 实测仓库根只有 .gitignore / Cargo.lock /
+# Cargo.toml / README.md 四个跟踪文件，故根锚定不会掩盖任何已跟踪文件）。
+# 这些文件是历次取证/调试轮在仓库根留下的截图、裁剪脚本、探针脚本与日志转储，
+# 已逐项确认存在后删除；规则用于防止复发。
+
+# 截图与图片裁剪（手工核对瓦片/影像观感时的产物）
+/shot*.png
+/shot.ps1
+/crop*.png
+/crop*.ps1
+/inspect_*.png
+/verify_shot.png
+
+# 一次性探针/启动脚本与转储
+/cap.ps1
+/launch_*.ps1
+/_chk.out
+/specs_pure_en.txt
+
+# cargo / clippy / 运行日志转储（含 2D 路径与地形/管线探针）
+/run*.log
+/draw.*.log
+/fix*.log
+/tc.*.log
+/ui_btn*
+/uicam_run.log
+/map2d_nogrid_run.log
+/pipe_clippy.log
+/terr_clippy.log

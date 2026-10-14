@@ -1,0 +1,47 @@
+[package]
+name = "cesium-bevy-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy.workspace = true
+glam.workspace = true
+cesium-geospatial.workspace = true
+cesium-imagery.workspace = true
+cesium-quadtree.workspace = true
+cesium-material.workspace = true
+cesium-time.workspace = true
+cesium-animation.workspace = true
+cesium-ports-driven.workspace = true
+cesium-ports-driving.workspace = true
+cesium-camera.workspace = true
+cesium-interaction.workspace = true
+# `cesium-scene-mode` 保留：`src/camera/{components,scene_mode_system,touch_system}.rs`
+# 使用 `cesium_scene_mode::{SceneMode, MorphState}`（2D/3D 形变是导航能力的一部分）。
+cesium-scene-mode.workspace = true
+cesium-atmosphere.workspace = true
+cesium-globe.workspace = true
+cesium-shadow.workspace = true
+# 2026-09 P1 裁剪：`cesium-terrain` / `cesium-tileset` / `cesium-gltf` /
+# `cesium-decoders` 依赖已移除。`src/terrain`、`src/tileset`、`src/imagery`
+# 三个模块（Path C：地形高程 + quantized-mesh 垂覆 + 3D Tiles 内容，以及
+# 只服务地形垂覆的影像链）整体删除；`src/imagery` 与 `src/terrain` 互相
+# 耦合（imagery 的每个 system 都查询 `CesiumTerrainTile`），删地形即失去
+# 锚点。`cesium-decoders` 的唯一消费者是 `src/terrain/tile_loader.rs`。
+cesium-pipeline.workspace = true
+serde_json.workspace = true
+image.workspace = true
+# 2026-09 P0 裁剪：`cesium-effects` 依赖与 `wgpu = "23.0.1"` 一并移除。
+# 后者的唯一用途是 M6.4 OIT 的 MRT accumulate pass 需要裸 `wgpu::Color`
+# 类型（Bevy 的 `render_resource` 重导出不按名暴露它）。整条 effects 路线
+# 删除后适配器不再直接依赖 wgpu —— 依赖树因此少一个直接依赖边。
+
+[dev-dependencies]
+# Test-only: naga is the WGSL front end Bevy itself compiles with
+# (bevy_render -> naga 23.1), so driving it over `sky_atmosphere.wgsl` proves
+# the shader parses and type-checks on exactly the same parser the GPU path
+# uses -- the strongest headless evidence available without a device. It is
+# already in Cargo.lock as a transitive dependency, so this adds no new crate.
+naga = { version = "23.1", features = ["wgsl-in"] }

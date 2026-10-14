@@ -1,0 +1,18 @@
+[package]
+name = "pixel_diff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Pixel-level image comparison tool for regression gating (PSNR / SSIM / MAE)"
+
+[[bin]]
+name = "pixel_diff"
+path = "src/main.rs"
+
+[dependencies]
+image = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+image = { workspace = true }

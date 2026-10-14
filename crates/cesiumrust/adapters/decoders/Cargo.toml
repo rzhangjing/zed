@@ -1,0 +1,20 @@
+[package]
+name = "cesium-decoders"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# 2026-09 P1 裁剪：`draco = []` feature 与 `draco_decoder.rs` 已删除 ——
+# Draco 只服务 3D Tiles / glTF 压缩内容，随 cesium-tileset / cesium-gltf
+# 一同移除。`Decoder::decode_draco` 现在无条件返回「尚未实现」错误。
+
+[dependencies]
+cesium-geospatial.workspace = true
+cesium-ports-driven.workspace = true
+glam.workspace = true
+image = { workspace = true, features = ["png", "jpeg", "webp"] }
+thiserror.workspace = true
+flate2 = "1"
+

@@ -1,0 +1,36 @@
+# zoom_out_burst — M0.5 perf baseline trajectory
+#
+# Rapid zoom from close (height=0.3) to far (height=8.0) over 10 s, then
+# hold for 50 s. This is the mirror of zoom_in_burst and stresses the
+# OPPOSITE pipeline paths: coarse-tile re-partition, GPU-cache eviction
+# (evict_total / evict_deferred spike), entity despawn budget, and the
+# hidden-tile LRU. The hold phase captures the eviction tail.
+#
+# Comparing zoom_in_burst vs zoom_out_burst CSVs reveals asymmetries in the
+# pipeline (e.g. if eviction lags far behind subdivision, the gpu_tex_cache
+# column will show a slow decay here but a fast ramp in zoom_in).
+#
+# Duration: 60 s.
+
+[meta]
+name = "zoom_out_burst"
+duration_s = 60.0
+description = "Fast zoom-out burst (height 0.3 to 8.0 in 10s) then hold. Stresses eviction + despawn + coarse re-partition."
+
+[[keyframe]]
+t = 0.0
+lon = 0.0
+lat = 23.0
+height = 0.3
+
+[[keyframe]]
+t = 10.0
+lon = 0.0
+lat = 23.0
+height = 8.0
+
+[[keyframe]]
+t = 60.0
+lon = 0.0
+lat = 23.0
+height = 8.0

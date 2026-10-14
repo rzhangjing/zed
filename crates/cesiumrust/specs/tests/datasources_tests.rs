@@ -1,0 +1,42 @@
+//! DataSources 规格测试 - 参考自 Specs/DataSources/
+//! 覆盖范围：Entity、Property、GeoJSON、CZML、Visualizer 等。
+
+mod datasources {
+    pub mod entity_spec;
+    pub mod entity_collection_spec;
+    pub mod property_spec;
+    pub mod property_system_spec;
+    pub mod position_property_spec;
+    pub mod geojson_spec;
+    pub mod czml_spec;
+    pub mod material_property_spec;
+    pub mod graphics_spec;
+    pub mod geometry_updater_spec;
+    pub mod visualizer_cluster_spec;
+    pub mod kml_spec;
+    pub mod reference_property_spec;
+    pub mod property_bag_spec;
+    pub mod datasource_collection_spec;
+    pub mod composite_entity_collection_spec;
+    pub mod velocity_vector_property_spec;
+    pub mod velocity_orientation_property_spec;
+    pub mod node_transformation_property_spec;
+    pub mod datasource_clock_spec;
+    pub mod property_array_spec;
+    pub mod material_property_extended_spec;
+    pub mod entity_ext_spec;
+    pub mod entity_operations_spec;
+    pub mod datasource_animation_spec;
+    pub mod cluster_spec;
+    pub mod kml_export_spec;
+    pub mod kml_parser_spec;
+    pub mod datasource_primitives_spec;
+    pub mod czml_extended_spec;
+    pub mod interpolation_algorithms_spec;
+    pub mod datasource_display_spec;
+    pub mod geometry_updater_extended_spec;
+    pub mod entity_graphics_spec;
+    pub mod czml_deep_spec;
+    pub mod entity_builder_extended_spec;
+    pub mod visualizer_extended_spec;
+}

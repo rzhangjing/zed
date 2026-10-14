@@ -286,6 +286,79 @@ members = [
     "crates/octos-uniffi",
     "crates/octos-wasm",
     "crates/octos-pyo3",
+
+    #
+    # cesiumrust (a CesiumJS rewrite in Rust; see crates/cesiumrust/README.md)
+    #
+    # Copied in as a self-contained tree that was originally its own workspace
+    # (`crates/cesiumrust/Cargo.toml` was a `[workspace]` root). Merging it here
+    # cost no edits to any of its member manifests, because they all inherit
+    # through `version.workspace = true` / `edition.workspace = true` /
+    # `license.workspace = true` / `publish.workspace = true`: now that the
+    # outer workspace is the nearest one, they simply inherit Zed's
+    # `[workspace.package]` instead of cesiumrust's, so these crates now declare
+    # Zed's `Apache-2.0` rather than the `MIT` their old root declared. Its own
+    # `crates/cesiumrust/Cargo.toml` is kept as documentation of the original
+    # layout and as the source of the `[workspace.dependencies]` block
+    # transcribed below; it is no longer a workspace root. `LICENSE-MIT` was
+    # added next to it to preserve the licence text the tree was published
+    # under, and its `Cargo.lock` was deleted as stale: this workspace's lock is
+    # authoritative now, and cargo reported the nested one as needing an update
+    # rather than using it.
+    #
+    # Note that `script/check-licenses` will reject these directories once they
+    # are tracked, because it requires a `LICENSE-GPL`/`LICENSE-APACHE`
+    # symlink in every crate directory that has a `Cargo.toml`. It is a no-op
+    # today: the script reads `git ls-files`, and this tree is untracked.
+    #
+    # Why the members are listed individually rather than as a directory glob:
+    # they live at depth 2 (`domain/*`, `ports/*`, `adapters/*`), which a
+    # single-segment `crates/cesiumrust/*` glob does not reach. The grouping
+    # below mirrors cesiumrust's own `members` list, plus the three extra
+    # directories it kept outside the `[workspace] members` list but that are
+    # still real packages here: `specs` (its ported CesiumJS test suite) and the
+    # two `tools/` binaries, so that `cargo check -p <member>` works for every
+    # crate it used to build.
+    #
+
+    # Domain: pure Rust, no framework dependency.
+    "crates/cesiumrust/domain/animation",
+    "crates/cesiumrust/domain/atmosphere",
+    "crates/cesiumrust/domain/camera",
+    "crates/cesiumrust/domain/datasource",
+    "crates/cesiumrust/domain/event",
+    "crates/cesiumrust/domain/geospatial",
+    "crates/cesiumrust/domain/globe",
+    "crates/cesiumrust/domain/gpx",
+    "crates/cesiumrust/domain/imagery",
+    "crates/cesiumrust/domain/interaction",
+    "crates/cesiumrust/domain/kml",
+    "crates/cesiumrust/domain/material",
+    "crates/cesiumrust/domain/plot",
+    "crates/cesiumrust/domain/quadtree",
+    "crates/cesiumrust/domain/resource",
+    "crates/cesiumrust/domain/scene-mode",
+    "crates/cesiumrust/domain/shadow",
+    "crates/cesiumrust/domain/time",
+
+    # Ports: trait contracts.
+    "crates/cesiumrust/ports/driven",
+    "crates/cesiumrust/ports/driving",
+
+    # Adapters: Bevy/IO implementations.
+    "crates/cesiumrust/adapters/bevy-render",
+    "crates/cesiumrust/adapters/decoders",
+    "crates/cesiumrust/adapters/network",
+    "crates/cesiumrust/adapters/pipeline",
+    "crates/cesiumrust/adapters/plot-bevy",
+
+    # Application: the Bevy app assembly. `Help > cesiumrust` embeds this one.
+    "crates/cesiumrust/application/cesium-app",
+
+    # Test suite ported from CesiumJS Specs, and the two tools.
+    "crates/cesiumrust/specs",
+    "crates/cesiumrust/tools/gen_offline_assets",
+    "crates/cesiumrust/tools/pixel_diff",
 ]
 default-members = ["crates/zed"]
 
@@ -513,6 +586,100 @@ gpui-kit-showcase = { path = "crates/gpui-kit-showcase" }
 #gpui-shell = { path = "crates/gpui-shell" }
 #gpui-component-shell = { path = "crates/gpui-component-shell" }
 #gpui-component-story = { path = "crates/gpui-component-story" }
+
+#
+# cesiumrust
+#
+# Transcribed from `crates/cesiumrust/Cargo.toml`, which was that tree's own
+# `[workspace.dependencies]` before it became part of this workspace. Only the
+# keys that are *specific* to cesiumrust are repeated here; everything it shares
+# with Zed (`serde`, `serde_json`, `toml`, `thiserror`, `image`, `tokio`,
+# `flate2`, `tempfile`, `wiremock`, `criterion`) resolves to the entries already
+# declared in this table, so those shared versions stay Zed's.
+#
+# Two deliberate divergences from a literal transcription:
+#
+#   * `reqwest` is only pulled in by cesium-pipeline's non-default
+#     `reqwest-backend` feature, and this workspace's `reqwest` entry is a git
+#     dependency (`zed-industries/reqwest`). cesium-pipeline declares its own
+#     `reqwest = "0.12"` inline for exactly that reason, and stays on crates.io.
+#   * `glam` is declared standalone below rather than inherited from Zed,
+#     because Zed has no `glam` entry at all. `features = ["serde"]` matches
+#     cesiumrust's declaration, and its `fast-math` caution (see the note in
+#     `crates/cesiumrust/Cargo.toml`) is preserved by not enabling it.
+#
+# The `bevy` feature list is copied verbatim, including `x11`: it is inert on
+# Windows but kept identical so that a future diff against upstream cesiumrust
+# stays meaningful.
+#
+
+glam = { version = "0.29", features = ["serde"] }
+earcut = "0.4"
+serde-xml-rs = "0.6"
+assert_cmd = "2"
+ureq = "2"
+
+# Game engine / rendering. Default features disabled: audio (alsa-sys) and gilrs
+# (libudev-sys) need system libraries that are not installed on this machine.
+#
+# `tonemapping_luts` is *not* part of Bevy's defaults for this feature set and is
+# required: without it `Camera3d`'s default `Tonemapping::TonyMcMapFace` has no
+# LUT to sample, and every mesh draws as nothing (the camera's clear colour is
+# all that reaches the target). cesiumrust's own `main.rs` gets it because it
+# takes `DefaultPlugins` with Bevy's default features; the explicit list here
+# has to name it.
+bevy = { version = "0.15", default-features = false, features = [
+    "bevy_asset",
+    "bevy_color",
+    "bevy_core_pipeline",
+    "bevy_gizmos",
+    "bevy_pbr",
+    "bevy_picking",
+    "bevy_render",
+    "bevy_scene",
+    "bevy_sprite",
+    "bevy_state",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_window",
+    "bevy_winit",
+    "default_font",
+    "multi_threaded",
+    "png",
+    "tonemapping_luts",
+    "x11",
+] }
+
+# Internal cesiumrust crates.
+cesium-geospatial = { path = "crates/cesiumrust/domain/geospatial" }
+cesium-plot = { path = "crates/cesiumrust/domain/plot" }
+cesium-time = { path = "crates/cesiumrust/domain/time" }
+cesium-camera = { path = "crates/cesiumrust/domain/camera" }
+cesium-event = { path = "crates/cesiumrust/domain/event" }
+cesium-resource = { path = "crates/cesiumrust/domain/resource" }
+cesium-imagery = { path = "crates/cesiumrust/domain/imagery" }
+cesium-datasource = { path = "crates/cesiumrust/domain/datasource" }
+cesium-material = { path = "crates/cesiumrust/domain/material" }
+cesium-atmosphere = { path = "crates/cesiumrust/domain/atmosphere" }
+cesium-interaction = { path = "crates/cesiumrust/domain/interaction" }
+cesium-shadow = { path = "crates/cesiumrust/domain/shadow" }
+cesium-kml = { path = "crates/cesiumrust/domain/kml" }
+cesium-gpx = { path = "crates/cesiumrust/domain/gpx" }
+cesium-globe = { path = "crates/cesiumrust/domain/globe" }
+cesium-quadtree = { path = "crates/cesiumrust/domain/quadtree" }
+cesium-animation = { path = "crates/cesiumrust/domain/animation" }
+cesium-scene-mode = { path = "crates/cesiumrust/domain/scene-mode" }
+cesium-ports-driven = { path = "crates/cesiumrust/ports/driven" }
+cesium-ports-driving = { path = "crates/cesiumrust/ports/driving" }
+cesium-bevy-render = { path = "crates/cesiumrust/adapters/bevy-render" }
+cesium-plot-bevy = { path = "crates/cesiumrust/adapters/plot-bevy" }
+cesium-decoders = { path = "crates/cesiumrust/adapters/decoders" }
+cesium-network = { path = "crates/cesiumrust/adapters/network" }
+cesium-pipeline = { path = "crates/cesiumrust/adapters/pipeline" }
+cesium-app = { path = "crates/cesiumrust/application/cesium-app" }
+cesium-specs = { path = "crates/cesiumrust/specs" }
+pixel_diff = { path = "crates/cesiumrust/tools/pixel_diff" }
+gen_offline_assets = { path = "crates/cesiumrust/tools/gen_offline_assets" }
 
 #
 # External crates

@@ -1,0 +1,49 @@
+# pan_fast — M0.5 perf baseline trajectory
+#
+# Fast horizontal panning across longitudes AND latitudes at a moderate
+# height (1.0). Each 15 s leg jumps ~120° of longitude, which makes whole
+# batches of in-flight downloads stale mid-flight — the exact scenario the
+# `wanted`-set check + abort path in download_worker was built for. This
+# trajectory maximizes `stale_skips` and exercises the coverage-repair path
+# (visible tiles falling out of the spawn queue and being re-enqueued).
+#
+# The latitude swings (23 → -30 → 50 → 0) also cross the equator and the
+# mid-latitudes, so the tile geometry exercises both the Mercator UV path
+# and the polar-cap boundary.
+#
+# Duration: 60 s.
+
+[meta]
+name = "pan_fast"
+duration_s = 60.0
+description = "Fast multi-leg pan across lon/lat at height=1.0. Maximizes stale-skips + coverage-repair churn."
+
+[[keyframe]]
+t = 0.0
+lon = 0.0
+lat = 23.0
+height = 1.0
+
+[[keyframe]]
+t = 15.0
+lon = 120.0
+lat = 23.0
+height = 1.0
+
+[[keyframe]]
+t = 30.0
+lon = 240.0
+lat = -30.0
+height = 1.0
+
+[[keyframe]]
+t = 45.0
+lon = 60.0
+lat = 50.0
+height = 1.0
+
+[[keyframe]]
+t = 60.0
+lon = 180.0
+lat = 0.0
+height = 1.0

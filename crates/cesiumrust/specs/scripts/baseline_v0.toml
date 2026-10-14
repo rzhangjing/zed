@@ -1,0 +1,83 @@
+# baseline_v0.toml — M3.4 batch capture script (v0 full baseline)
+# ==================================================================
+# One-shot reproduction of the M0.1 six-view visual baseline through the
+# M3.4 batch harness (`CESIUM_SCREENSHOT_SCRIPT`). Each `[[shot]]` fires at
+# its `frame`, applies the deterministic camera pose below (overriding the
+# orbit camera in PostUpdate), and writes `{name}.png` + `{name}.camera.json`
+# + `{name}.meta.json` into `CESIUM_SCREENSHOT_DIR` (default: CWD).
+#
+# The `pos`/`quat` values are the EXACT transforms the app's orbit camera
+# produces for the M0.1 (lon/lat/height) seeds, computed via
+# `compute_camera_transform` + `Transform::looking_at(origin, +Z)`, so a batch
+# run is view-identical to the M0.1 capture_baseline.ps1 run:
+#
+#   view           M0.1 seed (lon, lat, height)   orbit (heading, pitch, dist)
+#   globe_default  default OrbitState             (0, 0.4 rad, 3.0)
+#   pole_north     (0, 80, 2.0)                   (0, 80°, 3.0)
+#   pole_south     (0, -80, 2.0)                  (0, -80°, 3.0)
+#   zoom_mid       (0, 23, 1.0)                   (0, 23°, 2.0)
+#   zoom_close     (0, 23, 0.2)                   (0, 23°, 1.2)
+#   terrain_off    default OrbitState + terrain=0 (0, 0.4 rad, 3.0)
+#
+# NOTE (terrain_off): the batch harness runs a SINGLE app instance, so the
+# terrain-plugin enable/disable (a launch-time env decision, `CESIUM_ENABLE_*`)
+# cannot vary per-shot. `terrain_off` therefore reuses the `globe_default`
+# pose; to reproduce the M0.1 terrain-disabled baseline, launch the batch with
+# terrain off (`CESIUM_ENABLE_TERRAIN=0`) — the pose is identical by design.
+#
+# Usage:
+#   CESIUM_SCREENSHOT_SCRIPT=specs/scripts/baseline_v0.toml \
+#   CESIUM_SCREENSHOT_DIR=specs/baselines/v0 \
+#   OFFLINE_IMAGERY_ROOT=specs/fixtures/offline-imagery \
+#   OFFLINE_TERRAIN_ROOT=specs/fixtures/offline-terrain \
+#   STRICT_OFFLINE=1 FIXED_TIME=1 CESIUM_GIT_SHA=$(git rev-parse HEAD) \
+#   cargo run --release -p cesium-app
+#
+# Frame gaps (180) give async tile streaming time to settle between views;
+# the harness exits 30 frames after the last shot for GPU flush.
+
+[meta]
+name = "baseline_v0"
+description = "v0 six-view visual baseline (aligned with M0.1 capture_baseline.ps1)"
+
+[[shot]]
+frame = 180
+name = "globe_default"
+pos = [2.763183, 0.000000, 1.168255]
+quat = [0.390699, 0.390699, 0.589368, 0.589368]
+fov_y = 60.0
+
+[[shot]]
+frame = 360
+name = "pole_north"
+pos = [0.520945, 0.000000, 2.954423]
+quat = [0.061628, 0.061628, 0.704416, 0.704416]
+fov_y = 60.0
+
+[[shot]]
+frame = 540
+name = "pole_south"
+pos = [0.520945, 0.000000, -2.954423]
+quat = [0.704416, 0.704416, 0.061628, 0.061628]
+fov_y = 60.0
+
+[[shot]]
+frame = 720
+name = "zoom_mid"
+pos = [1.841010, 0.000000, 0.781462]
+quat = [0.390278, 0.390278, 0.589646, 0.589646]
+fov_y = 60.0
+
+[[shot]]
+frame = 900
+name = "zoom_close"
+pos = [1.104606, 0.000000, 0.468877]
+quat = [0.390278, 0.390278, 0.589646, 0.589646]
+fov_y = 60.0
+
+[[shot]]
+frame = 1080
+name = "terrain_off"
+pos = [2.763183, 0.000000, 1.168255]
+quat = [0.390699, 0.390699, 0.589368, 0.589368]
+fov_y = 60.0
