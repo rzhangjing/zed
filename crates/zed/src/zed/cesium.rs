@@ -99,8 +99,12 @@ pub fn open_cesiumrust(cx: &mut App) {
         WindowOptions {
             titlebar: Some(TitlebarOptions {
                 title: Some("cesiumrust".into()),
-                appears_transparent: true,
-                traffic_light_position: Some(gpui::point(px(12.), px(12.))),
+                // The system title bar; see `open_gpui_kit_showcase` for why.
+                // This window draws no window chrome of its own, so a
+                // transparent title bar (which is what hides the system one)
+                // would leave it with no minimize, maximize or close button.
+                appears_transparent: false,
+                traffic_light_position: None,
             }),
             window_bounds: Some(WindowBounds::centered(window_size, cx)),
             window_min_size: Some(size(px(480.), px(270.))),

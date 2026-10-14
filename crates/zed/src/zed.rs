@@ -1396,8 +1396,26 @@ fn open_gpui_kit_showcase(cx: &mut App) {
         WindowOptions {
             titlebar: Some(TitlebarOptions {
                 title: Some("gpui-kit".into()),
-                appears_transparent: true,
-                traffic_light_position: Some(point(px(12.), px(12.))),
+                // The system title bar, not a hidden one. `appears_transparent`
+                // means "hide the system title bar so the view can draw its
+                // own": the Windows platform reads it as `hide_title_bar`,
+                // which suppresses `WM_NCCALCSIZE` and with it the whole
+                // caption, and on macOS it hides the title bar and leaves only
+                // the traffic lights. This window draws no title bar of its
+                // own — the gallery is mounted with `StoryRoot::embedded`
+                // precisely so that it does not — so a transparent title bar
+                // left it with no minimize, maximize or close button at all.
+                // The window is created with `WS_CAPTION | WS_SYSMENU |
+                // WS_MINIMIZEBOX | WS_MAXIMIZEBOX` either way, so showing the
+                // system title bar yields those three buttons, dragging,
+                // double-click to maximize, Aero Snap and edge resizing for
+                // free. Same choice as the Profiler Window in
+                // `crates/miniprofiler_ui`.
+                appears_transparent: false,
+                // Only meaningful while the title bar is transparent: with a
+                // standard title bar the platform places the macOS traffic
+                // lights itself.
+                traffic_light_position: None,
             }),
             window_bounds: Some(WindowBounds::centered(window_size, cx)),
             kind: WindowKind::Normal,
@@ -1406,11 +1424,11 @@ fn open_gpui_kit_showcase(cx: &mut App) {
         },
         |window, cx| {
             // `StoryRoot::embedded` is the gallery without the storybook's own
-            // in-window title bar: Zed's frame already owns the window chrome,
-            // and a second set of window controls under this one would be
-            // wrong. The title bar's two menus stay reachable through the
-            // gallery's key context (ctrl-k for themes, ctrl-shift-p for the
-            // component palette).
+            // in-window title bar. This window keeps the *system* title bar
+            // (see above), so a second title bar — and a second set of window
+            // controls — under this one would be wrong. The title bar's two
+            // menus stay reachable through the gallery's key context (ctrl-k
+            // for themes, ctrl-shift-p for the component palette).
             let gallery = gpui_kit_showcase::Gallery::view(None, window, cx);
             let root = cx.new(|cx| gpui_kit_showcase::StoryRoot::embedded(gallery, window, cx));
             let focus_handle = root.read(cx).focus_handle(cx);
