@@ -37,7 +37,6 @@ visual-tests = [
     "gpui_platform/screen-capture",
     "gpui_platform/test-support",
     "dep:tempfile",
-    "dep:action_log",
     "dep:agent_servers",
     "workspace/test-support",
     "project/test-support",
@@ -68,7 +67,7 @@ required-features = ["visual-tests"]
 [dependencies]
 acp_thread.workspace = true
 acp_tools.workspace = true
-action_log = { workspace = true, optional = true }
+action_log.workspace = true
 activity_indicator.workspace = true
 agent-client-protocol.workspace = true
 agent.workspace = true

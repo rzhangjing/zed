@@ -54,7 +54,9 @@ use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use octos_core::ui_protocol::{ApprovalId, RpcError, TurnId, methods};
+use octos_core::ui_protocol::{
+    ApprovalId, QuestionId, RpcError, TurnId, UserQuestionAnswer, UserQuestionRespondParams, methods,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -845,6 +847,9 @@ struct PeerState {
     activity: Vec<ToolActivity>,
     /// Approvals the person has not answered yet, oldest first.
     approvals: Vec<ApprovalRequest>,
+    /// Structured user questions the kernel is blocking a turn on, oldest
+    /// first (UPCR-2026-023 `user_question/requested`).
+    questions: Vec<AskedQuestions>,
     executor: Option<Arc<dyn HostToolExecutor>>,
 }
 
@@ -916,6 +921,11 @@ impl HostPeer {
         self.with_state(|state| state.approvals.clone())
     }
 
+    /// The structured questions the kernel is waiting on, oldest first.
+    pub fn questions(&self) -> Vec<AskedQuestions> {
+        self.with_state(|state| state.questions.clone())
+    }
+
     /// Calls the kernel is still waiting on — a host tool's open call, or one
     /// held for the person.
     #[cfg(test)]
@@ -965,6 +975,7 @@ impl HostPeer {
             state.handled.clear();
             state.handled_order.clear();
             state.approvals.clear();
+            state.questions.clear();
             state.activity.clear();
         });
     }
@@ -1085,6 +1096,231 @@ impl HostPeer {
             })?;
             Some(peer.approvals.remove(index))
         })
+    }
+
+    // -----------------------------------------------------------------------
+    // The kernel's structured questions (UPCR-2026-023)
+    // -----------------------------------------------------------------------
+
+    /// Raise a question the *kernel* is blocked on, so the person answers it on
+    /// the console.
+    ///
+    /// The kernel has already parked a turn on it: `user_question/requested` is
+    /// emitted only after the pending entry exists and the waiting oneshot is
+    /// registered (`crates/octos/octos-cli/src/api/ui_protocol_transport.rs:6854`),
+    /// and that await has no timeout of its own (`:6952`). The host's job is to
+    /// render it and answer it — an unanswered one hangs the turn.
+    pub fn note_kernel_question(&self, asked: &AskedQuestions) {
+        self.with_state(|peer| {
+            peer.questions
+                .retain(|existing| existing.question_id != asked.question_id);
+            peer.questions.push(asked.clone());
+        });
+    }
+
+    /// Drop one question from the console's list, whether it was answered,
+    /// dismissed or cancelled by the kernel.
+    pub fn forget_kernel_question(&self, question_id: &QuestionId) {
+        self.with_state(|peer| {
+            peer.questions
+                .retain(|existing| &existing.question_id != question_id);
+        });
+    }
+
+    /// Take one question off the list and return it, once.
+    pub fn take_kernel_question(&self, question_id: &QuestionId) -> Option<AskedQuestions> {
+        self.with_state(|peer| {
+            let index = peer
+                .questions
+                .iter()
+                .position(|existing| &existing.question_id == question_id)?;
+            Some(peer.questions.remove(index))
+        })
+    }
+
+    /// Look one pending question up.
+    pub fn question(&self, question_id: &QuestionId) -> Option<AskedQuestions> {
+        self.with_state(|peer| {
+            peer.questions
+                .iter()
+                .find(|existing| &existing.question_id == question_id)
+                .cloned()
+        })
+    }
+
+    /// Record the person's choice of one option on one question. Returns
+    /// whether the label was a real option of that question.
+    ///
+    /// Only a label the kernel itself offered can be selected: the server
+    /// validates every `selected_labels` entry against the request it stored
+    /// (`validate_answers`, `crates/octos/octos-cli/src/contracts/questions.rs:293`)
+    /// and rejects the whole answer otherwise, so the host must never invent
+    /// one. Clicking the chosen option again clears it — an answer may be
+    /// empty, and clearing is how a mis-click is undone.
+    pub fn select_question_option(
+        &self,
+        question_id: &QuestionId,
+        question_index: usize,
+        label: &str,
+    ) -> bool {
+        self.with_state(|peer| {
+            let Some(asked) = peer
+                .questions
+                .iter_mut()
+                .find(|existing| &existing.question_id == question_id)
+            else {
+                return false;
+            };
+            let Some(question) = asked.questions.get(question_index) else {
+                return false;
+            };
+            if !question
+                .options
+                .iter()
+                .any(|option| option.label == label)
+            {
+                return false;
+            }
+            let multi_select = question.multi_select;
+            let Some(selection) = asked.selections.get_mut(question_index) else {
+                return false;
+            };
+            if multi_select {
+                match selection.iter().position(|chosen| chosen == label) {
+                    Some(index) => {
+                        selection.remove(index);
+                    }
+                    None => selection.push(label.to_owned()),
+                }
+            } else if selection.len() == 1 && selection[0] == label {
+                selection.clear();
+            } else {
+                *selection = vec![label.to_owned()];
+            }
+            true
+        })
+    }
+
+    /// Whether any part of one pending question accepts free text, so the
+    /// console can say what will happen to what the person typed.
+    pub fn question_accepts_free_text(&self, question_id: &QuestionId) -> bool {
+        self.question(question_id).is_some_and(|asked| {
+            asked
+                .questions
+                .iter()
+                .any(|question| question.allow_free_text)
+        })
+    }
+
+    /// The `user_question/respond` params for one pending question.
+    ///
+    /// Built from the stored entry — the kernel's session, the kernel's
+    /// `question_id`, one answer per question it asked, and only labels it
+    /// offered — plus the person's selections and `free_text`. Nothing here is
+    /// taken from a caller's arguments, so a stale surface cannot answer a
+    /// question the kernel has already replaced.
+    ///
+    /// `client_note` is what distinguishes an answer from a dismissal:
+    /// declining to answer sends the same one-(empty)-answer-per-question
+    /// payload with a note saying so, which is the only "no answer" the
+    /// protocol has — the server validates the answer *count* and the labels
+    /// (`validate_answers`, `crates/octos/octos-cli/src/contracts/questions.rs:293`)
+    /// but never requires a non-empty answer, and an empty one unblocks the
+    /// waiting tool as `Answered` rather than hanging the turn.
+    pub fn question_respond_params(
+        &self,
+        question_id: &QuestionId,
+        free_text: Option<&str>,
+        client_note: Option<&str>,
+    ) -> Option<Value> {
+        let asked = self.question(question_id)?;
+        let mut answers: Vec<UserQuestionAnswer> = asked
+            .selections
+            .iter()
+            .map(|selected| UserQuestionAnswer {
+                selected_labels: selected.clone(),
+                free_text: None,
+            })
+            .collect();
+        // The wire shape has one answer per question; a stored entry that lost
+        // that pairing for any reason is not answerable.
+        if answers.len() != asked.questions.len() {
+            log::error!(
+                "[octos] question {} has {} question(s) but {} answer(s) recorded; refusing to answer",
+                asked.question_id.0,
+                asked.questions.len(),
+                answers.len()
+            );
+            return None;
+        }
+        if let Some(text) = free_text.map(str::trim).filter(|text| !text.is_empty()) {
+            // Free text goes to the first question that allows it: the protocol
+            // carries one optional free text per question, and the console has
+            // one box. A question that allows none is reported, never silently
+            // dropped onto a question the server would then reject.
+            match asked
+                .questions
+                .iter()
+                .position(|question| question.allow_free_text)
+            {
+                Some(index) => answers[index].free_text = Some(text.to_owned()),
+                None => log::warn!(
+                    "[octos] none of the kernel's questions allows free text; \
+                     the typed answer is not being sent"
+                ),
+            }
+        }
+        let params = UserQuestionRespondParams {
+            session_id: octos_core::SessionKey(asked.session_id.clone()),
+            question_id: asked.question_id.clone(),
+            answers,
+            client_note: client_note.map(ToOwned::to_owned),
+        };
+        match serde_json::to_value(params) {
+            Ok(params) => Some(params),
+            Err(error) => {
+                log::error!("[octos] could not encode user_question/respond: {error}");
+                None
+            }
+        }
+    }
+}
+
+/// One structured user question the kernel is blocking a turn on, as this host
+/// renders and answers it (UPCR-2026-023 `user_question/requested`).
+///
+/// Mirrors [`KernelApproval`]: the kernel owns the question and the answer
+/// contract, the host owns the surface, and answering it is exactly one
+/// `user_question/respond` frame. `selections` is the person's in-progress
+/// choice; the wire payload is built from the stored entry in
+/// [`HostPeer::question_respond_params`], so a click can never answer a
+/// question the kernel has already replaced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AskedQuestions {
+    pub session_id: String,
+    pub question_id: QuestionId,
+    pub turn_id: TurnId,
+    pub title: String,
+    pub body: String,
+    pub questions: Vec<octos_core::ui_protocol::UserQuestion>,
+    /// One entry per question, in question order: the option labels chosen so
+    /// far, empty when the person has not chosen one.
+    pub selections: Vec<Vec<String>>,
+}
+
+impl AskedQuestions {
+    /// Read one from the notification's typed event
+    /// (`UserQuestionRequestedEvent`, `crates/octos/octos-core/src/ui_protocol.rs:5864`).
+    pub fn from_event(event: &octos_core::ui_protocol::UserQuestionRequestedEvent) -> Self {
+        Self {
+            session_id: event.session_id.0.clone(),
+            question_id: event.question_id.clone(),
+            turn_id: event.turn_id.clone(),
+            title: event.title.clone(),
+            body: event.body.clone(),
+            selections: vec![Vec::new(); event.questions.len()],
+            questions: event.questions.clone(),
+        }
     }
 }
 

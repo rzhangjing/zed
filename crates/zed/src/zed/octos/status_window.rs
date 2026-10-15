@@ -39,7 +39,15 @@
 //! * the transcript (answers, reasoning, notes),
 //! * **tool activity**: the agent's own tools (`octos tool`) and this host's
 //!   (`zed tool`), one list — a tool call is not a line of conversation,
-//! * **approvals**: every pending one, waiting for `y`/`n` (or the buttons).
+//! * **approvals**: every pending one, waiting for `y`/`n` (or the buttons),
+//! * **questions**: the kernel's structured question (`user_question/requested`,
+//!   UPCR-2026-023), answered from the options it offered, with free text from
+//!   the prompt box and an explicit *Dismiss (no answer)* exit — the kernel's
+//!   `ask_user_question` tool blocks with no deadline of its own, so a question
+//!   nobody answers parks the turn,
+//! * **Stop**: `turn/interrupt` for the turn in flight, also on `Esc`. Both
+//!   are handled by this window's own element (`on_key_down` on the root), so
+//!   nothing is bound globally and the main window is untouched.
 //!
 //! Opened by `Help > Octos`, which focuses an existing window rather than
 //! opening a second one, the way the About window behaves. With no Octos profile
@@ -106,6 +114,23 @@ impl OctosConsole {
         };
         self.decide(&oldest.approval_id, approve, cx);
         true
+    }
+
+    /// Enter: answer the kernel's question when one is waiting, otherwise send
+    /// the prompt as a turn.
+    ///
+    /// The same box serves both because a question parks the turn: a new turn
+    /// started while the kernel is waiting on an answer would be refused, so
+    /// the box belongs to the answer until it is given.
+    fn submit(&mut self, cx: &mut Context<Self>) {
+        let waiting = super::pending_questions(cx);
+        let Some(asked) = waiting.first() else {
+            self.send(cx);
+            return;
+        };
+        let text = std::mem::take(&mut self.input);
+        super::answer_question(cx, &asked.question_id, &text);
+        cx.notify();
     }
 }
 
@@ -244,8 +269,152 @@ impl Render for OctosConsole {
             })
             .collect();
 
+        let questions = super::pending_questions(cx);
+        let question_cards: Vec<_> = questions
+            .iter()
+            .map(|asked| {
+                let answer_id = asked.question_id.clone();
+                let dismiss_id = asked.question_id.clone();
+                let question_rows: Vec<_> = asked
+                    .questions
+                    .iter()
+                    .enumerate()
+                    .map(|(index, question)| {
+                        let selections = asked
+                            .selections
+                            .get(index)
+                            .cloned()
+                            .unwrap_or_default();
+                        let option_rows: Vec<_> = question
+                            .options
+                            .iter()
+                            .map(|option| {
+                                let label = option.label.clone();
+                                let chosen = selections.iter().any(|selected| selected == &label);
+                                let option_id = asked.question_id.clone();
+                                let click_label = label.clone();
+                                h_flex()
+                                    .gap_2()
+                                    .child(
+                                        Button::new(
+                                            SharedString::from(format!(
+                                                "octos-option-{}-{index}-{}",
+                                                asked.question_id.0, option.label
+                                            )),
+                                            SharedString::from(label.clone()),
+                                        )
+                                        .style(if chosen {
+                                            ButtonStyle::Tinted(TintColor::Accent)
+                                        } else {
+                                            ButtonStyle::OutlinedGhost
+                                        })
+                                        .on_click(cx.listener(move |_, _, _, cx| {
+                                            super::select_question_option(
+                                                cx,
+                                                &option_id,
+                                                index,
+                                                &click_label,
+                                            );
+                                            cx.notify();
+                                        })),
+                                    )
+                                    .child(
+                                        Label::new(SharedString::from(option.description.clone()))
+                                            .color(Color::Muted)
+                                            .size(LabelSize::XSmall),
+                                    )
+                            })
+                            .collect();
+                        v_flex()
+                            .gap_1()
+                            .child(
+                                Label::new(SharedString::from(format!(
+                                    "{} — {}",
+                                    question.header, question.question
+                                )))
+                                .size(LabelSize::XSmall),
+                            )
+                            .child(
+                                Label::new(if question.multi_select {
+                                    "choose any of these"
+                                } else {
+                                    "choose one of these"
+                                })
+                                .color(Color::Muted)
+                                .size(LabelSize::XSmall),
+                            )
+                            .children(option_rows)
+                    })
+                    .collect();
+
+                v_flex()
+                    .id(SharedString::from(format!(
+                        "octos-question-{}",
+                        asked.question_id.0
+                    )))
+                    .gap_1()
+                    .p_2()
+                    .rounded_sm()
+                    .bg(cx.theme().colors().element_background)
+                    .child(
+                        Label::new(SharedString::from(asked.title.clone()))
+                            .size(LabelSize::Small),
+                    )
+                    .child(
+                        Label::new(SharedString::from(first_line(&asked.body, 240)))
+                            .color(Color::Muted)
+                            .size(LabelSize::XSmall),
+                    )
+                    .children(question_rows)
+                    .child(
+                        Label::new(if asked
+                            .questions
+                            .iter()
+                            .any(|question| question.allow_free_text)
+                        {
+                            "free text goes in the box below (Enter sends it with the choices)"
+                        } else {
+                            "this question takes no free text"
+                        })
+                        .color(Color::Muted)
+                        .size(LabelSize::XSmall),
+                    )
+                    .child(
+                        h_flex()
+                            .gap_2()
+                            .child(
+                                Button::new(
+                                    SharedString::from(format!("answer-{}", asked.question_id.0)),
+                                    "Answer",
+                                )
+                                .style(ButtonStyle::Tinted(TintColor::Accent))
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    let text = std::mem::take(&mut this.input);
+                                    super::answer_question(cx, &answer_id, &text);
+                                    cx.notify();
+                                })),
+                            )
+                            .child(
+                                Button::new(
+                                    SharedString::from(format!("dismiss-{}", asked.question_id.0)),
+                                    "Dismiss (no answer)",
+                                )
+                                .style(ButtonStyle::OutlinedGhost)
+                                .on_click(cx.listener(move |_, _, _, cx| {
+                                    super::dismiss_question(cx, &dismiss_id);
+                                    cx.notify();
+                                })),
+                            ),
+                    )
+            })
+            .collect();
+
+        let question_waits = !questions.is_empty();
+
         let input_display: SharedString = if self.input.is_empty() {
-            if can_send {
+            if question_waits {
+                "Type free text (optional), Enter answers the question".into()
+            } else if can_send {
                 "Type a message and press Enter".into()
             } else {
                 "No session open — see the lines above".into()
@@ -274,7 +443,14 @@ impl Render for OctosConsole {
                     return;
                 }
                 match keystroke.key.as_str() {
-                    "enter" => this.send(cx),
+                    "enter" => this.submit(cx),
+                    // Escape stops the turn in flight. It is deliberately the
+                    // *only* thing Escape does: a pending approval is still
+                    // answered with y/n, so the riskier reading of Escape —
+                    // "approve the thing that is blocking me" — is never taken
+                    // by accident. With no turn in flight nothing is sent
+                    // (`super::interrupt_turn` logs it and returns).
+                    "escape" => super::interrupt_turn(cx),
                     "backspace" => {
                         this.input.pop();
                         cx.notify();
@@ -335,6 +511,18 @@ impl Render for OctosConsole {
                         Label::new(hint).color(Color::Muted).size(LabelSize::XSmall)
                     })),
             )
+            .when(!question_cards.is_empty(), |this| {
+                this.child(
+                    v_flex()
+                        .gap_1()
+                        .child(
+                            Label::new("The kernel is waiting on your answer")
+                                .color(Color::Muted)
+                                .size(LabelSize::XSmall),
+                        )
+                        .children(question_cards),
+                )
+            })
             .when(!approval_cards.is_empty(), |this| {
                 this.child(
                     v_flex()
@@ -383,9 +571,27 @@ impl Render for OctosConsole {
                             ),
                     )
                     .child(
-                        Button::new("send", if pending { "Sending…" } else { "Send" })
-                            .style(ButtonStyle::Tinted(TintColor::Accent))
-                            .on_click(cx.listener(|this, _, _, cx| this.send(cx))),
+                        Button::new(
+                            "send",
+                            if question_waits {
+                                "Answer"
+                            } else if pending {
+                                "Sending…"
+                            } else {
+                                "Send"
+                            },
+                        )
+                        .style(ButtonStyle::Tinted(TintColor::Accent))
+                        .on_click(cx.listener(|this, _, _, cx| this.submit(cx))),
+                    )
+                    .child(
+                        // Stop is only live while a turn is in flight: there is
+                        // no turn to name otherwise, and the host sends nothing
+                        // (`super::interrupt_turn`). Esc does the same thing.
+                        Button::new("interrupt", "Stop (Esc)")
+                            .style(ButtonStyle::OutlinedGhost)
+                            .disabled(!pending)
+                            .on_click(cx.listener(|_, _, _, cx| super::interrupt_turn(cx))),
                     )
                     .child(
                         Button::new("copy", "Copy")

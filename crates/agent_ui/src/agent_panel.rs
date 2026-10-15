@@ -4715,6 +4715,20 @@ impl agent::SiblingThreadHost for AgentPanelSiblingHost {
             let agent_choice = match request.agent_id.as_deref() {
                 None => None,
                 Some(id) if id == agent::ZED_AGENT_ID.as_ref() => Some(Agent::NativeAgent),
+                // The in-process kernel is not in `external_agents`, so it needs
+                // its own arm: the "known id" check below would reject it.
+                Some(id) if id == crate::octos::OCTOS_AGENT_ID => {
+                    let available = panel
+                        .read_with(cx, |_, cx| crate::octos::is_available(cx))
+                        .unwrap_or(false);
+                    if !available {
+                        return Err(anyhow!(
+                            "Octos is not running in this process, so it cannot open a \
+                             session for a sibling thread."
+                        ));
+                    }
+                    Some(Agent::Octos)
+                }
                 Some(id) => {
                     // Reject unknown agent ids up front so the model gets a
                     // structured error pointing at `list_agents_and_models`,
@@ -4830,6 +4844,21 @@ impl agent::SiblingThreadHost for AgentPanelSiblingHost {
             is_native: true,
             models: native_models,
         });
+
+        // The in-process kernel, when this process has one. It is not in
+        // `external_agents`, so it is listed here explicitly.
+        if crate::octos::is_available(cx) {
+            agents.push(agent::AvailableAgent {
+                id: crate::octos::OCTOS_AGENT_ID.to_string(),
+                name: crate::octos::OCTOS_AGENT_LABEL.into(),
+                is_native: false,
+                // Octos picks its own model from its profile. The list Octos
+                // would report (`profile/llm/list`) is P4 work; guessing it from
+                // *Zed's* model registry here would be exactly the mirroring
+                // this backend exists to avoid.
+                models: Vec::new(),
+            });
+        }
 
         let project = panel.read(cx).project.clone();
         let agent_server_store = project.read(cx).agent_server_store().clone();
@@ -5776,6 +5805,43 @@ impl AgentPanel {
                                     }
                                 }),
                         )
+                        .when(crate::octos::is_available(cx), |menu| {
+                            // Offered only while the kernel is embedded in this
+                            // process: there is no command to launch and no
+                            // entry in `agent_servers` that could make Octos
+                            // appear later without it.
+                            menu.item(
+                                ContextMenuEntry::new(crate::octos::OCTOS_AGENT_LABEL)
+                                    .when(
+                                        !showing_terminal && is_agent_selected(Agent::Octos),
+                                        |this| this.action(Box::new(NewThread)),
+                                    )
+                                    .icon(IconName::Sparkle)
+                                    .icon_color(Color::Muted)
+                                    .handler({
+                                        let workspace = workspace.clone();
+                                        move |window, cx| {
+                                            if let Some(workspace) = workspace.upgrade() {
+                                                workspace.update(cx, |workspace, cx| {
+                                                    if let Some(panel) =
+                                                        workspace.panel::<AgentPanel>(cx)
+                                                    {
+                                                        panel.update(cx, |panel, cx| {
+                                                            panel.selected_agent = Agent::Octos;
+                                                            panel.activate_new_thread(
+                                                                true,
+                                                                AgentThreadSource::AgentPanel,
+                                                                window,
+                                                                cx,
+                                                            );
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }),
+                            )
+                        })
                         .when(supports_terminal, |menu| {
                             menu.item(
                                 ContextMenuEntry::new("Terminal")

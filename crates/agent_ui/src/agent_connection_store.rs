@@ -275,6 +275,10 @@ impl AgentConnectionStore {
         self.entries.retain(|key, _| match key {
             Agent::NativeAgent => true,
             Agent::Custom { id } => store.external_agents.contains_key(id),
+            // The in-process Octos backend is registered with the app, not with
+            // the agent-server settings, so `external_agents` never lists it and
+            // an entry for it must survive every settings reload.
+            Agent::Octos => true,
             #[cfg(any(test, feature = "test-support"))]
             Agent::Stub => true,
         });

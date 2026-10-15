@@ -17,6 +17,7 @@ mod message_editor;
 mod mode_selector;
 mod model_selector;
 mod model_selector_popover;
+pub mod octos;
 mod profile_selector;
 pub mod terminal_thread_metadata_store;
 #[cfg(any(test, feature = "test-support"))]
@@ -391,6 +392,7 @@ where
         AgentIdOrLegacyAgent::AgentId(agent_id) => Ok(agent_id),
         AgentIdOrLegacyAgent::LegacyAgent(Agent::Custom { id }) => Ok(id),
         AgentIdOrLegacyAgent::LegacyAgent(Agent::NativeAgent) => Ok(Agent::NativeAgent.id()),
+        AgentIdOrLegacyAgent::LegacyAgent(Agent::Octos) => Ok(Agent::Octos.id()),
         #[cfg(any(test, feature = "test-support"))]
         AgentIdOrLegacyAgent::LegacyAgent(Agent::Stub) => Ok(Agent::Stub.id()),
     }
@@ -415,6 +417,18 @@ pub enum Agent {
         #[serde(rename = "name")]
         id: AgentId,
     },
+    /// The Octos kernel embedded in this process (`crate::octos`).
+    ///
+    /// Deliberately a variant of its own rather than an `AgentId` smuggled
+    /// through `Custom`: a `Custom` id resolves through
+    /// `AgentServerStore::external_agents()`, which is built from the
+    /// `agent_servers` settings and the downloaded registry — there is nowhere
+    /// in it to *programmatically* register an in-process server, and every
+    /// settings reload (`AgentServerStore::reregister_agents`) drains and
+    /// rebuilds that map, so an injected entry would not survive. A variant
+    /// also keeps the semantics honest: Octos is not an external agent, it is
+    /// a second way to run one.
+    Octos,
     #[cfg(any(test, feature = "test-support"))]
     Stub,
 }
@@ -428,6 +442,9 @@ impl From<AgentId> for Agent {
         if id.as_ref() == "stub" {
             return Self::Stub;
         }
+        if id.as_ref() == octos::OCTOS_AGENT_ID {
+            return Self::Octos;
+        }
         Self::Custom { id }
     }
 }
@@ -437,6 +454,7 @@ impl Agent {
         match self {
             Self::NativeAgent => agent::ZED_AGENT_ID.clone(),
             Self::Custom { id } => id.clone(),
+            Self::Octos => AgentId::new(octos::OCTOS_AGENT_ID),
             #[cfg(any(test, feature = "test-support"))]
             Self::Stub => "stub".into(),
         }
@@ -450,6 +468,7 @@ impl Agent {
         match self {
             Self::NativeAgent => "Zed Agent".into(),
             Self::Custom { id, .. } => id.0.clone(),
+            Self::Octos => octos::OCTOS_AGENT_LABEL.into(),
             #[cfg(any(test, feature = "test-support"))]
             Self::Stub => "Stub Agent".into(),
         }
@@ -459,6 +478,7 @@ impl Agent {
         match self {
             Self::NativeAgent => None,
             Self::Custom { .. } => Some(IconName::Sparkle),
+            Self::Octos => Some(IconName::Sparkle),
             #[cfg(any(test, feature = "test-support"))]
             Self::Stub => None,
         }
@@ -474,6 +494,9 @@ impl Agent {
             Self::Custom { id: name } => {
                 Rc::new(agent_servers::CustomAgentServer::new(name.clone()))
             }
+            // No `fs`/`thread_store`: the kernel is in this process, so there is
+            // nothing to launch and no thread store of its own to read.
+            Self::Octos => Rc::new(octos::OctosAgentServer),
             #[cfg(any(test, feature = "test-support"))]
             Self::Stub => Rc::new(crate::test_support::StubAgentServer::default_response()),
         }
