@@ -198,7 +198,7 @@ members = [
     "crates/gpui-base",
     "crates/gpui-component",
     "crates/gpui-component-macros",
-    "crates/gpui-fps",
+    "crates/fps",
     "crates/gpui-kit",
     "crates/gpui-kit-assets",
     "crates/gpui-kit-showcase",
@@ -578,7 +578,7 @@ ztracing_macro = { path = "crates/ztracing_macro" }
 gpui-base = { path = "crates/gpui-base" }
 gpui-component = { path = "crates/gpui-component" }
 gpui-component-macros = { path = "crates/gpui-component-macros" }
-gpui-fps = { path = "crates/gpui-fps" }
+gpui-fps = { path = "crates/fps" }
 gpui-kit = { path = "crates/gpui-kit" }
 gpui-kit-assets = { path = "crates/gpui-kit-assets" }
 gpui-kit-showcase = { path = "crates/gpui-kit-showcase" }
