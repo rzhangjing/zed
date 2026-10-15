@@ -199,13 +199,13 @@ Expected flow:
 The current local `octos-app` workspace already contains implementation pieces
 for this contract:
 
-- `crates/octos-app-transport` handles AppUI transport/capabilities.
-- `crates/octos-app-store` folds protocol notifications into app state.
+- `crates/octos/octos-app-transport` handles AppUI transport/capabilities.
+- `crates/octos/octos-app-store` folds protocol notifications into app state.
 - `app/src/backend/octos_ui.rs` owns WebSocket/backend integration.
 - `app/src/main.rs` wires backend state, task output handle, and app actions.
 - `app/src/app/coding.rs` provides the coding screen surface.
-- `crates/octos-app-store/src/approvals.rs` owns approval queue/history.
-- `crates/octos-app-store/src/state.rs` handles task state, approval lifecycle,
+- `crates/octos/octos-app-store/src/approvals.rs` owns approval queue/history.
+- `crates/octos/octos-app-store/src/state.rs` handles task state, approval lifecycle,
   replay-lossy, and reducers.
 
 Known operational issue:

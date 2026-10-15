@@ -53,7 +53,7 @@ export interface TurnStartMediaRef {
  * and serialised only when populated.
  *
  * Mirrors the Rust `TurnStartParams` struct in
- * `crates/octos-core/src/ui_protocol.rs`. Keep these in lockstep —
+ * `crates/octos/octos-core/src/ui_protocol.rs`. Keep these in lockstep —
  * `tsc --noEmit` is the only structural check; a drift between the
  * two is a wire bug.
  */
@@ -257,7 +257,7 @@ export interface TaskCancelResult {
  *
  * The wire payload's text-bearing field is named `text` to match
  * `octos_core::ui_protocol::MessageDeltaEvent` (see
- * `crates/octos-core/src/ui_protocol.rs`). An earlier version of this
+ * `crates/octos/octos-core/src/ui_protocol.rs`). An earlier version of this
  * type called the field `delta`; the guard then required `params.delta:
  * string` and silently rejected every real server frame, which left the
  * spawn-ack `pendingAssistant` empty (the M10 Phase 6.2 root cause —
@@ -948,7 +948,7 @@ export interface SessionRollbackResult {
 
 // ─── M9-γ canonical projection envelope (UPCR-2026-014) ────────────────────
 //
-// Mirrors `crates/octos-core/src/ui_protocol.rs` (Rust enum uses
+// Mirrors `crates/octos/octos-core/src/ui_protocol.rs` (Rust enum uses
 // `serde(tag = "type", content = "data", rename_all = "snake_case")`).
 //
 // Spec: `api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md` § 14

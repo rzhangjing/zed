@@ -86,14 +86,14 @@ not separate LLM cadence from hardware cadence.
 
 ### Stable Surfaces
 
-- `crates/octos-agent/src/agent/loop_runner.rs` public shape
+- `crates/octos/octos-agent/src/agent/loop_runner.rs` public shape
 - existing `Tool` trait
 - existing session, topic, workspace identity
-- `crates/octos-pipeline` public API
+- `crates/octos/octos-pipeline` public API
 
 ### Architectural Surface
 
-New crate `crates/octos-realtime/`.
+New crate `crates/octos/octos-realtime/`.
 
 - binary-target `octos-realtime` runs a deterministic tick loop with a
   configurable cadence
@@ -109,15 +109,15 @@ New crate `crates/octos-realtime/`.
 
 ### Allowed Files
 
-- `crates/octos-realtime/Cargo.toml`
-- `crates/octos-realtime/src/lib.rs`
-- `crates/octos-realtime/src/goal.rs`
-- `crates/octos-realtime/src/state.rs`
-- `crates/octos-realtime/src/tick.rs`
-- `crates/octos-realtime/src/main.rs`
-- `crates/octos-realtime/tests/tick_jitter.rs`
-- `crates/octos-cli/src/profiles.rs` — add `RealtimeConfig` typed section
-- `crates/octos-cli/src/commands/gateway/gateway_runtime.rs` — wire config load
+- `crates/octos/octos-realtime/Cargo.toml`
+- `crates/octos/octos-realtime/src/lib.rs`
+- `crates/octos/octos-realtime/src/goal.rs`
+- `crates/octos/octos-realtime/src/state.rs`
+- `crates/octos/octos-realtime/src/tick.rs`
+- `crates/octos/octos-realtime/src/main.rs`
+- `crates/octos/octos-realtime/tests/tick_jitter.rs`
+- `crates/octos/octos-cli/src/profiles.rs` — add `RealtimeConfig` typed section
+- `crates/octos/octos-cli/src/commands/gateway/gateway_runtime.rs` — wire config load
 - `Cargo.toml` workspace member add
 
 ### Required Invariants
@@ -195,10 +195,10 @@ tasks.
 
 ### Architectural Surface
 
-- new module `crates/octos-pipeline/src/mission.rs` introducing a
+- new module `crates/octos/octos-pipeline/src/mission.rs` introducing a
   `MissionExecutor` that drives a pipeline graph to completion, reporting
   progress as typed events
-- new module `crates/octos-agent/src/agent/mission_bridge.rs` that lets
+- new module `crates/octos/octos-agent/src/agent/mission_bridge.rs` that lets
   the agent loop hand a mission to `MissionExecutor` and re-enter only on
   `MissionException`
 - new `ProfileConfig.robot.mission` typed section with default
@@ -207,14 +207,14 @@ tasks.
 
 ### Allowed Files
 
-- `crates/octos-pipeline/src/mission.rs`
-- `crates/octos-pipeline/src/lib.rs` — re-export
-- `crates/octos-pipeline/tests/mission_executor.rs`
-- `crates/octos-agent/src/agent/mission_bridge.rs`
-- `crates/octos-agent/src/agent/mod.rs` — re-export only
-- `crates/octos-agent/src/agent/loop_runner.rs` — new branch calling
+- `crates/octos/octos-pipeline/src/mission.rs`
+- `crates/octos/octos-pipeline/src/lib.rs` — re-export
+- `crates/octos/octos-pipeline/tests/mission_executor.rs`
+- `crates/octos/octos-agent/src/agent/mission_bridge.rs`
+- `crates/octos/octos-agent/src/agent/mod.rs` — re-export only
+- `crates/octos/octos-agent/src/agent/loop_runner.rs` — new branch calling
   mission bridge when mission present on the turn
-- `crates/octos-cli/src/profiles.rs` — add `MissionConfig` typed section
+- `crates/octos/octos-cli/src/profiles.rs` — add `MissionConfig` typed section
 
 ### Required Invariants
 
@@ -284,7 +284,7 @@ that no enforcer reads. On a physical robot that is unsafe.
 
 ### Architectural Surface
 
-New crate `crates/octos-safety/`.
+New crate `crates/octos/octos-safety/`.
 
 - types: `SafetyTier`, `SafetyInvariant`, `Violation`, `SafeState`
 - trait `SafetySupervisor` with `authorize(tier, context) -> Decision`,
@@ -302,16 +302,16 @@ New crate `crates/octos-safety/`.
 
 ### Allowed Files
 
-- `crates/octos-safety/Cargo.toml`
-- `crates/octos-safety/src/lib.rs`
-- `crates/octos-safety/src/tier.rs`
-- `crates/octos-safety/src/invariant.rs`
-- `crates/octos-safety/src/supervisor.rs`
-- `crates/octos-safety/tests/enforcement.rs`
-- `crates/octos-agent/src/tools/mod.rs` — add trait default method
-- `crates/octos-agent/src/agent/loop_runner.rs` — authorize at dispatch
-- `crates/octos-realtime/src/tick.rs` — evaluate on tick
-- `crates/octos-cli/src/profiles.rs` — add `SafetyConfig` typed section
+- `crates/octos/octos-safety/Cargo.toml`
+- `crates/octos/octos-safety/src/lib.rs`
+- `crates/octos/octos-safety/src/tier.rs`
+- `crates/octos/octos-safety/src/invariant.rs`
+- `crates/octos/octos-safety/src/supervisor.rs`
+- `crates/octos/octos-safety/tests/enforcement.rs`
+- `crates/octos/octos-agent/src/tools/mod.rs` — add trait default method
+- `crates/octos/octos-agent/src/agent/loop_runner.rs` — authorize at dispatch
+- `crates/octos/octos-realtime/src/tick.rs` — evaluate on tick
+- `crates/octos/octos-cli/src/profiles.rs` — add `SafetyConfig` typed section
 - `Cargo.toml` workspace member add
 
 ### Required Invariants
@@ -387,7 +387,7 @@ topics. A naive bridge buffers sensor streams without bound.
 
 ### Architectural Surface
 
-New crate `crates/octos-robotics-bridge/`.
+New crate `crates/octos/octos-robotics-bridge/`.
 
 - trait `RoboticsBridge` with `publish(topic, msg)`, `subscribe(topic,
   qos, sink)`, `call(service, args)`
@@ -402,16 +402,16 @@ New crate `crates/octos-robotics-bridge/`.
 
 ### Allowed Files
 
-- `crates/octos-robotics-bridge/Cargo.toml`
-- `crates/octos-robotics-bridge/src/lib.rs`
-- `crates/octos-robotics-bridge/src/qos.rs`
-- `crates/octos-robotics-bridge/src/adapter/stdio.rs`
-- `crates/octos-robotics-bridge/src/adapter/dora.rs`
-- `crates/octos-robotics-bridge/src/adapter/ros2.rs`
-- `crates/octos-robotics-bridge/src/schema.rs`
-- `crates/octos-robotics-bridge/tests/backpressure.rs`
-- `crates/octos-realtime/src/tick.rs` — consume subscriptions
-- `crates/octos-cli/src/profiles.rs` — add `BridgeConfig` typed section
+- `crates/octos/octos-robotics-bridge/Cargo.toml`
+- `crates/octos/octos-robotics-bridge/src/lib.rs`
+- `crates/octos/octos-robotics-bridge/src/qos.rs`
+- `crates/octos/octos-robotics-bridge/src/adapter/stdio.rs`
+- `crates/octos/octos-robotics-bridge/src/adapter/dora.rs`
+- `crates/octos/octos-robotics-bridge/src/adapter/ros2.rs`
+- `crates/octos/octos-robotics-bridge/src/schema.rs`
+- `crates/octos/octos-robotics-bridge/tests/backpressure.rs`
+- `crates/octos/octos-realtime/src/tick.rs` — consume subscriptions
+- `crates/octos/octos-cli/src/profiles.rs` — add `BridgeConfig` typed section
 - `Cargo.toml` workspace member add
 
 ### Required Invariants
@@ -498,16 +498,16 @@ Extension, not replacement, of `workspace_contract.rs`.
 
 ### Allowed Files
 
-- `crates/octos-agent/src/workspace_contract.rs` — new `MissionContract`
+- `crates/octos/octos-agent/src/workspace_contract.rs` — new `MissionContract`
   type and `MissionPredicate` enum, additive
-- `crates/octos-agent/src/mission_gate.rs` — new module, mission-specific
+- `crates/octos/octos-agent/src/mission_gate.rs` — new module, mission-specific
   gate helpers
-- `crates/octos-agent/tests/mission_gate.rs`
-- `crates/octos-pipeline/src/mission.rs` — consume pre and post
-- `crates/octos-safety/src/supervisor.rs` — consume invariants
-- `crates/octos-cli/src/profiles.rs` — add `MissionContractConfig` typed
+- `crates/octos/octos-agent/tests/mission_gate.rs`
+- `crates/octos/octos-pipeline/src/mission.rs` — consume pre and post
+- `crates/octos/octos-safety/src/supervisor.rs` — consume invariants
+- `crates/octos/octos-cli/src/profiles.rs` — add `MissionContractConfig` typed
   section
-- `crates/octos-cli/src/session_actor.rs` — extend existing turn-end gate
+- `crates/octos/octos-cli/src/session_actor.rs` — extend existing turn-end gate
 
 ### Required Invariants
 
@@ -572,12 +572,12 @@ budget or drops important data silently.
 ### Stable Surfaces
 
 - existing context engineering path
-- existing compaction logic in `octos-agent/src/compaction.rs`
+- existing compaction logic in `octos/octos-agent/src/compaction.rs`
 - existing message and memory shape
 
 ### Architectural Surface
 
-New module `crates/octos-agent/src/sensor_context.rs`.
+New module `crates/octos/octos-agent/src/sensor_context.rs`.
 
 - policy enum `SensorPolicy { Periodic { hz }, EventTriggered { predicate },
   AttentionGate { cond } }`
@@ -588,11 +588,11 @@ New module `crates/octos-agent/src/sensor_context.rs`.
 
 ### Allowed Files
 
-- `crates/octos-agent/src/sensor_context.rs`
-- `crates/octos-agent/src/agent/mod.rs` — re-export
-- `crates/octos-agent/src/agent/execution.rs` — inject at prompt build
-- `crates/octos-agent/tests/sensor_context.rs`
-- `crates/octos-cli/src/profiles.rs` — `SensorContextConfig` typed section
+- `crates/octos/octos-agent/src/sensor_context.rs`
+- `crates/octos/octos-agent/src/agent/mod.rs` — re-export
+- `crates/octos/octos-agent/src/agent/execution.rs` — inject at prompt build
+- `crates/octos/octos-agent/tests/sensor_context.rs`
+- `crates/octos/octos-cli/src/profiles.rs` — `SensorContextConfig` typed section
 
 ### Required Invariants
 
@@ -657,7 +657,7 @@ for ISO 10218, IEC 61508, and ISO 15066 postures.
 
 ### Architectural Surface
 
-New crate `crates/octos-blackbox/`.
+New crate `crates/octos/octos-blackbox/`.
 
 - typed event schema covering: goal issued, state observed, supervisor
   decision, violation, tool call, LLM message, channel message
@@ -673,18 +673,18 @@ New crate `crates/octos-blackbox/`.
 
 ### Allowed Files
 
-- `crates/octos-blackbox/Cargo.toml`
-- `crates/octos-blackbox/src/lib.rs`
-- `crates/octos-blackbox/src/chain.rs`
-- `crates/octos-blackbox/src/writer.rs`
-- `crates/octos-blackbox/src/replay.rs`
-- `crates/octos-blackbox/tests/tamper.rs`
-- `crates/octos-blackbox/tests/crash_safe.rs`
-- `crates/octos-cli/src/commands/blackbox.rs` — new subcommand
-- `crates/octos-cli/src/main.rs` — subcommand wire-up
-- `crates/octos-safety/src/supervisor.rs` — emit events
-- `crates/octos-realtime/src/tick.rs` — emit events
-- `crates/octos-cli/src/profiles.rs` — `BlackBoxConfig` typed section
+- `crates/octos/octos-blackbox/Cargo.toml`
+- `crates/octos/octos-blackbox/src/lib.rs`
+- `crates/octos/octos-blackbox/src/chain.rs`
+- `crates/octos/octos-blackbox/src/writer.rs`
+- `crates/octos/octos-blackbox/src/replay.rs`
+- `crates/octos/octos-blackbox/tests/tamper.rs`
+- `crates/octos/octos-blackbox/tests/crash_safe.rs`
+- `crates/octos/octos-cli/src/commands/blackbox.rs` — new subcommand
+- `crates/octos/octos-cli/src/main.rs` — subcommand wire-up
+- `crates/octos/octos-safety/src/supervisor.rs` — emit events
+- `crates/octos/octos-realtime/src/tick.rs` — emit events
+- `crates/octos/octos-cli/src/profiles.rs` — `BlackBoxConfig` typed section
 
 ### Required Invariants
 
@@ -753,7 +753,7 @@ a typed authorization primitive with safe-state fallback.
 
 ### Architectural Surface
 
-New module `crates/octos-bus/src/hitl.rs`.
+New module `crates/octos/octos-bus/src/hitl.rs`.
 
 - types `AuthorizationRequest { action, ttl, default_on_timeout }`,
   `AuthorizationResponse { decision, approver, at }`
@@ -765,11 +765,11 @@ New module `crates/octos-bus/src/hitl.rs`.
 
 ### Allowed Files
 
-- `crates/octos-bus/src/hitl.rs`
-- `crates/octos-bus/src/lib.rs` — re-export
-- `crates/octos-bus/tests/hitl_timeout.rs`
-- `crates/octos-safety/src/supervisor.rs` — request authorization
-- `crates/octos-cli/src/profiles.rs` — `HitlConfig` typed section
+- `crates/octos/octos-bus/src/hitl.rs`
+- `crates/octos/octos-bus/src/lib.rs` — re-export
+- `crates/octos/octos-bus/tests/hitl_timeout.rs`
+- `crates/octos/octos-safety/src/supervisor.rs` — request authorization
+- `crates/octos/octos-cli/src/profiles.rs` — `HitlConfig` typed section
 
 ### Required Invariants
 
@@ -833,7 +833,7 @@ only on the rig.
 
 ### Architectural Surface
 
-New crate `crates/octos-sim/`.
+New crate `crates/octos/octos-sim/`.
 
 - trait implementation: `SimBridge` implementing `RoboticsBridge`
 - deterministic seeding: single `u64` seed drives every stochastic
@@ -846,14 +846,14 @@ New crate `crates/octos-sim/`.
 
 ### Allowed Files
 
-- `crates/octos-sim/Cargo.toml`
-- `crates/octos-sim/src/lib.rs`
-- `crates/octos-sim/src/backend.rs`
-- `crates/octos-sim/src/seed.rs`
-- `crates/octos-sim/src/time.rs`
-- `crates/octos-sim/tests/determinism.rs`
-- `crates/octos-sim/tests/parity.rs`
-- `crates/octos-cli/src/profiles.rs` — `SimConfig` typed section
+- `crates/octos/octos-sim/Cargo.toml`
+- `crates/octos/octos-sim/src/lib.rs`
+- `crates/octos/octos-sim/src/backend.rs`
+- `crates/octos/octos-sim/src/seed.rs`
+- `crates/octos/octos-sim/src/time.rs`
+- `crates/octos/octos-sim/tests/determinism.rs`
+- `crates/octos/octos-sim/tests/parity.rs`
+- `crates/octos/octos-cli/src/profiles.rs` — `SimConfig` typed section
 
 ### Required Invariants
 
@@ -915,7 +915,7 @@ concerns are resources, roles, priorities, and deadlock avoidance.
 
 ### Architectural Surface
 
-New crate `crates/octos-cell/`.
+New crate `crates/octos/octos-cell/`.
 
 - types `Cell`, `Robot`, `Resource`, `Role`, `Priority`, `Claim`
 - deadlock avoidance by Banker's-algorithm-style resource claim ordering
@@ -925,13 +925,13 @@ New crate `crates/octos-cell/`.
 
 ### Allowed Files
 
-- `crates/octos-cell/Cargo.toml`
-- `crates/octos-cell/src/lib.rs`
-- `crates/octos-cell/src/resource.rs`
-- `crates/octos-cell/src/scheduler.rs`
-- `crates/octos-cell/tests/deadlock.rs`
-- `crates/octos-cli/src/profiles.rs` — `CellConfig` typed section
-- `crates/octos-cli/src/api/admin.rs` — operator summary extension
+- `crates/octos/octos-cell/Cargo.toml`
+- `crates/octos/octos-cell/src/lib.rs`
+- `crates/octos/octos-cell/src/resource.rs`
+- `crates/octos/octos-cell/src/scheduler.rs`
+- `crates/octos/octos-cell/tests/deadlock.rs`
+- `crates/octos/octos-cli/src/profiles.rs` — `CellConfig` typed section
+- `crates/octos/octos-cli/src/api/admin.rs` — operator summary extension
 
 ### Required Invariants
 

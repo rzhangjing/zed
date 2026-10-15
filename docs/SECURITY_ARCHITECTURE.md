@@ -76,7 +76,7 @@ Within a profile, each user (identified by `channel:chat_id`) gets a dedicated `
         default.jsonl
 ```
 
-**SessionKey construction** (`octos-core/src/types.rs`): Keys are `{channel}:{chat_id}` (e.g., `telegram:12345`), optionally with topic suffix `#research`. The `base_key` (without topic) determines the user directory. Session filenames are percent-encoded with an FNV-1a hash suffix on truncation to prevent collisions.
+**SessionKey construction** (`octos/octos-core/src/types.rs`): Keys are `{channel}:{chat_id}` (e.g., `telegram:12345`), optionally with topic suffix `#research`. The `base_key` (without topic) determines the user directory. Session filenames are percent-encoded with an FNV-1a hash suffix on truncation to prevent collisions.
 
 **Backward compatibility**: `SessionHandle::open()` tries the new per-user path first, then falls back to the legacy flat path (`{data_dir}/sessions/{encoded_key}.jsonl`). On successful legacy load, the file is auto-migrated to the new path and the old file is removed.
 
@@ -129,7 +129,7 @@ Each user gets a dedicated workspace directory for tool execution:
 
 ### 3.2 File I/O Safety
 
-`resolve_path()` in `octos-agent/src/tools/mod.rs`:
+`resolve_path()` in `octos/octos-agent/src/tools/mod.rs`:
 
 1. **Rejects absolute paths** -- user-provided paths must be relative.
 2. **Normalizes `..` components** without filesystem access (`normalize_path`).
@@ -145,8 +145,8 @@ On non-Unix platforms, a fallback `symlink_metadata()` check is used (TOCTOU win
 
 Four sandbox backends, selectable via `SandboxConfig`:
 
-- `octos-agent/src/sandbox/{bwrap,macos,docker,windows}.rs` — agent-side launcher logic
-- `crates/octos-sandbox/src/main.rs` — Windows AppContainer helper binary (built on `rappct`)
+- `octos/octos-agent/src/sandbox/{bwrap,macos,docker,windows}.rs` — agent-side launcher logic
+- `crates/octos/octos-sandbox/src/main.rs` — Windows AppContainer helper binary (built on `rappct`)
 
 **Bubblewrap (Linux)**:
 - Read-only bind mounts for `/usr`, `/lib`, `/bin`, `/sbin`, `/etc`.
@@ -228,7 +228,7 @@ All backends remove these from the child process environment before execution.
 
 ### 3.4 Tool Policy
 
-`ToolPolicy` in `octos-agent/src/tools/policy.rs` provides allow/deny lists with **deny-wins** semantics:
+`ToolPolicy` in `octos/octos-agent/src/tools/policy.rs` provides allow/deny lists with **deny-wins** semantics:
 
 - **Deny list checked first**. If a tool matches any deny entry, it is blocked regardless of allow list.
 - **Empty allow list** = allow everything not denied.
@@ -243,7 +243,7 @@ All backends remove these from the child process environment before execution.
 
 ### 3.5 SSRF Protection
 
-`octos_research::net::check_url` is the workspace's one SSRF validation; `octos-agent/src/tools/ssrf.rs` adapts it for `web_fetch`, `browser`, `site_crawl`, and MCP HTTP transports, and adds the fleet host allowlist `web_fetch` enforces per redirect hop.
+`octos_research::net::check_url` is the workspace's one SSRF validation; `octos/octos-agent/src/tools/ssrf.rs` adapts it for `web_fetch`, `browser`, `site_crawl`, and MCP HTTP transports, and adds the fleet host allowlist `web_fetch` enforces per redirect hop.
 
 **Two-phase check** (`check_url`):
 1. **Hostname validation** (`is_private_host`): Blocks `localhost`, `localhost.`, and any IP literal that resolves to a private range; non-http(s) schemes are refused outright.
@@ -256,7 +256,7 @@ All backends remove these from the child process environment before execution.
 
 ### 3.6 Plugin Integrity
 
-`octos-agent/src/plugins/loader.rs` handles plugin loading with integrity verification:
+`octos/octos-agent/src/plugins/loader.rs` handles plugin loading with integrity verification:
 
 1. **Manifest parsing**: `manifest.json` must exist and contain valid JSON with tool definitions.
 2. **Executable discovery**: Tries manifest name, directory name, `main`, or any executable in directory. Must be executable (`mode & 0o111 != 0` on Unix). Symlinks rejected via `symlink_metadata()`.
@@ -270,7 +270,7 @@ All backends remove these from the child process environment before execution.
 
 ### 3.7 MCP Security
 
-`octos-agent/src/mcp.rs` secures MCP server integration:
+`octos/octos-agent/src/mcp.rs` secures MCP server integration:
 
 **Schema validation** (`validate_schema`):
 - Maximum nesting depth: 10 levels (`MAX_SCHEMA_DEPTH`).
@@ -296,7 +296,7 @@ All backends remove these from the child process environment before execution.
 
 ### 3.8 Auth Middleware
 
-`octos-cli/src/api/router.rs` implements two-tier authentication:
+`octos/octos-cli/src/api/router.rs` implements two-tier authentication:
 
 **Token extraction**: Bearer header (`Authorization: Bearer {token}`) with query parameter fallback (`?token={token}`) for SSE/EventSource.
 
@@ -316,7 +316,7 @@ All backends remove these from the child process environment before execution.
 
 ### 3.9 Hook Security
 
-`octos-agent/src/hooks.rs` runs lifecycle hooks with multiple safety measures:
+`octos/octos-agent/src/hooks.rs` runs lifecycle hooks with multiple safety measures:
 
 **Argv execution**: Commands are specified as an argv array (not shell strings). No shell interpretation -- prevents command injection via hook configuration.
 
@@ -427,7 +427,7 @@ The M8.1–M8.10 milestones added runtime-level hardening that is security-relev
 
 ### 4a.1 Bounded Supervisor and Orphan-Task Reaper (#609, #610)
 
-`crates/octos-agent/src/task_supervisor.rs` owns the lifecycle of agent tasks per profile and bounds total fan-out across `spawn`, pipeline, and swarm. This blocks a runaway agent (or a malicious prompt) from creating an unbounded number of background tasks and exhausting runner CPU/memory.
+`crates/octos/octos-agent/src/task_supervisor.rs` owns the lifecycle of agent tasks per profile and bounds total fan-out across `spawn`, pipeline, and swarm. This blocks a runaway agent (or a malicious prompt) from creating an unbounded number of background tasks and exhausting runner CPU/memory.
 
 The orphan-task reaper sweeps tasks whose owning session has terminated and frees their resources. Without it, a profile crash mid-spawn could leak memory and tokio handles.
 
@@ -437,7 +437,7 @@ When a `spawn_only` task fails, the supervisor re-engages the LLM with a structu
 
 ### 4a.3 Sticky thread_id and committed_seq (M8.10)
 
-Every SSE event now carries a `thread_id` bound before the first emission, and the `done` event additionally carries `committed_seq`. This eliminates a class of cross-thread leakage bugs where, in flight, an event could be misattributed to the wrong UI thread. Replay-harness fixtures (`crates/octos-agent/tests/`) assert binding correctness.
+Every SSE event now carries a `thread_id` bound before the first emission, and the `done` event additionally carries `committed_seq`. This eliminates a class of cross-thread leakage bugs where, in flight, an event could be misattributed to the wrong UI thread. Replay-harness fixtures (`crates/octos/octos-agent/tests/`) assert binding correctness.
 
 ### 4a.4 Auto-Rotate Admin Token (#650)
 
@@ -445,7 +445,7 @@ On `octos serve` boot, the stored admin bearer token is rotated if it's stale or
 
 ### 4a.5 Plugin Protocol v2 Contract Tests
 
-Plugins that opt into protocol v2 emit structured events on stderr (`LogEvent`, `PhaseEvent`, `ProgressEvent`, `CostEvent`, `ArtifactEvent`). Contract tests at `crates/octos-plugin/tests/lifecycle_sandbox.rs` execute plugins under sandbox to verify the event stream — this is also the test point where we can assert that v2 plugins do not bypass the BLOCKED_ENV_VARS list.
+Plugins that opt into protocol v2 emit structured events on stderr (`LogEvent`, `PhaseEvent`, `ProgressEvent`, `CostEvent`, `ArtifactEvent`). Contract tests at `crates/octos/octos-plugin/tests/lifecycle_sandbox.rs` execute plugins under sandbox to verify the event stream — this is also the test point where we can assert that v2 plugins do not bypass the BLOCKED_ENV_VARS list.
 
 ### 4a.6 Audio Attachment Validation
 
@@ -511,9 +511,9 @@ sudo -u octos_profile_abc octos gateway \
 ```
 
 **Files to modify**:
-- `crates/octos-cli/src/process_manager.rs` — Add `run_as_user` to `Command::new()` via `sudo -u`
-- `crates/octos-cli/src/profiles.rs` — Add `isolation` config section
-- `crates/octos-cli/src/commands/gateway/mod.rs` — Read isolation config
+- `crates/octos/octos-cli/src/process_manager.rs` — Add `run_as_user` to `Command::new()` via `sudo -u`
+- `crates/octos/octos-cli/src/profiles.rs` — Add `isolation` config section
+- `crates/octos/octos-cli/src/commands/gateway/mod.rs` — Read isolation config
 
 ### 5.3 Read isolation (medium-term)
 
@@ -560,7 +560,7 @@ ruleset.restrict_self()?;
 **Risk**: Overly restrictive read lists break commands that need unexpected system paths. Needs a configurable allowlist with sensible defaults and an escape hatch (`sandbox.read_allow_paths` in config).
 
 **Files to modify**:
-- `crates/octos-agent/src/sandbox/mod.rs` — Add `read_paths: Vec<PathBuf>` to `SandboxConfig`, update SBPL generation and bwrap bind mounts
+- `crates/octos/octos-agent/src/sandbox/mod.rs` — Add `read_paths: Vec<PathBuf>` to `SandboxConfig`, update SBPL generation and bwrap bind mounts
 - New: Landlock backend in `sandbox.rs` (Linux 5.13+ detection via `prctl(PR_GET_NO_NEW_PRIVS)`)
 
 ### 5.4 Disk quotas (medium-term)
@@ -636,7 +636,7 @@ fn validate_bind_mount(source: &str) -> Result<()> {
 ```
 
 **Files to modify**:
-- `crates/octos-agent/src/sandbox/mod.rs` — Add validation in `DockerSandbox::wrap_command()`
+- `crates/octos/octos-agent/src/sandbox/mod.rs` — Add validation in `DockerSandbox::wrap_command()`
 
 ### 5.6 Persistent Docker containers (medium-term)
 
@@ -670,8 +670,8 @@ async fn prune_idle_containers(max_idle: Duration, max_age: Duration) { ... }
 **Performance**: First command ~300ms (container creation), subsequent ~5ms (`docker exec`). Filesystem state (installed packages, build artifacts) persists across commands within a session.
 
 **Files to modify**:
-- `crates/octos-agent/src/sandbox/mod.rs` — Add `DockerSessionSandbox` alongside existing `DockerSandbox`
-- `crates/octos-cli/src/session_actor.rs` — Tie container lifecycle to `SessionActor` lifetime
+- `crates/octos/octos-agent/src/sandbox/mod.rs` — Add `DockerSessionSandbox` alongside existing `DockerSandbox`
+- `crates/octos/octos-cli/src/session_actor.rs` — Tie container lifecycle to `SessionActor` lifetime
 
 ### 5.7 Profile containers with network isolation (long-term)
 
@@ -796,10 +796,10 @@ impl AllowlistProxy {
 **SSRF protection upgrade**: With the proxy model, SSRF protection moves from application-level (`ssrf.rs` checking in every tool) to infrastructure-level (proxy rejects private IPs for all traffic). Defense in depth — `ssrf.rs` stays as a second check, but the proxy is the primary gate.
 
 **Files to modify**:
-- `crates/octos-cli/src/process_manager.rs` — Spawn profiles as Docker containers
-- `crates/octos-cli/src/profiles.rs` — Add container isolation config
-- New: `crates/octos-cli/src/proxy.rs` — Domain-allowlist HTTPS CONNECT proxy (~200 LOC)
-- `crates/octos-cli/src/commands/serve.rs` — Start proxy alongside control plane
+- `crates/octos/octos-cli/src/process_manager.rs` — Spawn profiles as Docker containers
+- `crates/octos/octos-cli/src/profiles.rs` — Add container isolation config
+- New: `crates/octos/octos-cli/src/proxy.rs` — Domain-allowlist HTTPS CONNECT proxy (~200 LOC)
+- `crates/octos/octos-cli/src/commands/serve.rs` — Start proxy alongside control plane
 
 ### 5.8 Additional hardening
 

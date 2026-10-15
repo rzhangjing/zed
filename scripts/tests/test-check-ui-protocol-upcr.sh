@@ -74,13 +74,13 @@ make_repo() {
     git config user.name "test"
     git config commit.gpgsign false
 
-    mkdir -p scripts crates/octos-core/src crates/octos-cli/src/api api docs
+    mkdir -p scripts crates/octos/octos-core/src crates/octos/octos-cli/src/api api docs
     cp "$TARGET" scripts/check-ui-protocol-upcr.sh
     chmod +x scripts/check-ui-protocol-upcr.sh
 
-    printf '// baseline\n' > crates/octos-core/src/ui_protocol.rs
-    printf '// baseline\n' > crates/octos-cli/src/api/ui_protocol.rs
-    printf 'pub fn old() {}\n' > crates/octos-cli/src/api/ui_protocol_alpha.rs
+    printf '// baseline\n' > crates/octos/octos-core/src/ui_protocol.rs
+    printf '// baseline\n' > crates/octos/octos-cli/src/api/ui_protocol.rs
+    printf 'pub fn old() {}\n' > crates/octos/octos-cli/src/api/ui_protocol_alpha.rs
     printf '# spec baseline\n' > api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md
     printf '# UPCR-2026-001 seed baseline\n' \
       > docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_001_SEED.md
@@ -125,7 +125,7 @@ scenario_protocol_plus_upcr() {
   (
     cd "$dir"
     printf '// added v2 field\nstruct Foo { bar: u32 }\n' \
-      > crates/octos-core/src/ui_protocol.rs
+      > crates/octos/octos-core/src/ui_protocol.rs
     printf '# UPCR-2026-099 Test\n\nChange description.\n' \
       > docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_099_TEST.md
     git add -A
@@ -148,7 +148,7 @@ scenario_protocol_without_upcr() {
   (
     cd "$dir"
     printf '// added v2 field\nstruct Foo { bar: u32 }\n' \
-      > crates/octos-core/src/ui_protocol.rs
+      > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: extend protocol no upcr"
   )
@@ -191,7 +191,7 @@ scenario_split_commits_bypass() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    printf '// added v2 field\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// added v2 field\n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: protocol diff only"
 
@@ -219,7 +219,7 @@ scenario_whitespace_only() {
     cd "$dir"
     # Append trailing spaces only — `git diff -w --stat` must report empty,
     # which is how the gate detects whitespace-only diffs.
-    printf '// baseline   \n' > crates/octos-core/src/ui_protocol.rs
+    printf '// baseline   \n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "style: whitespace"
   )
@@ -241,10 +241,10 @@ scenario_uncommitted_upcr() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    printf '// staged change\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// staged change\n' > crates/octos/octos-core/src/ui_protocol.rs
     printf '# UPCR-2026-100 Untracked\n' \
       > docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_100_UNTRACKED.md
-    git add crates/octos-core/src/ui_protocol.rs
+    git add crates/octos/octos-core/src/ui_protocol.rs
     # UPCR doc stays untracked on purpose.
   )
   local out status=0
@@ -284,7 +284,7 @@ scenario_reviewer_override() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    printf '// extend\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// extend\n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: extend"
   )
@@ -305,11 +305,11 @@ scenario_renamed_protocol_file() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    git mv crates/octos-cli/src/api/ui_protocol_alpha.rs \
-           crates/octos-cli/src/api/ui_protocol_beta.rs
+    git mv crates/octos/octos-cli/src/api/ui_protocol_alpha.rs \
+           crates/octos/octos-cli/src/api/ui_protocol_beta.rs
     # Add content so it's a rename-with-edit (R<100).
     printf 'pub fn old() {}\npub fn new_wire() {}\n' \
-      > crates/octos-cli/src/api/ui_protocol_beta.rs
+      > crates/octos/octos-cli/src/api/ui_protocol_beta.rs
     git add -A
     git commit --quiet -m "refactor: rename alpha -> beta"
   )
@@ -330,7 +330,7 @@ scenario_unrelated_spec_does_not_cover_code() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    printf '// added v2 field\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// added v2 field\n' > crates/octos/octos-core/src/ui_protocol.rs
     printf '# spec baseline\n\nTypo fix.\n' \
       > api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md
     git add -A
@@ -353,7 +353,7 @@ scenario_no_base_ref_fails() {
   dir="$(make_repo 0)"
   (
     cd "$dir"
-    printf '// extend\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// extend\n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: extend"
   )
@@ -374,7 +374,7 @@ scenario_deleted_protocol_file() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    git rm --quiet crates/octos-cli/src/api/ui_protocol_alpha.rs
+    git rm --quiet crates/octos/octos-cli/src/api/ui_protocol_alpha.rs
     git commit --quiet -m "chore: drop alpha"
   )
   local out status=0
@@ -410,7 +410,7 @@ scenario_deleted_upcr_is_not_coverage() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    printf '// extend\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// extend\n' > crates/octos/octos-core/src/ui_protocol.rs
     git rm --quiet docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_001_SEED.md
     git add -A
     git commit --quiet -m "feat: extend + drop old upcr"
@@ -438,7 +438,7 @@ scenario_base_equals_head_fails() {
     cd "$dir"
     # Commit a protocol change directly onto feature, then point
     # origin/main at HEAD so merge-base(origin/main, HEAD) == HEAD.
-    printf '// changed\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// changed\n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: extend"
     git update-ref refs/remotes/origin/main HEAD
@@ -465,7 +465,7 @@ scenario_missing_base_with_untracked_template_fails() {
   dir="$(make_repo 0)"
   (
     cd "$dir"
-    printf '// changed\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// changed\n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: extend"
     # Drop a stray untracked UPCR template into the working tree.
@@ -494,7 +494,7 @@ scenario_base_equals_head_dirty_spec_fails() {
     cd "$dir"
     # Commit a protocol Rust change with no UPCR, then point origin/main
     # at HEAD so merge_base == HEAD.
-    printf '// changed\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// changed\n' > crates/octos/octos-core/src/ui_protocol.rs
     git add -A
     git commit --quiet -m "feat: extend"
     git update-ref refs/remotes/origin/main HEAD
@@ -524,7 +524,7 @@ scenario_staged_upcr_deletion_invalidates_coverage() {
   dir="$(make_repo)"
   (
     cd "$dir"
-    printf '// changed\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// changed\n' > crates/octos/octos-core/src/ui_protocol.rs
     printf '# UPCR-2026-099 added\n' \
       > docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_099_TEST.md
     git add -A
@@ -559,11 +559,11 @@ scenario_freshly_created_branch_pre_commit_ok() {
     git config user.name "test"
     git config commit.gpgsign false
 
-    mkdir -p scripts crates/octos-core/src crates/octos-cli/src/api api docs
+    mkdir -p scripts crates/octos/octos-core/src crates/octos/octos-cli/src/api api docs
     cp "$TARGET" scripts/check-ui-protocol-upcr.sh
     chmod +x scripts/check-ui-protocol-upcr.sh
 
-    printf '// baseline\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// baseline\n' > crates/octos/octos-core/src/ui_protocol.rs
     printf '# spec baseline\n' > api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md
 
     git add -A
@@ -574,10 +574,10 @@ scenario_freshly_created_branch_pre_commit_ok() {
 
     # Stage a protocol change + the UPCR pre-commit (untracked or staged is
     # both fine — uncommitted_names covers both).
-    printf '// extend\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// extend\n' > crates/octos/octos-core/src/ui_protocol.rs
     printf '# UPCR-2026-099 Pre-commit\n' \
       > docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_099_PRE.md
-    git add crates/octos-core/src/ui_protocol.rs
+    git add crates/octos/octos-core/src/ui_protocol.rs
   )
   local out status=0
   out="$(run_gate "$dir" 2>&1)" || status=$?
@@ -606,12 +606,12 @@ scenario_empty_merge_base_fails() {
     git config user.name "test"
     git config commit.gpgsign false
 
-    mkdir -p scripts crates/octos-core/src crates/octos-cli/src/api api docs
+    mkdir -p scripts crates/octos/octos-core/src crates/octos/octos-cli/src/api api docs
     cp "$TARGET" scripts/check-ui-protocol-upcr.sh
     chmod +x scripts/check-ui-protocol-upcr.sh
 
     # feature branch with a committed protocol change but no UPCR.
-    printf '// changed\n' > crates/octos-core/src/ui_protocol.rs
+    printf '// changed\n' > crates/octos/octos-core/src/ui_protocol.rs
     printf '# spec baseline\n' > api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md
     git add -A
     git commit --quiet -m "feat: protocol change"

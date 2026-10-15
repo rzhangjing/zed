@@ -15,7 +15,7 @@
 ## Summary
 
 This change request codifies three optional diagnostic fields that the
-`turn/interrupt` handler in `crates/octos-cli/src/api/ui_protocol.rs` has been
+`turn/interrupt` handler in `crates/octos/octos-cli/src/api/ui_protocol.rs` has been
 emitting via raw `serde_json::json!` since the AppUi protocol shipped:
 
 - `reason: String` — non-terminal explanation when `interrupted` is `false`
@@ -28,7 +28,7 @@ emitting via raw `serde_json::json!` since the AppUi protocol shipped:
   the ack window.
 
 All three fields already cross the wire today; only the typed contract
-(`TurnInterruptResult` in `crates/octos-core/src/ui_protocol.rs`) was lagging.
+(`TurnInterruptResult` in `crates/octos/octos-core/src/ui_protocol.rs`) was lagging.
 This UPCR brings the type up to the existing wire shape so the contract is
 honest. No semantic change.
 
@@ -141,7 +141,7 @@ on the success result.
 - New typed clients can deserialize the result directly into the extended
   `TurnInterruptResult` and read `reason`, `terminal_state`, and
   `ack_timeout` for diagnostic UX without re-parsing the raw `Value`.
-- The handler in `crates/octos-cli/src/api/ui_protocol.rs` is migrated to
+- The handler in `crates/octos/octos-cli/src/api/ui_protocol.rs` is migrated to
   the typed `TurnInterruptResult` constructors (`interrupted_ok`,
   `declined`, `already_terminal`, `ack_timed_out`) so the wire emission and
   the typed contract are produced from a single source.
@@ -156,7 +156,7 @@ sufficient for additive optional result fields.
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `turn_interrupt_result_minimal_omits_optional_fields` — golden:
     `interrupted: true` only, with no diagnostic fields, round-trips through
     serde and produces the canonical `{ "interrupted": true }` wire shape.

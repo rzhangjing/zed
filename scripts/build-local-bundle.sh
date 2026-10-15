@@ -87,7 +87,7 @@ ensure_cargo() {
 ensure_cargo || exit 1
 
 # ── Dashboard (embedded SPA — must be built before cargo, since ─────
-#    rust_embed bakes crates/octos-cli/static/admin/ into the binary) ─
+#    rust_embed bakes crates/octos/octos-cli/static/admin/ into the binary) ─
 if [ "$SKIP_DASHBOARD" = true ]; then
     echo "==> Skipping dashboard build (--skip-dashboard)"
 else

@@ -7,7 +7,7 @@ octos 是一个包含 27 个成员的 Rust 工作区（Edition 2024，rust-versi
 **工作区成员**（取自 `Cargo.toml`）：
 - **分层核心**（7 个）：`octos-core`（共享类型）→ `octos-memory` + `octos-llm` → `octos-agent`（agent 循环、工具、沙箱、MCP、压缩）→ `octos-cli`（命令、配置、serve/API），外加 `octos-bus`（14 个渠道、会话、合并、cron）与 `octos-diagnostics`（支撑 `octos doctor`）。
 - **agent 周边**（5 个）：`octos-pipeline`（DOT 图工作流）、`octos-plugin`（插件/技能 SDK）、`octos-swarm`（多 agent 契约创作）、`octos-sandbox`、`octos-dora-mcp`。
-- **内置技能 crate**（15 个）：`crates/app-skills/` 下每个应用技能都是独立 crate——`news`、`deep-search`、`deep-crawl`、`send-email`、`account-manager`、`time`、`weather`、`smart-home`、`wechat-bridge`、`skill-evolve`，以及 `harness-starter-{generic,report,audio,coding}` 模板——再加上 `platform-skills/voice`（ASR/TTS）。
+- **内置技能 crate**（15 个）：`crates/octos/app-skills/` 下每个应用技能都是独立 crate——`news`、`deep-search`、`deep-crawl`、`send-email`、`account-manager`、`time`、`weather`、`smart-home`、`wechat-bridge`、`skill-evolve`，以及 `harness-starter-{generic,report,audio,coding}` 模板——再加上 `platform-skills/voice`（ASR/TTS）。
 
 （Web SPA 与终端客户端分别位于独立的 `octos-web` 和 `octoscode` 仓库，通过 UI Protocol 与 `octos serve` 通信。）
 
@@ -199,7 +199,7 @@ pub type ChatStream = Pin<Box<dyn Stream<Item = StreamEvent> + Send>>;
 
 ### 提供商注册表（`registry/`）
 
-所有提供商定义在 `octos-llm/src/registry/` 中 — 每个提供商一个文件。每个文件导出一个 `ProviderEntry`，包含元数据（名称、别名、默认模型、API 密钥环境变量、基础 URL）和 `create()` 工厂函数。添加新提供商 = 一个文件 + `mod.rs` 中一行代码。
+所有提供商定义在 `octos/octos-llm/src/registry/` 中 — 每个提供商一个文件。每个文件导出一个 `ProviderEntry`，包含元数据（名称、别名、默认模型、API 密钥环境变量、基础 URL）和 `create()` 工厂函数。添加新提供商 = 一个文件 + `mod.rs` 中一行代码。
 
 ```rust
 pub struct ProviderEntry {
@@ -411,7 +411,7 @@ pub trait EmbeddingProvider: Send + Sync {
 
 ### 语音转文字
 
-**语音平台技能（voice platform skill）**——语音转文字发生在网关层，而非 `octos-llm`。网关以 `voice_transcribe` 子命令调用已安装的 `voice` 平台技能二进制（gateway home 下的 `platform-skills/voice/main`：有 `--octos-home` 用之，否则 `<cwd>/.octos`），stdin 传入 `{"audio_path", "language"?}` JSON，stdout 返回 `{"success", "output"}` JSON；超时 120 秒。转写文本合并进入站消息内容（`voice_transcript` 元数据），全部转写被拒的纯音频消息会跳过 Agent 分发，按 profile 的 ASR 语言覆盖逐条消息重新解析（`octos-cli/src/commands/gateway/message_preprocessing.rs:515`，接线在 `octos-cli/src/commands/gateway/gateway_runtime.rs:613`）。
+**语音平台技能（voice platform skill）**——语音转文字发生在网关层，而非 `octos-llm`。网关以 `voice_transcribe` 子命令调用已安装的 `voice` 平台技能二进制（gateway home 下的 `platform-skills/voice/main`：有 `--octos-home` 用之，否则 `<cwd>/.octos`），stdin 传入 `{"audio_path", "language"?}` JSON，stdout 返回 `{"success", "output"}` JSON；超时 120 秒。转写文本合并进入站消息内容（`voice_transcript` 元数据），全部转写被拒的纯音频消息会跳过 Agent 分发，按 profile 的 ASR 语言覆盖逐条消息重新解析（`octos/octos-cli/src/commands/gateway/message_preprocessing.rs:515`，接线在 `octos/octos-cli/src/commands/gateway/gateway_runtime.rs:613`）。
 
 ### 视觉
 
@@ -973,7 +973,7 @@ pub struct ConsoleReporter {
 
 **持续时间格式化**：>1s → `{:.1}s`，≤1s → `{N}ms`。
 
-**EventBroadcaster**（feature：`api`，`octos-cli/src/api/events.rs:32`）— 进程级广播器，将进度事件转换为 JSON 并发布到 `tokio::sync::broadcast` 频道。聊天传输层已无任何 SSE 线路；JSON 帧供 harness/admin `/api/events/harness` 端点、swarm 事件发布器以及 UI Protocol v1 WS 桥接消费：
+**EventBroadcaster**（feature：`api`，`octos/octos-cli/src/api/events.rs:32`）— 进程级广播器，将进度事件转换为 JSON 并发布到 `tokio::sync::broadcast` 频道。聊天传输层已无任何 SSE 线路；JSON 帧供 harness/admin `/api/events/harness` 端点、swarm 事件发布器以及 UI Protocol v1 WS 桥接消费：
 
 ```rust
 pub struct EventBroadcaster {
@@ -1302,9 +1302,9 @@ twilio   = ["octos-bus/twilio"]
 
 ```
 crates/
-├── octos-core/src/
+├── octos/octos-core/src/
 │   ├── lib.rs, task.rs, types.rs, error.rs, gateway.rs, message.rs, utils.rs
-├── octos-llm/src/
+├── octos/octos-llm/src/
 │   ├── lib.rs, provider.rs, config.rs, types.rs, retry.rs, failover.rs, sse.rs
 │   ├── embedding.rs, pricing.rs, context.rs, transcription.rs, vision.rs
 │   ├── adaptive.rs, swappable.rs, router.rs, ominix.rs
@@ -1312,9 +1312,9 @@ crates/
 │   └── registry/ (mod.rs + 14 provider entries: anthropic, openai, gemini,
 │                   openrouter, deepseek, groq, moonshot, dashscope, minimax,
 │                   zhipu, zai, nvidia, ollama, vllm)
-├── octos-memory/src/
+├── octos/octos-memory/src/
 │   ├── lib.rs, episode.rs, store.rs, memory_store.rs, hybrid_search.rs
-├── octos-agent/src/
+├── octos/octos-agent/src/
 │   ├── lib.rs, agent.rs, progress.rs, policy.rs, compaction.rs, sanitize.rs, hooks.rs
 │   ├── sandbox.rs, mcp.rs, skills.rs, builtin_skills.rs
 │   ├── bundled_app_skills.rs, bootstrap.rs, prompt_guard.rs
@@ -1328,20 +1328,20 @@ crates/
 │               deep_research_pipeline, synthesize_research, research_utils,
 │               admin/ (profiles, skills, sub_accounts, system,
 │                       platform_skills, update))
-├── octos-bus/src/
+├── octos/octos-bus/src/
 │   ├── lib.rs, bus.rs, channel.rs, session.rs, coalesce.rs, media.rs
 │   ├── cli_channel.rs, telegram_channel.rs, discord_channel.rs
 │   ├── slack_channel.rs, whatsapp_channel.rs, feishu_channel.rs, email_channel.rs
 │   ├── wecom_channel.rs, twilio_channel.rs, markdown_html.rs
 │   ├── cron_service.rs, cron_types.rs, heartbeat.rs
-└── octos-cli/src/
+└── octos/octos-cli/src/
     ├── main.rs, config.rs, config_watcher.rs, cron_tool.rs, compaction.rs
     ├── auth/ (mod.rs, store.rs, oauth.rs, token.rs)
     ├── api/ (mod.rs, router.rs, handlers.rs, sse.rs, metrics.rs, static_files.rs)
     └── commands/ (mod, chat, init, status, gateway, clean,
                    completions, cron, channels, auth, skills, docs, serve,
                    office, account)
-├── octos-pipeline/src/
+├── octos/octos-pipeline/src/
 │   ├── lib.rs, parser.rs, graph.rs, executor.rs, handler.rs
 │   ├── condition.rs, tool.rs, validate.rs
 ```
@@ -1374,7 +1374,7 @@ crates/
 - 工具策略：allow/deny，deny 优先语义，8 个命名分组（`group:fs`、`group:runtime`、`group:web`、`group:search`、`group:sessions` 等），通配符匹配，按提供商过滤（`tools.byProvider`）
 - 工具参数大小限制：每次调用 1MB（非分配的 `estimate_json_size`，含转义字符计算）
 - 符号链接安全文件 I/O：Unix 上通过 `O_NOFOLLOW` 实现原子级内核检查，消除 TOCTOU 竞态；Windows 上使用基于元数据的符号链接检查回退
-- SSRF 防护经由 `octos_research::net::check_url` —— 唯一的共享实现，由 `octos-agent/src/tools/ssrf.rs` 适配给智能体工具：DNS 解析失败时采用故障关闭策略（DNS 失败时阻止请求），私有 IP 阻止（10/8、172.16/12、192.168/16、169.254/16），IPv6 覆盖（ULA `fc00::/7`、链路本地 `fe80::/10`、站点本地 `fec0::/10`、IPv4 映射 `::ffff:0:0/96`、IPv4 兼容 `::/96`），回环地址阻止。被 web_fetch 和 browser 使用。
+- SSRF 防护经由 `octos_research::net::check_url` —— 唯一的共享实现，由 `octos/octos-agent/src/tools/ssrf.rs` 适配给智能体工具：DNS 解析失败时采用故障关闭策略（DNS 失败时阻止请求），私有 IP 阻止（10/8、172.16/12、192.168/16、169.254/16），IPv6 覆盖（ULA `fc00::/7`、链路本地 `fe80::/10`、站点本地 `fec0::/10`、IPv4 映射 `::ffff:0:0/96`、IPv4 兼容 `::/96`），回环地址阻止。被 web_fetch 和 browser 使用。
 - 浏览器：URL scheme 白名单（仅 http/https）、10 秒 JS 执行超时、僵尸进程清理、截图使用安全临时文件
 - MCP：输入 schema 验证（最大深度 10，最大大小 64KB）防止恶意工具定义
 - 提示注入防护（`prompt_guard.rs`）：5 种威胁类别（SystemOverride、RoleConfusion、ToolCallInjection、SecretExtraction、InstructionInjection），10 种检测模式。检测到的威胁被包裹在 `[injection-blocked:...]` 中进行清理。

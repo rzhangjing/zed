@@ -99,13 +99,13 @@ e2e/test-results*/
 # per-PR noise from minified hash-named files and merge conflicts on
 # rebuilt assets. CI + `scripts/install.sh` (via release tarball) + any
 # source-clone build are responsible for regenerating it.
-crates/octos-cli/static/admin/
+crates/octos/octos-cli/static/admin/
 
 # Swarm-app build output
-crates/octos-cli/static/swarm/
+crates/octos/octos-cli/static/swarm/
 
 # octos-web build output (scripts/build-web-app.sh; embedded at /app)
-crates/octos-cli/static/web/
+crates/octos/octos-cli/static/web/
 
 # Environment
 .env
@@ -204,7 +204,7 @@ test_a2.md
 # UPCR registry index — the number -> title/status/file/landing-PR map (#2423).
 !docs/upcr/README.md
 # `octos serve --host-managed` operator/host contract (UPCR-2026-036), cited
-# from the CLI help and crates/octos-cli/src/api/host_managed.rs.
+# from the CLI help and crates/octos/octos-cli/src/api/host_managed.rs.
 !docs/HOST_MANAGED_SERVE.md
 # Architecture Decision Records — landed under docs/adr/ to keep the
 # top-level docs/ flat for one-off design notes. Allowlist the whole
@@ -220,18 +220,18 @@ test_a2.md
 !book-zh/src/**/*.md
 !book-zh/theme/*.css
 !book-zh/theme/*.hbs
-!crates/octos-agent/skills/**/SKILL.md
-!crates/app-skills/**/SKILL.md
-!crates/platform-skills/**/SKILL.md
+!crates/octos/octos-agent/skills/**/SKILL.md
+!crates/octos/app-skills/**/SKILL.md
+!crates/octos/platform-skills/**/SKILL.md
 # Companion docs/ markdown for in-tree skill manifest discovery hints
 # (split out of SKILL.md when the body exceeds the ≤80-line discovery cap).
-!crates/octos-agent/skills/**/docs/*.md
-!crates/app-skills/**/docs/*.md
-!crates/platform-skills/**/docs/*.md
+!crates/octos/octos-agent/skills/**/docs/*.md
+!crates/octos/app-skills/**/docs/*.md
+!crates/octos/platform-skills/**/docs/*.md
 # Crate-level developer documentation (SDK contracts, protocol specs)
-!crates/octos-plugin/docs/*.md
+!crates/octos/octos-plugin/docs/*.md
 # Crate test fixtures (sample reports, fake API payloads)
-!crates/app-skills/**/tests/fixtures/*.md
+!crates/octos/app-skills/**/tests/fixtures/*.md
 # Harness M4.4 compat-gate fixture (SKILL.md + manifest.json must be tracked)
 !e2e/fixtures/compat-test-skill/SKILL.md
 !e2e/fixtures/compat-test-skill/manifest.json

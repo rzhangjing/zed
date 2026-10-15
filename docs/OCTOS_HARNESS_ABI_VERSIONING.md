@@ -188,8 +188,8 @@ Experimental:
 
 ## Compatibility tests
 
-`crates/octos-agent/tests/abi_compat.rs` is the binding test suite. It
-loads fixtures in `crates/octos-agent/tests/fixtures/` and asserts:
+`crates/octos/octos-agent/tests/abi_compat.rs` is the binding test suite. It
+loads fixtures in `crates/octos/octos-agent/tests/fixtures/` and asserts:
 
 - every versioned type loads from a fixture that includes
   `schema_version = 1`

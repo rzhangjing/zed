@@ -106,10 +106,10 @@ Four engineers / agent workers run in parallel. Each track owns a clean slice wi
 **Branch**: `feature/m8-parity-w1-pipeline-host`
 
 **Files**:
-- `crates/octos-pipeline/src/handler.rs` — pipeline worker construction (~415 line region)
-- `crates/octos-pipeline/src/executor.rs` — node execution + recovery loop
-- `crates/octos-pipeline/src/lib.rs` — exports
-- New: `crates/octos-pipeline/src/recovery.rs` — M8.9 recovery wrapper for nodes
+- `crates/octos/octos-pipeline/src/handler.rs` — pipeline worker construction (~415 line region)
+- `crates/octos/octos-pipeline/src/executor.rs` — node execution + recovery loop
+- `crates/octos/octos-pipeline/src/lib.rs` — exports
+- New: `crates/octos/octos-pipeline/src/recovery.rs` — M8.9 recovery wrapper for nodes
 - `octos-web/src/store/message-store.ts` — node tree types
 - `octos-web/src/store/message-store-reducers/tool-progress-reducer.ts` — node-tree projection
 - `octos-web/src/components/chat-thread.tsx` — `<NodeCard>` component
@@ -137,12 +137,12 @@ Four engineers / agent workers run in parallel. Each track owns a clean slice wi
 **Branch**: `feature/m8-parity-w2-spawn-host`
 
 **Files**:
-- `crates/octos-agent/src/tools/spawn.rs` — spawn child Agent::new builder chain (~1898 line region)
-- `crates/octos-cli/src/workflows/slides_delivery.rs` — per-phase validator wiring
-- `crates/octos-cli/src/workflows/site_delivery.rs` — same
-- `crates/octos-cli/src/workflows/research_podcast.rs` — same
-- `crates/octos-cli/src/api/handlers.rs` — new endpoints
-- `crates/octos-cli/src/api/router.rs` — route registration
+- `crates/octos/octos-agent/src/tools/spawn.rs` — spawn child Agent::new builder chain (~1898 line region)
+- `crates/octos/octos-cli/src/workflows/slides_delivery.rs` — per-phase validator wiring
+- `crates/octos/octos-cli/src/workflows/site_delivery.rs` — same
+- `crates/octos/octos-cli/src/workflows/research_podcast.rs` — same
+- `crates/octos/octos-cli/src/api/handlers.rs` — new endpoints
+- `crates/octos/octos-cli/src/api/router.rs` — route registration
 - `octos-web/src/components/node-card.tsx` (collaborate with W1) — cancel + restart buttons
 - `octos-web/src/api/types.ts` — new POST request types
 
@@ -168,16 +168,16 @@ Four engineers / agent workers run in parallel. Each track owns a clean slice wi
 **Branch**: `feature/m8-parity-w3-search-crawl`
 
 **Files**:
-- `crates/octos-plugin/src/protocol_v2.rs` (new) — v2 spec types
-- `crates/octos-plugin/src/lifecycle.rs` — backward compat shim
-- `crates/octos-plugin/docs/protocol-v2.md` (new) — protocol spec doc
-- `crates/octos-agent/src/plugins/tool.rs` — host-side v2 progress parser (in addition to existing text-line path)
-- `crates/app-skills/deep-search/src/main.rs` (and supporting modules)
-- `crates/app-skills/deep-crawl/src/main.rs` (and supporting modules)
+- `crates/octos/octos-plugin/src/protocol_v2.rs` (new) — v2 spec types
+- `crates/octos/octos-plugin/src/lifecycle.rs` — backward compat shim
+- `crates/octos/octos-plugin/docs/protocol-v2.md` (new) — protocol spec doc
+- `crates/octos/octos-agent/src/plugins/tool.rs` — host-side v2 progress parser (in addition to existing text-line path)
+- `crates/octos/app-skills/deep-search/src/main.rs` (and supporting modules)
+- `crates/octos/app-skills/deep-crawl/src/main.rs` (and supporting modules)
 
 **Deliverables**:
 - F1 — Plugin protocol v2 spec doc + Rust types for: structured progress events, cost-attribution events, output summary, cancel-signal contract
-- F2 — Backward-compat shim in `octos-plugin/src/lifecycle.rs`: parser tries JSON-event first, falls back to legacy text-message; v1 plugins keep working unchanged
+- F2 — Backward-compat shim in `octos/octos-plugin/src/lifecycle.rs`: parser tries JSON-event first, falls back to legacy text-message; v1 plugins keep working unchanged
 - C1 — `deep_search`: replace raw Bing search dump with synthesized multi-source answer. Internal LLM call (model from manifest config) consumes search results + crawl excerpts and emits a structured report: `{summary, sources[], confidence}`. The `_report.md` becomes a real synthesized document, not a search result dump.
 - C2 — `deep_search`: emit structured progress events (`{stage, detail}`) per protocol v2
 - C3 — `deep_search`: SIGTERM handler; cleanup browsers and temp files within 10s; exit cleanly
@@ -198,9 +198,9 @@ Four engineers / agent workers run in parallel. Each track owns a clean slice wi
 **Branch**: `feature/m8-parity-w4-plugins-tests`
 
 **Files**:
-- `crates/platform-skills/voice/...` (mofa_slides handler if separate)
-- `crates/app-skills/podcast_generate/...`
-- `crates/platform-skills/voice/...` (fm_tts)
+- `crates/octos/platform-skills/voice/...` (mofa_slides handler if separate)
+- `crates/octos/app-skills/podcast_generate/...`
+- `crates/octos/platform-skills/voice/...` (fm_tts)
 - `e2e/tests/*` — new integration specs
 - `docs/m8-runtime-parity-prd.md` — this doc
 - `docs/m8-runtime-contract.md` (new) — contract reference for future contributors

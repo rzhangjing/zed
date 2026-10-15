@@ -208,9 +208,9 @@ console.log(JSON.stringify({ output: result, success: true }));
 
 宿主通过 UI Protocol 的任务/进度事件流把 phase/progress 事件转发给仪表盘/客户端，把 `CostEvent` 累加到父级单轮成本汇总；解析失败的行视为普通日志（按 `info` 级别记入 `LogEvent`）。
 
-合成式技能（`deep-search`、`deep-crawl`）在 `manifest.json` 声明 `synthesis_config` 与 `x-octos-host-config-keys`，宿主据此为合成调用注入正确的 LLM provider/model 并转发 API key 等环境变量。合同测试位于 `crates/octos-plugin/tests/lifecycle_sandbox.rs`。
+合成式技能（`deep-search`、`deep-crawl`）在 `manifest.json` 声明 `synthesis_config` 与 `x-octos-host-config-keys`，宿主据此为合成调用注入正确的 LLM provider/model 并转发 API key 等环境变量。合同测试位于 `crates/octos/octos-plugin/tests/lifecycle_sandbox.rs`。
 
-**spawn_only 拦截机制**：当某工具的清单声明 `spawn_only: true`，Agent 执行循环（`crates/octos-agent/src/agent/execution.rs`）会在 LLM 往返**之前**拦截：
+**spawn_only 拦截机制**：当某工具的清单声明 `spawn_only: true`，Agent 执行循环（`crates/octos/octos-agent/src/agent/execution.rs`）会在 LLM 往返**之前**拦截：
 
 1. 工具调用包入 `tokio::spawn`，立即向 LLM 返回回执；
 2. `task_supervisor.rs` 注册任务，应用每配置扇出上限（#610），并设置孤立任务清理；
@@ -227,7 +227,7 @@ console.log(JSON.stringify({ output: result, success: true }));
 
 | 类型 | 位置 | 安装方式 | 用途 |
 |------|------|----------|------|
-| **内置** | `crates/app-skills/` | 编译进 `octos` 二进制 | 每次发布附带的核心技能 |
+| **内置** | `crates/octos/app-skills/` | 编译进 `octos` 二进制 | 每次发布附带的核心技能 |
 | **外部** | GitHub 仓库 | `octos skills install user/repo` | 社区/自定义技能 |
 | **配置文件级** | `<profile-data>/skills/` | 按配置文件安装 | 租户隔离的技能 |
 
@@ -280,7 +280,7 @@ manage_skills(action="search", query="comic")
 
 1. `<profile-data>/skills/` — 配置文件级（最高优先级）
 2. `<project-dir>/skills/` — 项目本地
-3. `<project-dir>/bundled-app-skills/` — 内置应用技能（常量 `BUNDLED_APP_SKILLS_DIR`，位于 `octos-agent/src/bootstrap.rs`，由 `Config::plugin_dirs_from_project` 扫描）
+3. `<project-dir>/bundled-app-skills/` — 内置应用技能（常量 `BUNDLED_APP_SKILLS_DIR`，位于 `octos/octos-agent/src/bootstrap.rs`，由 `Config::plugin_dirs_from_project` 扫描）
 4. `~/.octos/skills/` — 旧版全局目录，仅用于迁移
 
 ### 发布到注册中心

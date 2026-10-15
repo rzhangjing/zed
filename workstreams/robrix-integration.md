@@ -27,11 +27,11 @@ Already on main (do NOT redo):
 - Channel-side app metadata projection: `CONTENT_APP` / `CONTENT_ACTIONS` /
   `CONTENT_ACTION_RESPONSE` constants, outbound projection into event content,
   inbound `action_response` extraction into `InboundMessage.metadata`
-  (`crates/octos-bus/src/matrix_channel.rs`).
+  (`crates/octos/octos-bus/src/matrix_channel.rs`).
 - Mention routing fixes (boundary-checked `contains_exact_matrix_user_id_mention`),
   `profile_factory.rs`, MSC4357 streaming, BotFather commands
   (`/createbot` `/deletebot` `/listbots` `/bothelp`).
-- `octos-bus/src/media.rs` download helper (reusable for Phase 2).
+- `octos/octos-bus/src/media.rs` download helper (reusable for Phase 2).
 - Web-chat static fix: obsolete, dashboard rewritten in M9–M11.
 
 Missing from main:
@@ -39,7 +39,7 @@ Missing from main:
 - Matrix media upload/download (outbound `media` ignored; inbound non-text dropped).
 - `/allbots` broadcast routing.
 - `/schedule` `/schedules` `/unschedule` NL scheduling (cron_tool NL parsers, tz handling).
-- Config-driven approval flow (`octos-agent/src/approval.rs` + loop integration).
+- Config-driven approval flow (`octos/octos-agent/src/approval.rs` + loop integration).
 
 ## Phases
 
@@ -78,7 +78,7 @@ Decision recorded in
 [docs/ROBRIX-PHASE4-APPROVAL-FLOW-ADR.md](../docs/ROBRIX-PHASE4-APPROVAL-FLOW-ADR.md)
 (suspend-and-resume transport, semantics unified onto main's approval
 vocabulary). Implemented per the ADR's 6-step sketch:
-`octos-agent/src/approval.rs` (`HumanApprovalRules` model), conversation-loop
+`octos/octos-agent/src/approval.rs` (`HumanApprovalRules` model), conversation-loop
 interception (`ConversationResponse.pending_approval`; background loops deny
 instead of suspending), `approval_policy` config schema + per-profile
 passthrough, session-actor bridge (card emit, pending store, expiry timer,

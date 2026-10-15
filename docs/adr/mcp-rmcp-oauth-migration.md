@@ -8,7 +8,7 @@ Status: implemented (branch `feat/mcp-rmcp-oauth`) — all four increments lande
 
 ## Context
 
-octos's MCP client (`crates/octos-agent/src/mcp.rs`) is hand-rolled and, per the
+octos's MCP client (`crates/octos/octos-agent/src/mcp.rs`) is hand-rolled and, per the
 2026-07-09 deep review, has real protocol gaps: it never sends
 `notifications/initialized`, hardcodes `protocolVersion` `2024-11-05`, reads
 exactly one line per request (desyncs on any interleaved server notification),

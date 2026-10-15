@@ -19,7 +19,7 @@ This change request adds one additive JSON-RPC command method,
 thread graph for a session — the partition of messages into render-grouping
 threads, plus any orphan rows the grouping rule could not assign. Today the
 grouping is **inferred at runtime** by `Session::threads()` in
-`crates/octos-bus/src/session.rs` (target call site in the structural plan:
+`crates/octos/octos-bus/src/session.rs` (target call site in the structural plan:
 `session.rs:469-514` after PR A's typed-identity refactor). The grouping
 function exists; it is just not on the wire. Clients must reconstruct it
 from message-ordering heuristics, which is exactly what produced the
@@ -187,7 +187,7 @@ not an error.
 
 The result fields are a 1:1 lift of the existing internal `Thread` struct
 that `Session::threads()` constructs (target location after PR A's
-typed-identity refactor: `crates/octos-bus/src/session.rs:469-514`). The
+typed-identity refactor: `crates/octos/octos-bus/src/session.rs:469-514`). The
 grouping logic does not change — only its visibility on the wire.
 
 PR A from the structural plan promotes `thread_id` from `Option<String>` to
@@ -249,7 +249,7 @@ the feature, the server returns `method_not_supported`.
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `thread_graph_get_command_round_trips_through_json_rpc` — round-trips
     the request including the optional `at` cursor.
   - `thread_graph_get_result_round_trips_with_orphans` — golden:
@@ -264,7 +264,7 @@ the feature, the server returns `method_not_supported`.
     `ThreadGraphGetResult` golden coverage.
   - `full_protocol_capabilities_advertise_state_thread_graph` — asserts
     the new feature flag and method are advertised in `full_protocol()`.
-- `crates/octos-cli/src/api/ui_protocol.rs`:
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`:
   - `appui_thread_graph_get_returns_session_threads` — verifies the
     handler returns the partition produced by `Session::threads()`.
   - `appui_thread_graph_get_reports_orphans_for_unbound_messages` —

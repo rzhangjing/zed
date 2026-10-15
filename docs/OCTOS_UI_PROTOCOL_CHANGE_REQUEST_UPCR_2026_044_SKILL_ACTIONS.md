@@ -143,12 +143,12 @@ mind-map/video-overview packages export their respective `*.generate`
 actions. The in-repo fixture pins the host contract independently of network
 registry availability.
 
-- `crates/octos-agent/src/plugins/manifest.rs` parses manifest `actions[]`,
+- `crates/octos/octos-agent/src/plugins/manifest.rs` parses manifest `actions[]`,
   tool bindings, `file_each`, and `file_materialization`.
-- `crates/octos-cli/src/api/ui_protocol.rs` covers discovery, capability
+- `crates/octos/octos-cli/src/api/ui_protocol.rs` covers discovery, capability
   advertisement, action invocation, `file_each` materialization, and the
   default `raw` behavior.
-- `crates/octos-bus/src/file_handle.rs` covers copying upload images into
+- `crates/octos/octos-bus/src/file_handle.rs` covers copying upload images into
   workspace-relative `uploads/` paths for explicit `workspace_relative`
   materialization.
 
@@ -156,5 +156,5 @@ registry availability.
 
 - v1 spec § 4.1 (change control), § 6 (catalog), and runtime/profile method
   semantics.
-- `crates/octos-cli/src/api/ui_protocol.rs::APPUI_EXTRA_METHODS`.
-- `crates/octos-agent/src/plugins/manifest.rs::SkillActionDef`.
+- `crates/octos/octos-cli/src/api/ui_protocol.rs::APPUI_EXTRA_METHODS`.
+- `crates/octos/octos-agent/src/plugins/manifest.rs::SkillActionDef`.

@@ -82,8 +82,8 @@ is measured in seconds, not microseconds.
 
 ## Implementation anchors
 
-- Type: `octos-core/src/ui_protocol.rs` `ContextCompactionStartedEvent`
-- Emission: `octos-cli/src/api/ui_protocol.rs` `appui_context_history_for_agent`
+- Type: `octos/octos-core/src/ui_protocol.rs` `ContextCompactionStartedEvent`
+- Emission: `octos/octos-cli/src/api/ui_protocol.rs` `appui_context_history_for_agent`
 - Gating/classification: notification feature filter + cursorless list +
   ledger session-id mapping
 - Test: `compaction_started_precedes_completed_in_lifecycle_batch`

@@ -11,7 +11,7 @@
 //!   Zed (host)                                   Octos (kernel, in-process)
 //!   ─────────────────────────────────────────    ────────────────────────────
 //!   Help > Octos · future panels/views    ──▶    OUP methods (session/*, turn/*)
-//!   zed::octos::service().connection()    ◀──▶   crates/octos-cli/src/embedded.rs
+//!   zed::octos::service().connection()    ◀──▶   crates/octos/octos-cli/src/embedded.rs
 //!   host peers (app tools, UI actions)    ◀──▶   peer/tool/call → result
 //! ```
 //!
@@ -21,7 +21,7 @@
 //! [`status_window`] — the first host-side Octos UI module, and the template for
 //! the panels that follow (turn progress, approvals, tool activity).
 //!
-//! The contract, from `crates/octos-cli/src/embedded.rs`:
+//! The contract, from `crates/octos/octos-cli/src/embedded.rs`:
 //!
 //! * **8 MiB worker stacks are mandatory.** The AppUI dispatcher's poll chain is
 //!   deeper than Tokio's default 2 MiB worker stack, so the runtime below is
@@ -85,7 +85,7 @@ const SESSION_NAME: &str = "embedded";
 
 /// Required by `octos_cli::embedded`: the dispatcher's poll chain does not fit
 /// in Tokio's default 2 MiB worker stack, and overflowing aborts the process.
-/// Keep in sync with `crates/octos-cli/src/embedded.rs`.
+/// Keep in sync with `crates/octos/octos-cli/src/embedded.rs`.
 const WORKER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 /// Capacity of the OUP duplex pipe.
@@ -787,7 +787,7 @@ fn host_tools_enabled() -> bool {
 ///
 /// `peer/tool/call` and `peer/tool/cancel` are *not* `UiNotification`s —
 /// `UiNotification::from_method_and_params`
-/// (`crates/octos-core/src/ui_protocol.rs:7301`) has no arm for them, because
+/// (`crates/octos/octos-core/src/ui_protocol.rs:7301`) has no arm for them, because
 /// they are the host-tool transport rather than UI protocol payloads. They are
 /// decoded with their own typed params ([`peers::HostPeer::decode_call`]),
 /// still never by reading keys by hand. Every other frame goes to the console
@@ -941,7 +941,7 @@ enum ConsoleAction {
 /// kernel's own notification dispatcher, so the wire shape stays
 /// `octos-core`'s contract instead of a list of spellings this host hopes for.
 /// The mapping is `UiNotification::from_method_and_params`
-/// (`crates/octos-core/src/ui_protocol.rs:7301`), which is also what produces
+/// (`crates/octos/octos-core/src/ui_protocol.rs:7301`), which is also what produces
 /// these frames (`UiNotification::into_rpc_notification`, same file `:7180`,
 /// serializes each payload straight into `params`). The payloads:
 ///
@@ -1022,7 +1022,7 @@ fn console_action(method: &str, params: &Value) -> ConsoleAction {
         // The canonical projection lane. Since #2318 the kernel suppresses the
         // raw `tool/*` lifecycle frames for a connection that negotiated
         // `projection.envelope.v1` (see `send_raw_notification_ephemeral`,
-        // `crates/octos-cli/src/api/ui_protocol_transport.rs:46984`), so a
+        // `crates/octos/octos-cli/src/api/ui_protocol_transport.rs:46984`), so a
         // client that only reads the raw lane sees no tool activity at all.
         // This is the same information, decoded from its own type.
         UiNotification::EnvelopeV2(event) => envelope_action(&event.envelope.payload),
@@ -1309,7 +1309,7 @@ fn session_key() -> octos_core::SessionKey {
 }
 
 /// The `session/open` parameters, matching the shape
-/// `crates/octos-cli/src/embedded.rs` documents and tests.
+/// `crates/octos/octos-cli/src/embedded.rs` documents and tests.
 fn session_open_params(session: &octos_core::SessionKey, cwd: &Path) -> Value {
     json!({
         "session_id": session,
@@ -1394,7 +1394,7 @@ mod tests {
     ///
     /// Decoding here rather than reading keys by hand is what makes this the
     /// authoritative check: `TurnStartParams`
-    /// (`crates/octos-core/src/ui_protocol.rs:2125`) requires exactly
+    /// (`crates/octos/octos-core/src/ui_protocol.rs:2125`) requires exactly
     /// `session_id`, `turn_id` and `input`, and `InputItem::Text` (`:2065`)
     /// tags itself `kind: "text"`.
     #[test]
@@ -1422,7 +1422,7 @@ mod tests {
 
     /// The console reads a delta frame through the kernel's own notification
     /// type, so the text is `MessageDeltaEvent::text`
-    /// (`crates/octos-core/src/ui_protocol.rs:5380`) and the reasoning channel
+    /// (`crates/octos/octos-core/src/ui_protocol.rs:5380`) and the reasoning channel
     /// is the same shape at `:5389`.
     #[test]
     fn decodes_delta_frames_from_their_authoritative_types() {
@@ -1485,7 +1485,7 @@ mod tests {
     }
 
     /// `turn/error` carries `code` and `message`
-    /// (`crates/octos-core/src/ui_protocol.rs:6543`), never `text`. A frame
+    /// (`crates/octos/octos-core/src/ui_protocol.rs:6543`), never `text`. A frame
     /// that happens to include a `text` field must still be reported from
     /// `message`.
     #[test]
@@ -1539,7 +1539,7 @@ mod tests {
 
     /// The kernel's own tool lifecycle reaches the console as one activity
     /// entry, read from `ToolStartedEvent` / `ToolProgressEvent` /
-    /// `ToolCompletedEvent` (`crates/octos-core/src/ui_protocol.rs:5455` /
+    /// `ToolCompletedEvent` (`crates/octos/octos-core/src/ui_protocol.rs:5455` /
     /// `:5473` / `:5487`) rather than from guessed keys.
     #[test]
     fn decodes_kernel_tool_activity_from_its_authoritative_types() {
@@ -1606,7 +1606,7 @@ mod tests {
     }
 
     /// An approval the *kernel* raises arrives as its own typed payload
-    /// (`ApprovalRequestedEvent`, `crates/octos-core/src/ui_protocol.rs:5690`)
+    /// (`ApprovalRequestedEvent`, `crates/octos/octos-core/src/ui_protocol.rs:5690`)
     /// and is answered with `approval/respond`. The console must not confuse it
     /// with a Zed tool's own approval, which has no kernel frame at all.
     #[test]
@@ -1732,7 +1732,7 @@ mod tests {
 
     /// Since #2318 the raw `tool/*` frames are suppressed for a connection that
     /// negotiated the canonical envelope (see `send_raw_notification_ephemeral`,
-    /// `crates/octos-cli/src/api/ui_protocol_transport.rs:46984`), so the
+    /// `crates/octos/octos-cli/src/api/ui_protocol_transport.rs:46984`), so the
     /// envelope is the lane tool activity actually arrives on. The console
     /// reads it from `PayloadV2`'s own variants, which carry the same
     /// lifecycle the raw frames did.

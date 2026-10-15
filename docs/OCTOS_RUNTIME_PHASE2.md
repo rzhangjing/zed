@@ -38,12 +38,12 @@ Tracks the full phase and its acceptance gate.
 Owns instrumentation and telemetry only.
 
 Primary surfaces:
-- `crates/octos-bus/src/session.rs`
-- `crates/octos-bus/src/api_channel.rs`
-- `crates/octos-cli/src/session_actor.rs`
-- `crates/octos-agent/src/tools/spawn.rs`
-- `crates/octos-agent/src/task_supervisor.rs`
-- `crates/octos-web/src/runtime/*`
+- `crates/octos/octos-bus/src/session.rs`
+- `crates/octos/octos-bus/src/api_channel.rs`
+- `crates/octos/octos-cli/src/session_actor.rs`
+- `crates/octos/octos-agent/src/tools/spawn.rs`
+- `crates/octos/octos-agent/src/task_supervisor.rs`
+- `crates/octos/octos-web/src/runtime/*`
 
 Must produce:
 - per-session and per-child-session lifecycle events
@@ -62,7 +62,7 @@ Should avoid touching:
 Owns open-ended coding/debugging turn supervision.
 
 Primary surfaces:
-- `crates/octos-agent/src/agent/*`
+- `crates/octos/octos-agent/src/agent/*`
 
 Must produce:
 - explicit turn-state machine for long coding/debugging loops
@@ -80,10 +80,10 @@ Should avoid touching:
 Owns parent/child supervision and terminal contracts.
 
 Primary surfaces:
-- `crates/octos-agent/src/tools/spawn.rs`
-- `crates/octos-agent/src/task_supervisor.rs`
-- `crates/octos-bus/src/session.rs`
-- `crates/octos-cli/src/session_actor.rs`
+- `crates/octos/octos-agent/src/tools/spawn.rs`
+- `crates/octos/octos-agent/src/task_supervisor.rs`
+- `crates/octos/octos-bus/src/session.rs`
+- `crates/octos/octos-cli/src/session_actor.rs`
 
 Must produce:
 - structured child terminal states
@@ -101,8 +101,8 @@ Should avoid touching:
 Owns typed intent classification and workflow compilation.
 
 Primary surfaces:
-- `crates/octos-cli/src/workflow_runtime.rs`
-- `crates/octos-cli/src/workflow_families/*`
+- `crates/octos/octos-cli/src/workflow_runtime.rs`
+- `crates/octos/octos-cli/src/workflow_families/*`
 - narrow integration points in `session_actor.rs`
 
 Must produce:
@@ -121,9 +121,9 @@ Should avoid touching:
 Owns artifact truth and browser/runtime acceptance coverage.
 
 Primary surfaces:
-- `crates/octos-agent/src/workspace_contract.rs`
-- `crates/octos-agent/src/workspace_policy.rs`
-- `crates/octos-agent/src/behaviour.rs`
+- `crates/octos/octos-agent/src/workspace_contract.rs`
+- `crates/octos/octos-agent/src/workspace_policy.rs`
+- `crates/octos/octos-agent/src/behaviour.rs`
 - `e2e/*`
 - `~/home/octos-web/tests/*`
 

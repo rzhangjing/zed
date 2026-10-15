@@ -384,10 +384,10 @@ fi
 
 if [ -n "$CLI_FEATURES" ]; then
     echo "    cargo install octos-cli with features: $CLI_FEATURES"
-    cargo install --path crates/octos-cli --features "$CLI_FEATURES" $INSTALL_FLAG
+    cargo install --path crates/octos/octos-cli --features "$CLI_FEATURES" $INSTALL_FLAG
 else
     echo "    cargo install octos-cli (no extra features)"
-    cargo install --path crates/octos-cli $INSTALL_FLAG
+    cargo install --path crates/octos/octos-cli $INSTALL_FLAG
 fi
 ok "octos binary installed to $PREFIX/octos"
 

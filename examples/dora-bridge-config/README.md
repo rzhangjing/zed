@@ -150,7 +150,7 @@ safety_gate -> emergency_stop [condition="outcome.status == \"fail\""];
 ```
 The supported predicate language is `outcome.status == "pass"|"fail"`,
 `outcome.contains("...")`, plus `&& || !` combinators (see
-`crates/octos-pipeline/src/condition.rs`). Without a `prompt`, `gate` nodes
+`crates/octos/octos-pipeline/src/condition.rs`). Without a `prompt`, `gate` nodes
 default to `"true"` (always Pass), and without `condition=` on the
 outgoing edges the executor falls back to label substring matching against
 outcome content — so both halves are required for real branching.

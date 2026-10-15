@@ -4,7 +4,7 @@
  * The dashboard is read-only — every number here comes from the
  * `OperatorSummaryResponse` exposed by
  * `/api/admin/operator/summary`. If a field should appear here, the backend
- * has to expose it via `octos-cli/src/api/metrics.rs`. See `api/harness.ts`
+ * has to expose it via `octos/octos-cli/src/api/metrics.rs`. See `api/harness.ts`
  * for the typed helpers that shape the Prometheus breakdown rows.
  */
 import {

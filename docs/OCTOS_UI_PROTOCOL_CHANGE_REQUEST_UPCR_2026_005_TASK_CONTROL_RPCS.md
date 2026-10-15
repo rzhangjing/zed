@@ -277,7 +277,7 @@ feature, the server returns the existing `method_not_supported` error.
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `task_control_commands_build_and_parse_json_rpc_requests` — round-trips
     `task/list`, `task/cancel`, `task/restart_from_node` requests through the
     JSON-RPC envelope.
@@ -288,10 +288,10 @@ feature, the server returns the existing `method_not_supported` error.
     new feature flag and methods are advertised in `full_protocol()`.
   - Capability-set golden tests updated to include the new methods and the
     `harness.task_control.v1` feature literal.
-- `crates/octos-core/src/app_ui.rs`:
+- `crates/octos/octos-core/src/app_ui.rs`:
   - `app_command_surface_covers_harness_task_control` — exercises the
     `AppUiCommand` adapter for all three methods.
-- `crates/octos-cli/src/api/ui_protocol.rs`:
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`:
   - `appui_task_list_returns_runtime_snapshot` — verifies the handler returns
     the supervisor snapshot for a session.
   - `appui_task_cancel_uses_supervisor_cancel_path` — verifies the handler

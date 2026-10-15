@@ -7,7 +7,7 @@ octos is a 27-member Rust workspace (Edition 2024, rust-version 1.85.0) providin
 **Workspace members** (from `Cargo.toml`):
 - **Layered core** (7): `octos-core` (shared types) → `octos-memory` + `octos-llm` → `octos-agent` (agent loop, tools, sandbox, MCP, compaction) → `octos-cli` (commands, config, serve/API), plus `octos-bus` (14 channels, sessions, coalescing, cron) and `octos-diagnostics` (powers `octos doctor`).
 - **Agent-adjacent** (5): `octos-pipeline` (DOT-graph workflows), `octos-plugin` (plugin/skill SDK), `octos-swarm` (multi-agent contract authoring), `octos-sandbox`, `octos-dora-mcp`.
-- **Bundled skill crates** (15): each app skill under `crates/app-skills/` is its own crate — `news`, `deep-search`, `deep-crawl`, `send-email`, `account-manager`, `time`, `weather`, `smart-home`, `wechat-bridge`, `skill-evolve`, and the `harness-starter-{generic,report,audio,coding}` templates — plus `platform-skills/voice` (ASR/TTS).
+- **Bundled skill crates** (15): each app skill under `crates/octos/app-skills/` is its own crate — `news`, `deep-search`, `deep-crawl`, `send-email`, `account-manager`, `time`, `weather`, `smart-home`, `wechat-bridge`, `skill-evolve`, and the `harness-starter-{generic,report,audio,coding}` templates — plus `platform-skills/voice` (ASR/TTS).
 
 (The web SPA and terminal client live in the separate `octos-web` and `octoscode` repositories and talk to `octos serve` over the UI Protocol.)
 
@@ -199,7 +199,7 @@ pub type ChatStream = Pin<Box<dyn Stream<Item = StreamEvent> + Send>>;
 
 ### Provider Registry (`registry/`)
 
-All providers are defined in `octos-llm/src/registry/` — one file per provider. Each file exports a `ProviderEntry` with metadata (name, aliases, default model, API key env var, base URL) and a `create()` factory function. Adding a new provider = one file + one line in `mod.rs`.
+All providers are defined in `octos/octos-llm/src/registry/` — one file per provider. Each file exports a `ProviderEntry` with metadata (name, aliases, default model, API key env var, base URL) and a `create()` factory function. Adding a new provider = one file + one line in `mod.rs`.
 
 ```rust
 pub struct ProviderEntry {
@@ -411,7 +411,7 @@ Two implementations:
 
 ### Transcription
 
-**Voice platform skill** — audio is transcribed at the gateway layer, not in `octos-llm`. The gateway spawns the installed `voice` platform-skill binary (`platform-skills/voice/main` under the gateway home: `--octos-home`, else `<cwd>/.octos`) with the `voice_transcribe` subcommand, `{"audio_path", "language"?}` JSON on stdin and `{"success", "output"}` JSON on stdout; 120s timeout. Transcript text merges into the inbound message content (`voice_transcript` metadata), audio-only messages whose transcripts are all rejected skip agent dispatch, and the per-profile ASR language override is re-resolved per message (`octos-cli/src/commands/gateway/message_preprocessing.rs:515`, wiring at `octos-cli/src/commands/gateway/gateway_runtime.rs:613`).
+**Voice platform skill** — audio is transcribed at the gateway layer, not in `octos-llm`. The gateway spawns the installed `voice` platform-skill binary (`platform-skills/voice/main` under the gateway home: `--octos-home`, else `<cwd>/.octos`) with the `voice_transcribe` subcommand, `{"audio_path", "language"?}` JSON on stdin and `{"success", "output"}` JSON on stdout; 120s timeout. Transcript text merges into the inbound message content (`voice_transcript` metadata), audio-only messages whose transcripts are all rejected skip agent dispatch, and the per-profile ASR language override is re-resolved per message (`octos/octos-cli/src/commands/gateway/message_preprocessing.rs:515`, wiring at `octos/octos-cli/src/commands/gateway/gateway_runtime.rs:613`).
 
 ### Vision
 
@@ -973,7 +973,7 @@ pub struct ConsoleReporter {
 
 **Duration formatting**: >1s → `{:.1}s`, ≤1s → `{N}ms`.
 
-**EventBroadcaster** (feature: `api`, `octos-cli/src/api/events.rs:32`) — process-wide broadcaster that converts progress events to JSON and publishes them on a `tokio::sync::broadcast` channel. No SSE wire path remains in the chat transport; the JSON frames feed the harness/admin `/api/events/harness` endpoint, the swarm event publishers, and the UI Protocol v1 WS bridge:
+**EventBroadcaster** (feature: `api`, `octos/octos-cli/src/api/events.rs:32`) — process-wide broadcaster that converts progress events to JSON and publishes them on a `tokio::sync::broadcast` channel. No SSE wire path remains in the chat transport; the JSON frames feed the harness/admin `/api/events/harness` endpoint, the swarm event publishers, and the UI Protocol v1 WS bridge:
 
 ```rust
 pub struct EventBroadcaster {
@@ -1301,9 +1301,9 @@ twilio   = ["octos-bus/twilio"]
 
 ```
 crates/
-├── octos-core/src/
+├── octos/octos-core/src/
 │   ├── lib.rs, task.rs, types.rs, error.rs, gateway.rs, message.rs, utils.rs
-├── octos-llm/src/
+├── octos/octos-llm/src/
 │   ├── lib.rs, provider.rs, config.rs, types.rs, retry.rs, failover.rs, sse.rs
 │   ├── embedding.rs, pricing.rs, context.rs, transcription.rs, vision.rs
 │   ├── adaptive.rs, swappable.rs, router.rs, ominix.rs
@@ -1311,9 +1311,9 @@ crates/
 │   └── registry/ (mod.rs + 14 provider entries: anthropic, openai, gemini,
 │                   openrouter, deepseek, groq, moonshot, dashscope, minimax,
 │                   zhipu, zai, nvidia, ollama, vllm)
-├── octos-memory/src/
+├── octos/octos-memory/src/
 │   ├── lib.rs, episode.rs, store.rs, memory_store.rs, hybrid_search.rs
-├── octos-agent/src/
+├── octos/octos-agent/src/
 │   ├── lib.rs, agent.rs, progress.rs, policy.rs, compaction.rs, sanitize.rs, hooks.rs
 │   ├── sandbox.rs, mcp.rs, skills.rs, builtin_skills.rs
 │   ├── bundled_app_skills.rs, bootstrap.rs, prompt_guard.rs
@@ -1327,20 +1327,20 @@ crates/
 │               deep_research_pipeline, synthesize_research, research_utils,
 │               admin/ (profiles, skills, sub_accounts, system,
 │                       platform_skills, update))
-├── octos-bus/src/
+├── octos/octos-bus/src/
 │   ├── lib.rs, bus.rs, channel.rs, session.rs, coalesce.rs, media.rs
 │   ├── cli_channel.rs, telegram_channel.rs, discord_channel.rs
 │   ├── slack_channel.rs, whatsapp_channel.rs, feishu_channel.rs, email_channel.rs
 │   ├── wecom_channel.rs, twilio_channel.rs, markdown_html.rs
 │   ├── cron_service.rs, cron_types.rs, heartbeat.rs
-└── octos-cli/src/
+└── octos/octos-cli/src/
     ├── main.rs, config.rs, config_watcher.rs, cron_tool.rs, compaction.rs
     ├── auth/ (mod.rs, store.rs, oauth.rs, token.rs)
     ├── api/ (mod.rs, router.rs, handlers.rs, sse.rs, metrics.rs, static_files.rs)
     └── commands/ (mod, chat, init, status, gateway, clean,
                    completions, cron, channels, auth, skills, docs, serve,
                    office, account)
-├── octos-pipeline/src/
+├── octos/octos-pipeline/src/
 │   ├── lib.rs, parser.rs, graph.rs, executor.rs, handler.rs
 │   ├── condition.rs, tool.rs, validate.rs
 ```
@@ -1369,7 +1369,7 @@ crates/
 - Tool policies: allow/deny with deny-wins semantics, 8 named groups (`group:fs`, `group:runtime`, `group:web`, `group:search`, `group:sessions`, etc.), wildcard matching, provider-specific filtering via `tools.byProvider`
 - Tool argument size limit: 1MB per invocation (non-allocating `estimate_json_size` with escape char accounting)
 - Symlink-safe file I/O via `O_NOFOLLOW` on Unix (atomic kernel-level check, eliminates TOCTOU races); metadata-based symlink check fallback on Windows
-- SSRF protection via `octos_research::net::check_url` — the one shared implementation, adapted for the agent tools by `octos-agent/src/tools/ssrf.rs`: DNS resolution with fail-closed behavior (blocks on DNS failure), private IP blocking (10/8, 172.16/12, 192.168/16, 169.254/16), IPv6 coverage (ULA `fc00::/7`, link-local `fe80::/10`, site-local `fec0::/10`, IPv4-mapped `::ffff:0:0/96`, IPv4-compatible `::/96`), loopback blocking. Used by web_fetch and browser.
+- SSRF protection via `octos_research::net::check_url` — the one shared implementation, adapted for the agent tools by `octos/octos-agent/src/tools/ssrf.rs`: DNS resolution with fail-closed behavior (blocks on DNS failure), private IP blocking (10/8, 172.16/12, 192.168/16, 169.254/16), IPv6 coverage (ULA `fc00::/7`, link-local `fe80::/10`, site-local `fec0::/10`, IPv4-mapped `::ffff:0:0/96`, IPv4-compatible `::/96`), loopback blocking. Used by web_fetch and browser.
 - Browser: URL scheme allowlist (http/https only), 10s JS execution timeout, zombie process reaping, secure tempfiles for screenshots
 - MCP: input schema validation (max depth 10, max size 64KB) prevents malicious tool definitions
 - Prompt injection guard (`prompt_guard.rs`): 5 threat categories (SystemOverride, RoleConfusion, ToolCallInjection, SecretExtraction, InstructionInjection), 10 detection patterns. Sanitizes threats by wrapping in `[injection-blocked:...]`.

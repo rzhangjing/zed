@@ -178,7 +178,7 @@ export SMTP_PASSWORD="your-app-password"
 - `POST /api/admin/setup/complete` — 完成并创建管理员配置
 - `POST /api/admin/setup/skip` — 操作员逃生口（跳过剩余可选步骤）
 
-源码：`crates/octos-cli/src/api/admin_setup.rs`、`dashboard/src/pages/wizard/`。
+源码：`crates/octos/octos-cli/src/api/admin_setup.rs`、`dashboard/src/pages/wizard/`。
 
 ### 2.5 给外部代理授予会话访问（工作密钥）
 
@@ -603,7 +603,7 @@ export PERPLEXITY_API_KEY="pplx-your-key"
 
 ### 7.2 命名分组
 
-权威定义：`crates/octos-agent/src/tools/policy.rs:154-223` 中的 `TOOL_GROUPS`。具体工具清单：
+权威定义：`crates/octos/octos-agent/src/tools/policy.rs:154-223` 中的 `TOOL_GROUPS`。具体工具清单：
 
 | 分组 | 展开为 |
 |------|--------|
@@ -1099,9 +1099,9 @@ octos cron enable <job-id> --disable
 
 **子 Agent 输出路由器（M8.7）**：长子 Agent 文稿由 `AgentSummaryGenerator` 生成精简摘要进入父上下文；完整文稿落盘以便事后查看。即使委派大型研究任务也能保持父上下文紧凑。
 
-**Swarm 调度**：扇出工作请使用 swarm API 而非多次 spawn。单次 swarm 调度将契约扇出到 N 个子 Agent，聚合产物，通过校验器审核，并把成本汇总回父级。状态持久化在 `crates/octos-swarm/src/persistence.rs`，账本在 `crates/octos-swarm/src/ledger.rs`。
+**Swarm 调度**：扇出工作请使用 swarm API 而非多次 spawn。单次 swarm 调度将契约扇出到 N 个子 Agent，聚合产物，通过校验器审核，并把成本汇总回父级。状态持久化在 `crates/octos/octos-swarm/src/persistence.rs`，账本在 `crates/octos/octos-swarm/src/ledger.rs`。
 
-**`spawn_only` 技能工具自动转后台**：清单里 `spawn_only: true` 的插件工具会在执行层（`crates/octos-agent/src/agent/execution.rs`）被拦截，无论调用方意图如何都强制后台执行。Agent 立即收到「任务已启动」回执，结果稍后以新入站消息送达。子 Agent 不能再生成更深层子 Agent（`group:delegated` 递归 deny-wins）。
+**`spawn_only` 技能工具自动转后台**：清单里 `spawn_only: true` 的插件工具会在执行层（`crates/octos/octos-agent/src/agent/execution.rs`）被拦截，无论调用方意图如何都强制后台执行。Agent 立即收到「任务已启动」回执，结果稍后以新入站消息送达。子 Agent 不能再生成更深层子 Agent（`group:delegated` 递归 deny-wins）。
 
 ### 11.10 消息队列模式
 
@@ -1146,11 +1146,11 @@ octos cron enable <job-id> --disable
 
 ## 12. 内置应用技能
 
-内置应用技能作为编译好的二进制文件随 `octos` 一起发布。Gateway 启动时会写入 `<octos_home>/bundled-app-skills/<name>/`，运维或用户自定义技能安装到当前 profile 的 `~/.octos/profiles/<profile>/data/skills/`，因此重新部署不会覆盖自定义内容。完整列表见 `BUNDLED_APP_SKILLS`（`crates/octos-agent/src/bundled_app_skills.rs`）：
+内置应用技能作为编译好的二进制文件随 `octos` 一起发布。Gateway 启动时会写入 `<octos_home>/bundled-app-skills/<name>/`，运维或用户自定义技能安装到当前 profile 的 `~/.octos/profiles/<profile>/data/skills/`，因此重新部署不会覆盖自定义内容。完整列表见 `BUNDLED_APP_SKILLS`（`crates/octos/octos-agent/src/bundled_app_skills.rs`）：
 
 > **自动安装的内置技能：** news、deep-search、deep-crawl、send-email、account-manager、time（二进制名 `clock`）、weather、smart-home、skill-evolve。加上平台技能 `voice`。
 
-下文的 12.8（微信桥接）和 12.11（启动模板）描述的是 `crates/app-skills/` 下**仅在 workspace 中作为示例的 crate**，并未列入 `BUNDLED_APP_SKILLS`。它们以源码形式随仓库分发，作为模板或传输助手，不会被 gateway 自动安装为运行时技能。
+下文的 12.8（微信桥接）和 12.11（启动模板）描述的是 `crates/octos/app-skills/` 下**仅在 workspace 中作为示例的 crate**，并未列入 `BUNDLED_APP_SKILLS`。它们以源码形式随仓库分发，作为模板或传输助手，不会被 gateway 自动安装为运行时技能。
 
 ### 12.1 新闻获取
 
@@ -1582,7 +1582,7 @@ export LARK_FROM_ADDRESS="your-feishu-email@company.com"
 
 ### 12.11 Harness Starter（启动模板）
 
-`crates/app-skills/harness-starter-{audio, coding, generic, report}/` 下的四个启动模板，每个都是一个可工作的 harnessed 技能示例（含合同测试、清单和 SKILL.md），可作为自定义领域技能的起点：
+`crates/octos/app-skills/harness-starter-{audio, coding, generic, report}/` 下的四个启动模板，每个都是一个可工作的 harnessed 技能示例（含合同测试、清单和 SKILL.md），可作为自定义领域技能的起点：
 
 - `harness-starter-generic` —— 适合任意文本任务的最小回声式 harness
 - `harness-starter-coding` —— 与 worktree 集成的代码任务 harness
@@ -2244,7 +2244,7 @@ chmod +x .octos/skills/translator/main
 ├── bundled-app-skills/         # gateway 启动时由 bootstrap 自动安装
 │   │                           #（常量 BUNDLED_APP_SKILLS_DIR = "bundled-app-skills"；
 │   │                           # 内容来自
-│   │                           # crates/octos-agent/src/bundled_app_skills.rs）。
+│   │                           # crates/octos/octos-agent/src/bundled_app_skills.rs）。
 │   │                           # 重新部署会刷新此目录；用户改动会被覆盖 ——
 │   │                           # 自定义请放到 skills/。
 │   ├── news/                   # news_fetch
@@ -2268,7 +2268,7 @@ chmod +x .octos/skills/translator/main
     └── chat_history            # Readline 历史（CLI）
 ```
 
-> **运行时目录里看不到**：`harness-starter-{audio,coding,generic,report}` 与 `wechat-bridge` 都是仅在 workspace 中的示例/工具 crate，位于 `crates/app-skills/`。它们能被 `cargo build --workspace` 编译，但不在 `BUNDLED_APP_SKILLS` 中，因此 gateway 不会把它们写入 `~/.octos/bundled-app-skills/`。需要看模板请直接打开源码树。
+> **运行时目录里看不到**：`harness-starter-{audio,coding,generic,report}` 与 `wechat-bridge` 都是仅在 workspace 中的示例/工具 crate，位于 `crates/octos/app-skills/`。它们能被 `cargo build --workspace` 编译，但不在 `BUNDLED_APP_SKILLS` 中，因此 gateway 不会把它们写入 `~/.octos/bundled-app-skills/`。需要看模板请直接打开源码树。
 
 ---
 

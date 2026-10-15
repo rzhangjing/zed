@@ -51,7 +51,7 @@ commit of `UPCR-2026-027`.
 
 ## Implementation anchors
 
-- Guard: `octos-cli/src/api/ui_protocol.rs`
+- Guard: `octos/octos-cli/src/api/ui_protocol.rs`
   `spec_section6_catalog_lists_every_advertised_method`
-- Advertised registry: `octos-cli/src/api/ui_protocol.rs`
+- Advertised registry: `octos/octos-cli/src/api/ui_protocol.rs`
   `ui_protocol_server_supported_methods`

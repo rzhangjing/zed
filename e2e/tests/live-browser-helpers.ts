@@ -392,7 +392,7 @@ const THINKING_PLACEHOLDER_RE = /Thinking[\s.…]*\(iteration\s+\d+\)/i;
  * bubbles whose entire body is the ack as "still pending result".
  *
  * Detected by a small set of locale-aware ack phrases the daemon emits in
- * `crates/octos-cli/src/workflows/*.rs`. Anchored phrases are preferred
+ * `crates/octos/octos-cli/src/workflows/*.rs`. Anchored phrases are preferred
  * over unbounded substrings to avoid false-classifying legitimate
  * results that mention "background" or "在后台" in prose as ack-only.
  * The `<200` chars guard in `isSpawnAckOnly` provides a defense-in-
@@ -412,7 +412,7 @@ const SPAWN_ACK_PATTERNS: RegExp[] = [
   /^.{0,30}已在後台運行/,
   /^.{0,80}\b(?:has\s+)?started\s+in\s+(?:the\s+)?background\b/i,
   /^.{0,80}\b(?:is\s+now\s+)?running\s+in\s+(?:the\s+)?background\b/i,
-  // M10 spawn_only intercept (octos-cli/src/agent/loop_runner.rs):
+  // M10 spawn_only intercept (octos/octos-cli/src/agent/loop_runner.rs):
   // "Background work started for <tool>. The final result will be
   // delivered automatically when it is ready." — phrase doesn't match
   // the older "started in (the) background" anchor, so without this

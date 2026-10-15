@@ -27,7 +27,7 @@ variant (added in M7.9 / W2) and emits it as the snake_case literal
 reaches `Completed` or `Failed`. The AppUi wire enum
 `TaskRuntimeState` had only four variants — `Pending`, `Running`,
 `Completed`, `Failed` — so the `ui_task_runtime_state` mapper in
-`crates/octos-cli/src/api/ui_protocol_progress.rs` could not match the
+`crates/octos/octos-cli/src/api/ui_protocol_progress.rs` could not match the
 `"cancelled"` literal. The `unwrap_or(UiTaskRuntimeState::Running)` fallback
 caused cancelled tasks to render as still running indefinitely in the UI.
 
@@ -114,12 +114,12 @@ the wire shape (`TaskUpdatedEvent.state` is a single string) is unchanged.
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `task_runtime_state_cancelled_round_trips_as_snake_case_cancelled` — asserts
     the wire literal is exactly `"cancelled"`.
   - `task_updated_event_round_trips_with_cancelled_state` — asserts a full
     `task/updated` notification round-trips through the JSON-RPC envelope.
-- `crates/octos-cli/src/api/ui_protocol_progress.rs`:
+- `crates/octos/octos-cli/src/api/ui_protocol_progress.rs`:
   - `ui_protocol_progress_maps_cancelled_task_state_to_cancelled_variant`
     — asserts the mapper returns `Cancelled` for both `"cancelled"` and
     `"canceled"` and no longer falls back to `Running`.
@@ -129,7 +129,7 @@ the wire shape (`TaskUpdatedEvent.state` is a single string) is unchanged.
 This UPCR ships in the same PR that:
 
 1. Adds the variant to `TaskRuntimeState` in `octos-core`.
-2. Updates the mapper in `octos-cli/src/api/ui_protocol_progress.rs` to
+2. Updates the mapper in `octos/octos-cli/src/api/ui_protocol_progress.rs` to
    recognise `"cancelled"` and `"canceled"`.
 3. Adds the round-trip tests above.
 

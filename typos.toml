@@ -55,7 +55,7 @@ extend-exclude = [
     "examples/*/static/**/*.*",
     # Recorded provider responses (metasearch engine fixtures): third-party
     # text and encoded IDs, replayed byte-for-byte by the fixture tests.
-    "crates/octos-research/engines/*/fixtures/**",
+    "crates/octos/octos-research/engines/*/fixtures/**",
 ]
 
 [default]
@@ -170,7 +170,7 @@ alle = "alle"
 sie = "sie"
 ein = "ein"
 mesure = "mesure"
-# Spanish word for "advances" — test corpus in octos-research/src/extract.rs
+# Spanish word for "advances" — test corpus in octos/octos-research/src/extract.rs
 avances = "avances"
 # Basic Regular Expression — referenced in slides validator spec comments
 # explaining the regex escape behavior for find -name patterns.

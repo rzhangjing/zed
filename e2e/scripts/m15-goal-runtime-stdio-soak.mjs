@@ -22,7 +22,7 @@
 //
 // IMPORTANT — known live-runtime limitation:
 // Per the implementation note in `maybe_advance_goal_runtime_after_turn`
-// (crates/octos-cli/src/session_actor.rs), the wire path currently calls
+// (crates/octos/octos-cli/src/session_actor.rs), the wire path currently calls
 // `record_goal_turn(…, tokens_consumed=0, …)`. That means real LLM token
 // spend is NOT yet attributed to `goal.tokens_used`, so the goal cannot
 // organically reach `tokens_used >= token_budget` via real turns. The

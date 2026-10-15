@@ -52,7 +52,7 @@ inference site is a place a real bug has shipped this quarter:
 
 - Its result type `SessionOpenResult { opened: SessionOpened { session_id,
   active_profile_id, workspace_root, cursor, panes } }`
-  (`crates/octos-core/src/ui_protocol.rs:1342-1352`) carries **no** message,
+  (`crates/octos/octos-core/src/ui_protocol.rs:1342-1352`) carries **no** message,
   thread, turn, or approval payload.
 - Its `cursor` field is a resume point for the event stream, not a snapshot
   of state.
@@ -193,7 +193,7 @@ The new command returns errors from the existing v1 taxonomy:
   the session is scoped to a different connection profile than the request.
 - `cursor_out_of_range` — the supplied `after` cursor addresses a position
   beyond the current ledger head. Echoes ledger head per the existing
-  cursor-range error shape (`crates/octos-core/src/ui_protocol.rs:419-433`).
+  cursor-range error shape (`crates/octos/octos-core/src/ui_protocol.rs:419-433`).
 - `cursor_invalid` — the supplied `after` cursor is malformed or wrong-stream.
 - `invalid_params` — params failed structural validation. Includes:
   - `data.kind = "include_too_large"` when the `include` array exceeds 32
@@ -252,7 +252,7 @@ legacy REST endpoint or to ledger replay from `session/open`'s cursor.
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `session_hydrate_command_round_trips_through_json_rpc` — round-trips
     `session/hydrate` request through the JSON-RPC envelope including the
     optional `after` and `include` fields.
@@ -267,7 +267,7 @@ legacy REST endpoint or to ledger replay from `session/open`'s cursor.
     the new feature flag and method are advertised in `full_protocol()`.
   - Capability-set golden tests updated to include the new method and the
     `state.session_hydrate.v1` feature literal.
-- `crates/octos-cli/src/api/ui_protocol.rs`:
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`:
   - `appui_session_hydrate_returns_full_chat_state` — verifies the handler
     returns messages, threads, turns, and pending approvals for a
     populated session.

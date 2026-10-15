@@ -240,7 +240,7 @@ Progress is tracked server-side via:
 - `POST /api/admin/setup/complete` — finalize and create the admin profile
 - `POST /api/admin/setup/skip` — operator escape hatch (skips remaining optional steps)
 
-Source: `crates/octos-cli/src/api/admin_setup.rs`, `dashboard/src/pages/wizard/`.
+Source: `crates/octos/octos-cli/src/api/admin_setup.rs`, `dashboard/src/pages/wizard/`.
 
 ### 2.5 Stopping the Server
 
@@ -698,7 +698,7 @@ Tool policies control which tools the agent can use. They can be set globally, p
 
 ### 7.2 Named Groups
 
-Source of truth: `TOOL_GROUPS` in `crates/octos-agent/src/tools/policy.rs:154-223`. The exact tool list:
+Source of truth: `TOOL_GROUPS` in `crates/octos/octos-agent/src/tools/policy.rs:154-223`. The exact tool list:
 
 | Group | Expands To |
 |-------|-----------|
@@ -1195,9 +1195,9 @@ Sub-agents can use different LLM models via `sub_providers`:
 
 **Sub-agent output router (M8.7)**: long sub-agent transcripts are summarized by `AgentSummaryGenerator` and the compact summary is surfaced in parent context, while the full transcript is persisted to disk for later inspection. This keeps parent context small even when delegating large research tasks.
 
-**Swarm dispatch**: for fan-out workloads use the swarm API instead of multiple spawns. A swarm dispatch fans a contract to N sub-agents, aggregates artifacts, runs them through a validator, and rolls cost up to the parent. State persisted at `crates/octos-swarm/src/persistence.rs`; ledger at `crates/octos-swarm/src/ledger.rs`.
+**Swarm dispatch**: for fan-out workloads use the swarm API instead of multiple spawns. A swarm dispatch fans a contract to N sub-agents, aggregates artifacts, runs them through a validator, and rolls cost up to the parent. State persisted at `crates/octos/octos-swarm/src/persistence.rs`; ledger at `crates/octos/octos-swarm/src/ledger.rs`.
 
-**`spawn_only` skill tools auto-route to background**: any plugin tool whose manifest declares `spawn_only: true` is intercepted at the execution layer (`crates/octos-agent/src/agent/execution.rs`) and forced into background mode regardless of caller intent. The agent gets an immediate "task started" acknowledgement, and the result is delivered later as a new inbound message. Sub-agents cannot spawn further sub-agents (deny-wins via `group:delegated`).
+**`spawn_only` skill tools auto-route to background**: any plugin tool whose manifest declares `spawn_only: true` is intercepted at the execution layer (`crates/octos/octos-agent/src/agent/execution.rs`) and forced into background mode regardless of caller intent. The agent gets an immediate "task started" acknowledgement, and the result is delivered later as a new inbound message. Sub-agents cannot spawn further sub-agents (deny-wins via `group:delegated`).
 
 ### 11.10 Message Queue Modes
 
@@ -1242,11 +1242,11 @@ Check for new issues in the GitHub repo and summarize any urgent ones.
 
 ## 12. Bundled App Skills
 
-Bundled app skills ship as compiled binaries alongside the `octos` binary. On gateway startup they are written into `<octos_home>/bundled-app-skills/<name>/`, while operator or user customizations are installed into the active profile's `~/.octos/profiles/<profile>/data/skills/` directory so a re-deploy never overwrites them. The full list lives in `BUNDLED_APP_SKILLS` (`crates/octos-agent/src/bundled_app_skills.rs`):
+Bundled app skills ship as compiled binaries alongside the `octos` binary. On gateway startup they are written into `<octos_home>/bundled-app-skills/<name>/`, while operator or user customizations are installed into the active profile's `~/.octos/profiles/<profile>/data/skills/` directory so a re-deploy never overwrites them. The full list lives in `BUNDLED_APP_SKILLS` (`crates/octos/octos-agent/src/bundled_app_skills.rs`):
 
 > **Bundled (auto-installed):** news, deep-search, deep-crawl, send-email, account-manager, time (binary `clock`), weather, smart-home, skill-evolve. Plus the platform-skill `voice`.
 
-Sections 12.8 (WeChat Bridge) and 12.11 (Harness Starters) below describe **workspace example crates** under `crates/app-skills/` that are *not* in `BUNDLED_APP_SKILLS` — they ship in the source tree as templates / transport helpers, not as auto-installed runtime skills.
+Sections 12.8 (WeChat Bridge) and 12.11 (Harness Starters) below describe **workspace example crates** under `crates/octos/app-skills/` that are *not* in `BUNDLED_APP_SKILLS` — they ship in the source tree as templates / transport helpers, not as auto-installed runtime skills.
 
 ### 12.1 News Fetch
 
@@ -1686,7 +1686,7 @@ Patches are reviewed/applied through this tool — the skill does not self-modif
 
 ### 12.11 Harness Starters
 
-Four starter-template skills under `crates/app-skills/harness-starter-{audio, coding, generic, report}/`. Each is a working example of a harnessed skill (with the contract tests, manifest, and SKILL.md) that you can copy and adapt for a custom domain skill:
+Four starter-template skills under `crates/octos/app-skills/harness-starter-{audio, coding, generic, report}/`. Each is a working example of a harnessed skill (with the contract tests, manifest, and SKILL.md) that you can copy and adapt for a custom domain skill:
 
 - `harness-starter-generic` — minimal echo-style harness for any text task
 - `harness-starter-coding` — code-task harness with worktree integration
@@ -2367,7 +2367,7 @@ Bot: [uses translate tool with text="Hello world", target_lang="JA"]
 ├── bundled-app-skills/         # Auto-installed by gateway bootstrap
 │   │                           # (BUNDLED_APP_SKILLS_DIR = "bundled-app-skills";
 │   │                           #  contents come from
-│   │                           #  crates/octos-agent/src/bundled_app_skills.rs).
+│   │                           #  crates/octos/octos-agent/src/bundled_app_skills.rs).
 │   │                           # Re-deploy refreshes this; user edits here are
 │   │                           # overwritten — put customizations under skills/.
 │   ├── news/                   # news_fetch
@@ -2392,7 +2392,7 @@ Bot: [uses translate tool with text="Hello world", target_lang="JA"]
     └── chat_history            # Readline history (CLI)
 ```
 
-> **Not present in the runtime tree:** `harness-starter-{audio,coding,generic,report}` and `wechat-bridge` are workspace-only example/utility crates under `crates/app-skills/`. They build with `cargo build --workspace` but are not part of `BUNDLED_APP_SKILLS`, so the gateway never copies them into `~/.octos/bundled-app-skills/`. Don't expect to find them at runtime — open the source tree if you want the templates.
+> **Not present in the runtime tree:** `harness-starter-{audio,coding,generic,report}` and `wechat-bridge` are workspace-only example/utility crates under `crates/octos/app-skills/`. They build with `cargo build --workspace` but are not part of `BUNDLED_APP_SKILLS`, so the gateway never copies them into `~/.octos/bundled-app-skills/`. Don't expect to find them at runtime — open the source tree if you want the templates.
 
 ---
 

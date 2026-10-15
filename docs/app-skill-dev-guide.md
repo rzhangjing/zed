@@ -255,7 +255,7 @@ fi
 If contributing a skill to the core Octos distribution:
 
 ```bash
-mkdir -p crates/app-skills/my-skill/src
+mkdir -p crates/octos/app-skills/my-skill/src
 ```
 
 **Cargo.toml:**
@@ -280,11 +280,11 @@ Add to workspace `Cargo.toml`:
 ```toml
 members = [
     # ...
-    "crates/app-skills/my-skill",
+    "crates/octos/app-skills/my-skill",
 ]
 ```
 
-Register in `crates/octos-agent/src/bundled_app_skills.rs`:
+Register in `crates/octos/octos-agent/src/bundled_app_skills.rs`:
 
 ```rust
 pub const BUNDLED_APP_SKILLS: &[(&str, &str, &str, &str)] = &[
@@ -642,7 +642,7 @@ Loading dedupes by `manifest.id` — the **first** directory scanned that contai
 |----------|----------|--------|
 | 1 (highest) | `~/.octos/profiles/<profile>/data/skills/` | **Canonical** per-profile install (`octos skills --profile <p> install`; `fleet-install-skills.sh`) |
 | 2 | `<project-dir>/skills/` | Project-local (development checkouts) |
-| 3 | `<project-dir>/bundled-app-skills/` | Bundled app-skills (constant `BUNDLED_APP_SKILLS_DIR` in `octos-agent/src/bootstrap.rs`; scanned by `Config::plugin_dirs_from_project`) |
+| 3 | `<project-dir>/bundled-app-skills/` | Bundled app-skills (constant `BUNDLED_APP_SKILLS_DIR` in `octos/octos-agent/src/bootstrap.rs`; scanned by `Config::plugin_dirs_from_project`) |
 | 4 (lowest, **deprecated**) | `~/.octos/skills/` | Legacy global install — the loader emits a deprecation warning on every startup that sees this directory. See [Part 5: Install](#part-5-install) and [`docs/SKILL_DEPLOYMENT.md`](./SKILL_DEPLOYMENT.md) for the per-profile-only migration (PR #944). |
 
 **Lesson from the fleet (2026):** before PR #936 the loader registered duplicate
@@ -755,7 +755,7 @@ println!(
 
 ### Anatomy of a validator
 
-Every workspace-contract validator is a `Validator` struct (`crates/octos-agent/src/workspace_policy.rs:142-167`):
+Every workspace-contract validator is a `Validator` struct (`crates/octos/octos-agent/src/workspace_policy.rs:142-167`):
 
 ```rust
 pub struct Validator {
@@ -781,7 +781,7 @@ Soft-fail is the canonical way to express partial-artifact contracts: "the prima
 
 ### ValidatorSpec variants
 
-Every `ValidatorSpec` variant currently merged. Source: `crates/octos-agent/src/workspace_policy.rs:263-357`.
+Every `ValidatorSpec` variant currently merged. Source: `crates/octos/octos-agent/src/workspace_policy.rs:263-357`.
 
 | Variant | Serde shape | Interpolation | One-line use |
 |---------|-------------|---------------|--------------|
@@ -823,7 +823,7 @@ For glob-pattern templates (`MagicBytes.glob`, `AudioNonSilent.glob`, `Sha256Mat
 
 ### Where to declare the contract
 
-**Option A — Harness-owned (canonical).** Add to `WorkspacePolicy::for_session()` in `crates/octos-agent/src/workspace_policy.rs`. Worked example, an imaginary `mofa_widget` skill:
+**Option A — Harness-owned (canonical).** Add to `WorkspacePolicy::for_session()` in `crates/octos/octos-agent/src/workspace_policy.rs`. Worked example, an imaginary `mofa_widget` skill:
 
 ```rust
 let mofa_widget_contract = WorkspaceSpawnTaskPolicy {
@@ -963,16 +963,16 @@ For skill authors with existing skills, here's what to align with as of 2026-05-
 ## Part 10: Reference
 
 - **Audit:** [`docs/audits/HARNESS_CONTRACT_AUDIT_2026-05-13.md`](./audits/HARNESS_CONTRACT_AUDIT_2026-05-13.md) — full per-tool table, ad-hoc patterns inventory, framework gaps.
-- **Workspace policy source:** `crates/octos-agent/src/workspace_policy.rs` — `Validator`, `ValidatorSpec`, `MagicByteKind`, `Required`, `WorkspacePolicy::for_session()`.
-- **Validator runner:** `crates/octos-agent/src/validators.rs` — `ValidatorRunner`, interpolation, HTTP probe wiring (with the shared SSRF gate from `tools/ssrf.rs`).
-- **Workspace contract enforcement:** `crates/octos-agent/src/workspace_contract.rs` — `enforce_spawn_task_contract`, `run_declared_validators`, `bind_explicit_files_to_artifacts`.
-- **Plugin loader / sha256 gates:** `crates/octos-agent/src/plugins/loader.rs:70-491`, `crates/octos-agent/src/plugins/tool.rs:104-970`.
-- **EndTurn auto-fire:** `crates/octos-agent/src/agent/loop_runner.rs:42-80, 1435-1480`.
-- **Hook config:** `crates/octos-agent/src/hooks.rs:46-78` (HookConfig), `crates/octos-agent/src/workspace_policy.rs:1142-1212` (Coding detection + defaults).
-- **Plugin SDK protocol:** [`crates/octos-plugin/docs/protocol-v2.md`](../crates/octos-plugin/docs/protocol-v2.md).
+- **Workspace policy source:** `crates/octos/octos-agent/src/workspace_policy.rs` — `Validator`, `ValidatorSpec`, `MagicByteKind`, `Required`, `WorkspacePolicy::for_session()`.
+- **Validator runner:** `crates/octos/octos-agent/src/validators.rs` — `ValidatorRunner`, interpolation, HTTP probe wiring (with the shared SSRF gate from `tools/ssrf.rs`).
+- **Workspace contract enforcement:** `crates/octos/octos-agent/src/workspace_contract.rs` — `enforce_spawn_task_contract`, `run_declared_validators`, `bind_explicit_files_to_artifacts`.
+- **Plugin loader / sha256 gates:** `crates/octos/octos-agent/src/plugins/loader.rs:70-491`, `crates/octos/octos-agent/src/plugins/tool.rs:104-970`.
+- **EndTurn auto-fire:** `crates/octos/octos-agent/src/agent/loop_runner.rs:42-80, 1435-1480`.
+- **Hook config:** `crates/octos/octos-agent/src/hooks.rs:46-78` (HookConfig), `crates/octos/octos-agent/src/workspace_policy.rs:1142-1212` (Coding detection + defaults).
+- **Plugin SDK protocol:** [`crates/octos/octos-plugin/docs/protocol-v2.md`](../crates/octos/octos-plugin/docs/protocol-v2.md).
 - **Compatibility contract:** [`docs/OCTOS_HARNESS_SKILL_COMPAT.md`](./OCTOS_HARNESS_SKILL_COMPAT.md) — the productization boundary every third-party skill must uphold.
 - **Fleet deploy runbook:** [`docs/SKILL_DEPLOYMENT.md`](./SKILL_DEPLOYMENT.md).
-- **Worked examples that already conform:** the four `crates/app-skills/harness-starter-*/` templates (audio / coding / generic / report). Their manifests demonstrate `spawn_only` + `concurrency_class` and they intentionally ship without skill-internal validators.
+- **Worked examples that already conform:** the four `crates/octos/app-skills/harness-starter-*/` templates (audio / coding / generic / report). Their manifests demonstrate `spawn_only` + `concurrency_class` and they intentionally ship without skill-internal validators.
 - **Real spawn-only contracts in production:** see `WorkspacePolicy::for_session()` entries for `fm_tts`, `podcast_generate`, `voice_synthesize`, `fm_voice_save`, `mofa_slides`, `mofa_cards`, `mofa_comic`, `mofa_infographic`, `mofa_publish`, `manage_skills`, `synthesize_research`, `deep_search` (`workspace_policy.rs:692-1087`).
 
 ---
@@ -1015,9 +1015,9 @@ The host parses each line, surfaces phase/progress events through the UI Protoco
 
 The host resolves these keys from the active profile's auth store and passes them on the skill's environment for the synthesis sub-call only.
 
-**Contract tests:** if you author a v2 skill, mirror the contract tests at `crates/octos-plugin/tests/lifecycle_sandbox.rs` so CI verifies that your binary emits well-formed events and respects the BLOCKED_ENV_VARS list.
+**Contract tests:** if you author a v2 skill, mirror the contract tests at `crates/octos/octos-plugin/tests/lifecycle_sandbox.rs` so CI verifies that your binary emits well-formed events and respects the BLOCKED_ENV_VARS list.
 
-**spawn_only mechanics in detail** — when a tool's manifest declares `spawn_only: true`, the agent execution loop (`crates/octos-agent/src/agent/execution.rs`) intercepts the call **before** the LLM round-trip:
+**spawn_only mechanics in detail** — when a tool's manifest declares `spawn_only: true`, the agent execution loop (`crates/octos/octos-agent/src/agent/execution.rs`) intercepts the call **before** the LLM round-trip:
 
 1. The tool invocation is wrapped in `tokio::spawn` and immediately returns an acknowledgement to the LLM.
 2. `task_supervisor.rs` registers the task, applies the per-profile fan-out cap (#610), and sets up the orphan reaper.
@@ -1178,7 +1178,7 @@ Skills don't need to provide tools. Valid combinations:
 
 | | App Skills | Platform Skills |
 |---|---|---|
-| Location | `crates/app-skills/` | `crates/platform-skills/` |
+| Location | `crates/octos/app-skills/` | `crates/octos/platform-skills/` |
 | Bootstrap | Every gateway startup | Admin bot only |
 | Scope | Per-gateway | Shared across gateways |
 | Use when | Self-contained, always available | Requires external service |
@@ -1190,7 +1190,7 @@ Skills don't need to provide tools. Valid combinations:
 ### Example 1: Clock (Local, No Network)
 
 ```
-crates/app-skills/time/
+crates/octos/app-skills/time/
 ├── Cargo.toml          # chrono, chrono-tz, serde, serde_json
 ├── manifest.json       # 1 tool: get_time, timeout_secs: 5
 ├── SKILL.md            # Triggers: time, clock
@@ -1200,7 +1200,7 @@ crates/app-skills/time/
 ### Example 2: Weather (Network API)
 
 ```
-crates/app-skills/weather/
+crates/octos/app-skills/weather/
 ├── Cargo.toml          # reqwest (blocking, rustls-tls), serde, serde_json
 ├── manifest.json       # 2 tools: get_weather, get_forecast, timeout_secs: 15
 ├── SKILL.md            # Triggers: weather, forecast
@@ -1210,7 +1210,7 @@ crates/app-skills/weather/
 ### Example 3: Email (Environment Credentials)
 
 ```
-crates/app-skills/send-email/
+crates/octos/app-skills/send-email/
 ├── Cargo.toml          # lettre, serde, serde_json
 ├── manifest.json       # 1 tool: send_email
 ├── SKILL.md            # requires_env: SMTP_HOST,SMTP_USERNAME,SMTP_PASSWORD
@@ -1220,7 +1220,7 @@ crates/app-skills/send-email/
 ### Example 4: Deep Search (Protocol v2 + Synthesis)
 
 ```
-crates/app-skills/deep-search/
+crates/octos/app-skills/deep-search/
 ├── Cargo.toml          # reqwest, async runtime, serde
 ├── manifest.json       # protocol_version: 2, synthesis_config + x-octos-host-config-keys
 ├── SKILL.md            # spawn_only: true (long-running)
@@ -1228,11 +1228,11 @@ crates/app-skills/deep-search/
                         # + CostEvent on stderr; final synthesis on stdout
 ```
 
-Demonstrates the full v2 protocol: structured stderr events, host-injected synthesis LLM config, spawn_only background execution, and contract tests under `crates/octos-plugin/tests/lifecycle_sandbox.rs`.
+Demonstrates the full v2 protocol: structured stderr events, host-injected synthesis LLM config, spawn_only background execution, and contract tests under `crates/octos/octos-plugin/tests/lifecycle_sandbox.rs`.
 
 ### Example 5: Harness Starters (Templates to Copy)
 
-The four `crates/app-skills/harness-starter-*` crates are working examples of harnessed skills you can copy and adapt:
+The four `crates/octos/app-skills/harness-starter-*` crates are working examples of harnessed skills you can copy and adapt:
 
 - `harness-starter-generic` — minimal echo-style harness for any text task
 - `harness-starter-coding` — code-task harness with worktree integration

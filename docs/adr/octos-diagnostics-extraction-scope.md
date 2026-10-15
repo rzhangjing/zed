@@ -63,7 +63,7 @@ The two updaters are genuinely asymmetric:
 
 So the shared layer produces an **`UpdatePlan`**; each binary runs its own driver.
 `axoupdater` sits behind a narrow feature that **only octoscode** enables. octos-cli
-keeps its existing `crates/octos-cli/src/updater.rs` initially, adapted to consume
+keeps its existing `crates/octos/octos-cli/src/updater.rs` initially, adapted to consume
 the shared release/planning code (and to become install-method-aware).
 
 ## Phasing

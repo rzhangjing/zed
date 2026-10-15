@@ -48,7 +48,7 @@
 
 ## 功能覆盖
 
-### 自适应路由（`crates/octos-llm/src/adaptive.rs` — 19 个测试）
+### 自适应路由（`crates/octos/octos-llm/src/adaptive.rs` — 19 个测试）
 
 测试管理多个 LLM 提供商的 `AdaptiveRouter`，基于指标驱动选择。
 
@@ -101,7 +101,7 @@
 | `test_adaptive_status_reports_correctly` | 状态结构体反映当前模式/数量 |
 | `test_empty_router_panics` | 断言至少需要 1 个提供商 |
 
-### 响应性观察器（`crates/octos-llm/src/responsiveness.rs` — 8 个测试）
+### 响应性观察器（`crates/octos/octos-llm/src/responsiveness.rs` — 8 个测试）
 
 测试驱动自动升级的延迟跟踪器。
 
@@ -128,7 +128,7 @@
 | `test_multiple_activation_cycles` | 激活 → 停用 → 再激活正常工作 |
 | `test_window_caps_at_max_size` | 滚动窗口保持在 20 条 |
 
-### 队列模式与会话 Actor（`crates/octos-cli/src/session_actor.rs` — 9 个测试）
+### 队列模式与会话 Actor（`crates/octos/octos-cli/src/session_actor.rs` — 9 个测试）
 
 测试拥有消息处理、队列策略和自动保护的按会话 actor。
 
@@ -173,7 +173,7 @@
 |------|-----------------|
 | `test_strip_think_tags` | 从 LLM 输出中移除 `<think>...</think>` 块 |
 
-### 会话持久化（`crates/octos-bus/src/session.rs` — 28 个测试）
+### 会话持久化（`crates/octos/octos-bus/src/session.rs` — 28 个测试）
 
 测试基于 JSONL 的会话存储和 LRU 缓存。
 
@@ -299,7 +299,7 @@ cargo test -p octos-cli session_actor::tests -- --test-threads=1 --nocapture
 | `scripts/ci.sh` | 本地 CI 脚本（本文档描述） |
 | `scripts/pre-release.sh` | 完整的发布前冒烟测试（构建、端到端、技能二进制） |
 | `.github/workflows/ci.yml` | GitHub Actions CI |
-| `crates/octos-llm/src/adaptive.rs` | 自适应路由器 + 19 个测试 |
-| `crates/octos-llm/src/responsiveness.rs` | 响应性观察器 + 8 个测试 |
-| `crates/octos-cli/src/session_actor.rs` | 会话 actor + 9 个测试 |
-| `crates/octos-bus/src/session.rs` | 会话持久化 + 28 个测试 |
+| `crates/octos/octos-llm/src/adaptive.rs` | 自适应路由器 + 19 个测试 |
+| `crates/octos/octos-llm/src/responsiveness.rs` | 响应性观察器 + 8 个测试 |
+| `crates/octos/octos-cli/src/session_actor.rs` | 会话 actor + 9 个测试 |
+| `crates/octos/octos-bus/src/session.rs` | 会话持久化 + 28 个测试 |

@@ -106,7 +106,7 @@ the browser:
 
 The UI indicator selectors consumed by the spec are authored in
 `e2e/fixtures/m4-1a-progress-expected.json#ui_selectors`. Keep these
-synchronized with `crates/octos-cli/static/app.js` (the UI-replay surface in
+synchronized with `crates/octos/octos-cli/static/app.js` (the UI-replay surface in
 `#473`).
 
 ## Fixture

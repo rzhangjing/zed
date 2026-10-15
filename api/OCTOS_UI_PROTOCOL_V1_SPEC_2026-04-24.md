@@ -12,7 +12,7 @@ contract is defined by the sections below and their referenced amendments.
 
 Protocol types:
 
-- Rust types live in [crates/octos-core/src/ui_protocol.rs](../crates/octos-core/src/ui_protocol.rs)
+- Rust types live in [crates/octos/octos-core/src/ui_protocol.rs](../crates/octos/octos-core/src/ui_protocol.rs)
 
 Related planning:
 
@@ -188,7 +188,7 @@ Process:
 
 Executable contract gate:
 
-- [crates/octos-core/src/ui_protocol.rs](../crates/octos-core/src/ui_protocol.rs)
+- [crates/octos/octos-core/src/ui_protocol.rs](../crates/octos/octos-core/src/ui_protocol.rs)
   contains literal golden tests for the v1 protocol identifier, schema
   versions, JSON-RPC version, command method set, notification method set, and
   representative wire payloads.
@@ -382,7 +382,7 @@ These ids need to be stable and client-visible:
 - `event_cursor`
   A resumable position in the ordered protocol event stream.
 
-Current Rust types for `turn_id`, `approval_id`, `preview_id`, `output_cursor`, and `event_cursor` live in [ui_protocol.rs](../crates/octos-core/src/ui_protocol.rs).
+Current Rust types for `turn_id`, `approval_id`, `preview_id`, `output_cursor`, and `event_cursor` live in [ui_protocol.rs](../crates/octos/octos-core/src/ui_protocol.rs).
 
 ### 5.1 M9-γ projection identity (UPCR-2026-014)
 
@@ -399,7 +399,7 @@ Client commands are JSON-RPC requests.
 
 Server notifications are JSON-RPC notifications.
 
-The shared [frame codec](../crates/octos-core/src/app_ui_codec.rs) accepts
+The shared [frame codec](../crates/octos/octos-core/src/app_ui_codec.rs) accepts
 one compact, single-line JSON object per frame, with `jsonrpc: "2.0"`.
 Batch arrays and embedded literal line breaks are not supported. Stdio strips
 one trailing LF or CRLF before applying the same validation. The text-frame
@@ -414,11 +414,11 @@ an absent or unsupported `jsonrpc` version as `invalid_request` (see §10).
 The logical command/event names below mirror the current wire inventory:
 
 - command source of truth:
-  `crates/octos-core/src/ui_protocol.rs::UI_PROTOCOL_COMMAND_METHODS`,
+  `crates/octos/octos-core/src/ui_protocol.rs::UI_PROTOCOL_COMMAND_METHODS`,
   `UI_PROTOCOL_FIRST_SERVER_METHODS`, and
-  `crates/octos-cli/src/api/ui_protocol_transport.rs::APPUI_EXTRA_METHODS`
+  `crates/octos/octos-cli/src/api/ui_protocol_transport.rs::APPUI_EXTRA_METHODS`
 - notification source of truth:
-  `crates/octos-core/src/ui_protocol.rs::UI_PROTOCOL_NOTIFICATION_METHODS`
+  `crates/octos/octos-core/src/ui_protocol.rs::UI_PROTOCOL_NOTIFICATION_METHODS`
 - executable route inventory:
   `e2e/fixtures/appui-conformance/m18-route-inventory.json`
 - human-readable wire inventory:
@@ -1955,7 +1955,7 @@ endpoint inventory, and Phase D-1 → D-5 plan.
 Capability feature:
 
 - `auxiliary.rest_to_ws.v1` (`UI_PROTOCOL_FEATURE_AUXILIARY_REST_TO_WS_V1` in
-  `crates/octos-core/src/ui_protocol.rs`)
+  `crates/octos/octos-core/src/ui_protocol.rs`)
 
 Negotiation is **strict opt-in**: a client that does not negotiate the feature
 receives `method_not_supported` (`-32004`) on every method below, even when no
@@ -1986,7 +1986,7 @@ optional `data.detail` field (REST handler's human-readable error text,
 capped at 2 KiB) so panels can render REST-source error messages without a
 second round trip.
 
-Request/response Rust types live in `crates/octos-core/src/ui_protocol.rs`
+Request/response Rust types live in `crates/octos/octos-core/src/ui_protocol.rs`
 (`SessionListParams`/`SessionListResult`, …, `ContentBulkDeleteParams`/
 `ContentBulkDeleteResult`).
 
@@ -2886,11 +2886,11 @@ Rules:
   stamp for that profile or silently fall back to a default profile
 
 Numeric error codes are pinned in this section. `rpc_error_codes` in
-`crates/octos-core/src/ui_protocol.rs` mirrors them as Rust constants, and a
-parity test (`crates/octos-core/src/ui_protocol_tests.rs`) fails when either
+`crates/octos/octos-core/src/ui_protocol.rs` mirrors them as Rust constants, and a
+parity test (`crates/octos/octos-core/src/ui_protocol_tests.rs`) fails when either
 side gains a code the other lacks. The WS/stdio dispatcher applies them at
 its supported-table and capability gates in
-`crates/octos-cli/src/api/ui_protocol_transport.rs`.
+`crates/octos/octos-cli/src/api/ui_protocol_transport.rs`.
 
 JSON-RPC reserved range:
 
@@ -3014,7 +3014,7 @@ not serve:
 
 Note: `POST /api/tasks/{task_id}/cancel` is **not** an AppUI duplicate of the
 WS `task/cancel` method — it backs the `octos-bus` API channel
-(`crates/octos-bus/src/api_channel.rs`) and is the channel/CLI task-cancel path.
+(`crates/octos/octos-bus/src/api_channel.rs`) and is the channel/CLI task-cancel path.
 
 Original migration-era split (historical):
 
@@ -3047,7 +3047,7 @@ the in-repo TypeScript bridge; changes must keep both consumers passing.
 ## 14. Canonical v2 Projection Envelope
 
 Status: shipped. `projection/envelope` carries `EnvelopeV2` / `PayloadV2`
-from [octos-core](../crates/octos-core/src/ui_protocol.rs). The outer protocol
+from [octos-core](../crates/octos/octos-core/src/ui_protocol.rs). The outer protocol
 identifier remains `octos-ui/v1alpha1`; envelope v2 is a payload format, not
 another transport version. This section supersedes the historical v1
 projection description in UPCR-2026-014.
@@ -3432,7 +3432,7 @@ tag when no router is attached).
 These notifications are capability-related to `coding.autonomy.v1` and
 the optional `coding.agent_control.v1`, `coding.goal_runtime.v1`, and
 `coding.loop_runtime.v1` groups. They are typed in
-`crates/octos-core/src/ui_protocol.rs` and preserve compatibility with
+`crates/octos/octos-core/src/ui_protocol.rs` and preserve compatibility with
 the raw M15 AppUI fixture payloads.
 
 Agent notifications:

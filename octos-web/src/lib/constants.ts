@@ -7,14 +7,14 @@ export const ADMIN_TOKEN_KEY = "octos_auth_token";
 //
 // `session/messages_page` and `GET /api/sessions/:id/messages` both clamp
 // `limit` to 500 and `offset` to 10_000 on the server (see
-// `crates/octos-cli/src/api/handlers.rs:637-638`). The auxiliary REST-to-WS
+// `crates/octos/octos-cli/src/api/handlers.rs:637-638`). The auxiliary REST-to-WS
 // wrappers in `src/api/sessions.ts` clamp client-side too so the synthesized
 // pagination metadata in the REST fallback path matches the metadata the
 // server returns over WS — otherwise `getMessagesPage(id, 1000)` would
 // report `next_offset = 1000` over REST but `next_offset = 500` over WS.
 //
 // `content/bulk_delete` is capped at 256 IDs server-side (see the WS
-// dispatcher in `crates/octos-cli/src/api/ui_protocol.rs`). The REST
+// dispatcher in `crates/octos/octos-cli/src/api/ui_protocol.rs`). The REST
 // endpoint has no equivalent cap; the wrapper chunks client-side so a
 // 1000-ID delete succeeds on both transports.
 // ---------------------------------------------------------------------------

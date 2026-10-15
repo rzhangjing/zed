@@ -247,45 +247,45 @@ members = [
     # only; build Octos with `-p octos-cli` (or `--workspace`).
     #
 
-    "crates/octos-core",
-    "crates/octos-diagnostics",
-    "crates/octos-research",
-    "crates/octos-memory",
-    "crates/octos-llm",
-    "crates/octos-agent",
-    "crates/octos-bus",
-    "crates/octos-workflows",
-    "crates/octos-server",
-    "crates/octos-store",
-    "crates/octos-services",
-    "crates/octos-cli",
-    "crates/app-skills/news",
-    "crates/app-skills/deep-search",
-    "crates/app-skills/deep-crawl",
-    "crates/app-skills/send-email",
-    "crates/app-skills/account-manager",
-    "crates/app-skills/time",
-    "crates/app-skills/weather",
-    "crates/app-skills/smart-home",
-    "crates/app-skills/wechat-bridge",
-    "crates/app-skills/skill-evolve",
-    "crates/app-skills/harness-starter-generic",
-    "crates/app-skills/harness-starter-report",
-    "crates/app-skills/harness-starter-audio",
-    "crates/app-skills/harness-starter-coding",
-    "crates/platform-skills/voice",
-    "crates/octos-dora-mcp",
-    "crates/octos-pipeline",
-    "crates/octos-plugin",
-    "crates/octos-sandbox",
-    "crates/octos-swarm",
-    "crates/octos-fleet",
-    "crates/octos-fleet-worker",
-    "crates/octos-embed-llama",
-    "crates/octos-ffi",
-    "crates/octos-uniffi",
-    "crates/octos-wasm",
-    "crates/octos-pyo3",
+    "crates/octos/octos-core",
+    "crates/octos/octos-diagnostics",
+    "crates/octos/octos-research",
+    "crates/octos/octos-memory",
+    "crates/octos/octos-llm",
+    "crates/octos/octos-agent",
+    "crates/octos/octos-bus",
+    "crates/octos/octos-workflows",
+    "crates/octos/octos-server",
+    "crates/octos/octos-store",
+    "crates/octos/octos-services",
+    "crates/octos/octos-cli",
+    "crates/octos/app-skills/news",
+    "crates/octos/app-skills/deep-search",
+    "crates/octos/app-skills/deep-crawl",
+    "crates/octos/app-skills/send-email",
+    "crates/octos/app-skills/account-manager",
+    "crates/octos/app-skills/time",
+    "crates/octos/app-skills/weather",
+    "crates/octos/app-skills/smart-home",
+    "crates/octos/app-skills/wechat-bridge",
+    "crates/octos/app-skills/skill-evolve",
+    "crates/octos/app-skills/harness-starter-generic",
+    "crates/octos/app-skills/harness-starter-report",
+    "crates/octos/app-skills/harness-starter-audio",
+    "crates/octos/app-skills/harness-starter-coding",
+    "crates/octos/platform-skills/voice",
+    "crates/octos/octos-dora-mcp",
+    "crates/octos/octos-pipeline",
+    "crates/octos/octos-plugin",
+    "crates/octos/octos-sandbox",
+    "crates/octos/octos-swarm",
+    "crates/octos/octos-fleet",
+    "crates/octos/octos-fleet-worker",
+    "crates/octos/octos-embed-llama",
+    "crates/octos/octos-ffi",
+    "crates/octos/octos-uniffi",
+    "crates/octos/octos-wasm",
+    "crates/octos/octos-pyo3",
 
     #
     # cesiumrust (a CesiumJS rewrite in Rust; see crates/cesiumrust/README.md)
@@ -401,7 +401,7 @@ buffer_diff = { path = "crates/buffer_diff" }
 call_hierarchy = { path = "crates/call_hierarchy" }
 cli = { path = "crates/cli" }
 client = { path = "crates/client" }
-# The package is `zed-clock`: Octos' `crates/app-skills/time` is also named
+# The package is `zed-clock`: Octos' `crates/octos/app-skills/time` is also named
 # `clock`, and a workspace cannot hold two packages with one name. The key stays
 # `clock`, so every `clock.workspace = true` dependent is unaffected.
 clock = { path = "crates/clock", package = "zed-clock" }
@@ -1073,29 +1073,29 @@ zstd = "0.11"
 #
 
 # Octos internal crates
-octos-core = { path = "crates/octos-core" }
-octos-diagnostics = { path = "crates/octos-diagnostics" }
-octos-research = { path = "crates/octos-research" }
-octos-memory = { path = "crates/octos-memory" }
-octos-llm = { path = "crates/octos-llm" }
-octos-agent = { path = "crates/octos-agent" }
-octos-bus = { path = "crates/octos-bus" }
-octos-workflows = { path = "crates/octos-workflows" }
-octos-server = { path = "crates/octos-server" }
-octos-store = { path = "crates/octos-store" }
-octos-services = { path = "crates/octos-services" }
-octos-pipeline = { path = "crates/octos-pipeline" }
-octos-plugin = { path = "crates/octos-plugin" }
-octos-swarm = { path = "crates/octos-swarm" }
-octos-fleet = { path = "crates/octos-fleet" }
-octos-fleet-worker = { path = "crates/octos-fleet-worker" }
-octos-embed-llama = { path = "crates/octos-embed-llama" }
+octos-core = { path = "crates/octos/octos-core" }
+octos-diagnostics = { path = "crates/octos/octos-diagnostics" }
+octos-research = { path = "crates/octos/octos-research" }
+octos-memory = { path = "crates/octos/octos-memory" }
+octos-llm = { path = "crates/octos/octos-llm" }
+octos-agent = { path = "crates/octos/octos-agent" }
+octos-bus = { path = "crates/octos/octos-bus" }
+octos-workflows = { path = "crates/octos/octos-workflows" }
+octos-server = { path = "crates/octos/octos-server" }
+octos-store = { path = "crates/octos/octos-store" }
+octos-services = { path = "crates/octos/octos-services" }
+octos-pipeline = { path = "crates/octos/octos-pipeline" }
+octos-plugin = { path = "crates/octos/octos-plugin" }
+octos-swarm = { path = "crates/octos/octos-swarm" }
+octos-fleet = { path = "crates/octos/octos-fleet" }
+octos-fleet-worker = { path = "crates/octos/octos-fleet-worker" }
+octos-embed-llama = { path = "crates/octos/octos-embed-llama" }
 # The Octos kernel as a library. Zed embeds `octos_cli::embedded::serve_io`
 # in-process instead of spawning the `octos` binary; see
 # `crates/zed/src/zed/octos.rs`. `default-features = false` keeps the CLI's
 # default `embed-llama` (libclang) and `impersonate` (BoringSSL/cmake) builds
 # out of a host's build; consumers add the features they need (`api` for Zed).
-octos-cli = { path = "crates/octos-cli", default-features = false }
+octos-cli = { path = "crates/octos/octos-cli", default-features = false }
 
 # codex-rs crates (reused by Octos; fetched from the openai/codex git repo)
 codex-execpolicy = { git = "https://github.com/openai/codex", path = "codex-rs/execpolicy" }

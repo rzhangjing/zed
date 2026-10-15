@@ -390,7 +390,7 @@ The unit suite is the merge gate. Playwright specs (in `tests/`) drive a real br
 - **Events → state** — when `session/open` confirms `projection.envelope.v2`, flattened canonical envelopes flow directly through `src/store/projection-store.ts` and its read-only render adapter. Older servers continue to use the retained `src/store/thread-store.ts` notification path; the two render models are never combined.
 - **Auth** — session token (`octos_session_token`) and optional admin token (`octos_auth_token`) in localStorage; the WS handshake carries the token as a query parameter.
 
-The protocol contract lives in the octos repo (`crates/octos-core/src/ui_protocol.rs` and the API docs). Server merges do not wait for client releases — the spec is the contract.
+The protocol contract lives in the octos repo (`crates/octos/octos-core/src/ui_protocol.rs` and the API docs). Server merges do not wait for client releases — the spec is the contract.
 
 ## Configuration
 

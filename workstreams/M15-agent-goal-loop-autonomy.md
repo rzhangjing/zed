@@ -205,8 +205,8 @@ Allowed areas:
 
 - `api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md`
 - `docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_2026_021_AGENT_GOAL_LOOP_AUTONOMY.md`
-- `crates/octos-core/src/ui_protocol.rs`
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-core/src/ui_protocol.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
 - protocol tests and JSON fixtures
 
 Deliverables:
@@ -246,12 +246,12 @@ Owns:
 
 Allowed areas:
 
-- `crates/octos-agent/src/agent_control/*`
-- `crates/octos-agent/src/tools/spawn.rs`
-- `crates/octos-agent/src/tools/delegate.rs`
-- `crates/octos-agent/src/tools/mcp_agent.rs`
-- `crates/octos-agent/src/task_supervisor.rs`
-- `crates/octos-swarm/*`
+- `crates/octos/octos-agent/src/agent_control/*`
+- `crates/octos/octos-agent/src/tools/spawn.rs`
+- `crates/octos/octos-agent/src/tools/delegate.rs`
+- `crates/octos/octos-agent/src/tools/mcp_agent.rs`
+- `crates/octos/octos-agent/src/task_supervisor.rs`
+- `crates/octos/octos-swarm/*`
 - runtime/session factory modules
 
 Deliverables:
@@ -304,9 +304,9 @@ Owns:
 
 Allowed areas:
 
-- `crates/octos-agent/src/goals/*`
-- `crates/octos-agent/src/tools/*`
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-agent/src/goals/*`
+- `crates/octos/octos-agent/src/tools/*`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
 - state/runtime persistence modules
 - session actor and runtime factory modules
 
@@ -353,11 +353,11 @@ Owns:
 
 Allowed areas:
 
-- `crates/octos-bus/src/cron_service.rs`
-- `crates/octos-bus/src/cron_types.rs`
-- `crates/octos-cli/src/cron_tool.rs`
-- `crates/octos-cli/src/session_actor.rs`
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-bus/src/cron_service.rs`
+- `crates/octos/octos-bus/src/cron_types.rs`
+- `crates/octos/octos-cli/src/cron_tool.rs`
+- `crates/octos/octos-cli/src/session_actor.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
 - runtime/session factory modules
 - slash command parsing modules
 

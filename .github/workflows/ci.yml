@@ -48,7 +48,7 @@ jobs:
         working-directory: dashboard
         run: npm run build
 
-      # Ephemeral bundle policy: crates/octos-cli/static/admin/ is gitignored
+      # Ephemeral bundle policy: crates/octos/octos-cli/static/admin/ is gitignored
       # and rebuilt by scripts/build-dashboard.sh, CI release jobs, and any
       # source-clone build. We verify the build script runs cleanly; we do
       # not diff a committed bundle against rebuilt output (there is no
@@ -108,9 +108,9 @@ jobs:
       - name: Verify embedded swarm-app assets are up to date
         run: |
           ./scripts/build-swarm-app.sh
-          if [ -n "$(git status --porcelain -- crates/octos-cli/static/swarm)" ]; then
+          if [ -n "$(git status --porcelain -- crates/octos/octos-cli/static/swarm)" ]; then
             echo "Embedded swarm-app assets are out of date. Run ./scripts/build-swarm-app.sh and commit changes."
-            git status --short -- crates/octos-cli/static/swarm
+            git status --short -- crates/octos/octos-cli/static/swarm
             exit 1
           fi
 
@@ -294,7 +294,7 @@ jobs:
             # can SIGPIPE `echo`, and the negated failure would read as a match.
             if [ -n "$FILES" ] && ! grep -qvE '^crates/(octos-research|app-skills/deep-search|app-skills/deep-crawl)/' <<<"$FILES"; then
               research_only=true
-              if ! grep -qvE '^crates/octos-research/' <<<"$FILES"; then
+              if ! grep -qvE '^crates/octos/octos-research/' <<<"$FILES"; then
                 windows_neutral=true
               fi
             fi
@@ -432,7 +432,7 @@ jobs:
       - name: Test octos-sandbox
         run: cargo test -p octos-sandbox
 
-      # RFC-2 (issue #1291): validate every bundled `crates/app-skills/*/manifest.json`
+      # RFC-2 (issue #1291): validate every bundled `crates/octos/app-skills/*/manifest.json`
       # against the strict octos JSON schema validator. A failure here means a
       # bundled skill ships a manifest shape that strict LLM-provider validators
       # (Moonshot Kimi K2.6 etc.) will reject at request time — see the
@@ -1398,7 +1398,7 @@ jobs:
       # MUST precede the cargo build: the admin SPA is embedded into the
       # binary at COMPILE time via `rust_embed::Embed` (api/static_files.rs),
       # not read from disk at runtime, so building it afterwards has no
-      # effect. `crates/octos-cli/static/admin/` is gitignored by the
+      # effect. `crates/octos/octos-cli/static/admin/` is gitignored by the
       # ephemeral-bundle policy and `scripts/build-dashboard.sh` runs in the
       # separate `dashboard` job, whose filesystem this job never sees.
       # Without this, `/admin/login` answers 503 (static_files.rs:169), the

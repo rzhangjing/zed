@@ -30,7 +30,7 @@ whether the cursor semantics were backed by a real live byte stream or by a
 snapshot projection. The audit assigned this gap priority **P3** and tracked
 it as issue `#707`.
 
-Today's runtime (`crates/octos-cli/src/api/ui_protocol_task_output.rs:3`)
+Today's runtime (`crates/octos/octos-cli/src/api/ui_protocol_task_output.rs:3`)
 states explicitly:
 
 > The current runtime persists task snapshots, not disk-routed stdout/stderr
@@ -181,14 +181,14 @@ feature flag.
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `representative_payload_round_trip_v1` — extended with
     `is_snapshot_projection: true` on the literal `task/output/read` golden
     payload.
   - `typed_rpc_results_map_from_methods_and_round_trip` — extended with an
     explicit assertion that the wire object carries
     `"is_snapshot_projection": true` for `runtime_projection` results.
-- `crates/octos-cli/src/api/ui_protocol_task_output.rs`:
+- `crates/octos/octos-cli/src/api/ui_protocol_task_output.rs`:
   - `runtime_projection_serializes_stable_live_tail_metadata` — extended
     with a wire-shape assertion that `value["is_snapshot_projection"] ==
     true`. The handler's `project_task_output` always sets the field to

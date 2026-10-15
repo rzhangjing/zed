@@ -30,7 +30,7 @@ Connect your LLM API keys and messaging channels. Octos handles conversation rou
 ## Quick Start
 
 ```bash
-cargo install --path crates/octos-cli
+cargo install --path crates/octos/octos-cli
 export ANTHROPIC_API_KEY=your-key
 octos chat
 ```

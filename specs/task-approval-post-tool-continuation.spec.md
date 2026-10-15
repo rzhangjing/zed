@@ -23,13 +23,13 @@ OctOS 的 Matrix/Robrix human-approval 流程在用户批准后只执行被批�
 ### Allowed Changes
 - .gitignore
 - **/.gitignore
-- crates/octos-cli/src/session_actor.rs
-- **/crates/octos-cli/src/session_actor.rs
-- crates/octos-agent/src/agent/execution.rs
-- crates/octos-agent/src/agent/loop_runner.rs
-- crates/octos-agent/src/agent/mod.rs
-- crates/octos-cli/tests/**
-- crates/octos-agent/tests/**
+- crates/octos/octos-cli/src/session_actor.rs
+- **/crates/octos/octos-cli/src/session_actor.rs
+- crates/octos/octos-agent/src/agent/execution.rs
+- crates/octos/octos-agent/src/agent/loop_runner.rs
+- crates/octos/octos-agent/src/agent/mod.rs
+- crates/octos/octos-cli/tests/**
+- crates/octos/octos-agent/tests/**
 - specs/task-approval-post-tool-continuation.spec.md
 - **/specs/task-approval-post-tool-continuation.spec.md
 

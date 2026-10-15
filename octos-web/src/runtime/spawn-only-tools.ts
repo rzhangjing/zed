@@ -13,16 +13,16 @@
  * real terminal transition once the background task settles.
  *
  * Sources of truth for the names below (checked 2026-05-22):
- *   - `crates/app-skills/harness-starter-<kind>/manifest.json` →
+ *   - `crates/octos/app-skills/harness-starter-<kind>/manifest.json` →
  *     `propose_patch`, `produce_artifact`, `generate_report`,
  *     `synthesize_clip`
- *   - `crates/platform-skills/voice/manifest.json` → `voice_synthesize`
+ *   - `crates/octos/platform-skills/voice/manifest.json` → `voice_synthesize`
  *   - `mofa-skills/mofa-<plugin>/manifest.json` (external skill repo with
  *     `"spawn_only": true` in the tool entry) → `podcast_generate`,
  *     `mofa_slides`, `mofa_cards`, `mofa_comic`, `mofa_infographic`,
  *     `mofa_publish`, `fm_tts`
  *   - `mark_spawn_only("run_pipeline", ...)` programmatic registration
- *     in `crates/octos-cli/src/{runtime/profile.rs, commands/chat.rs,
+ *     in `crates/octos/octos-cli/src/{runtime/profile.rs, commands/chat.rs,
  *     session_actor.rs}`
  *
  * Tools that look spawn_only but are NOT:
@@ -30,7 +30,7 @@
  *     comment ("the manifest is not spawn_only: true today — contract
  *     is dormant"); the mofa-skills manifest confirms.
  *   - `deep_search` — the actual tool name registered by
- *     `crates/app-skills/deep-search` is `search`, NOT `deep_search`,
+ *     `crates/octos/app-skills/deep-search` is `search`, NOT `deep_search`,
  *     and the manifest does NOT mark it spawn_only. The
  *     `workspace_policy.rs` entry is a dormant contract slot.
  *
@@ -56,7 +56,7 @@ export const SPAWN_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
   // platform-skills/voice (`platform-skills/voice/manifest.json`):
   "voice_synthesize",
   // app-skills harness starters
-  // (`crates/app-skills/harness-starter-*/manifest.json`):
+  // (`crates/octos/app-skills/harness-starter-*/manifest.json`):
   "propose_patch",
   "produce_artifact",
   "generate_report",

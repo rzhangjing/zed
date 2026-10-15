@@ -7,7 +7,7 @@
 //   1. Open an AppUI session.
 //   2. Create a `fixed_interval` loop at the minimum interval the runtime
 //      accepts (`LOOP_MIN_INTERVAL_SECONDS` in
-//      crates/octos-cli/src/api/agent_orchestrator.rs — currently 60s).
+//      crates/octos/octos-cli/src/api/agent_orchestrator.rs — currently 60s).
 //   3. Wait for ≥3 scheduled fires to drain through the master
 //      continuation queue, observed via `task/updated` AppUI frames.
 //   4. Call `loop/fire_now` once explicitly to confirm manual firing.

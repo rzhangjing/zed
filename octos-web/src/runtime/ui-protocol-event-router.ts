@@ -80,7 +80,7 @@ interface TurnMetaSnapshot {
   /** Last model string we saw. Primary source is
    *  `metadata.token_cost.model` (added server-side in PR
    *  `feat/cost-update-carry-model` —
-   *  `crates/octos-cli/src/api/ui_protocol_progress.rs::map_cost_update`
+   *  `crates/octos/octos-cli/src/api/ui_protocol_progress.rs::map_cost_update`
    *  threads the field from `LlmProvider::provider_metadata_for_index`).
    *  Falls back to the legacy `metadata.label` carrier for daemons that
    *  haven't been upgraded yet. Optional — some turns don't carry a
@@ -90,7 +90,7 @@ interface TurnMetaSnapshot {
    *  `progress/updated{kind:"token_cost_update"}` frame carries SESSION
    *  cumulative counters (server `emit_cost_update`'s
    *  `total_usage.input_tokens` —
-   *  `crates/octos-agent/src/agent/streaming.rs:256`), so stamping the
+   *  `crates/octos/octos-agent/src/agent/streaming.rs:256`), so stamping the
    *  raw counter onto `message.meta` would show session-total tokens on
    *  every assistant bubble after the first turn. We derive the
    *  per-turn delta by anchoring on `baselineInputTokens` (the
@@ -320,7 +320,7 @@ export function handleSpawnComplete(
   // streaming-dots placeholder) kept spinning.
   //
   // The `turn/spawn_complete` envelope is only emitted on SUCCESS (see
-  // `TurnSpawnCompleteEvent` in `crates/octos-core/src/ui_protocol.rs`
+  // `TurnSpawnCompleteEvent` in `crates/octos/octos-core/src/ui_protocol.rs`
   // — no `success` field); failures travel through `task/updated
   // state="failed"|"errored"` which `handleTaskUpdated` already maps
   // to `setToolCallStatus(..., "error")`. So this site is
@@ -339,7 +339,7 @@ export function handleSpawnComplete(
   //
   // Bug 2026-05-15 (codex final-3 bonus check): the envelope's
   // `task_id` is the supervisor's `TaskId::new()` UUID (see
-  // `crates/octos-agent/src/task_supervisor.rs::register_full`), NOT
+  // `crates/octos/octos-agent/src/task_supervisor.rs::register_full`), NOT
   // the LLM's `tool_call_id`. The `BackgroundTask` struct keeps them
   // as separate fields, and `tool/started` registered the LLM's
   // `tool_call_id`. Passing `event.task_id` directly to ThreadStore's
@@ -1176,7 +1176,7 @@ export function handleToolCompleted(
 // `crew:message_meta` (assistant-bubble footer). After PR #96 nobody
 // fired them — so the header model badge and bubble footer went blank.
 //
-// Wire shape (see `crates/octos-core/src/ui_protocol.rs`):
+// Wire shape (see `crates/octos/octos-core/src/ui_protocol.rs`):
 //   metadata = {
 //     kind: "token_cost_update",
 //     label?: model display name,
@@ -1332,7 +1332,7 @@ export function handleProgressUpdated(
   //
   // Codex round-2 P2: `input_tokens` / `output_tokens` from the
   // `progress/updated{kind:"token_cost_update"}` payload are SESSION
-  // cumulative counters (see `crates/octos-agent/src/agent/streaming.rs`
+  // cumulative counters (see `crates/octos/octos-agent/src/agent/streaming.rs`
   // `emit_cost_update` — they're sourced from `total_usage`). For the
   // legacy `crew:cost` listener (header cost badge) that's exactly the
   // right shape — it tracks session-wide totals. For

@@ -132,7 +132,7 @@ Bootstrap Files
 Launch the web UI and REST API server. Requires the `api` feature flag.
 
 ```bash
-cargo install --path crates/octos-cli --features api
+cargo install --path crates/octos/octos-cli --features api
 octos serve                               # Binds to 127.0.0.1:50080
 octos serve --host 0.0.0.0 --port 50080   # Accept external connections
 octos serve --solo                        # Enable local no-password "solo" login

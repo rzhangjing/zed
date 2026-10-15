@@ -10,11 +10,11 @@ Protocol: `octos-ui/v1alpha1`
 This inventory reconciles the shipped AppUI/UI Protocol wire surface with the
 spec and UPCR documents. The authoritative source remains code:
 
-- commands: `crates/octos-core/src/ui_protocol.rs::UI_PROTOCOL_COMMAND_METHODS`,
+- commands: `crates/octos/octos-core/src/ui_protocol.rs::UI_PROTOCOL_COMMAND_METHODS`,
   `UI_PROTOCOL_FIRST_SERVER_METHODS`, plus
-  `crates/octos-cli/src/api/ui_protocol_transport.rs::APPUI_EXTRA_METHODS`
+  `crates/octos/octos-cli/src/api/ui_protocol_transport.rs::APPUI_EXTRA_METHODS`
 - notifications:
-  `crates/octos-core/src/ui_protocol.rs::UI_PROTOCOL_NOTIFICATION_METHODS`
+  `crates/octos/octos-core/src/ui_protocol.rs::UI_PROTOCOL_NOTIFICATION_METHODS`
 - executable route fixture:
   `e2e/fixtures/appui-conformance/m18-route-inventory.json`
 - parity runner:
@@ -220,7 +220,7 @@ form an additional live stream. See the [spec §14](OCTOS_UI_PROTOCOL_V1_SPEC_20
 | `background/activity` | shipped; backfilled from code constants (spec-vs-impl audit 2026-08-21) |
 
 > **Audit note (2026-08-21):** commands were backfilled from the code constants of
-> truth (`UI_PROTOCOL_COMMAND_METHODS` in `crates/octos-core/src/ui_protocol.rs` plus
+> truth (`UI_PROTOCOL_COMMAND_METHODS` in `crates/octos/octos-core/src/ui_protocol.rs` plus
 > `APPUI_EXTRA_METHODS`). Notifications above are now the full
 > `UI_PROTOCOL_NOTIFICATION_METHODS` list. `message/persisted` (UPCR-2026-012) was
 > **retired**: the ledger explicitly skips it (`ui_protocol_ledger.rs:1001`) and tests
@@ -253,4 +253,4 @@ form an additional live stream. See the [spec §14](OCTOS_UI_PROTOCOL_V1_SPEC_20
 snapshot. This raw AppUI extension is handled before the typed notification
 codec by compatible clients and is not part of `UI_PROTOCOL_NOTIFICATION_METHODS`.
 See the workspace-team contract in the OUP specification and
-`crates/octos-cli/src/api/ui_protocol_workspace_team.rs`.
+`crates/octos/octos-cli/src/api/ui_protocol_workspace_team.rs`.

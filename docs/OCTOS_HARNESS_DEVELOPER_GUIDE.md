@@ -24,7 +24,7 @@ Read this guide if you want to build any of:
   known output file to the user at the end of a background task
 
 Do not read this if you are writing a first-party runtime change. Those live
-under `crates/octos-agent/src/` and follow different rules.
+under `crates/octos/octos-agent/src/` and follow different rules.
 
 ## What You Get From The Harness
 
@@ -205,7 +205,7 @@ move, rename, or disappear without notice.
   `.octos-workspace.toml` file, the manifest file, hook event names, and
   the stable task API. Do not depend on the Rust types directly from a
   third-party crate.
-- `crates/octos-agent/src/workspace_contract.rs` implementation — the
+- `crates/octos/octos-agent/src/workspace_contract.rs` implementation — the
   contract enforcement algorithm is internal. Your policy declares what
   must be true; the runtime decides how to check it.
 - Any field prefixed with `internal_` or `_` anywhere in the task JSON is
@@ -398,7 +398,7 @@ Every starter in this guide has a `cargo test` smoke test that asserts:
 4. `lifecycle_state` transitions `Queued → Running → Verifying → Ready` via
    a `BackgroundTask` fixture.
 
-Use the starter crates in `crates/app-skills/harness-starter-*` as a
+Use the starter crates in `crates/octos/app-skills/harness-starter-*` as a
 copyable template. Each smoke test runs under `cargo test -p <crate>` with
 no API keys, no network, and no external dependencies.
 
@@ -628,7 +628,7 @@ Use spawn-only when:
 
 Hooks are shell commands the runtime runs at lifecycle events. They are
 configured outside the workspace policy, in the runtime hook config (see
-`octos-agent/src/hooks.rs` for the wiring; the stable surface is the hook
+`octos/octos-agent/src/hooks.rs` for the wiring; the stable surface is the hook
 event names, not the Rust types).
 
 ### Useful events for custom apps
@@ -741,7 +741,7 @@ status.
 
 ## Part 9: Starter Apps
 
-Four starter apps live under `crates/app-skills/`. Copy the one closest to
+Four starter apps live under `crates/octos/app-skills/`. Copy the one closest to
 your use case and adapt.
 
 ### `harness-starter-generic`
@@ -781,7 +781,7 @@ A coding-assistant-style starter that produces a diff artifact. Demonstrates:
 Each starter crate has:
 
 ```
-crates/app-skills/harness-starter-<name>/
+crates/octos/app-skills/harness-starter-<name>/
 ├── Cargo.toml
 ├── manifest.json
 ├── SKILL.md

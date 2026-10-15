@@ -36,13 +36,13 @@ test -f "$BRIDGE_REPO/skills/$SKILL_NAME/SKILL.md" || {
 command -v dora >/dev/null || { echo "  dora CLI not on PATH" >&2; exit 1; }
 test -x "$OCTOS_BIN" || {
   echo "  octos binary not at $OCTOS_BIN; build with:" >&2
-  echo "    cargo install --path crates/octos-cli --force" >&2
+  echo "    cargo install --path crates/octos/octos-cli --force" >&2
   exit 1
 }
 
 echo "[2/6] cargo install local octos with this branch's changes"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-( cd "$REPO_ROOT" && ~/.cargo/bin/cargo install --path crates/octos-cli --force )
+( cd "$REPO_ROOT" && ~/.cargo/bin/cargo install --path crates/octos/octos-cli --force )
 
 echo "[3/6] stage skill + dataflows into a temp source dir"
 STAGING="$(mktemp -d -t octos-smoke-XXXXXX)"

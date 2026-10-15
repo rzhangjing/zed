@@ -229,7 +229,7 @@ Agent ownership model:
 - ABI agent owns event types, schema tests, and docs only.
 - Runtime agent owns child process environment injection, sink consumption,
   task supervisor updates, and replay tests.
-- Deep-search agent owns only `crates/app-skills/deep-search` emission changes.
+- Deep-search agent owns only `crates/octos/app-skills/deep-search` emission changes.
 - Non-Rust bridge agent owns Python/JavaScript emitter helpers and compatibility
   fixtures.
 - UI/API agent owns chat header/replay behavior and browser regression tests.

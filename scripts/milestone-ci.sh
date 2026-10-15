@@ -63,9 +63,9 @@ run_swarm_app() {
   popd >/dev/null
 
   ./scripts/build-swarm-app.sh
-  if [ -n "$(git status --porcelain -- crates/octos-cli/static/swarm)" ]; then
+  if [ -n "$(git status --porcelain -- crates/octos/octos-cli/static/swarm)" ]; then
     echo "Embedded swarm-app assets are out of date. Run ./scripts/build-swarm-app.sh and commit changes."
-    git status --short -- crates/octos-cli/static/swarm
+    git status --short -- crates/octos/octos-cli/static/swarm
     exit 1
   fi
 }

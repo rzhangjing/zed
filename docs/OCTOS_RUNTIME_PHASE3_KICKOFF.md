@@ -324,8 +324,8 @@ Responsibilities:
 
 Primary files:
 
-- `crates/octos-agent/src/agent/*`
-- `crates/octos-cli/src/session_actor.rs`
+- `crates/octos/octos-agent/src/agent/*`
+- `crates/octos/octos-cli/src/session_actor.rs`
 - `e2e/tests/coding-hardcases.spec.ts`
 - `e2e/tests/runtime-regression.spec.ts`
 
@@ -347,9 +347,9 @@ Responsibilities:
 
 Primary files:
 
-- `crates/octos-cli/src/api/admin.rs`
-- `crates/octos-cli/src/api/metrics.rs`
-- `crates/octos-cli/src/commands/admin.rs`
+- `crates/octos/octos-cli/src/api/admin.rs`
+- `crates/octos/octos-cli/src/api/metrics.rs`
+- `crates/octos/octos-cli/src/commands/admin.rs`
 - admin/operator UI surfaces that consume the same JSON
 
 Outputs:
@@ -369,12 +369,12 @@ Responsibilities:
 
 Primary files:
 
-- `crates/octos-agent/src/workspace_policy.rs`
-- `crates/octos-agent/src/workspace_git.rs`
-- `crates/octos-agent/src/tools/spawn.rs`
-- `crates/octos-agent/src/hooks.rs`
-- `crates/octos-cli/src/workspace_contract.rs`
-- `crates/octos-cli/src/workflows/*`
+- `crates/octos/octos-agent/src/workspace_policy.rs`
+- `crates/octos/octos-agent/src/workspace_git.rs`
+- `crates/octos/octos-agent/src/tools/spawn.rs`
+- `crates/octos/octos-agent/src/hooks.rs`
+- `crates/octos/octos-cli/src/workspace_contract.rs`
+- `crates/octos/octos-cli/src/workflows/*`
 
 Outputs:
 

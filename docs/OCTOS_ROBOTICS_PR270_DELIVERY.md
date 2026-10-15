@@ -95,26 +95,26 @@ Files from PR `#270` that are salvageable per RP issue:
 
 | PR file | RP issue | How reused |
 |---|---|---|
-| `crates/octos-agent/src/permissions.rs` (SafetyTier enum only) | RP01 | Extract enum + `SafetyTier::from_str`; delete `RobotPermissionPolicy`, `WorkspaceBounds` |
-| `crates/octos-plugin/src/lifecycle.rs` (types only) | RP02 | Keep `HardwareLifecycle`, `LifecycleStep`, `LifecyclePhase` types; rewrite `LifecycleExecutor` through sandbox |
-| `crates/octos-agent/src/agent/realtime.rs` | RP05 | Keep `RealtimeConfig`, `Heartbeat`, `SensorSnapshot`, `SensorContextInjector`; wire into `loop_runner.rs` |
-| `crates/octos-pipeline/src/graph.rs` deadline/checkpoint fields | RP04 | Keep `DeadlineAction`, `MissionCheckpoint`; drop `Invariant` (unparsed) and `HandlerKind::{SensorCheck,Motion,Grasp,SafetyGate,WaitForEvent}` (unregistered) |
-| `crates/octos-dora-mcp/src/{config,lib}.rs` scaffold | RP06 | Keep crate scaffold, `BridgeConfig`, `DoraToolMapping`; replace stub `execute()` with real IPC (or delete entire crate) |
-| `crates/octos-agent/examples/inspection_safety.rs` | RP01 | Rewrite against `ToolPolicy` groups, not `RobotPermissionPolicy` |
-| `crates/octos-plugin/examples/pick_and_place_lifecycle.rs` | RP02 | Rewrite against sandboxed `LifecycleExecutor` |
-| `crates/octos-agent/examples/realtime_heartbeat.rs` | RP05 | Keep mostly as-is; wire assertions against real loop ticks |
+| `crates/octos/octos-agent/src/permissions.rs` (SafetyTier enum only) | RP01 | Extract enum + `SafetyTier::from_str`; delete `RobotPermissionPolicy`, `WorkspaceBounds` |
+| `crates/octos/octos-plugin/src/lifecycle.rs` (types only) | RP02 | Keep `HardwareLifecycle`, `LifecycleStep`, `LifecyclePhase` types; rewrite `LifecycleExecutor` through sandbox |
+| `crates/octos/octos-agent/src/agent/realtime.rs` | RP05 | Keep `RealtimeConfig`, `Heartbeat`, `SensorSnapshot`, `SensorContextInjector`; wire into `loop_runner.rs` |
+| `crates/octos/octos-pipeline/src/graph.rs` deadline/checkpoint fields | RP04 | Keep `DeadlineAction`, `MissionCheckpoint`; drop `Invariant` (unparsed) and `HandlerKind::{SensorCheck,Motion,Grasp,SafetyGate,WaitForEvent}` (unregistered) |
+| `crates/octos/octos-dora-mcp/src/{config,lib}.rs` scaffold | RP06 | Keep crate scaffold, `BridgeConfig`, `DoraToolMapping`; replace stub `execute()` with real IPC (or delete entire crate) |
+| `crates/octos/octos-agent/examples/inspection_safety.rs` | RP01 | Rewrite against `ToolPolicy` groups, not `RobotPermissionPolicy` |
+| `crates/octos/octos-plugin/examples/pick_and_place_lifecycle.rs` | RP02 | Rewrite against sandboxed `LifecycleExecutor` |
+| `crates/octos/octos-agent/examples/realtime_heartbeat.rs` | RP05 | Keep mostly as-is; wire assertions against real loop ticks |
 | `examples/dora-bridge-config/*` | RP06 | Keep tool-map schema + DOT pipeline; drop if dora-mcp is removed |
 
 Files from PR `#270` that are **explicitly rejected** from reuse:
 
 - `architect.md` — describes unimplemented behavior, conflicts with `docs/OCTOS_RUNTIME_PHASE3_KICKOFF.md`
-- `crates/octos-agent/src/recorder.rs` (BlackBoxRecorder) — redundant vs `TaskLifecycleState` + `after_tool_call` hooks
-- `crates/octos-agent/src/hooks.rs` robot `HookEvent` variants — superseded by `BeforeSpawnVerify` + domain payload (RP03)
-- `crates/octos-pipeline/src/graph.rs` `Invariant` struct + 5 new `HandlerKind` variants — unparsed / undispatched
+- `crates/octos/octos-agent/src/recorder.rs` (BlackBoxRecorder) — redundant vs `TaskLifecycleState` + `after_tool_call` hooks
+- `crates/octos/octos-agent/src/hooks.rs` robot `HookEvent` variants — superseded by `BeforeSpawnVerify` + domain payload (RP03)
+- `crates/octos/octos-pipeline/src/graph.rs` `Invariant` struct + 5 new `HandlerKind` variants — unparsed / undispatched
 - `typos.toml` allowlist additions for short typo tokens — mask real typos; if needed, use `extend-identifiers`
 - `examples/slam-nav-sim/` entire directory — 7,631 LOC including Python reimplementation of octos internals; move to separate repo
-- `crates/octos-cli/static/admin/*` bundle swaps — no source changes
-- `crates/octos-dora-mcp/src/lib.rs` duplicate `SafetyTier` — use `octos_agent::permissions::SafetyTier`
+- `crates/octos/octos-cli/static/admin/*` bundle swaps — no source changes
+- `crates/octos/octos-dora-mcp/src/lib.rs` duplicate `SafetyTier` — use `octos_agent::permissions::SafetyTier`
 
 ## Roles
 
@@ -163,7 +163,7 @@ Inherited from `OCTOS_ROBOTICS_FAMILY.md` plus:
 
 **Phase:** RPA
 **Depends on:** none
-**Reuses from PR #270:** `crates/octos-agent/src/permissions.rs` (SafetyTier enum only); `crates/octos-agent/examples/inspection_safety.rs`
+**Reuses from PR #270:** `crates/octos/octos-agent/src/permissions.rs` (SafetyTier enum only); `crates/octos/octos-agent/examples/inspection_safety.rs`
 **Deletes from PR #270:** `RobotPermissionPolicy`, `WorkspaceBounds`, `Tool::required_safety_tier()` default method, `PermissionDenied` error
 
 ### Problem
@@ -178,24 +178,24 @@ enforcement is worse than no declaration.
 ### Stable surfaces
 
 - `Tool` trait signature (no new required methods)
-- `crates/octos-agent/src/tools/policy.rs` deny-wins semantics, wildcard matching, named groups
+- `crates/octos/octos-agent/src/tools/policy.rs` deny-wins semantics, wildcard matching, named groups
 
 ### Architectural surface
 
 - Add a new constant group set to `ToolPolicy`: `group:robot:observe`, `group:robot:safe_motion`, `group:robot:full_actuation`, `group:robot:emergency_override`. Each group resolves to the set of tools that are safe at or below that tier.
-- Define the mapping in a new `crates/octos-agent/src/tools/robot_groups.rs` module loaded by the registry.
+- Define the mapping in a new `crates/octos/octos-agent/src/tools/robot_groups.rs` module loaded by the registry.
 - Robot integrators configure `ToolPolicy.allow_groups = ["group:robot:safe_motion"]` in their profile to permit only observe + safe-motion tools.
-- The `SafetyTier` enum stays in `crates/octos-agent/src/permissions.rs` (reduced module) as a public documentation type for the group vocabulary. `RobotPermissionPolicy` and `WorkspaceBounds` are deleted.
+- The `SafetyTier` enum stays in `crates/octos/octos-agent/src/permissions.rs` (reduced module) as a public documentation type for the group vocabulary. `RobotPermissionPolicy` and `WorkspaceBounds` are deleted.
 
 ### Allowed files
 
-- `crates/octos-agent/src/permissions.rs` — reduce to `SafetyTier` enum + `impl FromStr` + tests
-- `crates/octos-agent/src/tools/policy.rs` — add group resolution for robot groups
-- `crates/octos-agent/src/tools/robot_groups.rs` — new, declares the group-to-tool mapping
-- `crates/octos-agent/src/tools/mod.rs` — re-export only
-- `crates/octos-agent/src/lib.rs` — re-export `SafetyTier`
-- `crates/octos-agent/examples/inspection_safety.rs` — rewrite against `ToolPolicy` groups
-- `crates/octos-agent/tests/robot_tool_policy.rs` — integration test
+- `crates/octos/octos-agent/src/permissions.rs` — reduce to `SafetyTier` enum + `impl FromStr` + tests
+- `crates/octos/octos-agent/src/tools/policy.rs` — add group resolution for robot groups
+- `crates/octos/octos-agent/src/tools/robot_groups.rs` — new, declares the group-to-tool mapping
+- `crates/octos/octos-agent/src/tools/mod.rs` — re-export only
+- `crates/octos/octos-agent/src/lib.rs` — re-export `SafetyTier`
+- `crates/octos/octos-agent/examples/inspection_safety.rs` — rewrite against `ToolPolicy` groups
+- `crates/octos/octos-agent/tests/robot_tool_policy.rs` — integration test
 
 ### Required invariants
 
@@ -240,7 +240,7 @@ The robot groups are additive. Profiles that don't set `allow_groups` continue t
 
 **Phase:** RPA
 **Depends on:** none
-**Reuses from PR #270:** `crates/octos-plugin/src/lifecycle.rs` type definitions (`HardwareLifecycle`, `LifecycleStep`, `LifecyclePhase`); `crates/octos-plugin/src/manifest.rs` (`hardware_lifecycle` field); `crates/octos-plugin/examples/pick_and_place_lifecycle.rs`
+**Reuses from PR #270:** `crates/octos/octos-plugin/src/lifecycle.rs` type definitions (`HardwareLifecycle`, `LifecycleStep`, `LifecyclePhase`); `crates/octos/octos-plugin/src/manifest.rs` (`hardware_lifecycle` field); `crates/octos/octos-plugin/examples/pick_and_place_lifecycle.rs`
 **Rewrites from PR #270:** `LifecycleExecutor` — unsandboxed `sh -c` is non-negotiable to remove
 
 ### Problem
@@ -269,12 +269,12 @@ cross-platform.
 
 ### Allowed files
 
-- `crates/octos-plugin/src/lifecycle.rs` — rewrite executor; keep type definitions
-- `crates/octos-plugin/src/manifest.rs` — add optional `hardware_lifecycle` field
-- `crates/octos-plugin/Cargo.toml` — add dependency on `octos-agent` sandbox module (or extract to shared crate if cycle)
-- `crates/octos-plugin/examples/pick_and_place_lifecycle.rs` — rewrite against sandboxed executor
-- `crates/octos-plugin/tests/lifecycle_sandbox.rs` — integration test
-- `crates/octos-agent/src/sandbox/mod.rs` — expose `Sandbox` trait publicly if needed (extend, do not replace)
+- `crates/octos/octos-plugin/src/lifecycle.rs` — rewrite executor; keep type definitions
+- `crates/octos/octos-plugin/src/manifest.rs` — add optional `hardware_lifecycle` field
+- `crates/octos/octos-plugin/Cargo.toml` — add dependency on `octos-agent` sandbox module (or extract to shared crate if cycle)
+- `crates/octos/octos-plugin/examples/pick_and_place_lifecycle.rs` — rewrite against sandboxed executor
+- `crates/octos/octos-plugin/tests/lifecycle_sandbox.rs` — integration test
+- `crates/octos/octos-agent/src/sandbox/mod.rs` — expose `Sandbox` trait publicly if needed (extend, do not replace)
 
 ### Required invariants
 
@@ -356,11 +356,11 @@ can attach robot context and filter on it in their hook scripts.
 
 ### Allowed files
 
-- `crates/octos-agent/src/hooks.rs` — add `domain_data` field + `HookPayloadEnricher` trait
-- `crates/octos-agent/src/agent/execution.rs` — thread enricher through call path (additive param on `HookExecutor::new_with_enricher`)
-- `crates/octos-agent/src/agent/loop_runner.rs` — plumb context
-- `crates/octos-agent/tests/domain_hook.rs` — integration test with a real before-hook script
-- `crates/octos-agent/examples/robot_domain_hook.rs` — new example
+- `crates/octos/octos-agent/src/hooks.rs` — add `domain_data` field + `HookPayloadEnricher` trait
+- `crates/octos/octos-agent/src/agent/execution.rs` — thread enricher through call path (additive param on `HookExecutor::new_with_enricher`)
+- `crates/octos/octos-agent/src/agent/loop_runner.rs` — plumb context
+- `crates/octos/octos-agent/tests/domain_hook.rs` — integration test with a real before-hook script
+- `crates/octos/octos-agent/examples/robot_domain_hook.rs` — new example
 
 ### Required invariants
 
@@ -406,7 +406,7 @@ can attach robot context and filter on it in their hook scripts.
 
 **Phase:** RPA
 **Depends on:** none
-**Reuses from PR #270:** `DeadlineAction` enum, `MissionCheckpoint` struct, the `deadline_secs`/`deadline_action`/`checkpoints` fields on `PipelineNode` (`crates/octos-pipeline/src/graph.rs`); the DOT parser extensions for those fields (`crates/octos-pipeline/src/parser.rs`)
+**Reuses from PR #270:** `DeadlineAction` enum, `MissionCheckpoint` struct, the `deadline_secs`/`deadline_action`/`checkpoints` fields on `PipelineNode` (`crates/octos/octos-pipeline/src/graph.rs`); the DOT parser extensions for those fields (`crates/octos/octos-pipeline/src/parser.rs`)
 **Deletes from PR #270:** `Invariant` struct and its field (unparsed), `HandlerKind::{SensorCheck, Motion, Grasp, SafetyGate, WaitForEvent}` (unregistered)
 
 ### Problem
@@ -432,12 +432,12 @@ declared but never persisted.
 
 ### Allowed files
 
-- `crates/octos-pipeline/src/graph.rs` — keep deadline/checkpoint fields (already added by PR #270)
-- `crates/octos-pipeline/src/parser.rs` — keep deadline/checkpoint DOT parsing (already added)
-- `crates/octos-pipeline/src/executor.rs` — enforce deadline + persist checkpoints
-- `crates/octos-pipeline/src/checkpoint.rs` — new module, checkpoint store trait
-- `crates/octos-pipeline/tests/deadline_enforcement.rs`
-- `crates/octos-pipeline/tests/checkpoint_resume.rs`
+- `crates/octos/octos-pipeline/src/graph.rs` — keep deadline/checkpoint fields (already added by PR #270)
+- `crates/octos/octos-pipeline/src/parser.rs` — keep deadline/checkpoint DOT parsing (already added)
+- `crates/octos/octos-pipeline/src/executor.rs` — enforce deadline + persist checkpoints
+- `crates/octos/octos-pipeline/src/checkpoint.rs` — new module, checkpoint store trait
+- `crates/octos/octos-pipeline/tests/deadline_enforcement.rs`
+- `crates/octos/octos-pipeline/tests/checkpoint_resume.rs`
 - `examples/dora-bridge-config/inspection_mission.dot` — rewrite against real enforced deadlines
 
 ### Required invariants
@@ -487,7 +487,7 @@ declared but never persisted.
 
 **Phase:** RPA
 **Depends on:** RP03 (domain payload extension)
-**Reuses from PR #270:** `crates/octos-agent/src/agent/realtime.rs` (`RealtimeConfig`, `Heartbeat`, `HeartbeatState`, `SensorSnapshot`, `SensorContextInjector`); `crates/octos-agent/examples/realtime_heartbeat.rs`
+**Reuses from PR #270:** `crates/octos/octos-agent/src/agent/realtime.rs` (`RealtimeConfig`, `Heartbeat`, `HeartbeatState`, `SensorSnapshot`, `SensorContextInjector`); `crates/octos/octos-agent/examples/realtime_heartbeat.rs`
 
 ### Problem
 
@@ -511,14 +511,14 @@ none of them to the agent loop. The types existed; no consumer did.
 
 ### Allowed files
 
-- `crates/octos-agent/src/agent/realtime.rs` — keep mostly as-is from PR #270
-- `crates/octos-agent/src/agent/loop_runner.rs` — call `heartbeat.beat()`, check stall
-- `crates/octos-agent/src/agent/execution.rs` — inject sensor summary into prompt
-- `crates/octos-agent/src/agent/mod.rs` — re-export
-- `crates/octos-agent/src/lib.rs` — re-export types (already done by PR #270)
-- `crates/octos-agent/examples/realtime_heartbeat.rs` — rewrite assertions against real loop
-- `crates/octos-cli/src/profiles.rs` — add `RealtimeConfig` typed section
-- `crates/octos-agent/tests/realtime_loop.rs` — integration test
+- `crates/octos/octos-agent/src/agent/realtime.rs` — keep mostly as-is from PR #270
+- `crates/octos/octos-agent/src/agent/loop_runner.rs` — call `heartbeat.beat()`, check stall
+- `crates/octos/octos-agent/src/agent/execution.rs` — inject sensor summary into prompt
+- `crates/octos/octos-agent/src/agent/mod.rs` — re-export
+- `crates/octos/octos-agent/src/lib.rs` — re-export types (already done by PR #270)
+- `crates/octos/octos-agent/examples/realtime_heartbeat.rs` — rewrite assertions against real loop
+- `crates/octos/octos-cli/src/profiles.rs` — add `RealtimeConfig` typed section
+- `crates/octos/octos-agent/tests/realtime_loop.rs` — integration test
 
 ### Required invariants
 
@@ -569,7 +569,7 @@ All realtime behavior is gated by `ProfileConfig.robot.realtime.enabled`. Defaul
 
 **Phase:** RPA
 **Depends on:** none
-**Reuses from PR #270:** `crates/octos-dora-mcp/Cargo.toml`, `config.rs` (`BridgeConfig`), `lib.rs` (`DoraToolBridge`, `DoraToolMapping`); `examples/dora-bridge-config/*`
+**Reuses from PR #270:** `crates/octos/octos-dora-mcp/Cargo.toml`, `config.rs` (`BridgeConfig`), `lib.rs` (`DoraToolBridge`, `DoraToolMapping`); `examples/dora-bridge-config/*`
 
 ### Problem
 
@@ -604,12 +604,12 @@ The contract owner picks A or B before slice opens. No middle path.
 
 ### Allowed files (Option A)
 
-- `crates/octos-dora-mcp/Cargo.toml`
-- `crates/octos-dora-mcp/src/config.rs`
-- `crates/octos-dora-mcp/src/lib.rs` — rewrite `execute` + delete duplicate `SafetyTier`
-- `crates/octos-dora-mcp/src/transport/mod.rs` — new
-- `crates/octos-dora-mcp/src/transport/zenoh.rs` — new
-- `crates/octos-dora-mcp/tests/forwarding_integration.rs` — new
+- `crates/octos/octos-dora-mcp/Cargo.toml`
+- `crates/octos/octos-dora-mcp/src/config.rs`
+- `crates/octos/octos-dora-mcp/src/lib.rs` — rewrite `execute` + delete duplicate `SafetyTier`
+- `crates/octos/octos-dora-mcp/src/transport/mod.rs` — new
+- `crates/octos/octos-dora-mcp/src/transport/zenoh.rs` — new
+- `crates/octos/octos-dora-mcp/tests/forwarding_integration.rs` — new
 - `examples/dora-bridge-config/dora_tool_map.json`
 - `examples/dora-bridge-config/inspection_mission.dot`
 - `examples/dora-bridge-config/README.md`
@@ -617,7 +617,7 @@ The contract owner picks A or B before slice opens. No middle path.
 ### Allowed files (Option B)
 
 - `Cargo.toml` workspace member removal
-- Deletion of `crates/octos-dora-mcp/`
+- Deletion of `crates/octos/octos-dora-mcp/`
 - Deletion of `examples/dora-bridge-config/`
 
 ### Required invariants (Option A)

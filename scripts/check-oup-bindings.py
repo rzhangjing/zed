@@ -33,7 +33,7 @@ def main():
         subprocess.run([str(bindgen), "generate", "--library", str(library),
                         "--language", "python", "--no-format", "--out-dir", output],
                        check=True, cwd=ROOT, timeout=120)
-        expected = (ROOT / "crates/octos-uniffi/bindings/python/octos.py").read_text()
+        expected = (ROOT / "crates/octos/octos-uniffi/bindings/python/octos.py").read_text()
         actual = normalized_generated((Path(output) / "octos.py").read_text())
         if expected != actual:
             sys.stderr.writelines(difflib.unified_diff(
@@ -41,9 +41,9 @@ def main():
                 fromfile="committed octos.py", tofile="generated octos.py"))
             raise SystemExit("Python bindings are stale; regenerate using the README instructions")
     subprocess.run([os.environ.get("CC", "cc"), "-std=c11", "-Wall", "-Wextra", "-Werror",
-                    "-fsyntax-only", "-I", str(ROOT / "crates/octos-ffi/include"),
-                    str(ROOT / "crates/octos-ffi/tests/header_contract.c")], check=True, timeout=30)
-    subprocess.run([sys.executable, str(ROOT / "crates/octos-uniffi/tests/incomplete_bindings.py"),
+                    "-fsyntax-only", "-I", str(ROOT / "crates/octos/octos-ffi/include"),
+                    str(ROOT / "crates/octos/octos-ffi/tests/header_contract.c")], check=True, timeout=30)
+    subprocess.run([sys.executable, str(ROOT / "crates/octos/octos-uniffi/tests/incomplete_bindings.py"),
                     "--library-dir", str(library_dir)], check=True, timeout=120)
     print("PASS: generated Python parity, C declarations and actual C/Python runtime contracts")
 

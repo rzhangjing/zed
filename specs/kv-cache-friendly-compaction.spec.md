@@ -40,16 +40,16 @@ reasoning_content 存根)。
 ## Boundaries
 
 ### Allowed Changes
-- crates/octos-agent/src/agent/loop_runner.rs
-- **/crates/octos-agent/src/agent/loop_runner.rs
-- crates/octos-agent/src/agent/loop_runner_tests.rs
-- **/crates/octos-agent/src/agent/loop_runner_tests.rs
-- crates/octos-llm/src/openai.rs
-- **/crates/octos-llm/src/openai.rs
-- crates/octos-agent/src/agent/compaction.rs
-- **/crates/octos-agent/src/agent/compaction.rs
-- crates/octos-agent/src/compaction_tiered.rs
-- **/crates/octos-agent/src/compaction_tiered.rs
+- crates/octos/octos-agent/src/agent/loop_runner.rs
+- **/crates/octos/octos-agent/src/agent/loop_runner.rs
+- crates/octos/octos-agent/src/agent/loop_runner_tests.rs
+- **/crates/octos/octos-agent/src/agent/loop_runner_tests.rs
+- crates/octos/octos-llm/src/openai.rs
+- **/crates/octos/octos-llm/src/openai.rs
+- crates/octos/octos-agent/src/agent/compaction.rs
+- **/crates/octos/octos-agent/src/agent/compaction.rs
+- crates/octos/octos-agent/src/compaction_tiered.rs
+- **/crates/octos/octos-agent/src/compaction_tiered.rs
 - specs/kv-cache-friendly-compaction.spec.md
 - **/specs/kv-cache-friendly-compaction.spec.md
 

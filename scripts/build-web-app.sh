@@ -5,7 +5,7 @@
 # octos-web is a git submodule at `octos-web/`. Its Vite config hardcodes
 # `outDir: "dist"` and honours `BASE_URL` for the asset base + the React Router
 # basename (`API_BASE` is "" so the app is same-origin by design). We build with
-# `BASE_URL=/app/` then copy `dist/` into `crates/octos-cli/static/web/`, which
+# `BASE_URL=/app/` then copy `dist/` into `crates/octos/octos-cli/static/web/`, which
 # `static_files.rs` embeds via rust-embed (`#[folder = "static/"]`).
 #
 # Package manager: octos-web migrated to pnpm (package.json
@@ -18,7 +18,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEB_DIR="$ROOT/octos-web"
-OUT_DIR="$ROOT/crates/octos-cli/static/web"
+OUT_DIR="$ROOT/crates/octos/octos-cli/static/web"
 BASE_PATH="/app/"
 
 if [ ! -d "$WEB_DIR" ] || [ ! -f "$WEB_DIR/package.json" ]; then

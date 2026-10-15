@@ -81,10 +81,10 @@ Example:
 
 Coverage lives in:
 
-- `crates/octos-core/src/ui_protocol.rs`
+- `crates/octos/octos-core/src/ui_protocol.rs`
   - `session/open` result round-trips with `workspace_root` and `panes`
   - feature constants advertise `pane.snapshots.v1`
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
   - `session/open` includes panes only when negotiated
   - pane snapshots prefer the approved session workspace root
   - missing git/workspace state appears in `limitations`

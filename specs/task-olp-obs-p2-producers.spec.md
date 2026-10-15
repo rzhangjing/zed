@@ -18,10 +18,10 @@ kind 的字段、文案与发射时机,不改 wire 协议。契约 v3.1 已并�
 <!-- lint-ack: decision-coverage — 白名单文档注释更新由"事件流文档"场景整体行使 -->
 
 - `fallback_switch` 在**两条**转发路径都写(缺一条则 octoscode 内环主路径采集为空):
-  ① gateway:`crates/octos-cli/src/session_actor.rs` 的 `forward_router_failovers`,在
+  ① gateway:`crates/octos/octos-cli/src/session_actor.rs` 的 `forward_router_failovers`,在
   `originating_session_id == Some(session_id)` 过滤成功之后、`last_push` debounce 判定之前;
   `FailoverForwarderParams` 新增 `profile_data_dir: PathBuf`,spawn 处以 `self.data_dir.clone()`
-  传入。② serve/UI:`crates/octos-cli/src/api/ui_protocol_transport.rs` 的
+  传入。② serve/UI:`crates/octos/octos-cli/src/api/ui_protocol_transport.rs` 的
   `spawn_router_failover_forwarder`,在其本会话过滤成功之后、`send_notification_durable` 之前;
   data_dir 取 `ledger.config_data_dir()`,取不到则跳过写入。两条路径对 `originating_session_id`
   为 `None` 或他会话的事件都 MUST NOT 写。
@@ -30,9 +30,9 @@ kind 的字段、文案与发射时机,不改 wire 协议。契约 v3.1 已并�
   `router failover: <from_provider> -> <to_provider> (<reason>, <elapsed_ms>ms)`。语义是
   best-effort:写的是"本接收器成功收到且本会话匹配"的事件,broadcast `Lagged(n)` 丢失的事件不
   补;写失败(data_dir 不可写)不得阻断客户端通知。
-- `malformed_exhausted`:`crates/octos-agent/src/lib.rs` 新增
+- `malformed_exhausted`:`crates/octos/octos-agent/src/lib.rs` 新增
   `pub const MALFORMED_TOOLCALL_EXHAUSTED_MARKER: &str = "malformed tool-call feedback budget exhausted";`;
-  `crates/octos-agent/src/agent/loop_runner.rs` 在 `malformed_feedback_used > MALFORMED_TOOLCALL_FEEDBACK_LIMIT`
+  `crates/octos/octos-agent/src/agent/loop_runner.rs` 在 `malformed_feedback_used > MALFORMED_TOOLCALL_FEEDBACK_LIMIT`
   分支构造 `eyre!("{MARKER} feedback_limit={LIMIT} observed_malformed={used}: {e:#}")` 并
   **直接 `return Err(...)`**,不再进入 `handle_loop_error_with_dispatch`/failfast 分派;未耗尽的
   反馈文案与行为不变。
@@ -48,7 +48,7 @@ kind 的字段、文案与发射时机,不改 wire 协议。契约 v3.1 已并�
 - 本契约所有 octos-cli 测试 MUST 以 `cargo test -p octos-cli --features api --lib <filter>` 运行(api 模块受
   feature 门控,默认 feature 不编译这些测试);ACK 与 PR 必须报该命令的计数。
 - **契约验证接线(v3.1)**:agent-spec 选择器无法携带 cargo feature,故新增无 feature 门控的集成测试
-  `crates/octos-cli/tests/olp_obs_p2_gate.rs`:每个 UI/终态场景一个 `olp_obs_p2_gate_<场景测试名>` 函数,函数体以
+  `crates/octos/octos-cli/tests/olp_obs_p2_gate.rs`:每个 UI/终态场景一个 `olp_obs_p2_gate_<场景测试名>` 函数,函数体以
   `std::process::Command` 运行 `cargo test -p octos-cli --features api --lib <该场景测试名> -- --exact`(继承
   `CARGO_TARGET_DIR`/`CARGO` 环境,cwd 为工作区根),断言退出成功且 stdout 含 `1 passed`;这些门测试不复制被测逻辑,
   只是把 feature 参数绑进选择器。下列 UI/终态场景的 `Test:` 改为结构化选择器 `Package: octos-cli` +
@@ -58,8 +58,8 @@ kind 的字段、文案与发射时机,不改 wire 协议。契约 v3.1 已并�
   `process_message` 与 `events.jsonl` 读取、不含以 MARKER 手工 `format!` 的 message;不得扫整文件。
 - 契约 v3(2026-09-05,codex gpt-6 PR 复审后):UI None 归属、终态测试真实链路、选择器拆分为修订。
 - 测试(全部为**新建**,提交树上没有可直接复用的 forwarder+data_dir 或 marker→事件夹具):
-  gateway 路径在 `crates/octos-cli/src/session_actor_tests.rs` 用 broadcast `FailoverEvent` +
-  临时 data_dir;UI 路径在 `crates/octos-cli/src/api/ui_protocol_tests.rs` 驱动
+  gateway 路径在 `crates/octos/octos-cli/src/session_actor_tests.rs` 用 broadcast `FailoverEvent` +
+  临时 data_dir;UI 路径在 `crates/octos/octos-cli/src/api/ui_protocol_tests.rs` 驱动
   `spawn_router_failover_forwarder` 或其被测内核;agent 侧复用 `MalformedThenOkProvider` 但按契约
   测试名新建;CLI 侧新建"agent 连续四次 MalformedArgs → 终态 → events.jsonl"端到端测试。
   不引入新依赖。
@@ -67,15 +67,15 @@ kind 的字段、文案与发射时机,不改 wire 协议。契约 v3.1 已并�
 ## Boundaries
 
 ### Allowed Changes
-- crates/octos-cli/src/session_actor.rs
-- crates/octos-cli/src/session_actor_tests.rs
-- crates/octos-cli/src/api/ui_protocol_transport.rs
-- crates/octos-cli/src/api/ui_protocol_tests.rs
-- crates/octos-cli/src/obs_events.rs
-- crates/octos-agent/src/agent/loop_runner.rs
-- crates/octos-agent/src/agent/loop_runner_tests.rs
-- crates/octos-agent/src/lib.rs
-- crates/octos-cli/tests/olp_obs_p2_gate.rs
+- crates/octos/octos-cli/src/session_actor.rs
+- crates/octos/octos-cli/src/session_actor_tests.rs
+- crates/octos/octos-cli/src/api/ui_protocol_transport.rs
+- crates/octos/octos-cli/src/api/ui_protocol_tests.rs
+- crates/octos/octos-cli/src/obs_events.rs
+- crates/octos/octos-agent/src/agent/loop_runner.rs
+- crates/octos/octos-agent/src/agent/loop_runner_tests.rs
+- crates/octos/octos-agent/src/lib.rs
+- crates/octos/octos-cli/tests/olp_obs_p2_gate.rs
 
 ### Forbidden
 - 不改既有六种 kind 的字段、detail 文案与发射时机(含连接断开路径的 `turn_error`)。
@@ -177,7 +177,7 @@ Scenario: 终态测试不得手拼 message
     Package: octos-cli
     Filter: olp_obs_p2_gate_obs_malformed_exhausted_terminal_test_uses_real_agent_error
   Given 仓库检出
-  When 读取 crates/octos-cli/src/api/ui_protocol_tests.rs 中 obs_malformed_exhausted_event_on_errored_terminal 的函数体
+  When 读取 crates/octos/octos-cli/src/api/ui_protocol_tests.rs 中 obs_malformed_exhausted_event_on_errored_terminal 的函数体
   Then 函数体不含以 MALFORMED_TOOLCALL_EXHAUSTED_MARKER 手工 format 的 message 且含对 events.jsonl 的读取
 
 Scenario: 正文中间含 marker 的普通错误不触发
@@ -193,5 +193,5 @@ Scenario: 事件流文档列出新 kind
     Package: octos-cli
     Filter: olp_obs_p2_gate_obs_events_doc_lists_new_kinds
   Given 仓库检出
-  When 读取 crates/octos-cli/src/obs_events.rs 的顶部注释
+  When 读取 crates/octos/octos-cli/src/obs_events.rs 的顶部注释
   Then 注释含 fallback_switch 与 malformed_exhausted

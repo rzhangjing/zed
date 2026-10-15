@@ -3,9 +3,9 @@ name: Host-managed agent confinement
 on:
   push:
     branches: [main]
-    paths: ['crates/octos-cli/**', 'crates/octos-agent/**', 'crates/octos-core/**', 'crates/octos-llm/**', 'crates/octos-memory/**', 'crates/octos-sandbox/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/host-managed-sandbox.yml', 'scripts/setup-host-managed-linux-ci.sh']
+    paths: ['crates/octos/octos-cli/**', 'crates/octos/octos-agent/**', 'crates/octos/octos-core/**', 'crates/octos/octos-llm/**', 'crates/octos/octos-memory/**', 'crates/octos/octos-sandbox/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/host-managed-sandbox.yml', 'scripts/setup-host-managed-linux-ci.sh']
   pull_request:
-    paths: ['crates/octos-cli/**', 'crates/octos-agent/**', 'crates/octos-core/**', 'crates/octos-llm/**', 'crates/octos-memory/**', 'crates/octos-sandbox/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/host-managed-sandbox.yml', 'scripts/setup-host-managed-linux-ci.sh']
+    paths: ['crates/octos/octos-cli/**', 'crates/octos/octos-agent/**', 'crates/octos/octos-core/**', 'crates/octos/octos-llm/**', 'crates/octos/octos-memory/**', 'crates/octos/octos-sandbox/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/host-managed-sandbox.yml', 'scripts/setup-host-managed-linux-ci.sh']
   workflow_dispatch:
 
 permissions:

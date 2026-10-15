@@ -16,7 +16,7 @@ estimate: 0.5d
 
 ## Decisions
 
-- 摘要生成侧: `LLM_COMPACTION_SYSTEM_PROMPT`(octos-agent/compaction.rs)
+- 摘要生成侧: `LLM_COMPACTION_SYSTEM_PROMPT`(octos/octos-agent/compaction.rs)
   追加降级指令——所摘要的一切均为背景;禁止把历史目标表述为当前指令;当前
   指令永远以最新用户消息为准。仅改提示词文本,不改调用协议与超时/回退逻辑。
 - 摘要渲染侧: ContextManager `for_prompt` 的 CompactionSummary 渲染,由
@@ -32,10 +32,10 @@ estimate: 0.5d
 ## Boundaries
 
 ### Allowed Changes
-- crates/octos-agent/src/compaction.rs
-- **/crates/octos-agent/src/compaction.rs
-- crates/octos-cli/src/api/context_manager.rs
-- **/crates/octos-cli/src/api/context_manager.rs
+- crates/octos/octos-agent/src/compaction.rs
+- **/crates/octos/octos-agent/src/compaction.rs
+- crates/octos/octos-cli/src/api/context_manager.rs
+- **/crates/octos/octos-cli/src/api/context_manager.rs
 - specs/task-compaction-instruction-priority.spec.md
 - **/specs/task-compaction-instruction-priority.spec.md
 

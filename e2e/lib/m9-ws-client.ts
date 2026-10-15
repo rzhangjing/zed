@@ -4,7 +4,7 @@
  * `/api/ui-protocol/ws`.
  *
  * Thin typed wrapper. Types mirror the serde shapes in
- * `crates/octos-core/src/ui_protocol.rs` by hand. Every spec under
+ * `crates/octos/octos-core/src/ui_protocol.rs` by hand. Every spec under
  * `e2e/tests/m9-protocol-*.spec.ts` constructs one client, exercises the
  * methods it cares about, then `close()`s. Specs assert wire-level only:
  * envelope shape, error codes, cursor monotonicity — not rendered DOM.
@@ -112,7 +112,7 @@ export interface UiNotification { jsonrpc: "2.0"; method: string; params: any }
 /**
  * Flattened wire params of a `projection/envelope` notification — the
  * canonical v2 projection (`EnvelopeV2` in
- * `crates/octos-core/src/ui_protocol.rs`). Since the Stage-5 cutover
+ * `crates/octos/octos-core/src/ui_protocol.rs`). Since the Stage-5 cutover
  * (#2318) this is the ONLY lane on which turn terminals and streamed
  * content reach a client: raw `message/delta` / `tool/*` / `turn/completed`
  * / `turn/error` frames are suppressed for every connection.

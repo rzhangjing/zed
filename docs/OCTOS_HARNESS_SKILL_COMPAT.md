@@ -211,7 +211,7 @@ The checked-in compatibility gate covers:
 | Layer           | File                                                     |
 | --------------- | -------------------------------------------------------- |
 | Fixture skill   | `e2e/fixtures/compat-test-skill/`                        |
-| Rust int. test  | `crates/octos-cli/tests/skill_compat_gate.rs`            |
+| Rust int. test  | `crates/octos/octos-cli/tests/skill_compat_gate.rs`            |
 | Browser e2e     | `e2e/tests/skill-compat-gate.spec.ts`                    |
 | Contract        | this document                                            |
 

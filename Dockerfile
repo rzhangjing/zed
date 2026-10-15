@@ -9,41 +9,41 @@ WORKDIR /src
 
 # Cache dependencies
 COPY Cargo.toml Cargo.lock ./
-COPY crates/octos-core/Cargo.toml crates/octos-core/Cargo.toml
-COPY crates/octos-llm/Cargo.toml crates/octos-llm/Cargo.toml
-COPY crates/octos-memory/Cargo.toml crates/octos-memory/Cargo.toml
-COPY crates/octos-agent/Cargo.toml crates/octos-agent/Cargo.toml
-COPY crates/octos-bus/Cargo.toml crates/octos-bus/Cargo.toml
-COPY crates/octos-cli/Cargo.toml crates/octos-cli/Cargo.toml
-COPY crates/octos-pipeline/Cargo.toml crates/octos-pipeline/Cargo.toml
-COPY crates/octos-plugin/Cargo.toml crates/octos-plugin/Cargo.toml
-COPY crates/app-skills/news/Cargo.toml crates/app-skills/news/Cargo.toml
-COPY crates/app-skills/deep-search/Cargo.toml crates/app-skills/deep-search/Cargo.toml
-COPY crates/app-skills/deep-crawl/Cargo.toml crates/app-skills/deep-crawl/Cargo.toml
-COPY crates/app-skills/send-email/Cargo.toml crates/app-skills/send-email/Cargo.toml
-COPY crates/app-skills/account-manager/Cargo.toml crates/app-skills/account-manager/Cargo.toml
-COPY crates/app-skills/time/Cargo.toml crates/app-skills/time/Cargo.toml
-COPY crates/app-skills/weather/Cargo.toml crates/app-skills/weather/Cargo.toml
-COPY crates/platform-skills/voice/Cargo.toml crates/platform-skills/voice/Cargo.toml
+COPY crates/octos/octos-core/Cargo.toml crates/octos/octos-core/Cargo.toml
+COPY crates/octos/octos-llm/Cargo.toml crates/octos/octos-llm/Cargo.toml
+COPY crates/octos/octos-memory/Cargo.toml crates/octos/octos-memory/Cargo.toml
+COPY crates/octos/octos-agent/Cargo.toml crates/octos/octos-agent/Cargo.toml
+COPY crates/octos/octos-bus/Cargo.toml crates/octos/octos-bus/Cargo.toml
+COPY crates/octos/octos-cli/Cargo.toml crates/octos/octos-cli/Cargo.toml
+COPY crates/octos/octos-pipeline/Cargo.toml crates/octos/octos-pipeline/Cargo.toml
+COPY crates/octos/octos-plugin/Cargo.toml crates/octos/octos-plugin/Cargo.toml
+COPY crates/octos/app-skills/news/Cargo.toml crates/octos/app-skills/news/Cargo.toml
+COPY crates/octos/app-skills/deep-search/Cargo.toml crates/octos/app-skills/deep-search/Cargo.toml
+COPY crates/octos/app-skills/deep-crawl/Cargo.toml crates/octos/app-skills/deep-crawl/Cargo.toml
+COPY crates/octos/app-skills/send-email/Cargo.toml crates/octos/app-skills/send-email/Cargo.toml
+COPY crates/octos/app-skills/account-manager/Cargo.toml crates/octos/app-skills/account-manager/Cargo.toml
+COPY crates/octos/app-skills/time/Cargo.toml crates/octos/app-skills/time/Cargo.toml
+COPY crates/octos/app-skills/weather/Cargo.toml crates/octos/app-skills/weather/Cargo.toml
+COPY crates/octos/platform-skills/voice/Cargo.toml crates/octos/platform-skills/voice/Cargo.toml
 
 # Create stub source files for dependency caching
 # Library crates get lib.rs, binary crates get main.rs
-RUN mkdir -p crates/octos-core/src && echo "" > crates/octos-core/src/lib.rs && \
-    mkdir -p crates/octos-llm/src && echo "" > crates/octos-llm/src/lib.rs && \
-    mkdir -p crates/octos-memory/src && echo "" > crates/octos-memory/src/lib.rs && \
-    mkdir -p crates/octos-agent/src && echo "" > crates/octos-agent/src/lib.rs && \
-    mkdir -p crates/octos-bus/src && echo "" > crates/octos-bus/src/lib.rs && \
-    mkdir -p crates/octos-cli/src && echo "fn main() {}" > crates/octos-cli/src/main.rs && \
-    mkdir -p crates/octos-pipeline/src && echo "" > crates/octos-pipeline/src/lib.rs && \
-    mkdir -p crates/octos-plugin/src && echo "" > crates/octos-plugin/src/lib.rs && \
-    mkdir -p crates/app-skills/news/src && echo "fn main() {}" > crates/app-skills/news/src/main.rs && \
-    mkdir -p crates/app-skills/deep-search/src && echo "fn main() {}" > crates/app-skills/deep-search/src/main.rs && \
-    mkdir -p crates/app-skills/deep-crawl/src && echo "fn main() {}" > crates/app-skills/deep-crawl/src/main.rs && \
-    mkdir -p crates/app-skills/send-email/src && echo "fn main() {}" > crates/app-skills/send-email/src/main.rs && \
-    mkdir -p crates/app-skills/account-manager/src && echo "fn main() {}" > crates/app-skills/account-manager/src/main.rs && \
-    mkdir -p crates/app-skills/time/src && echo "fn main() {}" > crates/app-skills/time/src/main.rs && \
-    mkdir -p crates/app-skills/weather/src && echo "fn main() {}" > crates/app-skills/weather/src/main.rs && \
-    mkdir -p crates/platform-skills/voice/src && echo "fn main() {}" > crates/platform-skills/voice/src/main.rs
+RUN mkdir -p crates/octos/octos-core/src && echo "" > crates/octos/octos-core/src/lib.rs && \
+    mkdir -p crates/octos/octos-llm/src && echo "" > crates/octos/octos-llm/src/lib.rs && \
+    mkdir -p crates/octos/octos-memory/src && echo "" > crates/octos/octos-memory/src/lib.rs && \
+    mkdir -p crates/octos/octos-agent/src && echo "" > crates/octos/octos-agent/src/lib.rs && \
+    mkdir -p crates/octos/octos-bus/src && echo "" > crates/octos/octos-bus/src/lib.rs && \
+    mkdir -p crates/octos/octos-cli/src && echo "fn main() {}" > crates/octos/octos-cli/src/main.rs && \
+    mkdir -p crates/octos/octos-pipeline/src && echo "" > crates/octos/octos-pipeline/src/lib.rs && \
+    mkdir -p crates/octos/octos-plugin/src && echo "" > crates/octos/octos-plugin/src/lib.rs && \
+    mkdir -p crates/octos/app-skills/news/src && echo "fn main() {}" > crates/octos/app-skills/news/src/main.rs && \
+    mkdir -p crates/octos/app-skills/deep-search/src && echo "fn main() {}" > crates/octos/app-skills/deep-search/src/main.rs && \
+    mkdir -p crates/octos/app-skills/deep-crawl/src && echo "fn main() {}" > crates/octos/app-skills/deep-crawl/src/main.rs && \
+    mkdir -p crates/octos/app-skills/send-email/src && echo "fn main() {}" > crates/octos/app-skills/send-email/src/main.rs && \
+    mkdir -p crates/octos/app-skills/account-manager/src && echo "fn main() {}" > crates/octos/app-skills/account-manager/src/main.rs && \
+    mkdir -p crates/octos/app-skills/time/src && echo "fn main() {}" > crates/octos/app-skills/time/src/main.rs && \
+    mkdir -p crates/octos/app-skills/weather/src && echo "fn main() {}" > crates/octos/app-skills/weather/src/main.rs && \
+    mkdir -p crates/octos/platform-skills/voice/src && echo "fn main() {}" > crates/octos/platform-skills/voice/src/main.rs
 
 RUN cargo build --release --bin octos \
       -p octos-cli \
@@ -77,7 +77,7 @@ RUN npm install -g pptxgenjs react-icons react react-dom sharp
 COPY --from=builder /src/target/release/octos /usr/local/bin/octos
 
 # Copy builtin skills
-COPY --from=builder /src/crates/octos-agent/skills /opt/octos/skills
+COPY --from=builder /src/crates/octos/octos-agent/skills /opt/octos/skills
 
 # Create workspace
 RUN mkdir -p /root/.octos/skills && \

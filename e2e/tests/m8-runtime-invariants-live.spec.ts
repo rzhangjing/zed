@@ -338,7 +338,7 @@ test.describe('M8.6 Resume sanitizer worktree-missing refusal', () => {
           `tool runs in a sandbox where the deletes are 'Operation not permitted'. ` +
           `Observability gap: M8.6 worktree-missing refusal cannot be exercised end-to-end ` +
           `in production from a remote client without elevated host access. ` +
-          `M8.6 is still covered by the unit suite in octos-bus/src/resume_policy.rs ` +
+          `M8.6 is still covered by the unit suite in octos/octos-bus/src/resume_policy.rs ` +
           `(SanitizeError::WorktreeMissing path).`,
       );
       return;

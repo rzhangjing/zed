@@ -6,7 +6,7 @@
   "producer": {
     "cli_command": "octos peer list [--json] [--data-dir DIR] [--profile ID]",
     "tool": "peer_list (serve)",
-    "assembly": "crates/octos-cli/src/commands/peer.rs::list_peers（CLI JSON/表格共用）；crates/octos-cli/src/peers/mod.rs（投影 + blackboard + compose_peer_list_text）"
+    "assembly": "crates/octos/octos-cli/src/commands/peer.rs::list_peers（CLI JSON/表格共用）；crates/octos/octos-cli/src/peers/mod.rs（投影 + blackboard + compose_peer_list_text）"
   },
   "evidence_sources": {
     "authority_current": "peers/<slug>/lifetime.json — 只读安全投影（不写不改）。校验（fail-closed）：version==1 && task_id 非空 && registry_key == '<profile>:peer:<slug>' && originator leaf == lifetime.master；idle 还须 result_digest 非空。任一失败 → execution/身份 unknown/null。profile 来源见 profile_resolution（CLI --profile 显式传入，serve 用已知 profile_id）。",

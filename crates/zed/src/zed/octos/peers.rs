@@ -5,9 +5,9 @@
 //! of the person — Octos does not reach across the boundary: it asks. The
 //! UPCR-2026-035 host-tool contract is that round trip, and this module is
 //! Zed's end of it. The kernel's own side lives in
-//! `crates/octos-cli/src/peers/host_tools.rs` (`TurnHostToolRouter` sends the
+//! `crates/octos/octos-cli/src/peers/host_tools.rs` (`TurnHostToolRouter` sends the
 //! call; `raw_peer_tool_result` completes it) and
-//! `crates/octos-agent/src/tools/peer_host_tool.rs` (the declarations and risk
+//! `crates/octos/octos-agent/src/tools/peer_host_tool.rs` (the declarations and risk
 //! gating the kernel applies before it asks).
 //!
 //! ```text
@@ -65,10 +65,10 @@ use super::connection::Connection;
 /// Not in `octos_core::ui_protocol::methods`: the OUP *client* never sends it,
 /// so the core crate exposes no constant (compare `methods::PEER_TOOL_CALL`,
 /// which the kernel sends and core does name). Vendored here verbatim from
-/// `crates/octos-cli/src/api/ui_protocol_transport.rs:428`.
+/// `crates/octos/octos-cli/src/api/ui_protocol_transport.rs:428`.
 pub const PEER_TOOLS_REGISTER: &str = "peer/tools/register";
 /// `peer/tool/result` — this host's answer to one `peer/tool/call`
-/// (`crates/octos-cli/src/api/ui_protocol_transport.rs:430`).
+/// (`crates/octos/octos-cli/src/api/ui_protocol_transport.rs:430`).
 pub const PEER_TOOL_RESULT: &str = "peer/tool/result";
 
 /// The owning app of the tools this host registers. Zed's own tools are a
@@ -89,7 +89,7 @@ const MAX_ERROR_BYTES: usize = 4 * 1024;
 /// How long the kernel waits for one host call before it gives up and cancels.
 ///
 /// The kernel's ceiling (`MAX_CALL_TIMEOUT_MS`,
-/// `crates/octos-cli/src/peers/host_tools.rs:62`). A call held for the person
+/// `crates/octos/octos-cli/src/peers/host_tools.rs:62`). A call held for the person
 /// is not "gated" (the tools that reach the approval are `confirm: app`, and
 /// the kernel only extends a deadline to the approval TTL for a call whose tool
 /// the *kernel* gated — see `peer_host_tool.rs`'s `ack.notified()` arm), so this
@@ -130,7 +130,7 @@ fn profile_segment_is_safe(raw: &str) -> bool {
 }
 
 /// The kernel's per-session route key, mirroring
-/// `crates/octos-cli/src/peers/host_tools.rs:1230` (`session_route_key`): a
+/// `crates/octos/octos-cli/src/peers/host_tools.rs:1230` (`session_route_key`): a
 /// session whose profile id is a plain `[a-z0-9_]` segment shares the route
 /// with that segment's peers; any other session gets its own hashed route.
 ///
@@ -183,10 +183,10 @@ pub struct HostTool {
     pub description: &'static str,
     /// JSON Schema for the arguments. Must be a `"type": "object"` schema: the
     /// kernel refuses anything else (`parse_schema`,
-    /// `crates/octos-cli/src/peers/host_tools.rs:188`).
+    /// `crates/octos/octos-cli/src/peers/host_tools.rs:188`).
     pub input_schema: Value,
     /// `read` | `act` | `destructive` — the kernel gates `destructive`
-    /// (`HostToolRisk`, `crates/octos-agent/src/tools/peer_host_tool.rs:58`).
+    /// (`HostToolRisk`, `crates/octos/octos-agent/src/tools/peer_host_tool.rs:58`).
     pub risk: &'static str,
     /// Whether this host demands an explicit approval before it runs the tool.
     pub needs_approval: bool,
@@ -253,7 +253,7 @@ pub fn host_tools() -> Vec<HostTool> {
 ///
 /// A call carries the tool's **declared** name (`zed.workspace.read`), not the
 /// model-visible alias: the kernel's router sends `HostToolCall::name`, the
-/// declaration's `name` (`crates/octos-cli/src/peers/host_tools.rs:2725`; the
+/// declaration's `name` (`crates/octos/octos-cli/src/peers/host_tools.rs:2725`; the
 /// routing test asserts `calls[0]["name"] == "news.list"`). The alias only
 /// exists because provider tool names cannot hold a dot. Accepting either
 /// spelling would be a second, guessed-at name surface, so only the declared
@@ -269,7 +269,7 @@ fn tool(declared_name: &str) -> Option<HostTool> {
 // ---------------------------------------------------------------------------
 
 /// One `peer/tool/call` frame's `params`, as the kernel sends it
-/// (`crates/octos-cli/src/peers/host_tools.rs:2716`). Decoded rather than
+/// (`crates/octos/octos-cli/src/peers/host_tools.rs:2716`). Decoded rather than
 /// key-scraped: a field this host gets wrong is a call it cannot serve, and
 /// serde says so at the boundary.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -1089,7 +1089,7 @@ impl HostPeer {
 }
 
 /// The parts of an `ApprovalRequestedEvent`
-/// (`crates/octos-core/src/ui_protocol.rs:5690`) this host renders and answers.
+/// (`crates/octos/octos-core/src/ui_protocol.rs:5690`) this host renders and answers.
 ///
 /// A struct rather than the event itself so the console module does not depend
 /// on the whole kernel payload surface, and so the decode lives next to the
@@ -1179,7 +1179,7 @@ impl HostPeer {
                 }))
                 .collect::<Vec<Value>>(),
             // Mirrors of the kernel's own defaults
-            // (`crates/octos-cli/src/peers/host_tools.rs:65`), pinned explicitly
+            // (`crates/octos/octos-cli/src/peers/host_tools.rs:65`), pinned explicitly
             // so a change on either side is visible here rather than a silent
             // behaviour shift.
             "call_timeout_ms": CALL_TIMEOUT_MS,
@@ -1902,7 +1902,7 @@ mod tests {
     }
 
     /// One `peer/tool/call`'s params, built the way the kernel builds them
-    /// (`crates/octos-cli/src/peers/host_tools.rs:2716`): the **declared** name
+    /// (`crates/octos/octos-cli/src/peers/host_tools.rs:2716`): the **declared** name
     /// (`zed.editor.open`), the risk the declaration carries, and the caller
     /// block the kernel fills in.
     fn call_with_risk(name: &str, args: Value, risk: &str) -> ToolCallParams {
@@ -2986,14 +2986,14 @@ mod tests {
     // -----------------------------------------------------------------------
 
     /// The route key mirrors `session_route_key`
-    /// (`crates/octos-cli/src/peers/host_tools.rs:1230`). It is a diagnostic
+    /// (`crates/octos/octos-cli/src/peers/host_tools.rs:1230`). It is a diagnostic
     /// and a test oracle: a divergence from the kernel's rule would show up as
     /// a failing assertion here rather than as registrations landing under
     /// different filenames.
     ///
     /// The rule it mirrors: the route is the session's **profile id** when the
     /// key parses as `{profile}:{channel}:{chat}` (`SessionKey::profile_id`,
-    /// `crates/octos-core/src/types.rs:554`), and a hash of the whole key
+    /// `crates/octos/octos-core/src/types.rs:554`), and a hash of the whole key
     /// otherwise. A profile segment that *is* a reserved channel name makes the
     /// key parse the other way, so such a session gets its own hashed route —
     /// exactly what the kernel computes for it.

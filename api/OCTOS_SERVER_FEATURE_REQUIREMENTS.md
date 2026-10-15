@@ -212,16 +212,16 @@ Expected flow:
 Current implementation already includes many server primitives that should be
 preserved and tested:
 
-- Shared AppUI/UI Protocol types in `crates/octos-core/src/ui_protocol.rs` and
-  `crates/octos-core/src/app_ui.rs`.
-- WebSocket AppUI handler in `crates/octos-cli/src/api/ui_protocol.rs`.
-- Approval helpers in `crates/octos-cli/src/api/ui_protocol_approvals.rs`.
-- Durable UI ledger in `crates/octos-cli/src/api/ui_protocol_ledger.rs`.
-- Diff preview helper in `crates/octos-cli/src/api/ui_protocol_diff.rs`.
-- Task output projection in `crates/octos-cli/src/api/ui_protocol_task_output.rs`.
-- Task supervisor in `crates/octos-agent/src/task_supervisor.rs`.
-- Harness event/error primitives in `crates/octos-agent/src/harness_events.rs`
-  and `crates/octos-agent/src/harness_errors.rs`.
+- Shared AppUI/UI Protocol types in `crates/octos/octos-core/src/ui_protocol.rs` and
+  `crates/octos/octos-core/src/app_ui.rs`.
+- WebSocket AppUI handler in `crates/octos/octos-cli/src/api/ui_protocol.rs`.
+- Approval helpers in `crates/octos/octos-cli/src/api/ui_protocol_approvals.rs`.
+- Durable UI ledger in `crates/octos/octos-cli/src/api/ui_protocol_ledger.rs`.
+- Diff preview helper in `crates/octos/octos-cli/src/api/ui_protocol_diff.rs`.
+- Task output projection in `crates/octos/octos-cli/src/api/ui_protocol_task_output.rs`.
+- Task supervisor in `crates/octos/octos-agent/src/task_supervisor.rs`.
+- Harness event/error primitives in `crates/octos/octos-agent/src/harness_events.rs`
+  and `crates/octos/octos-agent/src/harness_errors.rs`.
 - Harness developer contract docs under `docs/OCTOS_HARNESS_*`.
 
 Known gaps to track against this document:

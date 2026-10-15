@@ -30,7 +30,7 @@ foreach ($arg in $RemainingArgs) {
 
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $DashboardDir = Join-Path $Root "dashboard"
-$OutDir = Join-Path $Root "crates\octos-cli\static\admin"
+$OutDir = Join-Path $Root "crates\octos\octos-cli\static\admin"
 
 function Show-Help {
     Write-Host @"

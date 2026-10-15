@@ -34,13 +34,13 @@ specifying its payload. The M16 context-manager work introduced
 matching § 8 entry.
 
 Clients that try to decode these events strongly today must derive the field
-set from `crates/octos-core/src/ui_protocol.rs`. This UPCR pins each contract
+set from `crates/octos/octos-core/src/ui_protocol.rs`. This UPCR pins each contract
 to the production struct definition so a future change requires a new UPCR
 rather than a silent server-side rename.
 
 No emitter changes. No new capability gates. No new field on the wire. This is
 docs-only — the field set documented below is exactly what
-`crates/octos-core/src/ui_protocol.rs` already serializes today.
+`crates/octos/octos-core/src/ui_protocol.rs` already serializes today.
 
 ## Relationship To Existing UPCRs
 
@@ -74,7 +74,7 @@ contract documentation that those prior UPCRs deferred.
 ### `turn/spawn_complete`
 
 Source struct: `TurnSpawnCompleteEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Completion-as-new-envelope event for `spawn_only` background tool results.
 Carries the late assistant `content` + `media` plus the originating user
@@ -112,12 +112,12 @@ content/media inline.
 ### `context/compaction_completed`
 
 Source struct: `ContextCompactionCompletedEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Notification that a server-owned context-manager compaction pass committed.
 Carries the post-compaction context state plus a typed compaction record.
 Emitted by `appui_context_compaction_notification` in
-`crates/octos-cli/src/api/ui_protocol.rs`.
+`crates/octos/octos-cli/src/api/ui_protocol.rs`.
 
 | Field            | Type                          | Required | Semantics                                                              |
 |------------------|-------------------------------|:--------:|------------------------------------------------------------------------|
@@ -169,13 +169,13 @@ this notification.
 ### `context/normalization_reported`
 
 Source struct: `ContextNormalizationReportedEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Notification that a prompt-normalization pass ran ahead of an LLM call.
 Carries counts of repaired / dropped / synthetic / truncated items so AppUI
 can render context-hygiene status without re-running normalization locally.
 Emitted by `appui_context_normalization_notification` in
-`crates/octos-cli/src/api/ui_protocol.rs`.
+`crates/octos/octos-cli/src/api/ui_protocol.rs`.
 
 | Field             | Type                                | Required | Semantics                                                |
 |-------------------|-------------------------------------|:--------:|----------------------------------------------------------|
@@ -206,7 +206,7 @@ this notification.
 ### `approval/auto_resolved`
 
 Source struct: `ApprovalAutoResolvedEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Notification emitted when an incoming approval request was auto-resolved by
 a previously recorded scope policy entry instead of surfacing a fresh
@@ -231,7 +231,7 @@ work; clients that decoded it now have a documented field set.
 ### `approval/decided`
 
 Source struct: `ApprovalDecidedEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Durable record of an approval decision (manual or auto-resolved). Replayed on
 reconnect so a client that connected after the decision renders the approval
@@ -260,7 +260,7 @@ advertisement landed.
 ### `approval/cancelled`
 
 Source struct: `ApprovalCancelledEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Durable notification announcing that a previously pending approval was
 cancelled by the server before any client could respond. Today the only
@@ -283,7 +283,7 @@ do not require a new event kind.
 ### `progress/updated`
 
 Source struct: `UiProgressEvent` (aliased as `ProgressUpdatedEvent` —
-`crates/octos-core/src/ui_protocol.rs`).
+`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Standalone rich progress notification payload. Used for kinds that do not fit
 the first-wave `turn/*`, `tool/*`, or `task/*` envelopes — status pills,
@@ -316,9 +316,9 @@ emitted on a connected WebSocket is committed to the per-session append-only
 ledger before the wire frame is enqueued — both the
 `LedgerStatusGateReporter` path (status / progress-gate variants via
 `ledger.append_notification(...)` in
-`crates/octos-cli/src/api/ui_protocol_alpha4_bridge.rs`) and the main
+`crates/octos/octos-cli/src/api/ui_protocol_alpha4_bridge.rs`) and the main
 progress-mapping path (via `ledger.append_progress_from(...)` followed by
-`send_ledger_event_durable(...)` in `crates/octos-cli/src/api/ui_protocol.rs`)
+`send_ledger_event_durable(...)` in `crates/octos/octos-cli/src/api/ui_protocol.rs`)
 go through the durable write-ahead. Under per-connection backpressure the
 frame may be dropped from the live socket — that drop surfaces as
 `protocol/replay_lossy` (see below), and `session/open` replay returns the
@@ -335,7 +335,7 @@ future progress kinds do not require a new UPCR per addition.
 ### `protocol/replay_lossy`
 
 Source struct: `ReplayLossyEvent`
-(`crates/octos-core/src/ui_protocol.rs`).
+(`crates/octos/octos-core/src/ui_protocol.rs`).
 
 Wire signal that one or more durable notifications were dropped due to
 per-connection backpressure. The client should diverge from its cursor and
@@ -353,7 +353,7 @@ refers to the condition the signal reports — that one or more *other*
 durable notifications were dropped from the live socket under per-connection
 backpressure — NOT to this signal's own durability. The reference server
 emits the signal via `emit_replay_lossy_opportunistic` in
-`crates/octos-cli/src/api/ui_protocol.rs`, which calls
+`crates/octos/octos-cli/src/api/ui_protocol.rs`, which calls
 `ledger.append_notification_from(...)` BEFORE attempting the wire send. The
 append takes the same write-ahead-to-disk path as every other durable
 notification (`ui_protocol_ledger.rs` `append` → `write_record_locked`), so a
@@ -378,7 +378,7 @@ and no decoder behavior changes.
 ## Tests
 
 - The spec's § 8 entries (added in this UPCR) match the field set serialized
-  by `crates/octos-core/src/ui_protocol.rs`.
+  by `crates/octos/octos-core/src/ui_protocol.rs`.
 - `UI_PROTOCOL_NOTIFICATION_METHODS` lists every kind named here.
 - A docs-contract test confirms each documented field is present on the
   matching struct (no spec-only fields, no struct-only undocumented fields
@@ -386,8 +386,8 @@ and no decoder behavior changes.
 
 ## References
 
-- `crates/octos-core/src/ui_protocol.rs`
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-core/src/ui_protocol.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
 - UPCR-2026-007 — capability advertisement payload that first listed the
   approval / progress / replay kinds.
 - UPCR-2026-014 — `protocol/replay_lossy` companion to the durable ledger.

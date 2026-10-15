@@ -33,14 +33,14 @@ cd octos
 # workflows use a similar set; check .github/workflows for the exact
 # release features.) Add any other channel you need (slack, email,
 # matrix, line, qq-bot, wechat) from the list below.
-cargo install --path crates/octos-cli \
+cargo install --path crates/octos/octos-cli \
     --features "api,telegram,discord,dingtalk,whatsapp,feishu,twilio,wecom,wecom-bot,audio_mp3"
 
 # Minimal: CLI + chat + gateway with CLI channel only.
 # This produces a binary that does NOT have `octos serve` (the api
 # feature is what registers that subcommand) and that has no
 # messaging channel adapters compiled in.
-cargo install --path crates/octos-cli
+cargo install --path crates/octos/octos-cli
 
 # Trim the feature list to your needs. Available channel features:
 #   telegram, discord, dingtalk, slack, whatsapp, feishu, email, wecom, wecom-bot,
@@ -50,7 +50,7 @@ cargo install --path crates/octos-cli
 #   audio_mp3 (MP3 decoding for audio workspace-contract validation)
 # Note: the browser tool (headless Chrome via CDP) is always compiled
 # in — there is no `browser` feature.
-cargo install --path crates/octos-cli --features "api,telegram,slack"
+cargo install --path crates/octos/octos-cli --features "api,telegram,slack"
 
 # Verify
 octos --version
@@ -194,7 +194,7 @@ rustup-init.exe
 #    requires the `api` feature).
 git clone https://github.com/octos-org/octos.git
 cd octos
-cargo install --path crates/octos-cli `
+cargo install --path crates/octos/octos-cli `
     --features "api,telegram,discord,dingtalk,whatsapp,feishu,twilio,wecom,wecom-bot,audio_mp3"
 
 # 3. Set API key and run

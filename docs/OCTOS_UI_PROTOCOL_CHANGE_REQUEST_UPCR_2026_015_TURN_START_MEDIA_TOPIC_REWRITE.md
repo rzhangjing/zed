@@ -96,8 +96,8 @@ This UPCR does NOT add a capability flag. The fields are strict-additive optiona
 
 Lands in:
 
-- `crates/octos-core/src/ui_protocol.rs` — `TurnStartParams` struct gains the three fields (with serde `skip_serializing_if` annotations); golden round-trip tests cover each field in isolation and all three together.
-- `crates/octos-cli/src/api/ui_protocol.rs::handle_turn_start` — folds `params.topic` into `params.session_id` BEFORE `validate_session_scope`; passes `params.media[*].path` into `Agent::process_message` as a `Vec<String>`; logs `params.rewrite_for` at debug level.
+- `crates/octos/octos-core/src/ui_protocol.rs` — `TurnStartParams` struct gains the three fields (with serde `skip_serializing_if` annotations); golden round-trip tests cover each field in isolation and all three together.
+- `crates/octos/octos-cli/src/api/ui_protocol.rs::handle_turn_start` — folds `params.topic` into `params.session_id` BEFORE `validate_session_scope`; passes `params.media[*].path` into `Agent::process_message` as a `Vec<String>`; logs `params.rewrite_for` at debug level.
 
 Tests landing alongside:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# RFC-2 (issue #1291): validate every bundled `crates/app-skills/*/manifest.json`
+# RFC-2 (issue #1291): validate every bundled `crates/octos/app-skills/*/manifest.json`
 # (plus any additional manifest paths passed on the command line) against the
 # strict octos JSON schema validator.
 #
@@ -26,7 +26,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_SKILLS_DIR="$ROOT/crates/app-skills"
+APP_SKILLS_DIR="$ROOT/crates/octos/app-skills"
 
 # Build the bin once. Use the workspace cargo flags the rest of CI uses
 # so the artefact slots into Swatinem/rust-cache like every other test
@@ -40,7 +40,7 @@ if [ ! -x "$BIN" ]; then
     exit 2
 fi
 
-# Collect manifests. Default = every `crates/app-skills/*/manifest.json`.
+# Collect manifests. Default = every `crates/octos/app-skills/*/manifest.json`.
 # Extra paths on the command line append (e.g. for testing a vendor skill
 # prior to install).
 declare -a MANIFESTS=()

@@ -55,13 +55,13 @@ Rust workspace 可以按应用需要组合：
 
 | Crate | 在应用中的职责 |
 | --- | --- |
-| [`octos-core`](crates/octos-core) | 共享类型、OUP 命令、通知与协议编解码 |
-| [`octos-agent`](crates/octos-agent) | Agent 执行、上下文处理、工具、hooks、沙箱与任务监督 |
-| [`octos-memory`](crates/octos-memory) | 持久化记忆、任务经验与检索 |
-| [`octos-llm`](crates/octos-llm) | 模型提供者接口、路由、重试与故障转移 |
-| [`octos-plugin`](crates/octos-plugin) | 技能与插件集成 |
-| [`octos-workflows`](crates/octos-workflows) / [`octos-swarm`](crates/octos-swarm) | 原生工作流定义、并行执行、验证与结果汇总 |
-| [`octos-bus`](crates/octos-bus) / [`octos-cli`](crates/octos-cli) | 会话基础设施、运行时组装、OUP 托管与适配层 |
+| [`octos-core`](crates/octos/octos-core) | 共享类型、OUP 命令、通知与协议编解码 |
+| [`octos-agent`](crates/octos/octos-agent) | Agent 执行、上下文处理、工具、hooks、沙箱与任务监督 |
+| [`octos-memory`](crates/octos/octos-memory) | 持久化记忆、任务经验与检索 |
+| [`octos-llm`](crates/octos/octos-llm) | 模型提供者接口、路由、重试与故障转移 |
+| [`octos-plugin`](crates/octos/octos-plugin) | 技能与插件集成 |
+| [`octos-workflows`](crates/octos/octos-workflows) / [`octos-swarm`](crates/octos/octos-swarm) | 原生工作流定义、并行执行、验证与结果汇总 |
+| [`octos-bus`](crates/octos/octos-bus) / [`octos-cli`](crates/octos/octos-cli) | 会话基础设施、运行时组装、OUP 托管与适配层 |
 
 CLI/服务端使用原生 `search` 和 `deep_crawl` 执行研究。运行时已移除
 `run_pipeline` 和 DOT 引擎；`octos-pipeline` 源码保留为独立开发 crate，
@@ -75,9 +75,9 @@ cargo build --release -p octos-ffi
 ```
 
 集成到其他 workspace 时，将相关 Octos crates 固定在同一个 Git revision。
-其他宿主语言可以使用 [C ABI](crates/octos-ffi/README.md)、
-[原生 Python 绑定](crates/octos-pyo3/README.md)或
-[Swift/Kotlin 绑定](crates/octos-uniffi/README.md)。C ABI 同时提供动态库和静态库。
+其他宿主语言可以使用 [C ABI](crates/octos/octos-ffi/README.md)、
+[原生 Python 绑定](crates/octos/octos-pyo3/README.md)或
+[Swift/Kotlin 绑定](crates/octos/octos-uniffi/README.md)。C ABI 同时提供动态库和静态库。
 这些绑定提供任务执行接口；下文的 OUP 提供会话、轮次、监督与回放接口。
 
 ### 操作系统与处理器架构
@@ -90,7 +90,7 @@ features 和原生依赖，具体支持取决于这一组合。
 其他操作系统上的应用可以通过 OUP 接入，也可以移植内核的平台集成部分，包括
 进程执行、文件系统访问与沙箱；应用和内核之间继续使用同一套协议边界。
 
-浏览器应用可以使用 [WASM crate](crates/octos-wasm/README.md)中的协议与工具类型。
+浏览器应用可以使用 [WASM crate](crates/octos/octos-wasm/README.md)中的协议与工具类型。
 完整 Agent 内核运行在原生环境中，浏览器通过 OUP 与之通信。
 
 ## 通过 OUP 控制内核
@@ -322,7 +322,7 @@ Goal 记录 Agent 要完成什么，Loop 安排周期性轮次，Monitor 观察�
 ## 开发者文档
 
 - [OUP 协议规范](api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md)
-- [OUP 类型与编解码](crates/octos-core/src/ui_protocol.rs)
+- [OUP 类型与编解码](crates/octos/octos-core/src/ui_protocol.rs)
 - [运行时架构](docs/ARCHITECTURE.md)
 - [Harness 开发者接口](docs/OCTOS_HARNESS_DEVELOPER_INTERFACE.md)
 - [产物与工作流集成指南](docs/OCTOS_HARNESS_DEVELOPER_GUIDE.md)

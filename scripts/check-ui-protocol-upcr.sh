@@ -28,11 +28,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PROTOCOL_PATHS=(
-  "crates/octos-core/src/ui_protocol.rs"
-  "crates/octos-cli/src/api/ui_protocol.rs"
+  "crates/octos/octos-core/src/ui_protocol.rs"
+  "crates/octos/octos-cli/src/api/ui_protocol.rs"
 )
 PROTOCOL_GLOBS=(
-  "crates/octos-cli/src/api/ui_protocol_*.rs"
+  "crates/octos/octos-cli/src/api/ui_protocol_*.rs"
 )
 SPEC_GLOB="api/OCTOS_UI_PROTOCOL_V1_SPEC_*.md"
 UPCR_GLOB="docs/OCTOS_UI_PROTOCOL_CHANGE_REQUEST_UPCR_*.md"

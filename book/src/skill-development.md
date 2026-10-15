@@ -54,7 +54,7 @@ If **all five** axes point to the same column, build there. Mixed signals → us
 
 ### Where existing surface lives
 
-These belong in **workspace contract** (`workspace_policy.toml`, see `crates/octos-agent/src/workspace_policy.rs::ValidatorSpec`):
+These belong in **workspace contract** (`workspace_policy.toml`, see `crates/octos/octos-agent/src/workspace_policy.rs::ValidatorSpec`):
 
 - **`AudioNonSilent`** / **`PerFileNonSilent`** — TTS output content invariant. The system MUST refuse to claim "audio generated" if the `.wav` is silent. Applies to every TTS-emitting skill regardless of vendor.
 - **`MagicBytes`** — file format integrity. Applies to every tool that emits files.
@@ -74,7 +74,7 @@ These belong as **plugin hooks** ONLY when they are **optional enrichment** (the
 
 ### The pipeline-guard case study (and what we'd build differently)
 
-**`pipeline-guard`** today is shipped as a plugin (`crates/app-skills/pipeline-guard/`) with a `before_tool_call` hook that mutates the DOT graph the LLM authored for `run_pipeline` — injecting `model="cheap"` on `dynamic_parallel` workers and `model="strong"` on `synthesize` nodes from the live QoS catalog.
+**`pipeline-guard`** today is shipped as a plugin (`crates/octos/app-skills/pipeline-guard/`) with a `before_tool_call` hook that mutates the DOT graph the LLM authored for `run_pipeline` — injecting `model="cheap"` on `dynamic_parallel` workers and `model="strong"` on `synthesize` nodes from the live QoS catalog.
 
 Score it against the matrix:
 
@@ -364,7 +364,7 @@ fi
 If contributing a skill to the core Octos distribution:
 
 ```bash
-mkdir -p crates/app-skills/my-skill/src
+mkdir -p crates/octos/app-skills/my-skill/src
 ```
 
 **Cargo.toml:**
@@ -389,11 +389,11 @@ Add to workspace `Cargo.toml`:
 ```toml
 members = [
     # ...
-    "crates/app-skills/my-skill",
+    "crates/octos/app-skills/my-skill",
 ]
 ```
 
-Register in `crates/octos-agent/src/bundled_app_skills.rs`:
+Register in `crates/octos/octos-agent/src/bundled_app_skills.rs`:
 
 ```rust
 pub const BUNDLED_APP_SKILLS: &[(&str, &str, &str, &str)] = &[
@@ -929,7 +929,7 @@ Skills don't need to provide tools. Valid combinations:
 
 | | App Skills | Platform Skills |
 |---|---|---|
-| Location | `crates/app-skills/` | `crates/platform-skills/` |
+| Location | `crates/octos/app-skills/` | `crates/octos/platform-skills/` |
 | Bootstrap | Every gateway startup | Admin bot only |
 | Scope | Per-gateway | Shared across gateways |
 | Use when | Self-contained, always available | Requires external service |
@@ -941,7 +941,7 @@ Skills don't need to provide tools. Valid combinations:
 ### Example 1: Clock (Local, No Network)
 
 ```
-crates/app-skills/time/
+crates/octos/app-skills/time/
 ├── Cargo.toml          # chrono, chrono-tz, serde, serde_json
 ├── manifest.json       # 1 tool: get_time, timeout_secs: 5
 ├── SKILL.md            # Triggers: time, clock
@@ -951,7 +951,7 @@ crates/app-skills/time/
 ### Example 2: Weather (Network API)
 
 ```
-crates/app-skills/weather/
+crates/octos/app-skills/weather/
 ├── Cargo.toml          # reqwest (blocking, rustls-tls), serde, serde_json
 ├── manifest.json       # 2 tools: get_weather, get_forecast, timeout_secs: 15
 ├── SKILL.md            # Triggers: weather, forecast
@@ -961,7 +961,7 @@ crates/app-skills/weather/
 ### Example 3: Email (Environment Credentials)
 
 ```
-crates/app-skills/send-email/
+crates/octos/app-skills/send-email/
 ├── Cargo.toml          # lettre, serde, serde_json
 ├── manifest.json       # 1 tool: send_email
 ├── SKILL.md            # requires_env: SMTP_HOST,SMTP_USERNAME,SMTP_PASSWORD

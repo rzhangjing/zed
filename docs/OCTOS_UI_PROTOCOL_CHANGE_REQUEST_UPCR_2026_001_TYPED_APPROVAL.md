@@ -112,12 +112,12 @@ Result:
 
 Coverage lives in:
 
-- `crates/octos-core/src/ui_protocol.rs`
+- `crates/octos/octos-core/src/ui_protocol.rs`
   - approval response params round-trip optional `approval_scope` and
     `client_note`
   - `approval/scopes/list` result round-trips through `UiRpcResult`
   - typed `approval/requested` details round-trip
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
   - scoped approval enforcement and scope listing
   - durable `approval/decided` / `approval/cancelled` replay behavior
 - `e2e/tests/m9-protocol-approval-respond.spec.ts`

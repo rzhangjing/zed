@@ -227,7 +227,7 @@ Capability feature: `projection.envelope.v1`
 
 ### Server-side / wire contract
 
-- Golden tests in `crates/octos-core/src/ui_protocol.rs::tests`:
+- Golden tests in `crates/octos/octos-core/src/ui_protocol.rs::tests`:
   - `golden_envelope_assistant_delta_round_trips`
   - `golden_envelope_user_message_round_trips`
   - `golden_envelope_user_message_omits_empty_files`
@@ -248,7 +248,7 @@ Capability feature: `projection.envelope.v1`
 
 ### Client-side
 
-- TS types in `crates/octos-web/src/runtime/ui-protocol-types.ts`
+- TS types in `crates/octos/octos-web/src/runtime/ui-protocol-types.ts`
   mirror the Rust enum bit-for-bit. `tsc --noEmit` keeps them honest.
 - M9-γ-2 will land property tests for the projection function
   (replay determinism: any `seq`-ordered prefix of a turn's envelopes
@@ -319,10 +319,10 @@ Each step is gated behind 7-day soak green per ADR.
 - [x] Rust `Envelope`, `Payload` (with `UserMessage` variant),
       `MessageMeta`, `EnvelopeTokenUsage`, `EnvelopeToolEndStatus`
       (`complete | error | skipped | aborted`), and `FileRef` land in
-      `crates/octos-core/src/ui_protocol.rs` with serde
+      `crates/octos/octos-core/src/ui_protocol.rs` with serde
       `tag = "type", content = "data", rename_all = "snake_case"`.
 - [x] TS counterparts land in
-      `crates/octos-web/src/runtime/ui-protocol-types.ts` and pass
+      `crates/octos/octos-web/src/runtime/ui-protocol-types.ts` and pass
       `tsc --noEmit`.
 - [x] Golden round-trip tests in `octos-core::ui_protocol::tests`
       pass (`cargo test -p octos-core`), including coverage for

@@ -127,7 +127,7 @@ Bootstrap Files
 启动 Web 界面和 REST API 服务器。需要在编译时启用 `api` 特性。
 
 ```bash
-cargo install --path crates/octos-cli --features api
+cargo install --path crates/octos/octos-cli --features api
 octos serve                               # 绑定到 127.0.0.1:50080
 octos serve --host 0.0.0.0 --port 50080   # 接受外部连接
 octos serve --solo                        # 启用本地免密码「solo」登录

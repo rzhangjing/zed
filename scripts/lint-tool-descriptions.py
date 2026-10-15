@@ -19,8 +19,8 @@ from typing import Iterable
 
 
 DEFAULT_ROOTS = (
-    "crates/app-skills",
-    "crates/platform-skills",
+    "crates/octos/app-skills",
+    "crates/octos/platform-skills",
     ".crew/bundled-app-skills",
     ".crew/platform-skills",
     "dashboard/.crew/bundled-app-skills",
@@ -167,8 +167,8 @@ SOURCE_PATH_HINTS: tuple[str, ...] = (
     # snapshot dir (e.g. `.crew/bundled-app-skills/...`). Without this hint
     # `sorted()` makes the snapshot win because dot-prefixed paths sort first,
     # which leaves stale descriptions shadowing freshly-fixed source manifests.
-    "crates/app-skills/",
-    "crates/platform-skills/",
+    "crates/octos/app-skills/",
+    "crates/octos/platform-skills/",
 )
 
 
@@ -186,7 +186,7 @@ def lint_tools(tools: Iterable[ToolDescription]) -> list[str]:
             unique_tools[tool.identity] = tool
             continue
         # Prefer the source-of-truth manifest over snapshot copies so a fix
-        # to `crates/app-skills/<x>/manifest.json` is the one we lint, not
+        # to `crates/octos/app-skills/<x>/manifest.json` is the one we lint, not
         # the stale `.crew/bundled-app-skills/<x>/manifest.json` snapshot.
         if _is_source_path(tool.manifest) and not _is_source_path(existing.manifest):
             unique_tools[tool.identity] = tool
@@ -355,9 +355,9 @@ def run_self_test() -> None:
 
         # Fixture 3 — when the same `(manifest_name, tool_name)` appears in a
         # snapshot and the source-of-truth path, dedup must keep the source
-        # entry so a fix in `crates/app-skills/...` actually gets checked.
+        # entry so a fix in `crates/octos/app-skills/...` actually gets checked.
         # Snapshot lives under `.crew/bundled-app-skills/` so it sorts *before*
-        # `crates/app-skills/` via `sorted()`. Without source-preference dedup
+        # `crates/octos/app-skills/` via `sorted()`. Without source-preference dedup
         # the stale snapshot would shadow the fixed source and this fixture
         # would fail.
         snapshot = root / ".crew" / "bundled-app-skills" / "deep-crawl" / "manifest.json"

@@ -34,7 +34,7 @@ because the field carries `serde(default = "first_server_slice")`.
 
 Spec § 4 already defines capability negotiation as part of the protocol
 contract, and the WebSocket connection parser in
-`crates/octos-cli/src/api/ui_protocol.rs` reads
+`crates/octos/octos-cli/src/api/ui_protocol.rs` reads
 `X-Octos-Ui-Features` (and the `ui_feature` / `ui_features` query
 parameters) on every connection. But the `SessionOpened` payload — the
 first lifecycle frame after `session/open` — never echoes back which
@@ -225,7 +225,7 @@ UPCRs (`UPCR-2026-001`, `UPCR-2026-002`, `UPCR-2026-003`,
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs`:
+- `crates/octos/octos-core/src/ui_protocol.rs`:
   - `session_open_result_includes_capabilities_field` — golden: the
     serialized `SessionOpened` carries a `capabilities` payload with
     `version`, `capabilities_schema_version`, `supported_methods`, and
@@ -245,7 +245,7 @@ UPCRs (`UPCR-2026-001`, `UPCR-2026-002`, `UPCR-2026-003`,
     advertised method set includes the task-control RPCs so the spec
     § 7 "expose only when feature flag is advertised" rule is honoured
     bidirectionally.
-- `crates/octos-cli/src/api/ui_protocol.rs`:
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`:
   - `session_open_result_advertises_full_protocol_when_no_header` —
     `open_session_result()` with `ConnectionUiFeatures::default()`
     returns `first_server_slice()` capabilities.
@@ -293,7 +293,7 @@ field as a stable surface new clients can rely on.
   not see the methods in `supported_methods`. The
   `handle_task_list` / `handle_task_cancel` /
   `handle_task_restart_from_node` handlers in
-  `crates/octos-cli/src/api/ui_protocol.rs` still accept the calls
+  `crates/octos/octos-cli/src/api/ui_protocol.rs` still accept the calls
   regardless of `ConnectionUiFeatures.harness_task_control`. A
   well-behaved client that consults `supported_methods` will not call
   them, but a malformed client could still hit the handler. Wiring

@@ -67,8 +67,8 @@ They may be extended. They must not be replaced.
 - gateway / channel / SSE / background task transport
 - memory store / episode store
 - pipeline engine (`octos-pipeline`)
-- workspace contract (`crates/octos-agent/src/workspace_contract.rs`)
-- typed profile config (`crates/octos-cli/src/profiles.rs`)
+- workspace contract (`crates/octos/octos-agent/src/workspace_contract.rs`)
+- typed profile config (`crates/octos/octos-cli/src/profiles.rs`)
 
 Anything that claims to be a robotics feature but requires replacing one of
 these is a rewrite, not a robotics addition.

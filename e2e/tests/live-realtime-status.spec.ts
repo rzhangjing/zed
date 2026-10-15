@@ -101,7 +101,7 @@ const TOOL_CALL_BUBBLE = "[data-testid='tool-call-bubble']";
 const TIMELINE = "[data-testid='tool-call-runtime-timeline']";
 
 // Pipeline progress entries the executor emits via `report_progress`
-// (see crates/octos-pipeline/src/executor.rs). The runtime timeline
+// (see crates/octos/octos-pipeline/src/executor.rs). The runtime timeline
 // strips a leading `[info]/[debug]/[warn]/[error]` tag in chat-thread.tsx
 // (lines 169–171), so we match the post-strip surface text.
 //

@@ -9,7 +9,7 @@ test corpus.
 The capture-and-replay flag is **PR I** in the chat-lifecycle hardening
 plan. It feeds the regression corpus that **PR H** consumes (Layer 1
 SPA reducer fixtures under
-`crates/octos-web/src/state/__tests__/fixtures/`). Together with PR H
+`crates/octos/octos-web/src/state/__tests__/fixtures/`). Together with PR H
 it forms the 3-tier promotion workflow:
 
 ```
@@ -86,7 +86,7 @@ message embedded in the fixture's `assertionFailure` field.
 ## Fixture format
 
 The on-disk shape is a SUPERSET of PR H's `SseFixture`
-(`crates/octos-web/src/state/__tests__/lib/fixture-types.ts`):
+(`crates/octos/octos-web/src/state/__tests__/lib/fixture-types.ts`):
 
 ```jsonc
 {
@@ -143,7 +143,7 @@ H without manual editing.
 ./e2e/scripts/promote-captured-fixture.sh \
     e2e/fixtures/captured/live-overflow-stress-2026-04-30_19-12-03-456.json \
     overflow-stress-thread-binding
-# -> crates/octos-web/src/state/__tests__/fixtures/captured/overflow-stress-thread-binding.fixture.json
+# -> crates/octos/octos-web/src/state/__tests__/fixtures/captured/overflow-stress-thread-binding.fixture.json
 ```
 
 The script:

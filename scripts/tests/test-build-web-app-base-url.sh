@@ -14,7 +14,7 @@ trap 'rm -rf "$fixture"' EXIT
 mkdir -p \
     "$fixture/scripts" \
     "$fixture/octos-web/node_modules" \
-    "$fixture/crates/octos-cli/static"
+    "$fixture/crates/octos/octos-cli/static"
 cp "$TARGET" "$fixture/scripts/build-web-app.sh"
 
 cat >"$fixture/octos-web/package.json" <<'JSON'
@@ -63,7 +63,7 @@ done
 
 PATH="$fixture/bin:$PATH" "$BASH" "$fixture/scripts/build-web-app.sh"
 
-embedded_index="$fixture/crates/octos-cli/static/web/index.html"
+embedded_index="$fixture/crates/octos/octos-cli/static/web/index.html"
 grep -Fq 'src="/app/assets/app.js"' "$embedded_index"
 grep -Fq 'href="/app/assets/app.css"' "$embedded_index"
 

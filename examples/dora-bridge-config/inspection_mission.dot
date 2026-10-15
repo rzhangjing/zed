@@ -12,7 +12,7 @@
 //   * `gate` nodes evaluate `prompt` as a condition against the previous
 //     outcome — the supported predicate language is
 //     `outcome.status == "pass"|"fail"`, `outcome.contains("...")`, plus
-//     `&& || !` combinators (see crates/octos-pipeline/src/condition.rs).
+//     `&& || !` combinators (see crates/octos/octos-pipeline/src/condition.rs).
 //   * Edges that need to branch must use `condition="..."`. Plain `label=`
 //     is only a substring fallback against outcome content; this graph uses
 //     real conditions on every gate-outgoing edge.

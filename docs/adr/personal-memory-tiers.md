@@ -16,8 +16,8 @@
 
 The kernel keeps two memories that do not meet:
 
-- **Episodic** (`crates/octos-memory/src/{store,hybrid_search}.rs`): `Episode.summary` (≤ 500 B) in `<data_dir>/episodes.redb` (tables `episodes`, `cwd_index`, `embeddings`), indexed by an in-process `hnsw_rs` HNSW (cosine, L2-normalised, M=16, ef=200/30) fused with BM25 (0.7/0.3). The graph is rebuilt from redb on every open; the cap is 10 000 vectors; deletes are tombstones; there is no time decay. Recall is automatic prompt injection at task/session start (`recall_relevant_episodes`, floor 0.55, 6 results) and is **disabled outright when no embedder is configured**. No agent tool searches it.
-- **Memory bank** (`crates/octos-memory/src/memory_store.rs`): markdown under `<data_dir>/memory/` — `MEMORY.md`, daily notes, `bank/entities/*.md`, staging notes → LLM consolidation (`octos-cli/src/memory_consolidate`), a prompt-injection guard on every write (`guard.rs`), usage counters. Injected as a name + abstract list within `max_inject_tokens` (tail-truncated silently), then fetched by exact name (`recall_memory {name}`). Never embedded, never BM25-indexed.
+- **Episodic** (`crates/octos/octos-memory/src/{store,hybrid_search}.rs`): `Episode.summary` (≤ 500 B) in `<data_dir>/episodes.redb` (tables `episodes`, `cwd_index`, `embeddings`), indexed by an in-process `hnsw_rs` HNSW (cosine, L2-normalised, M=16, ef=200/30) fused with BM25 (0.7/0.3). The graph is rebuilt from redb on every open; the cap is 10 000 vectors; deletes are tombstones; there is no time decay. Recall is automatic prompt injection at task/session start (`recall_relevant_episodes`, floor 0.55, 6 results) and is **disabled outright when no embedder is configured**. No agent tool searches it.
+- **Memory bank** (`crates/octos/octos-memory/src/memory_store.rs`): markdown under `<data_dir>/memory/` — `MEMORY.md`, daily notes, `bank/entities/*.md`, staging notes → LLM consolidation (`octos/octos-cli/src/memory_consolidate`), a prompt-injection guard on every write (`guard.rs`), usage counters. Injected as a name + abstract list within `max_inject_tokens` (tail-truncated silently), then fetched by exact name (`recall_memory {name}`). Never embedded, never BM25-indexed.
 
 Neither has an inbound path for app data. Mail keeps `mailbox-*.json` in its module's private storage and its `ServiceExecutor` refuses every tool call by design; Calendar keeps a reducer replica plus a sync server. The kernel exposes no memory-write API (HTTP/WS memory routes are viewer-only; FFI `octos_embed` returns a vector and stores nothing; the embedded/mobile runtime boots with `save_episodes: false`). MCP over loopback is refused (`reject_private_url_host`); the phone shell's module tools reach the pane's model, not the kernel agent.
 
@@ -88,7 +88,7 @@ What landed with this record (phase 1 in Octoscript-AppCard, phases 2–3 here):
   the backfill. Default width 256 (`memory.recall_dimension`), never wider
   than the configured embedder.
 - **Tools** — `memory_search {query, kinds?, sources?, since?, until?, limit?}`
-  and `memory_load {id}` (`octos-agent/src/tools/memory_{search,load}.rs`);
+  and `memory_load {id}` (`octos/octos-agent/src/tools/memory_{search,load}.rs`);
   `recall_memory` accepts `query` and answers with the best-matching bank page.
   Results label every record's trust; document bodies are not stored unless
   the producer sent them, so `memory_load` points back at the owning app.
@@ -108,7 +108,7 @@ What landed with this record (phase 1 in Octoscript-AppCard, phases 2–3 here):
   nominates hot Documents (≥ N loads, never twice) into the staging area as
   host fact notes carrying provenance, where the existing consolidation and
   guard decide what reaches `MEMORY.md`.
-- **Bundled embedder** — `embed-llama` is a default feature of `octos-cli`, `octos-ffi` and `octos-uniffi` (release builds include it; macOS adds Metal). With no `embedding` config the runtime uses EmbeddingGemma-300M Q8_0, fetched once into `<data_dir>/models/` from the public ggml-org release, SHA-256-pinned (`octos-cli/src/embed_model.rs`; `octos memory embedder [--fetch]`; `octos doctor` reports it; `embedding.auto_download=false` / `OCTOS_NO_MODEL_DOWNLOAD=1` opt out; licence in `docs/THIRD_PARTY_MODELS.md`). The Recall index records it as `llamacpp/embeddinggemma-300M-Q8_0`.
+- **Bundled embedder** — `embed-llama` is a default feature of `octos-cli`, `octos-ffi` and `octos-uniffi` (release builds include it; macOS adds Metal). With no `embedding` config the runtime uses EmbeddingGemma-300M Q8_0, fetched once into `<data_dir>/models/` from the public ggml-org release, SHA-256-pinned (`octos/octos-cli/src/embed_model.rs`; `octos memory embedder [--fetch]`; `octos doctor` reports it; `embedding.auto_download=false` / `OCTOS_NO_MODEL_DOWNLOAD=1` opt out; licence in `docs/THIRD_PARTY_MODELS.md`). The Recall index records it as `llamacpp/embeddinggemma-300M-Q8_0`.
 - **Upkeep** — profile bootstrap spawns bank sync, vector backfill and aging;
   `octos memory search|ingest|promote` operate on the same store.
 - **Not done** — phase 4 (cross-device sync of derived records); the
@@ -125,6 +125,6 @@ What landed with this record (phase 1 in Octoscript-AppCard, phases 2–3 here):
 
 ## References
 
-- `crates/octos-memory/src/{hybrid_search,store,memory_store,guard}.rs`; `crates/octos-agent/src/agent/memory.rs`; `crates/octos-cli/src/commands/memory.rs`
+- `crates/octos/octos-memory/src/{hybrid_search,store,memory_store,guard}.rs`; `crates/octos/octos-agent/src/agent/memory.rs`; `crates/octos/octos-cli/src/commands/memory.rs`
 - Octoscript-AppCard `docs/LEDGER-ARCHITECTURE.md` §13 (multi-device: unresolved); `apps/mail/README.md` (isolation of mail and credentials)
 - Kang, Ji, Zhao, Bai. *Memory OS of AI Agent*. arXiv:2506.06326, 2025.

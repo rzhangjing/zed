@@ -14,7 +14,7 @@
 
 M9-α-5/α-6 (PRs `#855`, `#908`, `#909`) deleted the SSE foreground chat
 transport. The sole chat transport is now `/api/ui-protocol/ws` (see
-`crates/octos-cli/src/api/router.rs` and `docs/M9-ALPHA-SOLE-TRANSPORT-ADR.md`).
+`crates/octos/octos-cli/src/api/router.rs` and `docs/M9-ALPHA-SOLE-TRANSPORT-ADR.md`).
 On the client, ingest goes through `octos-web/src/runtime/ui-protocol-bridge.ts`
 exclusively.
 
@@ -77,7 +77,7 @@ The **data plane** for the octos web client is WebSocket UI Protocol v1
    `GET /api/files/{path}`, `GET /api/my/content/{id}/thumbnail`,
    `GET /api/files/list` (small JSON, but driven by the same blob-shaped use
    case). Multi-megabyte bodies belong on HTTP, not on the WS text-frame budget
-   (`MAX_TEXT_FRAME_BYTES = 1 MiB` per `octos-core/src/ui_protocol.rs`).
+   (`MAX_TEXT_FRAME_BYTES = 1 MiB` per `octos/octos-core/src/ui_protocol.rs`).
 
 Everything else — session list, snapshot, messages, files panel, tasks panel,
 status, content panel, content delete — became a JSON-RPC method on the
@@ -165,15 +165,15 @@ clients cannot trip into the new methods without explicit negotiation.
 
 Per-method request and response shapes are documented in
 `api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md` § 7 ("M12 Phase D: Auxiliary
-RPC"). Request/response Rust types live in `crates/octos-core/src/ui_protocol.rs`
+RPC"). Request/response Rust types live in `crates/octos/octos-core/src/ui_protocol.rs`
 (`SessionListParams`/`SessionListResult`, …, `ContentBulkDeleteParams`/
 `ContentBulkDeleteResult`). Implementation dispatchers live in
-`crates/octos-cli/src/api/ui_protocol.rs::handle_session_list` and siblings.
+`crates/octos/octos-cli/src/api/ui_protocol.rs::handle_session_list` and siblings.
 
 ### Per-method error envelopes
 
 Every method uses the standard JSON-RPC 2.0 error envelope documented in
-`octos-core/src/ui_protocol.rs`. The Phase D dispatchers map REST status codes
+`octos/octos-core/src/ui_protocol.rs`. The Phase D dispatchers map REST status codes
 to typed errors with `data.kind` keys so clients can branch on the kind, not
 the HTTP status:
 
@@ -195,7 +195,7 @@ the HTTP status:
 - `auth_unavailable` (`-32120`) — content methods called without a usable
   identity. The WS connection is also closed with code `1008 auth_expired` so
   the client's `crew:auth_expired` flow can clear the token and route to
-  `/login`. See `close_ws_with_code` in `crates/octos-cli/src/api/ui_protocol.rs`.
+  `/login`. See `close_ws_with_code` in `crates/octos/octos-cli/src/api/ui_protocol.rs`.
 - `method_not_supported` (`-32004`) — capability not negotiated.
 - `internal_error` (`-32603`) — REST 5xx other than 503; non-JSON REST body.
 
@@ -250,8 +250,8 @@ defaulted to OFF until soak passed.
 ### D-1 — Server: add WS frames (additive)
 
 Shipped as `#912`. Added the thirteen `UiCommand` variants in
-`crates/octos-cli/src/api/ui_protocol.rs`, their typed
-params/results in `crates/octos-core/src/ui_protocol.rs`, and the
+`crates/octos/octos-cli/src/api/ui_protocol.rs`, their typed
+params/results in `crates/octos/octos-core/src/ui_protocol.rs`, and the
 `UI_PROTOCOL_FEATURE_AUXILIARY_REST_TO_WS_V1` capability flag. Each WS
 dispatcher delegates to the corresponding REST handler function so business
 logic stays single-sourced. Codex review on the original PR landed as a
@@ -342,7 +342,7 @@ were **not** retired and stay REST.
 - Phase C cleanup PRs: `#855`, `#908`, `#909`
 - Phase D landing PRs: `#912` (D-1), `#914` (D-5)
 - Capability flag: `UI_PROTOCOL_FEATURE_AUXILIARY_REST_TO_WS_V1` in
-  `crates/octos-core/src/ui_protocol.rs`
-- WS dispatchers: `crates/octos-cli/src/api/ui_protocol.rs::handle_session_list`
+  `crates/octos/octos-core/src/ui_protocol.rs`
+- WS dispatchers: `crates/octos/octos-cli/src/api/ui_protocol.rs::handle_session_list`
   and siblings
 - Tracking issue: `#1330` (this backfill)

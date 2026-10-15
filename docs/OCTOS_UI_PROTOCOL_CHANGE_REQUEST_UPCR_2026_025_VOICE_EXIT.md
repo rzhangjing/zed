@@ -81,7 +81,7 @@ and `turn/completed`, so the `projection.envelope.v1` cutover (UPCR-2026-014
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs` — `voice/exit` method registration,
+- `crates/octos/octos-core/src/ui_protocol.rs` — `voice/exit` method registration,
   round-trip encode/decode, topic-propagation, and `UI_PROTOCOL_NOTIFICATION_METHODS`
   membership.
 - `--features api` `voice_turn` tests — `[[EXIT]]` parse/strip across the live
@@ -94,7 +94,7 @@ and `turn/completed`, so the `projection.envelope.v1` cutover (UPCR-2026-014
 
 - v1 spec § 6 (catalog), § 8 (`voice/exit`).
 - `UI_PROTOCOL_NOTIFICATION_METHODS` + `methods::VOICE_EXIT` in
-  `crates/octos-core/src/ui_protocol.rs`.
+  `crates/octos/octos-core/src/ui_protocol.rs`.
 - UPCR-2026-024 (voice rich-output visual lifecycle) — the in-band-marker +
   typed-event pattern this change mirrors.
 - Frontend: octos-web `feat/voice-exit-intent` (`voice/exit` → `crew:voice_exit`

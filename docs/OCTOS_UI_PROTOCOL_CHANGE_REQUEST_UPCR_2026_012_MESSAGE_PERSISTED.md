@@ -16,7 +16,7 @@
 
 This change request adds one additive JSON-RPC notification method, `message/persisted`, to the AppUi protocol. The notification fires once per durable commit of a message row to the session ledger, carrying the canonical `(turn_id, thread_id, seq)` tuple plus the message's identity and durability cursor.
 
-Today the closest signal a client gets is `TurnCompletedEvent`, which carries an optional `cursor` but does NOT confirm which message rows committed under that turn (`crates/octos-core/src/ui_protocol.rs:2455-2461`). Spawn_only flows compound this gap: an ack message ("background work started…") is emitted on the wire, but the eventual result message — possibly arriving minutes later under a recovery path — has no synchronous notification confirming it landed in the ledger.
+Today the closest signal a client gets is `TurnCompletedEvent`, which carries an optional `cursor` but does NOT confirm which message rows committed under that turn (`crates/octos/octos-core/src/ui_protocol.rs:2455-2461`). Spawn_only flows compound this gap: an ack message ("background work started…") is emitted on the wire, but the eventual result message — possibly arriving minutes later under a recovery path — has no synchronous notification confirming it landed in the ledger.
 
 The change is strictly additive: no existing method, notification, payload, enum variant, capability bit, or protocol identifier is modified.
 
@@ -24,7 +24,7 @@ The change is strictly additive: no existing method, notification, payload, enum
 
 The 5-day structural plan traces three failure modes to the absence of a durable-commit confirmation event:
 
-1. **Ack/result divergence** (`#738`): `run_pipeline` emits a spawn-ack via `message/delta` + `turn/completed` immediately. The actual result lands minutes later via `synthetic_recovery_inbound` at `crates/octos-cli/src/session_actor.rs:5806-5905`. Today the SPA has no event signaling the durable commit of the result row — only the optional refresh of `cursor` via the next `turn/started`.
+1. **Ack/result divergence** (`#738`): `run_pipeline` emits a spawn-ack via `message/delta` + `turn/completed` immediately. The actual result lands minutes later via `synthetic_recovery_inbound` at `crates/octos/octos-cli/src/session_actor.rs:5806-5905`. Today the SPA has no event signaling the durable commit of the result row — only the optional refresh of `cursor` via the next `turn/started`.
 
 2. **Reload misbinding** (`#740`): under rapid-fire interleave, the SPA optimistically renders message bubbles before durable commit. When the WebSocket reconnects (or the user reloads), the reducer cannot reconcile its optimistic bubbles against the server's authoritative view because no event confirms which seq the server actually wrote.
 
@@ -51,7 +51,7 @@ No existing notification, command, params, results, or enum variants are modifie
 
 Purpose:
 
-- Carry a single, durably-committed message row from the session ledger to subscribed clients. One notification per row, fired AFTER the row is fsynced to the JSONL ledger by `Session::add_message_with_seq` (`crates/octos-bus/src/session.rs:1850-1903`). Idempotent on cursor: the same seq is never emitted twice for the same session.
+- Carry a single, durably-committed message row from the session ledger to subscribed clients. One notification per row, fired AFTER the row is fsynced to the JSONL ledger by `Session::add_message_with_seq` (`crates/octos/octos-bus/src/session.rs:1850-1903`). Idempotent on cursor: the same seq is never emitted twice for the same session.
 
 Notification params:
 
@@ -74,7 +74,7 @@ Required fields:
 
 - `session_id`: canonical session identifier.
 - `seq`: the authoritative committed sequence number assigned by `add_message_with_seq`. Strictly monotonic per session.
-- `role`: open snake_case enum, matching `crates/octos-core::MessageRole`. Initial values: `system | user | assistant | tool`.
+- `role`: open snake_case enum, matching `crates/octos/octos-core::MessageRole`. Initial values: `system | user | assistant | tool`.
 - `message_id`: server-assigned UUID for the row. Stable across replays.
 - `cursor`: durable cursor pointing at this commit. Clients can use this as their `after` value for subsequent `session/hydrate` and `session/open` calls.
 - `source`: open snake_case enum identifying the WRITE PATH that committed this row. Initial values:
@@ -125,7 +125,7 @@ Capability feature: `event.message_persisted.v1`
 
 - All existing clients continue to function unchanged. The notification is opt-in via `X-Octos-Ui-Features`.
 - Legacy daemon versions that do not implement `message/persisted` will not advertise the feature, and clients will not expect it.
-- Server implementation requires emitting the notification from the `add_message_with_seq` post-commit hook. The hook point already exists for the durable-ledger write (`crates/octos-bus/src/session.rs:1872-1894`); this UPCR adds one notification dispatch alongside it.
+- Server implementation requires emitting the notification from the `add_message_with_seq` post-commit hook. The hook point already exists for the durable-ledger write (`crates/octos/octos-bus/src/session.rs:1872-1894`); this UPCR adds one notification dispatch alongside it.
 - Cross-channel: telegram/discord/etc. do not subscribe to UI Protocol notifications. They are unaffected.
 - The notification IS emitted for `source = user` rows, which means the SPA can use it to confirm its own POST /api/chat persisted before rendering the optimistic bubble as committed. (This is the missing piece in today's optimistic-bubble flow.)
 
@@ -133,7 +133,7 @@ Capability feature: `event.message_persisted.v1`
 
 ### Server-side
 
-- Unit tests at `crates/octos-bus/src/session.rs::tests`:
+- Unit tests at `crates/octos/octos-bus/src/session.rs::tests`:
   - `message_persisted_emitted_after_user_commit`
   - `message_persisted_emitted_after_assistant_commit`
   - `message_persisted_emitted_after_tool_commit`
@@ -142,7 +142,7 @@ Capability feature: `event.message_persisted.v1`
   - `message_persisted_not_emitted_on_commit_failure`
   - `message_persisted_strict_ordering_under_concurrent_writes`
   - `message_persisted_idempotent_seq_never_repeated`
-- Integration test at `crates/octos-cli/tests/m9_protocol_message_persisted.rs`:
+- Integration test at `crates/octos/octos-cli/tests/m9_protocol_message_persisted.rs`:
   - Drive a session through user → assistant → tool → spawn_only → recovery; assert one notification per commit, in order, with correct `(turn_id, thread_id, seq, source)` for each.
 
 ### Client-side
@@ -152,7 +152,7 @@ Capability feature: `event.message_persisted.v1`
 
 ### Wire contract
 
-- Golden test in `crates/octos-core/src/ui_protocol.rs`:
+- Golden test in `crates/octos/octos-core/src/ui_protocol.rs`:
   - `golden_message_persisted_event_serde`
   - `golden_message_persisted_strict_ordering`
   - `golden_capabilities_includes_message_persisted_v1_when_negotiated`
@@ -160,7 +160,7 @@ Capability feature: `event.message_persisted.v1`
 ## Rollout
 
 - **Day 1 (this UPCR)**: drafted, reviewed, accepted before any code lands.
-- **Day 2 (PR G in the structural plan)**: server emitter implemented under capability gate. The hook lives in `crates/octos-bus/src/session.rs::add_message_with_seq` post-commit, so it fires for ALL write paths (user, assistant, tool, spawn-only, recovery) without per-call-site changes.
+- **Day 2 (PR G in the structural plan)**: server emitter implemented under capability gate. The hook lives in `crates/octos/octos-bus/src/session.rs::add_message_with_seq` post-commit, so it fires for ALL write paths (user, assistant, tool, spawn-only, recovery) without per-call-site changes.
 - **Day 3 (PR H Layer 1 fixtures)**: fixtures consume the notification as the deterministic durability signal.
 - **Day 4 (PR J web SPA migration)**: SPA subscribes; uses `message/persisted` to correlate optimistic bubbles to durable seqs without backfill round-trip.
 
@@ -187,4 +187,4 @@ Capability feature: `event.message_persisted.v1`
 - [ ] Reviewer sign-off on ordering guarantees (strict per-session monotonic seq).
 - [ ] No conflicts with sibling UPCRs (-009 hydrate, -010 thread-graph, -011 turn-state).
 - [ ] No regression on the existing `turn/completed` cursor-update behavior — the new notification is supplementary, not a replacement.
-- [ ] Status flipped to `accepted` before implementation lands in `crates/octos-bus/src/session.rs::add_message_with_seq` post-commit hook.
+- [ ] Status flipped to `accepted` before implementation lands in `crates/octos/octos-bus/src/session.rs::add_message_with_seq` post-commit hook.

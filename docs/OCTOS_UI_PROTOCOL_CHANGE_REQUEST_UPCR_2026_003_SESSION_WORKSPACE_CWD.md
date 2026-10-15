@@ -85,11 +85,11 @@ Example:
 
 Coverage lives in:
 
-- `crates/octos-core/src/ui_protocol.rs`
+- `crates/octos/octos-core/src/ui_protocol.rs`
   - `SessionOpenParams.cwd` round-trips and remains optional for legacy
     payloads
   - `workspace_root` round-trips in `SessionOpenResult`
-- `crates/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
   - `session/open` rejects `cwd` without the negotiated feature
   - client-supplied `cwd` drives the session runtime workspace
   - two sessions on one profile with different cwds stay isolated

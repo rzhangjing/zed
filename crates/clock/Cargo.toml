@@ -1,6 +1,6 @@
 [package]
 # Renamed from `clock` when the Octos workspace was merged in: Octos ships a
-# bin-only skill crate (`crates/app-skills/time`) whose package name is also
+# bin-only skill crate (`crates/octos/app-skills/time`) whose package name is also
 # `clock`, and a Cargo workspace cannot hold two packages with the same name.
 # The dependency key stays `clock` (see the workspace table in the root
 # Cargo.toml), so `clock.workspace = true` and `use clock::…` are unchanged.

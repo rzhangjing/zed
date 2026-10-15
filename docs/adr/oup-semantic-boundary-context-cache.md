@@ -157,7 +157,7 @@ An independent read-only review of the implemented worktree found defects in
 the delivered milestone. The fixes below are part of the accepted record; where
 they change a contract stated elsewhere in this document, this subsection wins.
 
-Provider layer (`crates/octos-llm`):
+Provider layer (`crates/octos/octos-llm`):
 
 - Every wrapper (`SwappableProvider`, `RetryProvider`, `MiddlewareStack`,
   `ContextWindowOverride`, `ProviderRouter`, `FallbackProvider`) forwards
@@ -242,7 +242,7 @@ Durable UI ledger privacy (`octos_core::secret_redaction`):
   client or server frame therefore cannot bypass the scrub by being persisted
   as evidence; ordinary frames remain byte-identical after the scrub.
 
-OUP server (`crates/octos-cli/src/api`):
+OUP server (`crates/octos/octos-cli/src/api`):
 
 - Canonical ContextManager writes survive active turns. The per-turn prompt
   scratch records the canonical source watermark when it is cloned at turn
@@ -307,7 +307,7 @@ OUP server (`crates/octos-cli/src/api`):
   `api_style=`, so the client sees every failed lane for HTTP-status failures
   as well as transport failures.
 
-Agent loop (`crates/octos-agent`):
+Agent loop (`crates/octos/octos-agent`):
 
 - The convergence checkpoint reflection is re-injected each iteration as a
   User-role typed tail event
@@ -379,7 +379,7 @@ fresh live smoke against the rebuilt binaries, and then re-ran the real
 with a regression test that was observed failing before its fix. Where a
 statement here changes an earlier one in this record, this subsection wins.
 
-Provider layer and epoch identity (`crates/octos-llm`, `crates/octos-cli`):
+Provider layer and epoch identity (`crates/octos/octos-llm`, `crates/octos/octos-cli`):
 
 - The prompt-cache epoch compared two different lane identities. The
   pre-call reconciliation used `provider_name()` — the router label, which
@@ -423,7 +423,7 @@ Provider layer and epoch identity (`crates/octos-llm`, `crates/octos-cli`):
   Anthropic-style lane costs one message-cache miss for that call. This is
   the accepted trade-off against a reflection that can call tools.
 
-Agent loop (`crates/octos-agent`):
+Agent loop (`crates/octos/octos-agent`):
 
 - The checkpoint request derived from the bare `AgentConfig` rather than the
   action call's `ChatConfig`: it dropped the tier-2 `context_management`
@@ -442,7 +442,7 @@ Agent loop (`crates/octos-agent`):
   back to the spawn cap (`DEFAULT_SPAWN_MAX_ITERATIONS`) when the worker
   config is unset or says unlimited.
 
-OUP server (`crates/octos-cli/src/api`):
+OUP server (`crates/octos/octos-cli/src/api`):
 
 - A drained `turn/steer` duplicated every pre-steer row of its turn,
   durably, and — because the host persisted it at drain time — gave the
@@ -707,25 +707,25 @@ surfaces rather than README-level descriptions.
 
 ### OUP and Octos
 
-- `crates/octos-cli/src/api/context_manager.rs`
+- `crates/octos/octos-cli/src/api/context_manager.rs`
   - `TranscriptItemKind`
   - `record_item_with_source_ref`
   - `record_tool_output_with_source_ref`
   - `for_prompt`
   - `compact_context`
   - `load_or_rebuild_context_manager`
-- `crates/octos-cli/src/api/ui_protocol_transport.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol_transport.rs`
   - `AppUiPromptContextBridge`
   - OUP turn-start context loading and per-turn Agent construction
   - peer, goal-progress, monitor, and active-goal prompt injection
   - compaction lifecycle and final response persistence
-- `crates/octos-agent/src/compaction.rs`
+- `crates/octos/octos-agent/src/compaction.rs`
   - heuristic and LLM summary input rendering
-- `crates/octos-agent/src/agent/compaction.rs`
+- `crates/octos/octos-agent/src/agent/compaction.rs`
   - prompt-context-manager early return from legacy tier-1 compaction
-- `crates/octos-llm/src/config.rs`
+- `crates/octos/octos-llm/src/config.rs`
   - shared `ChatConfig`
-- `crates/octos-llm/src/openai.rs`, `anthropic.rs`, and `gemini.rs`
+- `crates/octos/octos-llm/src/openai.rs`, `anthropic.rs`, and `gemini.rs`
   - final provider request shape and cache usage parsing
 - `specs/kv-cache-friendly-compaction.spec.md`
   - the earlier cache-friendly work and its explicit exclusion of the OUP
@@ -1230,10 +1230,10 @@ Changes:
 
 Primary files:
 
-- `crates/octos-agent/src/agent/llm_call.rs`
-- `crates/octos-llm/src/config.rs`
-- provider request builders under `crates/octos-llm/src/`
-- `crates/octos-cli/src/api/ui_protocol_transport.rs`
+- `crates/octos/octos-agent/src/agent/llm_call.rs`
+- `crates/octos/octos-llm/src/config.rs`
+- provider request builders under `crates/octos/octos-llm/src/`
+- `crates/octos/octos-cli/src/api/ui_protocol_transport.rs`
 
 Exit criteria:
 
@@ -1257,7 +1257,7 @@ Changes:
 
 Primary file:
 
-- `crates/octos-cli/src/api/context_manager.rs`
+- `crates/octos/octos-cli/src/api/context_manager.rs`
 
 Exit criteria:
 
@@ -1285,9 +1285,9 @@ Changes:
 
 Primary files:
 
-- `crates/octos-cli/src/api/context_manager.rs`
-- `crates/octos-cli/src/api/ui_protocol_transport.rs`
-- `crates/octos-agent/src/compaction.rs`
+- `crates/octos/octos-cli/src/api/context_manager.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol_transport.rs`
+- `crates/octos/octos-agent/src/compaction.rs`
 
 Exit criteria:
 
@@ -1312,8 +1312,8 @@ Changes:
 
 Primary files:
 
-- `crates/octos-cli/src/api/ui_protocol_transport.rs`
-- Agent prompt-segment assembly under `crates/octos-agent/src/`
+- `crates/octos/octos-cli/src/api/ui_protocol_transport.rs`
+- Agent prompt-segment assembly under `crates/octos/octos-agent/src/`
 
 Exit criteria:
 
@@ -1337,10 +1337,10 @@ Changes:
 
 Primary files:
 
-- `crates/octos-llm/src/config.rs`
-- `crates/octos-llm/src/openai.rs`
-- `crates/octos-llm/src/anthropic.rs`
-- `crates/octos-llm/src/gemini.rs`
+- `crates/octos/octos-llm/src/config.rs`
+- `crates/octos/octos-llm/src/openai.rs`
+- `crates/octos/octos-llm/src/anthropic.rs`
+- `crates/octos/octos-llm/src/gemini.rs`
 
 Exit criteria:
 

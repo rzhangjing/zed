@@ -7,7 +7,7 @@
  *
  * The dashboard is a read-only view of backend truth — there is no UI-side
  * state machine. If a field needs to appear in the dashboard, the backend
- * must expose it (see crates/octos-cli/src/api/metrics.rs).
+ * must expose it (see crates/octos/octos-cli/src/api/metrics.rs).
  */
 
 export type HarnessLifecycleState =

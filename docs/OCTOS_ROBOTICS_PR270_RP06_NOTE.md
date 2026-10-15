@@ -10,7 +10,7 @@ The `octos-dora-mcp` crate proposed in PR #270 was **never merged to `main`**.
 Pre-merge inspection of `origin/main` (and of this stacked branch
 `robotics-rp/06-dora-mcp`, which is `origin/main` + RP01) shows:
 
-- No `crates/octos-dora-mcp/` directory.
+- No `crates/octos/octos-dora-mcp/` directory.
 - No `examples/dora-bridge-config/` directory.
 - No `octos_dora_mcp` imports or `octos-dora-mcp` Cargo entries anywhere.
 

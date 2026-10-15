@@ -114,7 +114,7 @@ assistant deltas on voice turns rather than having the bare ephemeral
 
 ## Tests
 
-- `crates/octos-core/src/ui_protocol.rs` — `visual/*` method registration,
+- `crates/octos/octos-core/src/ui_protocol.rs` — `visual/*` method registration,
   round-trip encode/decode, topic-propagation, and `supported_methods`
   membership (28 markers across the suite).
 - `--features api` `voice_turn` tests — marker stripping across live delta,
@@ -126,7 +126,7 @@ assistant deltas on voice turns rather than having the bare ephemeral
 - v1 spec § 6 (catalog), § 8 (`visual/generating`, `visual/succeeded`,
   `visual/failed`).
 - `UI_PROTOCOL_NOTIFICATION_METHODS` + `methods::VISUAL_*` in
-  `crates/octos-core/src/ui_protocol.rs`.
+  `crates/octos/octos-core/src/ui_protocol.rs`.
 - UPCR-2026-014 (projection envelope) — the cutover this lifecycle is designed
   to survive.
 - #1476 (live-camera context hint), frontend octos-web #232 / #238 / #239.

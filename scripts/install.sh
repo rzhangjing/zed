@@ -139,7 +139,7 @@ PREFIX="$(normalize_path "$PREFIX")"
 DATA_DIR="$(normalize_path "$DATA_DIR")"
 
 # ── Config home resolver (bash mirror of resolve_config_context in Rust) ──
-# Keep this EXACTLY consistent with crates/octos-cli/src/config_context.rs.
+# Keep this EXACTLY consistent with crates/octos/octos-cli/src/config_context.rs.
 #
 #   config_home = $OCTOS_CONFIG_DIR                       (if set, non-empty)
 #               | $DATA_DIR                               (if explicit: an
@@ -1478,7 +1478,7 @@ case "$TRIPLE" in
     x86_64-apple-darwin)
         err "macOS x86_64 does not have pre-built binaries yet."
         hint "Build from source with the canonical feature set:"
-        hint "  cargo install --path crates/octos-cli \\"
+        hint "  cargo install --path crates/octos/octos-cli \\"
         hint "      --features \"api,telegram,discord,dingtalk,whatsapp,feishu,twilio,wecom,wecom-bot,audio_mp3\""
         hint "(matches scripts/milestone-ci.sh; \`api\` is required for \`octos serve\`.)"
         ;;

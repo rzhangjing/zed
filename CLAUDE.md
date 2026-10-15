@@ -16,7 +16,7 @@ cargo test -p octos-agent test_name  # Run single test
 cargo clippy --workspace         # Lint
 cargo fmt --all                  # Format
 cargo fmt --all -- --check       # Check formatting
-cargo install --path crates/octos-cli \
+cargo install --path crates/octos/octos-cli \
     --features "api,telegram,discord,whatsapp,feishu,twilio,wecom,wecom-bot,audio_mp3"
                                           # Install CLI locally with the
                                           # canonical feature default
@@ -55,15 +55,15 @@ Alongside octos-agent:
 - **octos-pipeline**: DOT-graph pipeline engine ！ per-node model selection, parallel fan-out, checkpoints, human gates
 - **octos-plugin**: Plugin SDK ！ manifest parsing, discovery, gating (binary/env/OS checks)
 
-Bundled skills in `crates/app-skills/` (weather, time, news, deep-search, etc.) and `crates/platform-skills/` (voice).
+Bundled skills in `crates/octos/app-skills/` (weather, time, news, deep-search, etc.) and `crates/octos/platform-skills/` (voice).
 
 Commands: chat, init, status, gateway, serve, clean, completions, cron, channels, auth (login/logout/status), skills (list/install/remove).
 
 Three runtime modes: `octos chat` (interactive CLI), `octos gateway` (multi-channel), `octos serve` (web dashboard + 91 REST endpoints).
 
-Auth module (`octos-cli/src/auth/`): OAuth PKCE + device code for OpenAI, paste-token for others. Stored in `~/.octos/auth.json`. `config.rs` checks auth store before env vars.
+Auth module (`octos/octos-cli/src/auth/`): OAuth PKCE + device code for OpenAI, paste-token for others. Stored in `~/.octos/auth.json`. `config.rs` checks auth store before env vars.
 
-### Key Flow: Agent Loop (`octos-agent/src/agent.rs`)
+### Key Flow: Agent Loop (`octos/octos-agent/src/agent.rs`)
 
 1. Build messages (system prompt + conversation history + memory context)
 2. Call LLM with tool specs (filtered by ToolPolicy + provider policy)
@@ -71,35 +71,35 @@ Auth module (`octos-cli/src/auth/`): OAuth PKCE + device code for OpenAI, paste-
 4. If EndTurn or budget exceeded -> return result
 5. Context compaction kicks in when token budget fills (`compaction.rs`)
 
-### Tool System (`octos-agent/src/tools/`)
+### Tool System (`octos/octos-agent/src/tools/`)
 
 All tools implement `Tool` trait (`spec() -> ToolSpec`, `execute(&Value) -> ToolResult`). Registered in `ToolRegistry` (HashMap). Tools: shell, read_file, write_file, edit_file, glob, grep, list_dir, web_search, web_fetch, message, spawn, cron, browser (feature-gated). Tool argument size limit: 1MB (non-allocating `estimate_json_size` with escape accounting). File tools use `O_NOFOLLOW` (Unix) for symlink-safe I/O. Shared SSRF protection in `tools/ssrf.rs`.
 
 **Tool Policies** (`tools/policy.rs`): Allow/deny lists with deny-wins semantics, wildcard matching (`exec*`), and named groups (`group:fs`, `group:runtime`, `group:search`, `group:web`, `group:sessions`). Provider-specific policies via `tools.byProvider` in config.
 
-### Sandbox (`octos-agent/src/sandbox/`)
+### Sandbox (`octos/octos-agent/src/sandbox/`)
 
 Five sandbox backends: `Bwrap` (Linux), `Landlock` (Linux, octos-sandbox helper), `Macos` (sandbox-exec), `AppContainer` (Windows, octos-sandbox.exe helper), `Docker` (any OS). Resolution is a pure decision layer (`decide_sandbox` over `HostOs` + `HostBackendProbe` ！ every platform's matrix unit-tested from any host): an explicit mode that cannot be honored on this host FAILS CLOSED with a typed `SandboxUnavailable` refusal (`RefusingSandbox` ！ every command refuses with per-OS remediation; never a silent `NoSandbox`, never a blind ENOENT backend). `SandboxMode::Auto` picks the best available backend; with none it degrades to `NoSandbox` loudly (warned once per process, surfaced by `octos doctor`) unless `sandbox.fail_closed = true` (default false) turns the degradation into a refusal. `enabled = false` / `mode = "none"` remain the explicit unconfined opt-outs and beat `fail_closed`. Shared `BLOCKED_ENV_VARS` constant (18 env vars) across all backends and MCP server spawning. Docker supports mount modes (none/ro/rw), resource limits (CPU/memory/PIDs), network isolation. Path validation rejects injection characters (`:`, `\0`, `\n`, `\r` for Docker; control chars, `(`, `)`, `\`, `"` for macOS SBPL).
 
-### MCP (`octos-agent/src/mcp.rs`)
+### MCP (`octos/octos-agent/src/mcp.rs`)
 
 JSON-RPC stdio transport for MCP servers. Env var sanitization via shared `BLOCKED_ENV_VARS`. Input schema validation: max depth 10, max size 64KB ！ tools with invalid schemas are rejected at registration.
 
-### Context Compaction (`octos-agent/src/compaction.rs`)
+### Context Compaction (`octos/octos-agent/src/compaction.rs`)
 
 Token-aware message compaction: estimates tokens, strips tool arguments, summarizes to first lines, preserves recent tool call/result pairs.
 
-### LLM Providers (`octos-llm/src/`)
+### LLM Providers (`octos/octos-llm/src/`)
 
 `LlmProvider` trait with `chat()` method. Four native providers: `AnthropicProvider`, `OpenAIProvider`, `GeminiProvider`, `OpenRouterProvider`. OpenAI-compatible families via `with_base_url()`, registered in `registry/` (one module per family + one line in `ALL`; `model_catalog.json` is the SSOT for model names/defaults and gates onboarding visibility). The unified `local` family (aliases: llamacpp/llama.cpp/llama-server/lmstudio/openai-compatible) covers any local OpenAI-compatible server ！ keyless, zero-config default `http://127.0.0.1:8080/v1`; `local_discovery.rs` holds candidate ports + `/v1/models` parsing, used by `octos doctor`. 3-layer failover: `RetryProvider` (exponential backoff on 429/5xx) ★ `ProviderChain` ★ `AdaptiveRouter` (hedge racing, lane scoring, circuit breakers).
 
-### Plugin System (`octos-agent/src/plugins/`, `octos-plugin/`)
+### Plugin System (`octos/octos-agent/src/plugins/`, `octos/octos-plugin/`)
 
 Skills are self-contained binaries with `manifest.json` declarations. Binary protocol: `./skill_binary <tool_name>` with JSON on stdin, JSON `{success, output, files_to_send}` on stdout. Discovery scans directories with precedence rules. Gating checks binary existence, env, and OS requirements.
 
 **spawn_only tools**: Manifest field `spawn_only: true` marks tools for background execution. Auto-intercepted in the execution loop ！ wrapped in `tokio::spawn`, returns immediately. No LLM cooperation needed. SKILL.md auto-injected as system prompt for skills with spawn_only tools.
 
-### Pipeline Engine (`octos-pipeline/`)
+### Pipeline Engine (`octos/octos-pipeline/`)
 
 DOT-graph based multi-step agent workflows. Per-node model selection via `ModelStylesheet`. Parallel fan-out spawns N concurrent workers at runtime. Includes artifact store, checkpoints, condition evaluation, human gates. `PipelineResult` tracks output, token usage, per-node summaries, modified files.
 
@@ -107,25 +107,25 @@ DOT-graph based multi-step agent workflows. Per-node model selection via `ModelS
 
 All enabled tools are sent to the LLM every turn (full schema) ！ there is no LRU-by-recency deferral, no `activate_tools` meta-tool, and no config-driven group deferral. `spawn_only` tools still auto-redirect to background execution but remain visible in `specs()`. `internal_hidden` tools (mofa_make dispatcher targets) remain hidden from `specs()` but callable internally via `get()`. `provider_policy` and `context_filter` are the only remaining `specs()` filters.
 
-### Memory (`octos-memory/src/`)
+### Memory (`octos/octos-memory/src/`)
 
 - `EpisodeStore`: redb database at `.octos/episodes.redb`, stores task completion summaries
 - `MemoryStore`: Long-term memory (MEMORY.md), daily notes, recent memories (7-day window)
 - `HybridSearch`: BM25 + vector (cosine similarity) hybrid ranking with HNSW index (`hnsw_rs`). Configurable weights via `with_weights()` (default 0.7 vector / 0.3 BM25). Named HNSW constants. BM25 epsilon prevents NaN. Falls back to BM25-only without embedding provider.
 
-### Message Coalescing (`octos-bus/src/coalesce.rs`)
+### Message Coalescing (`octos/octos-bus/src/coalesce.rs`)
 
 Splits long messages into channel-safe chunks (paragraph > newline > sentence > space > hard cut). Per-channel limits. MAX_CHUNKS (50) DoS limit. UTF-8 safe boundary detection.
 
-### Session Management (`octos-bus/src/session.rs`)
+### Session Management (`octos/octos-bus/src/session.rs`)
 
 JSONL persistence with LRU in-memory cache. Session forking (`/new` command) with parent_key tracking. Percent-encoded filenames with hash suffix on truncation (prevents collisions). Files roll into `<name>.segments/NNNNNN.jsonl` at `OCTOS_SESSION_SEGMENT_BYTES` (8 MiB); loads read the newest segments up to `OCTOS_SESSION_LOAD_BUDGET_BYTES` (32 MiB, 0 = all). Atomic write-then-rename for crash safety.
 
-### Hooks (`octos-agent/src/hooks.rs`)
+### Hooks (`octos/octos-agent/src/hooks.rs`)
 
 Lifecycle hook system for running shell commands at agent events. 4 events: `before_tool_call`, `after_tool_call`, `before_llm_call`, `after_llm_call`. Before-hooks can deny operations (exit code 1). Shell protocol: JSON payload on stdin, exit code semantics (0=allow, 1=deny, 2+=error). Circuit breaker auto-disables hooks after 3 consecutive failures (configurable via `HookExecutor::with_threshold()`). Commands use argv array (no shell interpretation). Environment sanitized via shared `BLOCKED_ENV_VARS`. Tilde expansion supports `~/` and `~username/`. Config: `hooks` array in config.json with `event`, `command`, `timeout_ms` (default 5000), `tool_filter`. Wired in chat.rs, gateway.rs, serve.rs. Hook changes trigger restart via config_watcher.
 
-### Config Hot-Reload (`octos-cli/src/config_watcher.rs`)
+### Config Hot-Reload (`octos/octos-cli/src/config_watcher.rs`)
 
 SHA-256 hash-based change detection. Hot-reload for system prompt; restart-required for provider/model/hooks changes.
 

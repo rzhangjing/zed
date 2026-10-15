@@ -11,7 +11,7 @@
 //! model text never authorizes access by itself, so any host tool registered
 //! over this connection must re-check its own permissions where it runs.
 //!
-//! Frame shape (from `crates/octos-cli/src/embedded.rs` and the OUP
+//! Frame shape (from `crates/octos/octos-cli/src/embedded.rs` and the OUP
 //! specification): `{"jsonrpc": "2.0", "id": …, "method": …, "params": …}` for
 //! requests, a frame with the same `id` for the reply, and frames without an
 //! `id` for notifications the kernel initiates.
@@ -19,7 +19,7 @@
 //! What is deliberately not here yet: `peer/prepare` staging. Host *peers* are
 //! not: [`super::peers`] speaks `peer/tools/register`, `peer/tool/call`,
 //! `peer/tool/cancel` and `peer/tool/result` over this connection, the way the
-//! OUP host-tool contract requires (see `crates/octos-cli/src/peers/host_tools.rs`).
+//! OUP host-tool contract requires (see `crates/octos/octos-cli/src/peers/host_tools.rs`).
 
 use futures::channel::{mpsc, oneshot};
 use futures::StreamExt as _;

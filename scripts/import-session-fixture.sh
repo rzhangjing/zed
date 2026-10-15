@@ -11,10 +11,10 @@
 #     fixed-three-user-overflow.jsonl
 #
 # The fixture lands in:
-#   crates/octos-bus/tests/fixtures/jsonl/<local-fixture-name>
+#   crates/octos/octos-bus/tests/fixtures/jsonl/<local-fixture-name>
 #
 # After import, scrub PII from `content` fields if needed, and add a
-# corresponding `#[test]` to crates/octos-bus/tests/jsonl_replay_thread_binding.rs
+# corresponding `#[test]` to crates/octos/octos-bus/tests/jsonl_replay_thread_binding.rs
 # wiring the fixture into the regression suite.
 
 set -euo pipefail
@@ -32,7 +32,7 @@ LOCAL_NAME="$3"
 # where the script is invoked from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-FIXTURES_DIR="${REPO_ROOT}/crates/octos-bus/tests/fixtures/jsonl"
+FIXTURES_DIR="${REPO_ROOT}/crates/octos/octos-bus/tests/fixtures/jsonl"
 
 if [[ ! -d "${FIXTURES_DIR}" ]]; then
   echo "fixtures dir not found: ${FIXTURES_DIR}" >&2
@@ -80,7 +80,7 @@ cat <<EOF
 Imported. Next steps:
   1. Scrub PII from \`content\` fields if needed (the harness only reads
      role, thread_id, client_message_id, response_to_client_message_id).
-  2. Add a #[test] in crates/octos-bus/tests/jsonl_replay_thread_binding.rs
+  2. Add a #[test] in crates/octos/octos-bus/tests/jsonl_replay_thread_binding.rs
      that calls check_jsonl on this fixture and asserts the expectation.
   3. Run: cargo test -p octos-bus --test jsonl_replay_thread_binding
 EOF

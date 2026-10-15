@@ -48,7 +48,7 @@ Session actor tests always run single-threaded (`--test-threads=1`) because they
 
 ## Feature Coverage
 
-### Adaptive Routing (`crates/octos-llm/src/adaptive.rs` — 19 tests)
+### Adaptive Routing (`crates/octos/octos-llm/src/adaptive.rs` — 19 tests)
 
 Tests the `AdaptiveRouter` which manages multiple LLM providers with metrics-driven selection.
 
@@ -101,7 +101,7 @@ Tests the `AdaptiveRouter` which manages multiple LLM providers with metrics-dri
 | `test_adaptive_status_reports_correctly` | Status struct reflects current mode/count |
 | `test_empty_router_panics` | Asserts at least 1 provider required |
 
-### Responsiveness Observer (`crates/octos-llm/src/responsiveness.rs` — 8 tests)
+### Responsiveness Observer (`crates/octos/octos-llm/src/responsiveness.rs` — 8 tests)
 
 Tests the latency tracker that drives auto-escalation.
 
@@ -128,7 +128,7 @@ Tests the latency tracker that drives auto-escalation.
 | `test_multiple_activation_cycles` | Activate → deactivate → reactivate works |
 | `test_window_caps_at_max_size` | Rolling window stays at 20 entries |
 
-### Queue Modes and Session Actor (`crates/octos-cli/src/session_actor.rs` — 9 tests)
+### Queue Modes and Session Actor (`crates/octos/octos-cli/src/session_actor.rs` — 9 tests)
 
 Tests the per-session actor that owns message processing, queue policies, and auto-protection.
 
@@ -173,7 +173,7 @@ Tests the per-session actor that owns message processing, queue policies, and au
 |------|-----------------|
 | `test_strip_think_tags` | `<think>...</think>` block removal from LLM output |
 
-### Session Persistence (`crates/octos-bus/src/session.rs` — 28 tests)
+### Session Persistence (`crates/octos/octos-bus/src/session.rs` — 28 tests)
 
 Tests JSONL-backed session storage with LRU caching.
 
@@ -299,7 +299,7 @@ The local `scripts/ci.sh` is a superset — it runs the same three steps plus fo
 | `scripts/ci.sh` | Local CI script (this document) |
 | `scripts/pre-release.sh` | Full release smoke tests (build, E2E, skill binaries) |
 | `.github/workflows/ci.yml` | GitHub Actions CI |
-| `crates/octos-llm/src/adaptive.rs` | Adaptive router + 19 tests |
-| `crates/octos-llm/src/responsiveness.rs` | Responsiveness observer + 8 tests |
-| `crates/octos-cli/src/session_actor.rs` | Session actor + 9 tests |
-| `crates/octos-bus/src/session.rs` | Session persistence + 28 tests |
+| `crates/octos/octos-llm/src/adaptive.rs` | Adaptive router + 19 tests |
+| `crates/octos/octos-llm/src/responsiveness.rs` | Responsiveness observer + 8 tests |
+| `crates/octos/octos-cli/src/session_actor.rs` | Session actor + 9 tests |
+| `crates/octos/octos-bus/src/session.rs` | Session persistence + 28 tests |

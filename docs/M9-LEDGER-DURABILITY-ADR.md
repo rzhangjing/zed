@@ -7,7 +7,7 @@ Related: issue #643, workstream `~/home/octos-app/m9-fixes/M9-FIX-05-ledger-pers
 
 ## Context
 
-The M9.6 in-memory event ledger at `crates/octos-cli/src/api/ui_protocol_ledger.rs`
+The M9.6 in-memory event ledger at `crates/octos/octos-cli/src/api/ui_protocol_ledger.rs`
 backs the UI Protocol v1's cursor-based replay-on-reconnect contract. The
 pre-fix shape was `OnceLock<Arc<UiProtocolLedger>>` with a 1024-event ring
 buffer per session, no compaction, no TTL, no LRU, no persistence.

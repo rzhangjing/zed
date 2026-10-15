@@ -232,5 +232,5 @@ before relying on job methods or notifications.
 ## References
 
 - UPCR-2026-044 for manifest-declared skill action discovery and sync invoke.
-- `crates/octos-cli/src/api/ui_protocol.rs::APPUI_EXTRA_METHODS`.
-- `crates/octos-core/src/ui_protocol.rs::UI_PROTOCOL_NOTIFICATION_METHODS`.
+- `crates/octos/octos-cli/src/api/ui_protocol.rs::APPUI_EXTRA_METHODS`.
+- `crates/octos/octos-core/src/ui_protocol.rs::UI_PROTOCOL_NOTIFICATION_METHODS`.

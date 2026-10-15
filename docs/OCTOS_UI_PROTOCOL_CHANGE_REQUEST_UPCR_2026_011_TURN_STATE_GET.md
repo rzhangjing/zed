@@ -16,13 +16,13 @@
 
 This change request adds one additive JSON-RPC command method, `turn/state/get`, to the AppUi protocol. The command returns the authoritative lifecycle state of one turn: `active | interrupting | completed | errored | interrupted | unknown`, plus optional `started_at`, `completed_at`, `thread_id`, and the list of `committed_seqs` for the turn's persisted messages.
 
-The server already maintains this information in the active-turn registry at `crates/octos-cli/src/api/ui_protocol.rs:2030-2135` (the `ActiveConnectionTurns` map keyed by `(SessionKey, TurnId)`). Today the registry is internal — clients must INFER turn state from notification ordering (`turn/started → message/delta* → turn/completed | turn/error`). When a client misses or interleaves notifications during reconnect, this inference fails.
+The server already maintains this information in the active-turn registry at `crates/octos/octos-cli/src/api/ui_protocol.rs:2030-2135` (the `ActiveConnectionTurns` map keyed by `(SessionKey, TurnId)`). Today the registry is internal — clients must INFER turn state from notification ordering (`turn/started → message/delta* → turn/completed | turn/error`). When a client misses or interleaves notifications during reconnect, this inference fails.
 
 The change is strictly additive: no existing method, notification, payload, enum variant, capability bit, or protocol identifier is modified.
 
 ## Motivation
 
-The 5-day structural plan traces the live-wire side of the thread-binding bug chain (`#738`, `#740`, sticky-map drift in `crates/octos-bus/src/api_channel.rs:97-103`) to a single root cause: when a late-arriving server frame (e.g., `edit_message`, `send_raw_sse`) arrives without a typed thread_id, the channel falls back to "the most-recent sticky thread for this chat_id" — which has been rotated forward by intervening user messages.
+The 5-day structural plan traces the live-wire side of the thread-binding bug chain (`#738`, `#740`, sticky-map drift in `crates/octos/octos-bus/src/api_channel.rs:97-103`) to a single root cause: when a late-arriving server frame (e.g., `edit_message`, `send_raw_sse`) arrives without a typed thread_id, the channel falls back to "the most-recent sticky thread for this chat_id" — which has been rotated forward by intervening user messages.
 
 The fundamental question the channel cannot answer today is: **"is the originating turn for this frame still active, and what thread_id did it own?"**. A server can answer this trivially — the active-turn registry already exists. But the client cannot ask. Two consequences:
 
@@ -117,7 +117,7 @@ A `turn/state/get` request for a known session but unknown turn returns `state: 
 
 Capability feature: `state.turn_state_get.v1`
 
-- Advertised through optional `supported_features` in `UiProtocolCapabilities` (`crates/octos-core/src/ui_protocol.rs::UiProtocolCapabilities`).
+- Advertised through optional `supported_features` in `UiProtocolCapabilities` (`crates/octos/octos-core/src/ui_protocol.rs::UiProtocolCapabilities`).
 - Clients request it through `X-Octos-Ui-Features` using comma or space-separated feature tokens, matching the precedent from UPCR-2026-001 (typed approvals) and UPCR-2026-007 (session capabilities).
 - If the client did not request the feature, the server MUST NOT include `turn/state/get` in `supported_methods` and MUST return JSON-RPC `-32601 Method not found` if it is invoked.
 - The capability schema version is `1`.
@@ -135,7 +135,7 @@ The feature MUST always be included in the server's known feature registry once 
 
 ### Server-side
 
-- Unit tests at `crates/octos-cli/src/api/ui_protocol.rs::tests`:
+- Unit tests at `crates/octos/octos-cli/src/api/ui_protocol.rs::tests`:
   - `turn_state_get_returns_active_for_in_flight_turn`
   - `turn_state_get_returns_completed_after_turn_completed_event`
   - `turn_state_get_returns_errored_after_turn_error_event`
@@ -145,7 +145,7 @@ The feature MUST always be included in the server's known feature registry once 
   - `turn_state_get_rejects_empty_turn_id`
   - `turn_state_get_negotiation_excluded_when_feature_not_requested`
   - `turn_state_get_negotiation_included_when_feature_requested`
-- Integration test at `crates/octos-cli/tests/m9_protocol_turn_state_get.rs`:
+- Integration test at `crates/octos/octos-cli/tests/m9_protocol_turn_state_get.rs`:
   - Drive a real session through `turn/start → message/delta → turn/completed`; assert `turn/state/get` returns each state at the expected boundary.
 
 ### Client-side
@@ -155,7 +155,7 @@ The feature MUST always be included in the server's known feature registry once 
 
 ### Wire contract
 
-- Golden test in `crates/octos-core/src/ui_protocol.rs` (the literal protocol contract gate):
+- Golden test in `crates/octos/octos-core/src/ui_protocol.rs` (the literal protocol contract gate):
   - `golden_turn_state_get_params_serde`
   - `golden_turn_state_get_result_serde`
   - `golden_capabilities_includes_turn_state_get_v1_when_negotiated`
@@ -189,4 +189,4 @@ The feature MUST always be included in the server's known feature registry once 
 - [ ] Reviewer sign-off on the `state` enum value list.
 - [ ] No conflicts with the existing AppUi v1alpha1 method set.
 - [ ] No conflicts with sibling UPCRs (-009, -010, -012).
-- [ ] Status flipped to `accepted` before implementation lands in `crates/octos-cli/src/api/ui_protocol.rs`.
+- [ ] Status flipped to `accepted` before implementation lands in `crates/octos/octos-cli/src/api/ui_protocol.rs`.

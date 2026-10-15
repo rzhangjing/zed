@@ -371,7 +371,7 @@ export function buildTurnStartExtras(
 // session — a second `turn/start` arriving while the previous turn's
 // foreground phase is still running is rejected with the error
 // `"a turn is already running for this session"`
-// (see `crates/octos-cli/src/api/ui_protocol.rs::handle_turn_start`).
+// (see `crates/octos/octos-cli/src/api/ui_protocol.rs::handle_turn_start`).
 //
 // Pre-fix, `sendMessageV1` called `bridge.sendTurn(...)` immediately. When
 // the user (or a soak test) sent a second prompt before the first turn's

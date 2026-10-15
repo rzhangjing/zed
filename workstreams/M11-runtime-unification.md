@@ -66,15 +66,15 @@ Owns:
 - The type signatures of `ProfileRuntime`, `SessionRuntime`, and
   `SessionRuntimeCache`. No behavior yet — types compile, doc
   comments fully specify the contract.
-- A new module `crates/octos-cli/src/runtime/`.
+- A new module `crates/octos/octos-cli/src/runtime/`.
 
 Allowed areas:
 
-- `crates/octos-cli/src/runtime/mod.rs` (new)
-- `crates/octos-cli/src/runtime/profile.rs` (new)
-- `crates/octos-cli/src/runtime/session.rs` (new)
-- `crates/octos-cli/src/runtime/cache.rs` (new)
-- `crates/octos-cli/src/lib.rs` (add `mod runtime;`)
+- `crates/octos/octos-cli/src/runtime/mod.rs` (new)
+- `crates/octos/octos-cli/src/runtime/profile.rs` (new)
+- `crates/octos/octos-cli/src/runtime/session.rs` (new)
+- `crates/octos/octos-cli/src/runtime/cache.rs` (new)
+- `crates/octos/octos-cli/src/lib.rs` (add `mod runtime;`)
 
 Deliverables:
 
@@ -137,9 +137,9 @@ Depends on: M11-A.
 
 Allowed areas:
 
-- `crates/octos-cli/src/runtime/profile.rs`
-- `crates/octos-cli/src/commands/gateway/gateway_runtime.rs`
-- `crates/octos-cli/src/skills_scope.rs` (already exports the helpers
+- `crates/octos/octos-cli/src/runtime/profile.rs`
+- `crates/octos/octos-cli/src/commands/gateway/gateway_runtime.rs`
+- `crates/octos/octos-cli/src/skills_scope.rs` (already exports the helpers
   we need; small re-export tweaks only)
 - tests under these crates
 
@@ -157,7 +157,7 @@ Deliverables:
   9. Opens `EpisodeStore` and `MemoryStore` against `data_dir`.
   10. Returns `Arc<Self>`.
 - `gateway_runtime.rs::run` refactored to call `ProfileRuntime::bootstrap` once, then use its fields for the bus loop, session actors, etc. The bus / channel / cron / heartbeat setup downstream of the agent stays where it is.
-- New module `crates/octos-cli/src/runtime/profile.rs` exports the implementation.
+- New module `crates/octos/octos-cli/src/runtime/profile.rs` exports the implementation.
 
 Acceptance:
 
@@ -189,9 +189,9 @@ Depends on: M11-A.
 
 Allowed areas:
 
-- `crates/octos-cli/src/runtime/session.rs`
-- `crates/octos-cli/src/runtime/cache.rs`
-- `crates/octos-agent/src/workspace_policy.rs` (helper to write a
+- `crates/octos/octos-cli/src/runtime/session.rs`
+- `crates/octos/octos-cli/src/runtime/cache.rs`
+- `crates/octos/octos-agent/src/workspace_policy.rs` (helper to write a
   default policy; existing `write_workspace_policy` is sufficient —
   no semantic change)
 - tests under the above
@@ -267,9 +267,9 @@ Depends on: M11-A, M11-B, M11-C.
 
 Allowed areas:
 
-- `crates/octos-cli/src/api/mod.rs` (AppState struct)
-- `crates/octos-cli/src/api/handlers.rs`
-- `crates/octos-cli/src/commands/serve.rs`
+- `crates/octos/octos-cli/src/api/mod.rs` (AppState struct)
+- `crates/octos/octos-cli/src/api/handlers.rs`
+- `crates/octos/octos-cli/src/commands/serve.rs`
 - tests under these crates
 
 Deliverables:
@@ -328,8 +328,8 @@ Depends on: M11-D.
 
 Allowed areas:
 
-- `crates/octos-cli/src/api/ui_protocol.rs`
-- `crates/octos-cli/src/api/ui_protocol_*.rs` bridges
+- `crates/octos/octos-cli/src/api/ui_protocol.rs`
+- `crates/octos/octos-cli/src/api/ui_protocol_*.rs` bridges
 - tests under the same crates
 
 Deliverables:
@@ -379,12 +379,12 @@ safe).
 
 Allowed areas:
 
-- `crates/octos-cli/src/config.rs`
-- `crates/octos-cli/src/commands/serve.rs`
-- `crates/octos-cli/src/profiles.rs` (only to update
+- `crates/octos/octos-cli/src/config.rs`
+- `crates/octos/octos-cli/src/commands/serve.rs`
+- `crates/octos/octos-cli/src/profiles.rs` (only to update
   `config_from_profile` if it still touches the deleted fields)
-- `crates/octos-cli/src/api/handlers.rs` (consumer migration)
-- `crates/octos-cli/src/api/ui_protocol.rs` (consumer migration)
+- `crates/octos/octos-cli/src/api/handlers.rs` (consumer migration)
+- `crates/octos/octos-cli/src/api/ui_protocol.rs` (consumer migration)
 - tests under these crates
 
 Deliverables:
@@ -415,13 +415,13 @@ Depends on: M11-D, M11-E.
 
 Allowed areas:
 
-- `crates/octos-cli/tests/` (new integration test)
+- `crates/octos/octos-cli/tests/` (new integration test)
 - `e2e/` (Playwright spec) — optional
 - the M10 coding-runtime soak harness if reusable
 
 Deliverables:
 
-- An integration test in `crates/octos-cli/tests/coding_multi_session.rs`:
+- An integration test in `crates/octos/octos-cli/tests/coding_multi_session.rs`:
   1. Boot a `serve` instance with two AppUI sessions for the same
      profile.
   2. Session A: `workspace_hint = /tmp/repo-A` (pre-seeded with file `a.txt`).

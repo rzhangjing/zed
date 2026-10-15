@@ -100,7 +100,7 @@ change, not permission to copy ContextManager.
 
 ## Implementation anchors
 
-- Feature and fields: `crates/octos-core/src/ui_protocol.rs`
-- OUP lifecycle population and capabilities: `crates/octos-cli/src/api/ui_protocol_transport.rs`
+- Feature and fields: `crates/octos/octos-core/src/ui_protocol.rs`
+- OUP lifecycle population and capabilities: `crates/octos/octos-cli/src/api/ui_protocol_transport.rs`
 - OctosCode decoding/rendering: `src/client_event.rs`, `src/model.rs`, `src/store.rs`
 - Design and acceptance evidence: `docs/adr/oup-semantic-boundary-context-cache.md`

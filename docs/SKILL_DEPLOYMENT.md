@@ -18,7 +18,7 @@ Customer skills resolve from exactly one place:
 No parent-profile inheritance, no project-level fallback, no global
 customer-skill layer. See `STRICT_ACCOUNT_SCOPED_SKILLS.md` for the rationale.
 The global `~/.octos/skills/` directory is being deprecated; a parallel change
-in the agent loader (`octos-agent/src/plugins/loader.rs`) emits a deprecation
+in the agent loader (`octos/octos-agent/src/plugins/loader.rs`) emits a deprecation
 warning when it sees that path on disk.
 
 ## What replaces `deploy-mini.sh`
@@ -47,7 +47,7 @@ For each (host, profile, skill) triple, the script:
 4. Cleans up staging at the end of the host.
 
 The `octos skills install <local-path>` path
-(`crates/octos-cli/src/commands/skills.rs::install_from_local`) then:
+(`crates/octos/octos-cli/src/commands/skills.rs::install_from_local`) then:
 
 - Resolves the target directory via `resolve_profile_skills_dir` —
   strictly per-account, per `STRICT_ACCOUNT_SCOPED_SKILLS.md`.

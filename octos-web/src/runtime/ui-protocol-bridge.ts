@@ -211,7 +211,7 @@ export const METHODS = {
   // never a REST route (no `/api/my/smart-home*` ever existed), so they're
   // gated on their own `smart_home.v1` capability rather than
   // `auxiliary.rest_to_ws.v1` — see `UI_PROTOCOL_FEATURES` below. Mirrors
-  // `crates/octos-core/src/ui_protocol.rs::methods`.
+  // `crates/octos/octos-core/src/ui_protocol.rs::methods`.
   SMART_HOME_STATUS_GET: "smart_home/status.get",
   SMART_HOME_DEVICE_LIST: "smart_home/device.list",
   SMART_HOME_DEVICE_COMMAND: "smart_home/device.command",
@@ -253,7 +253,7 @@ export const METHODS = {
   // calls. The event-router fans them out into the compatibility
   // `crew:tool_progress` DOM event so existing tool-progress listeners
   // stay in sync. See
-  // `crates/octos-cli/src/api/ui_protocol_progress.rs:99-363`.
+  // `crates/octos/octos-cli/src/api/ui_protocol_progress.rs:99-363`.
   // UPCR-2026-026 context-compaction lifecycle: `started` fires
   // immediately before a server-owned compaction pass (may arrive in the
   // same batch as `completed` — the pass is synchronous today);
@@ -385,7 +385,7 @@ const DEFAULT_KEEPALIVE_MS = 30000;
 const DEFAULT_KEEPALIVE_TIMEOUT_MS = 60000;
 const NORMAL_CLOSURE = 1000;
 
-// Spec §10 `permission_denied` (`crates/octos-core/src/ui_protocol.rs`
+// Spec §10 `permission_denied` (`crates/octos/octos-core/src/ui_protocol.rs`
 // `PERMISSION_DENIED: i64 = -32120`). When the server rejects
 // `session/open` or `turn/start` with this RPC code, the token is
 // effectively dead for the chat surface — surface `crew:auth_expired`
@@ -830,7 +830,7 @@ function guardMessageDelta(p: unknown): MessageDeltaEvent | null {
 
 function guardSpawnComplete(p: unknown): TurnSpawnCompleteEvent | null {
   // M10 Phase 1 envelope. Required-field invariants per the server-side
-  // `TurnSpawnCompleteEvent` struct (`crates/octos-core/src/ui_protocol.rs`):
+  // `TurnSpawnCompleteEvent` struct (`crates/octos/octos-core/src/ui_protocol.rs`):
   //   - session_id, task_id, message_id, source, persisted_at — non-empty strings
   //   - seq                                                    — finite non-negative number
   //   - cursor.{stream, seq}                                   — non-empty string + finite number
@@ -913,7 +913,7 @@ function guardSpawnComplete(p: unknown): TurnSpawnCompleteEvent | null {
 /**
  * UPCR-2026-014 M9-α-9 `file/attached` envelope guard. Fail-closed on
  * required-field violations matching the server-side `FileAttachedEvent`
- * struct (`crates/octos-core/src/ui_protocol.rs`):
+ * struct (`crates/octos/octos-core/src/ui_protocol.rs`):
  *
  *   - session_id    — non-empty string
  *   - turn_id       — non-empty string

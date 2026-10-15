@@ -39,8 +39,8 @@ import sys
 from pathlib import Path
 
 DEFAULT_INVENTORY = Path("api/OCTOS_UI_PROTOCOL_WIRE_INVENTORY_2026-05-24.md")
-DEFAULT_CORE = Path("crates/octos-core/src/ui_protocol.rs")
-DEFAULT_TRANSPORT = Path("crates/octos-cli/src/api/ui_protocol_transport.rs")
+DEFAULT_CORE = Path("crates/octos/octos-core/src/ui_protocol.rs")
+DEFAULT_TRANSPORT = Path("crates/octos/octos-cli/src/api/ui_protocol_transport.rs")
 
 
 def _strip_line_comments(text: str) -> str:

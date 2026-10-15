@@ -24,7 +24,7 @@ the wire surface is unchanged. Two things happen:
    advertised method constants.
 
 This UPCR exists because the completeness gate (`scripts/check-ui-protocol-upcr.sh`)
-treats any edit to a Rust protocol file (`crates/octos-cli/src/api/ui_protocol.rs`,
+treats any edit to a Rust protocol file (`crates/octos/octos-cli/src/api/ui_protocol.rs`,
 which is where the guard and the `APPUI_EXTRA_METHODS` list live) as a
 protocol-visible change requiring a paired UPCR. The change is documented here
 so that governance stays honest even for a docs/test reconciliation.
@@ -81,7 +81,7 @@ wire-breaking contradiction.
 ## Implementation anchors
 
 - Spec: `api/OCTOS_UI_PROTOCOL_V1_SPEC_2026-04-24.md` §6 "Envelope Model"
-- Guard: `octos-cli/src/api/ui_protocol.rs`
+- Guard: `octos/octos-cli/src/api/ui_protocol.rs`
   `spec_section6_catalog_lists_every_advertised_method`
 - CI: `.github/workflows/ci.yml`, `.github/workflows/ci-self-hosted.yml`,
   `scripts/milestone-ci.sh`

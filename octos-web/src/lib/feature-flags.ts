@@ -54,7 +54,7 @@ export const AUX_REST_TO_WS_V1_FLAG_KEY = "octos_auxiliary_rest_to_ws_v1";
 
 /** The on-the-wire capability string negotiated via the `?ui_feature=`
  *  query when this flag is on. Mirrors the server-side constant in
- *  `crates/octos-core/src/ui_protocol.rs`
+ *  `crates/octos/octos-core/src/ui_protocol.rs`
  *  (`UI_PROTOCOL_FEATURE_AUXILIARY_REST_TO_WS_V1`). */
 export const AUX_REST_TO_WS_V1_FEATURE = "auxiliary.rest_to_ws.v1";
 

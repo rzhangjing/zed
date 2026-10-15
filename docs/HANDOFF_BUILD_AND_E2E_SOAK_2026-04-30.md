@@ -66,8 +66,8 @@ octos-plugin   # Plugin SDK (manifests + discovery)
 octos-memory   # hybrid search + memory store
 octos-llm      # LLM provider trait + native impls
 octos-core     # types: Task, Message, UI Protocol v1
-crates/app-skills/         # bundled skills (deep-search, deep-crawl, voice, …)
-crates/platform-skills/    # bundled skills (voice)
+crates/octos/app-skills/         # bundled skills (deep-search, deep-crawl, voice, …)
+crates/octos/platform-skills/    # bundled skills (voice)
 e2e/                       # Playwright tests
 api/                       # Protocol spec docs (UI Protocol v1, feature requirements)
 docs/                      # Engineering docs, ADRs, runbooks, audits

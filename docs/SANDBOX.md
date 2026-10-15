@@ -28,7 +28,7 @@ When `mode` is `"auto"` (default), octos probes in order, picking the first matc
 4. **docker** on any platform as a fallback (checked via `which docker`)
 5. **none** — pass-through if nothing is found
 
-Sandbox source lives in `crates/octos-agent/src/sandbox/` (`mod.rs`, `bwrap.rs`, `macos.rs`, `docker.rs`, `windows.rs`). The Windows helper binary is the standalone `crates/octos-sandbox/` crate.
+Sandbox source lives in `crates/octos/octos-agent/src/sandbox/` (`mod.rs`, `bwrap.rs`, `macos.rs`, `docker.rs`, `windows.rs`). The Windows helper binary is the standalone `crates/octos/octos-sandbox/` crate.
 
 ### Bwrap (Linux)
 

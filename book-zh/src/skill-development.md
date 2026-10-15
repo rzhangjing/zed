@@ -35,7 +35,7 @@
 
 ### 现有功能各归各位
 
-下列属于 **workspace 契约**（`workspace_policy.toml`，详见 `crates/octos-agent/src/workspace_policy.rs::ValidatorSpec`）：
+下列属于 **workspace 契约**（`workspace_policy.toml`，详见 `crates/octos/octos-agent/src/workspace_policy.rs::ValidatorSpec`）：
 
 - **`AudioNonSilent`** / **`PerFileNonSilent`** — TTS 输出内容不变量。系统必须拒绝把静音 `.wav` 当作"成功生成"。适用于任何 TTS skill，不分厂商。
 - **`MagicBytes`** — 文件格式完整性校验。适用所有产出文件的工具。
@@ -55,7 +55,7 @@
 
 ### pipeline-guard 案例研究（以及我们会怎么重做）
 
-**`pipeline-guard`** 目前作为插件存放在 `crates/app-skills/pipeline-guard/`，用 `before_tool_call` hook 修改 LLM 为 `run_pipeline` 编写的 DOT 图 — 根据实时 QoS catalog 给 `dynamic_parallel` 的 worker 注入 `model="cheap"`，给 `synthesize` 节点注入 `model="strong"`。
+**`pipeline-guard`** 目前作为插件存放在 `crates/octos/app-skills/pipeline-guard/`，用 `before_tool_call` hook 修改 LLM 为 `run_pipeline` 编写的 DOT 图 — 根据实时 QoS catalog 给 `dynamic_parallel` 的 worker 注入 `model="cheap"`，给 `synthesize` 节点注入 `model="strong"`。
 
 按矩阵打分：
 
@@ -139,10 +139,10 @@ User message → LLM → tool_use("get_weather", {"city": "Paris"})
 
 ## 技能目录结构
 
-每个技能在 `crates/app-skills/` 下有自己独立的 crate：
+每个技能在 `crates/octos/app-skills/` 下有自己独立的 crate：
 
 ```
-crates/app-skills/my-skill/
+crates/octos/app-skills/my-skill/
 ├── Cargo.toml          # Crate 配置，二进制名称
 ├── manifest.json       # 工具定义（JSON Schema）
 ├── SKILL.md            # 文档 + frontmatter 元数据
@@ -166,7 +166,7 @@ crates/app-skills/my-skill/
 ### 1. 创建 Crate
 
 ```bash
-mkdir -p crates/app-skills/my-skill/src
+mkdir -p crates/octos/app-skills/my-skill/src
 ```
 
 ### 2. Cargo.toml
@@ -370,13 +370,13 @@ fn handle_my_tool(input_json: &str) {
 [workspace]
 members = [
     # ... existing members ...
-    "crates/app-skills/my-skill",
+    "crates/octos/app-skills/my-skill",
 ]
 ```
 
 ### 7. 在 bundled_app_skills.rs 中注册
 
-在 `crates/octos-agent/src/bundled_app_skills.rs` 中添加到 `BUNDLED_APP_SKILLS`：
+在 `crates/octos/octos-agent/src/bundled_app_skills.rs` 中添加到 `BUNDLED_APP_SKILLS`：
 
 ```rust
 pub const BUNDLED_APP_SKILLS: &[(&str, &str, &str, &str)] = &[
@@ -453,7 +453,7 @@ octos gateway
 不需要网络，不需要环境变量。使用 `chrono` + `chrono-tz`。
 
 ```
-crates/app-skills/time/
+crates/octos/app-skills/time/
 ├── Cargo.toml          # deps: chrono, chrono-tz, serde, serde_json
 ├── manifest.json       # 1 tool: get_time, timeout_secs: 5
 ├── SKILL.md            # Triggers: time, clock, 几点
@@ -467,7 +467,7 @@ crates/app-skills/time/
 调用外部 API，需要网络。使用 `reqwest`（blocking）。
 
 ```
-crates/app-skills/weather/
+crates/octos/app-skills/weather/
 ├── Cargo.toml          # deps: reqwest (blocking, rustls-tls), serde, serde_json
 ├── manifest.json       # 2 tools: get_weather, get_forecast, timeout_secs: 15
 ├── SKILL.md            # Triggers: weather, forecast, 天气
@@ -485,7 +485,7 @@ crates/app-skills/weather/
 需要从环境变量获取凭据。
 
 ```
-crates/app-skills/send-email/
+crates/octos/app-skills/send-email/
 ├── Cargo.toml          # deps: lettre, serde, serde_json, reqwest
 ├── manifest.json       # 1 tool: send_email
 ├── SKILL.md            # requires_env: SMTP_HOST,SMTP_USERNAME,SMTP_PASSWORD
@@ -867,7 +867,7 @@ requires_env: MY_API_KEY
 
 | | 应用技能 | 平台技能 |
 |---|---|---|
-| **位置** | `crates/app-skills/` | `crates/platform-skills/` |
+| **位置** | `crates/octos/app-skills/` | `crates/octos/platform-skills/` |
 | **数组** | `BUNDLED_APP_SKILLS` | `PLATFORM_SKILLS` |
 | **引导** | 每次网关启动 | 仅管理员机器人 |
 | **作用域** | 按网关 | 所有网关共享 |
@@ -897,7 +897,7 @@ scp target/release/weather remote:~/.octos/profiles/alice/data/skills/weather/ma
 
 | 类型 | 位置 | 安装方式 | 二进制文件 | 使用场景 |
 |------|----------|---------------|--------|----------|
-| **内置** | `crates/app-skills/` | 编译进 `octos` 二进制 | 嵌入式 | 随每个版本发布的核心技能 |
+| **内置** | `crates/octos/app-skills/` | 编译进 `octos` 二进制 | 嵌入式 | 随每个版本发布的核心技能 |
 | **外部** | GitHub 仓库 | `octos skills install user/repo` | 下载或构建 | 社区/自定义技能 |
 | **配置文件本地** | `<profile-data>/skills/` | 按配置文件安装 | 自包含 | 租户隔离技能 |
 
@@ -1054,7 +1054,7 @@ let styles_dir = skill_dir.join("styles");
 
 ### 工具技能（二进制文件 + 工具）
 
-- [ ] 创建 `crates/app-skills/<name>/`，包含 Cargo.toml、manifest.json、SKILL.md、src/main.rs
+- [ ] 创建 `crates/octos/app-skills/<name>/`，包含 Cargo.toml、manifest.json、SKILL.md、src/main.rs
 - [ ] Cargo.toml 中的 `[[bin]] name` 与 bundled_app_skills.rs 中的 `binary_name` 匹配
 - [ ] manifest.json 对所有工具输入有有效的 JSON Schema
 - [ ] SKILL.md 有包含触发关键词的 frontmatter

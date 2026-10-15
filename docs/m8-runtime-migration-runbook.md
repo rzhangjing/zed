@@ -60,7 +60,7 @@ Each track's PR follows the same merge-and-deploy template:
 **W1 (pipeline host + frontend cards/cost)**
 
 - Merging this changes both backend and `octos-web`. The web bundle is
-  served from `crates/octos-cli/static/admin/`; ensure the new bundle is
+  served from `crates/octos/octos-cli/static/admin/`; ensure the new bundle is
   in the release build (cargo wraps it via `build.rs`).
 - Smoke: trigger `run_pipeline` from the chat UI, verify NodeCards appear
   under the run_pipeline pill, verify the cost panel renders.
@@ -77,7 +77,7 @@ Each track's PR follows the same merge-and-deploy template:
 
 **W3 (deep_search/deep_crawl + plugin protocol v2)**
 
-- Lands first. Backward-compat shim in `octos-plugin/src/lifecycle.rs` is
+- Lands first. Backward-compat shim in `octos/octos-plugin/src/lifecycle.rs` is
   load-bearing — without it, v1 plugins (mofa_slides, fm_tts,
   podcast_generate before W4) regress.
 - Smoke: trigger deep research, verify the synthesized `_report.md`
@@ -436,7 +436,7 @@ echo '{"voice":"vivian","text":"hello"}' | \
 # Send SIGTERM mid-flight and confirm exit within 10s
 ```
 
-The W4 PR adds matching unit tests in `crates/octos-plugin/tests/` that
+The W4 PR adds matching unit tests in `crates/octos/octos-plugin/tests/` that
 parse a representative event from each plugin to ensure the schema is
 honoured.
 
