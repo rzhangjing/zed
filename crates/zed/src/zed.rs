@@ -314,6 +314,17 @@ pub fn init(cx: &mut App) {
     // The cesiumrust globe window is opened from `Help > cesiumrust`; this is
     // only its startup override (`ZED_CESIUMRUST_OPEN`), and a no-op otherwise.
     cesium::init(cx);
+
+    // The About window is opened from `Help > About`; this is only its startup
+    // override (`ZED_ABOUT_OPEN`), the same shape as `ZED_CESIUMRUST_OPEN` above
+    // and `ZED_OCTOS_OPEN_STATUS` in `octos`. It exists because verifying that
+    // window's *chrome* — that it has a system title bar, a draggable caption
+    // and a close button — means inspecting the real HWND, and clicking through
+    // `Help` is not what such a check is testing.
+    if std::env::var("ZED_ABOUT_OPEN").is_ok_and(|value| value != "0") {
+        log::info!("[about] opening the About window at startup (ZED_ABOUT_OPEN)");
+        cx.defer(open_about_window);
+    }
 }
 
 fn bind_on_window_closed(cx: &mut App) -> Option<gpui::Subscription> {
@@ -1447,6 +1458,27 @@ fn open_gpui_kit_showcase(cx: &mut App) {
 }
 
 fn open_about_window(cx: &mut App) {
+    // Rendering needs `theme::GlobalTheme`, and `render` panics without it
+    // ("no state of type theme::GlobalTheme exists"). A menu click always
+    // happens long after the theme is registered, but the `ZED_ABOUT_OPEN`
+    // startup path can run before that, so wait for it instead of opening a
+    // window that cannot draw. Same guard, for the same reason, as
+    // `octos::status_window::open`.
+    if cx.try_global::<theme::GlobalTheme>().is_none() {
+        log::info!("[about] waiting for the theme before opening the About window");
+        cx.spawn(async move |cx| {
+            for _ in 0..300 {
+                if cx.update(|cx| cx.try_global::<theme::GlobalTheme>().is_some()) {
+                    break;
+                }
+                smol::Timer::after(std::time::Duration::from_millis(100)).await;
+            }
+            cx.update(open_about_window);
+        })
+        .detach();
+        return;
+    }
+
     fn about_window_icon(release_channel: ReleaseChannel) -> Arc<Image> {
         let bytes = match release_channel {
             ReleaseChannel::Dev => include_bytes!("../resources/app-icon-dev.png").as_slice(),
@@ -1639,8 +1671,17 @@ fn open_about_window(cx: &mut App) {
         WindowOptions {
             titlebar: Some(TitlebarOptions {
                 title: Some("About Zed".into()),
-                appears_transparent: true,
-                traffic_light_position: Some(point(px(12.), px(12.))),
+                // The system title bar, not a hidden one, for the same reason
+                // the gpui-kit, cesiumrust and Octos windows use one: this
+                // window draws no window chrome of its own, so a transparent
+                // title bar (which is what hides the system one) left it with
+                // no close button and no draggable title area. Unconditional,
+                // like those three — see `open_gpui_kit_showcase`.
+                appears_transparent: false,
+                // Only meaningful while the title bar is transparent: with a
+                // standard title bar the platform places the macOS traffic
+                // lights itself.
+                traffic_light_position: None,
             }),
             window_bounds: Some(WindowBounds::centered(window_size, cx)),
             is_resizable: false,

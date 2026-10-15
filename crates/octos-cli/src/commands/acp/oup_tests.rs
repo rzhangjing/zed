@@ -53,23 +53,38 @@ async fn input_eof_closes_an_idle_acp_session_without_waiting_for_output_to_clos
             serde_json::json!({"cwd":cwd.path(), "mcpServers":[]}),
         ),
     ] {
+        // The channel carries `TransportFrame`, the transport-boundary envelope,
+        // not `Result`: transport failures are reported by the future that drives
+        // the transport, and a JSON-RPC error travels as a *frame* too. A single
+        // request is therefore one `TransportFrame::Single`.
+        let message: agent_client_protocol::RawJsonRpcMessage = serde_json::from_value(
+            serde_json::json!({
+                "jsonrpc":"2.0", "id":id, "method":method, "params":params,
+            }),
+        )
+        .unwrap();
         client
             .tx
-            .unbounded_send(Ok(serde_json::from_value(serde_json::json!({
-                "jsonrpc":"2.0", "id":id, "method":method, "params":params,
-            }))
-            .unwrap()))
+            .unbounded_send(agent_client_protocol::TransportFrame::Single(message))
             .unwrap();
         loop {
+            // `timeout` -> `Result`, `next()` -> `Option`, and then the frame
+            // itself: exactly two unwraps, the envelope is the value.
             let frame = tokio::time::timeout(
                 waiting_budget(std::time::Duration::from_secs(10)),
                 client.rx.next(),
             )
             .await
             .unwrap()
-            .unwrap()
             .unwrap();
-            let frame = serde_json::to_value(frame).unwrap();
+            // `TransportFrame` is the envelope and has no `Serialize` of its
+            // own; its payload (`RawJsonRpcMessage`) does, and that is what the
+            // assertions below are about.
+            let message = match frame {
+                agent_client_protocol::TransportFrame::Single(message) => message,
+                other => panic!("expected a single response frame, got {other:?}"),
+            };
+            let frame = serde_json::to_value(message).unwrap();
             if frame["id"] == id {
                 assert!(frame.get("error").is_none(), "{frame}");
                 break;

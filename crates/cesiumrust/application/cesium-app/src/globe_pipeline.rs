@@ -71,7 +71,7 @@ pub struct TileDownloadResult {
 
 /// 为需要的瓦片排队网格构建 + 下载，屏幕占比
 /// 最高者优先。原始：`dynamic_globe.rs:371-459`。
-pub fn enqueue_tiles(
+pub(crate) fn enqueue_tiles(
     mgr: &mut TileManager,
     mesh_pipe: &mut MeshPipeline,
     tex_rx: &TextureReceiver,
@@ -223,7 +223,7 @@ impl BudgetPolicy for GestureBudget {
 /// `budget` 为逐帧预算策略：稳定期传 `&DefaultBudget`，相机手势进行中传
 /// `&GestureBudget::for_gesture(true)`（见该类型文档）。
 #[allow(clippy::too_many_arguments)]
-pub fn run(
+pub(crate) fn run(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
@@ -704,7 +704,7 @@ pub fn run(
 ///    （`GESTURE_ENTITY_SLACK`）后仍远低于 3000，不变量成立。
 ///
 /// 原始：`dynamic_globe.rs:1476-1502`（逐字節保留）。
-pub fn evict_gpu_cache(mgr: &mut TileManager) -> (u32, u32) {
+pub(crate) fn evict_gpu_cache(mgr: &mut TileManager) -> (u32, u32) {
     // evicted = 实际淘汰数；deferred = 因仍活跃而延迟的个数。
     let mut evicted: u32 = 0;
     let mut deferred: u32 = 0;
@@ -742,7 +742,7 @@ pub fn evict_gpu_cache(mgr: &mut TileManager) -> (u32, u32) {
 /// 无数据继承）—— 绝非拉伸祖先的上采样。
 ///
 /// 原始：`dynamic_globe.rs:1435-1446`（逐字節保留）。
-pub fn replacement_ready(mgr: &TileManager, key: &TileKey) -> bool {
+pub(crate) fn replacement_ready(mgr: &TileManager, key: &TileKey) -> bool {
     // 无实体则尚未就绪。
     if !mgr.tile_entities.contains_key(key) {
         return false;
@@ -763,7 +763,7 @@ pub fn replacement_ready(mgr: &TileManager, key: &TileKey) -> bool {
 /// 因此 `key` 可被安全跳过/淘汰而不会留出空洞。
 ///
 /// 原始：`dynamic_globe.rs:1451-1462`（逐字節保留）。
-pub fn has_live_ancestor(mgr: &TileManager, key: &TileKey) -> bool {
+pub(crate) fn has_live_ancestor(mgr: &TileManager, key: &TileKey) -> bool {
     // 逐级上移父瓦片，任一祖先有实体即返回 true。
     let (mut x, mut y, mut z) = *key;
     while z > 0 {
@@ -781,7 +781,7 @@ pub fn has_live_ancestor(mgr: &TileManager, key: &TileKey) -> bool {
 /// 保护覆盖每个待定叶节点的整条祖先链。
 ///
 /// 原始：`dynamic_globe.rs:631-650`（逐字節保留）。
-pub fn protected_ancestors(mgr: &TileManager) -> HashSet<TileKey> {
+pub(crate) fn protected_ancestors(mgr: &TileManager) -> HashSet<TileKey> {
     let mut prot: HashSet<TileKey> = HashSet::new();
     // 对每个尚无实体的可见/加载瓦片，向上标记其整条祖先链。
     for v in mgr
@@ -809,7 +809,7 @@ pub fn protected_ancestors(mgr: &TileManager) -> HashSet<TileKey> {
 /// 并在帧预算内上传到 GPU。
 ///
 /// 原始：`dynamic_globe.rs:2076-2108`（逐字節保留）。
-pub fn start_mesh_builds(pipe: &mut MeshPipeline, jobs: Vec<(TileKey, u32, Option<[f32; 4]>)>) {
+pub(crate) fn start_mesh_builds(pipe: &mut MeshPipeline, jobs: Vec<(TileKey, u32, Option<[f32; 4]>)>) {
     let tx = pipe.tx.clone();
 
     // 总调度线程：将任务均匀分片到 DOWNLOAD_THREADS 个并行构建 worker。
@@ -871,7 +871,7 @@ pub fn tile_to_quadkey(x: u32, y: u32, level: u32) -> String {
 /// worker 在出队时跳过陈旧任务（不在 `wanted` 中的）。
 ///
 /// 原始：`dynamic_globe.rs:2133-2137`（逐字節保留）。
-pub fn start_downloads(tex_rx: &TextureReceiver, tiles: &[(TileKey, bool)]) {
+pub(crate) fn start_downloads(tex_rx: &TextureReceiver, tiles: &[(TileKey, bool)]) {
     // 逐个将（瓦片键, 是否降采样）任务投递到常驻 worker 池，非阻塞。
     for &(key, downscale) in tiles {
         let _ = tex_rx.job_tx.send((key, downscale));
@@ -1066,7 +1066,7 @@ pub fn download_worker(
 /// 到底球上。
 ///
 /// 原始：`dynamic_globe.rs:1920-1991`（逐字節保留）。
-pub fn run_base_sphere_composite(
+pub(crate) fn run_base_sphere_composite(
     state: &mut BaseSphereComposite,
     mgr: &mut TileManager,
     images: &mut Assets<Image>,

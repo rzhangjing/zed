@@ -1,30 +1,31 @@
 //! `Help > cesiumrust`: the cesiumrust 3D globe in a window of its own.
 //!
 //! cesiumrust (`crates/cesiumrust`) is a CesiumJS rewrite in Rust built on
-//! Bevy 0.15. It ships as a standalone application rather than an embeddable
-//! renderer, so this module is the glue that makes one of its scenes visible
-//! inside Zed:
+//! Bevy 0.15. It ships as an application, not as a renderer, so this module is
+//! the glue that makes it visible inside Zed:
 //!
 //! * [`renderer`] owns a Bevy `App` on a dedicated thread. It disables
 //!   `WinitPlugin`, renders offscreen, and publishes finished frames over a
 //!   capacity-1 channel.
 //! * [`RendererView`] below is the GPUI view. It converts the newest frame into
-//!   a `RenderImage` and shows it.
+//!   a `RenderImage`, shows it, and forwards the mouse to the viewer.
 //!
-//! # What this window is, and what it is not
+//! # The scene is cesiumrust's own viewer, not a subset of it
 //!
-//! The scene is the one cesiumrust documents for embedders,
-//! `crates/cesiumrust/application/cesium-app/examples/minimal.rs`: the WGS84
-//! ellipsoid, cesiumrust's own lighting (`CesiumCorePlugin`) and its camera. It
-//! is the richest scene reachable without changing cesiumrust's sources.
+//! The Bevy app is assembled with `cesium_app::add_viewer_scene`
+//! (`crates/cesiumrust/application/cesium-app/src/lib.rs`), which is the same
+//! function `cargo run -p cesium-app` calls. The window therefore shows what
+//! the standalone viewer shows: Bing Maps imagery on a screen-space-error LOD
+//! quadtree, the baked global composite on the fallback sphere, the atmosphere
+//! rim glow, the starfield, the orbit camera, and the viewer's own `bevy_ui`
+//! overlays — the 2D/3D toggle, the lat/lon readout and the plot panel.
 //!
-//! `cesium-app`'s full viewer is **not** reproduced. Its richer content — Bing
-//! imagery tiles, the screen-space-error LOD quadtree, the starfield, 2D map
-//! mode, the plot overlay — lives in that binary's private modules
-//! (`dynamic_globe`, `tile_mesh`, `globe_lod`, `map2d`, `starfield`), and the
-//! package has no library target, so none of it is callable from here. Lifting
-//! it would mean rewriting cesiumrust rather than embedding it, which this
-//! integration deliberately does not do.
+//! That is a change from the previous revision, which assembled a scene by hand
+//! out of `cesium-bevy-render`'s public plugins. That scene was cesiumrust's
+//! `examples/minimal.rs`: the WGS84 ellipsoid with a flat dark-blue material
+//! and nothing else — no imagery chain, no LOD, no starfield — because
+//! `cesium-app` had no library target and its viewer was unreachable. The
+//! window showed a plain blue sphere.
 //!
 //! # Two ordering constraints
 //!
@@ -50,12 +51,12 @@ use std::sync::{Arc, Mutex};
 
 use gpui::{
     App, AppContext as _, Context, FocusHandle, Focusable, ImageSource, IntoElement, MouseButton,
-    ObjectFit, Render, RenderImage, Size, TitlebarOptions, WeakEntity, Window, WindowBounds,
-    WindowOptions, div, img, prelude::*, px, size,
+    ObjectFit, Pixels, Point, Render, RenderImage, ScrollDelta, Size, TitlebarOptions, WeakEntity,
+    Window, WindowBounds, WindowOptions, div, img, prelude::*, px, size,
 };
 use smallvec::SmallVec;
 
-use renderer::{FRAME_HEIGHT, FRAME_WIDTH, Frame, Renderer};
+use renderer::{FRAME_HEIGHT, FRAME_WIDTH, Frame, Renderer, ViewerButton, ViewerInput};
 
 /// `ZED_CESIUMRUST_OPEN` — `1`/anything but `0` opens the globe window as Zed
 /// starts.
@@ -71,6 +72,25 @@ pub fn init(cx: &mut App) {
         log::info!("[cesiumrust] opening the globe window at startup ({ENV_OPEN})");
         cx.defer(open_cesiumrust);
     }
+}
+
+/// Directory the viewer keeps its downloaded imagery tiles in, under Zed's own
+/// data directory.
+///
+/// cesiumrust's own default is `./tile_cache` relative to the **current working
+/// directory** (`cesium-app`'s `feature_flags::tile_cache_dir`), which is right
+/// for a standalone viewer and wrong for an embedded one: Zed is launched from
+/// whatever directory the user happened to be in, so the default would scatter
+/// a `tile_cache/` through their file system. `paths::data_dir()` is the same
+/// directory Zed already keeps its databases and logs in
+/// (`crates/paths/src/paths.rs:129`), so the cache lands next to them and is
+/// removed along with the rest of the user data.
+///
+/// The directory itself is created lazily, by the first tile that is written
+/// (`tile_cache::fetch_tile`), so a session that never reaches Bing leaves
+/// nothing behind.
+fn tile_cache_root() -> std::path::PathBuf {
+    paths::data_dir().join("cesiumrust").join("tile_cache")
 }
 
 /// Opens the cesiumrust window, or focuses the one already open.
@@ -121,7 +141,8 @@ pub fn open_cesiumrust(cx: &mut App) {
 pub struct RendererView {
     /// The frame currently on screen.
     image: Option<Arc<RenderImage>>,
-    /// The Bevy thread and the channel it publishes on.
+    /// The Bevy thread and the channel it publishes on, and the channel input
+    /// is pushed down.
     ///
     /// Shared rather than owned so the frame-collection task can take frames
     /// without holding the view borrowed. Dropping the last handle stops the
@@ -155,7 +176,7 @@ impl RendererView {
         self.renderer_started = true;
 
         if let Ok(mut slot) = self.renderer.lock() {
-            *slot = Some(Renderer::start());
+            *slot = Some(Renderer::start(tile_cache_root()));
         }
 
         let renderer = self.renderer.clone();
@@ -166,18 +187,19 @@ impl RendererView {
             .detach();
     }
 
-    /// The size the image should be drawn at, in device pixels.
-    fn frame_size(&self) -> (u32, u32) {
+    /// The size the image is drawn at, in logical pixels. Also the size of the
+    /// view's own window, which the renderer lays the scene's UI out for.
+    fn frame_size(&self) -> (f32, f32) {
         self.image
             .as_ref()
             .map(|image| {
                 let frame_size = image.size(0);
                 (
-                    frame_size.width.0.max(1) as u32,
-                    frame_size.height.0.max(1) as u32,
+                    frame_size.width.0.max(1) as f32,
+                    frame_size.height.0.max(1) as f32,
                 )
             })
-            .unwrap_or((FRAME_WIDTH, FRAME_HEIGHT))
+            .unwrap_or((FRAME_WIDTH as f32, FRAME_HEIGHT as f32))
     }
 }
 
@@ -222,6 +244,16 @@ impl Render for RendererView {
 
         let (width, height) = self.frame_size();
         let image = self.image.clone();
+        // What the image is drawn as, in logical pixels, so a mouse position can
+        // be mapped onto the viewer's own window (see `viewer_position`).
+        let frame = (width, height);
+        // Every listener below is a `Fn`, not a `FnMut`, and none of them may
+        // borrow the view: input is a side effect on the renderer, which lives
+        // behind an `Arc`. Cloning the handle keeps `Render` free to hand the
+        // callbacks to GPUI, and keeps a mouse move from marking the view
+        // changed (and so repainting) — the frame collector is what notifies.
+        let renderer = self.renderer.clone();
+        let focus_handle = self.focus_handle.clone();
 
         div()
             .size_full()
@@ -231,8 +263,8 @@ impl Render for RendererView {
             .justify_center()
             .child(match image {
                 Some(image) => div()
-                    .w(px(width as f32))
-                    .h(px(height as f32))
+                    .w(px(width))
+                    .h(px(height))
                     .child(
                         img(ImageSource::Render(image))
                             .object_fit(ObjectFit::Contain)
@@ -245,10 +277,202 @@ impl Render for RendererView {
                     .into_any_element(),
             })
             .on_mouse_down(MouseButton::Left, {
-                let focus_handle = self.focus_handle.clone();
-                move |_, window, cx| focus_handle.focus(window, cx)
+                let renderer = renderer.clone();
+                move |event, window, cx| {
+                    focus_handle.focus(window, cx);
+                    press_button(
+                        &renderer,
+                        ViewerButton::Left,
+                        true,
+                        event.position,
+                        window,
+                        frame,
+                    );
+                }
+            })
+            // The viewer's camera reads `ButtonInput<MouseButton>`; every button
+            // it uses has to be forwarded, and every press needs a matching
+            // release or the grab would never let go.
+            .on_mouse_down(MouseButton::Right, {
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    press_button(
+                        &renderer,
+                        ViewerButton::Right,
+                        true,
+                        event.position,
+                        window,
+                        frame,
+                    );
+                }
+            })
+            .on_mouse_down(MouseButton::Middle, {
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    press_button(
+                        &renderer,
+                        ViewerButton::Middle,
+                        true,
+                        event.position,
+                        window,
+                        frame,
+                    );
+                }
+            })
+            .on_mouse_up(MouseButton::Left, {
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    press_button(
+                        &renderer,
+                        ViewerButton::Left,
+                        false,
+                        event.position,
+                        window,
+                        frame,
+                    );
+                }
+            })
+            .on_mouse_up(MouseButton::Right, {
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    press_button(
+                        &renderer,
+                        ViewerButton::Right,
+                        false,
+                        event.position,
+                        window,
+                        frame,
+                    );
+                }
+            })
+            .on_mouse_up(MouseButton::Middle, {
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    press_button(
+                        &renderer,
+                        ViewerButton::Middle,
+                        false,
+                        event.position,
+                        window,
+                        frame,
+                    );
+                }
+            })
+            // A release outside the window never reaches `on_mouse_up` (its
+            // hitbox is not hovered), which would leave the viewer rotating or
+            // zooming forever. Leaving the window is the closest thing to a
+            // release this element ever sees, so it stands in for one.
+            .on_mouse_exit({
+                let renderer = renderer.clone();
+                move |_event, _window, _cx| {
+                    for button in [
+                        ViewerButton::Left,
+                        ViewerButton::Right,
+                        ViewerButton::Middle,
+                    ] {
+                        forward(&renderer, ViewerInput::Button { button, pressed: false });
+                    }
+                }
+            })
+            .on_mouse_move({
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    let position = viewer_position(event.position, window.viewport_size(), frame);
+                    forward(
+                        &renderer,
+                        ViewerInput::Cursor {
+                            x: position.x.as_f32(),
+                            y: position.y.as_f32(),
+                        },
+                    );
+                }
+            })
+            .on_scroll_wheel({
+                let renderer = renderer.clone();
+                move |event, window, _cx| {
+                    let lines = match event.delta {
+                        // GPUI's line delta and Bevy's `MouseWheel::y` agree on
+                        // sign: positive is scrolling up, away from the user.
+                        ScrollDelta::Lines(delta) => delta.y,
+                        // A pixel delta (a precision touchpad, on the platforms
+                        // whose backend reports pixels) has to be turned into
+                        // lines, because the viewer's zoom is defined per line
+                        // (`OrbitState::zoom_speed`, 30% of the height per
+                        // line). 50 px is a conventional line.
+                        ScrollDelta::Pixels(delta) => delta.y.as_f32() / 50.0,
+                    };
+                    if lines == 0.0 {
+                        return;
+                    }
+                    // Where the wheel was, so the viewer's cursor and its
+                    // picking agree with the render it is scrolling over.
+                    let position = viewer_position(event.position, window.viewport_size(), frame);
+                    forward(
+                        &renderer,
+                        ViewerInput::Cursor {
+                            x: position.x.as_f32(),
+                            y: position.y.as_f32(),
+                        },
+                    );
+                    forward(&renderer, ViewerInput::Wheel { lines });
+                }
             })
     }
+}
+
+/// Forward one event to the viewer, if the renderer has started.
+///
+/// A no-op before the first paint, which is also when the renderer is created;
+/// input cannot arrive before the window has drawn anyway.
+fn forward(renderer: &Arc<Mutex<Option<Renderer>>>, input: ViewerInput) {
+    if let Ok(slot) = renderer.lock() {
+        if let Some(renderer) = slot.as_ref() {
+            renderer.send_input(input);
+        }
+    }
+}
+
+/// Forward a button down/up, with the cursor position it happened at.
+///
+/// The position matters as much as the button: the viewer's left-drag rotation
+/// picks the surface point under the cursor on the press frame.
+fn press_button(
+    renderer: &Arc<Mutex<Option<Renderer>>>,
+    button: ViewerButton,
+    pressed: bool,
+    position: Point<Pixels>,
+    window: &Window,
+    frame: (f32, f32),
+) {
+    let position = viewer_position(position, window.viewport_size(), frame);
+    forward(
+        renderer,
+        ViewerInput::Cursor {
+            x: position.x.as_f32(),
+            y: position.y.as_f32(),
+        },
+    );
+    forward(renderer, ViewerInput::Button { button, pressed });
+}
+
+/// Map a position in this window to the viewer's own window coordinates.
+///
+/// The frame is drawn at its native size and centred, so the image's origin is
+/// the window's centre minus half a frame. The viewer's window is
+/// `FRAME_WIDTH x FRAME_HEIGHT` physical pixels at a scale factor of 1 (see
+/// `renderer::spawn_virtual_window`), so one pixel of the image element is one
+/// pixel of the viewer's window and no scaling is needed.
+fn viewer_position(
+    position: Point<Pixels>,
+    viewport: Size<Pixels>,
+    frame: (f32, f32),
+) -> Point<Pixels> {
+    let origin_x = (viewport.width.as_f32() - frame.0) / 2.0;
+    let origin_y = (viewport.height.as_f32() - frame.1) / 2.0;
+    gpui::point(
+        px(position.x.as_f32() - origin_x),
+        px(position.y.as_f32() - origin_y),
+    )
 }
 
 /// The newest frame, discarding any the window has not drawn yet, so the window
@@ -324,5 +548,37 @@ mod tests {
         let image = frame_to_render_image(&frame);
         assert_eq!(image.size(0).width.0, 4);
         assert_eq!(image.size(0).height.0, 4);
+    }
+
+    /// A window-relative position becomes the same position on the viewer's own
+    /// window, with the centred image's origin removed. The frame is drawn at
+    /// its native size, so the centre of the window is the centre of the frame
+    /// whatever the window's size.
+    #[test]
+    fn mouse_positions_map_onto_the_viewers_window() {
+        let frame = (1280.0, 720.0);
+
+        // A window exactly the frame's size: no offset.
+        let centred = viewer_position(
+            gpui::point(px(10.0), px(20.0)),
+            Size {
+                width: px(1280.0),
+                height: px(720.0),
+            },
+            frame,
+        );
+        assert_eq!((centred.x.as_f32(), centred.y.as_f32()), (10.0, 20.0));
+
+        // A window twice as wide: the image starts 640 px in, so a point at the
+        // window's centre is the frame's centre.
+        let wide = viewer_position(
+            gpui::point(px(640.0 + 100.0), px(360.0 + 50.0)),
+            Size {
+                width: px(2560.0),
+                height: px(1440.0),
+            },
+            frame,
+        );
+        assert_eq!((wide.x.as_f32(), wide.y.as_f32()), (100.0, 50.0));
     }
 }
