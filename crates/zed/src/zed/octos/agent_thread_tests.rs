@@ -285,7 +285,11 @@ fn a_turn_names_its_own_session_and_carries_one_text_item() {
 // The translation
 // ---------------------------------------------------------------------------
 
-/// A `message/delta` is the authoritative assistant text lane.
+/// A `message/delta` renders as an agent message chunk. It is the lane a
+/// pre-`projection/envelope` kernel used; the kernel this host pins drops it in
+/// favour of the envelope's `assistant_delta` (see
+/// [`the_envelope_assistant_delta_is_the_answer`]), and the arm stays because a
+/// frame that does arrive must still render.
 #[test]
 fn a_message_delta_is_an_agent_message_chunk() {
     let effects = thread_effects(&message_delta("hello"));
@@ -484,19 +488,37 @@ fn a_delta_frame_is_not_rendered_from_a_field_the_kernel_does_not_send() {
     }
 }
 
-/// **A discriminator.** Since #2318 the projection envelope carries the *same*
-/// assistant text that `message/delta` already delivers. Rendering both doubles
-/// every answer, so the envelope's `assistant_delta` (and its persisted final
-/// form) renders nothing here.
+/// **A discriminator.** The envelope's `assistant_delta` is the transcript's
+/// only source of answer text: the kernel drops the raw `message/delta` record
+/// on the wire for every connection
+/// (`live_event_passes_capability_filter`,
+/// `crates/octos/octos-cli/src/api/ui_protocol_transport.rs:23337`). Ignoring
+/// it — which this build did, on the belief that `message/delta` carried the
+/// same text — is what left a finished turn showing a tool card and no answer.
+///
+/// The raw lane still renders (a kernel that still sends it is not broken), and
+/// `assistant_persisted` is still not rendered: its own deltas already streamed
+/// that text, so rendering it would double the answer.
 #[test]
-fn an_envelope_assistant_delta_does_not_double_the_answer() {
+fn the_envelope_assistant_delta_is_the_answer() {
     let delta = thread_effects(&envelope(json!({
         "type": "assistant_delta",
         "data": { "text": "the answer", "assistant_segment_id": "seg-1" },
     })));
-    assert!(
-        delta.is_empty(),
-        "the envelope's assistant text must not be rendered twice: {delta:?}"
+    assert_eq!(
+        agent_text(&delta.updates[0]),
+        Some("the answer"),
+        "the envelope's assistant text is the answer: {delta:?}"
+    );
+
+    let reasoning = thread_effects(&envelope(json!({
+        "type": "reasoning_delta",
+        "data": { "text": "the thinking" },
+    })));
+    assert_eq!(
+        thought_text(&reasoning.updates[0]),
+        Some("the thinking"),
+        "the envelope's reasoning text is the thinking block: {reasoning:?}"
     );
 
     let persisted = thread_effects(&envelope(json!({
@@ -512,7 +534,8 @@ fn an_envelope_assistant_delta_does_not_double_the_answer() {
         "the persisted copy of the same text must not be rendered twice: {persisted:?}"
     );
 
-    // The raw lane is where the text comes from, and it does render.
+    // The raw lane is where the text came from before the v2 cutover, and it
+    // still renders.
     assert_eq!(
         agent_text(&thread_effects(&message_delta("the answer")).updates[0]),
         Some("the answer")
@@ -580,7 +603,7 @@ fn an_unknown_frame_renders_nothing() {
 // ---------------------------------------------------------------------------
 
 /// A completed turn ends the turn and carries no transcript update: the text
-/// already streamed on `message/delta`.
+/// already streamed as `message/delta` or as the envelope's `assistant_delta`.
 #[test]
 fn turn_completed_ends_the_turn_without_an_update() {
     let turn_id = TurnId::new();

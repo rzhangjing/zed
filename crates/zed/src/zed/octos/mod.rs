@@ -1288,13 +1288,29 @@ fn console_action(method: &str, params: &Value) -> ConsoleAction {
 /// What one `projection/envelope` payload means for the console.
 ///
 /// Only the payloads that carry something the console renders are mapped; the
-/// rest are ignored rather than guessed at. In particular an
-/// `assistant_delta` is **not** rendered: the same text also arrives on
-/// `message/delta`, and appending both would double every answer.
+/// rest are ignored rather than guessed at.
+///
+/// **The envelope is the answer lane, not a copy of it.** `message/delta` never
+/// reaches this host: `live_event_passes_capability_filter`
+/// (`crates/octos/octos-cli/src/api/ui_protocol_transport.rs:23318`, the
+/// `MessageDelta | ReasoningDelta | ToolStarted | …` arm at `:23337`) drops
+/// every raw source record on the wire for *every* connection — "every
+/// connection is a canonical v2 consumer" — and the ephemeral direct-send path
+/// applies the same filter (`send_notification_ephemeral`, same file `:47801`).
+/// So an `assistant_delta` that is not rendered here is an answer the person
+/// never sees. (The same holds for the raw `tool/*` lifecycle above.)
 fn envelope_action(payload: &octos_core::ui_protocol::PayloadV2) -> ConsoleAction {
     use octos_core::ui_protocol::{EnvelopeToolEndStatus, PayloadV2, TurnTerminalOutcome};
 
     match payload {
+        PayloadV2::AssistantDelta { text, .. } => ConsoleAction::Append(text.clone()),
+        // The thinking lane is on the envelope for the same reason the answer
+        // is; the raw `reasoning/delta` is filtered out with `message/delta`.
+        PayloadV2::ReasoningDelta { text } => ConsoleAction::Append(text.clone()),
+        // **Not rendered.** `assistant_persisted` carries the same text its own
+        // deltas already streamed, so appending it would print the answer
+        // twice.
+        PayloadV2::AssistantPersisted { .. } => ConsoleAction::Ignore,
         PayloadV2::ToolStart {
             tool_call_id,
             name,
@@ -1457,8 +1473,8 @@ pub fn is_pending(cx: &App) -> bool {
 /// Sends `text` to the embedded kernel as one turn.
 ///
 /// The reply to `turn/start` only acknowledges the turn; the answer streams
-/// back as `message/delta` notifications, which [`apply_notification`] appends
-/// to the console.
+/// back as `projection/envelope` `assistant_delta` payloads, which
+/// [`apply_notification`] appends to the console.
 ///
 /// The id this host mints is remembered as *the* turn in flight, because that
 /// is what a later `turn/interrupt` has to name. The reply can override it: a
@@ -2957,11 +2973,15 @@ mod tests {
         );
     }
 
-    /// The envelope's turn terminal settles the turn, and an `assistant_delta`
-    /// is deliberately NOT rendered: the same text arrives on `message/delta`
-    /// and appending both would double every answer.
+    /// The envelope's turn terminal settles the turn, and its `assistant_delta`
+    /// **is** the answer: the raw `message/delta` lane is filtered out for every
+    /// connection (`live_event_passes_capability_filter`,
+    /// `crates/octos/octos-cli/src/api/ui_protocol_transport.rs:23337`), so a
+    /// console that ignored this payload showed an empty answer — the exact
+    /// "tool card, then nothing" report. The persisted copy of the same text is
+    /// still not rendered: its own deltas already streamed it.
     #[test]
-    fn an_envelope_terminal_settles_the_turn_and_a_delta_is_left_to_the_raw_lane() {
+    fn an_envelope_terminal_settles_the_turn_and_an_envelope_delta_is_the_answer() {
         assert_eq!(
             console_action(
                 methods::PROJECTION_ENVELOPE,
@@ -2988,12 +3008,56 @@ mod tests {
             console_action(
                 methods::PROJECTION_ENVELOPE,
                 &envelope(oup::PayloadV2::AssistantDelta {
-                    text: "already on the raw lane".to_owned(),
+                    text: "the answer".to_owned(),
                     assistant_segment_id: "seg-1".to_owned(),
+                })
+            ),
+            ConsoleAction::Append("the answer".to_owned())
+        );
+        assert_eq!(
+            console_action(
+                methods::PROJECTION_ENVELOPE,
+                &envelope(oup::PayloadV2::ReasoningDelta {
+                    text: "the thinking".to_owned(),
+                })
+            ),
+            ConsoleAction::Append("the thinking".to_owned())
+        );
+        assert_eq!(
+            console_action(
+                methods::PROJECTION_ENVELOPE,
+                &envelope(oup::PayloadV2::AssistantPersisted {
+                    text: "the answer".to_owned(),
+                    assistant_segment_id: "seg-1".to_owned(),
+                    meta: serde_json::from_value(json!({
+                        "message_id": "m-1",
+                        "persisted_at": "2026-10-16T14:06:32.143261Z",
+                    }))
+                    .expect("meta"),
                 })
             ),
             ConsoleAction::Ignore
         );
+    }
+
+    /// **A discriminator for the answer lane.** The raw delta still renders, so
+    /// the console is correct on a kernel that still sends it; and the envelope
+    /// renders too. They cannot both arrive — the filter above drops the raw
+    /// record whenever its v2 projection exists — so "both arms render" is not
+    /// "every answer doubles".
+    #[test]
+    fn both_delta_lanes_render_and_cannot_both_arrive() {
+        let raw = console_action(
+            methods::MESSAGE_DELTA,
+            &serde_json::to_value(oup::MessageDeltaEvent {
+                session_id: session_key(),
+                topic: None,
+                turn_id: oup::TurnId::new(),
+                text: "half".to_owned(),
+            })
+            .expect("delta params"),
+        );
+        assert_eq!(raw, ConsoleAction::Append("half".to_owned()));
     }
 
     // -----------------------------------------------------------------------

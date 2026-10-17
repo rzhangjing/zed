@@ -1381,11 +1381,12 @@ fn effects_of(notification: UiNotification) -> FrameEffects {
                 TurnEnd::Errored(format!("turn failed [{}]: {}", event.code, event.message)),
             );
         }
-        // The canonical projection lane. Since #2318 the kernel suppresses the
-        // raw `tool/*` lifecycle frames for a connection that negotiated
-        // `projection.envelope.v1`, so a client that only reads the raw lane
-        // sees no tool activity at all; the envelope carries the same
-        // information, from its own type.
+        // The canonical projection lane, and the *only* lane: the kernel drops
+        // the raw `message/delta`, `reasoning/delta` and `tool/*` records on the
+        // wire for every connection (`live_event_passes_capability_filter`,
+        // `crates/octos/octos-cli/src/api/ui_protocol_transport.rs:23337`). The
+        // arms above stay for a kernel that still emits them; with this one only
+        // one of the two can arrive, so decoding both never doubles anything.
         UiNotification::EnvelopeV2(event) => payload_effects(&event.envelope.payload, &mut effects),
         _ => {}
     }
@@ -1394,19 +1395,32 @@ fn effects_of(notification: UiNotification) -> FrameEffects {
 
 /// What one `projection/envelope` payload means for an agent thread.
 ///
-/// Deliberately narrower than [`effects_of`]: only the payloads the transcript
-/// renders are mapped.
+/// Only the payloads the transcript renders are mapped.
+///
+/// **The envelope is the transcript's only source of text.** `message/delta`
+/// and `reasoning/delta` never reach this host:
+/// `live_event_passes_capability_filter`
+/// (`crates/octos/octos-cli/src/api/ui_protocol_transport.rs:23318`, the
+/// `MessageDelta | ReasoningDelta | ToolStarted | …` arm at `:23337`) drops the
+/// raw record on the wire for every connection, and the ephemeral direct-send
+/// path applies the same filter (`send_notification_ephemeral`, same file
+/// `:47801`). A build that ignored `assistant_delta` therefore rendered a turn
+/// with tool cards and no answer.
 fn payload_effects(payload: &PayloadV2, effects: &mut FrameEffects) {
     match payload {
-        // **Not rendered.** `assistant_delta` carries the same text that also
-        // arrives on `message/delta`; rendering both doubles every answer. The
-        // same reasoning applies to `assistant_persisted`, whose text the
-        // deltas have already delivered.
-        PayloadV2::AssistantDelta { .. } | PayloadV2::AssistantPersisted { .. } => {}
-        PayloadV2::ReasoningDelta { .. } => {
-            // Also on `reasoning/delta`; rendering both would double the
-            // thinking block.
+        PayloadV2::AssistantDelta { text, .. } => {
+            effects.push(acp::SessionUpdate::AgentMessageChunk(acp::ContentChunk::new(
+                acp::ContentBlock::from(text.clone()),
+            )));
         }
+        PayloadV2::ReasoningDelta { text } => {
+            effects.push(acp::SessionUpdate::AgentThoughtChunk(acp::ContentChunk::new(
+                acp::ContentBlock::from(text.clone()),
+            )));
+        }
+        // **Not rendered.** `assistant_persisted` carries the same text its own
+        // deltas have already delivered; rendering both doubles every answer.
+        PayloadV2::AssistantPersisted { .. } => {}
         PayloadV2::ToolStart {
             tool_call_id,
             name,
