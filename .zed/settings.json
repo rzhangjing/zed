@@ -57,7 +57,7 @@
   "remove_trailing_whitespace_on_save": true,
   "ensure_final_newline_on_save": true,
   "file_scan_exclusions": [
-    "crates/agent/src/tools/evals/fixtures",
+    "crates/framework/agent/src/tools/evals/fixtures",
     "**/.git",
     "**/.svn",
     "**/.hg",

@@ -1,215 +1,224 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/acp_thread",
-    "crates/acp_tools",
-    "crates/action_log",
-    "crates/activity_indicator",
-    "crates/agent",
-    "crates/agent_servers",
-    "crates/agent_settings",
-    "crates/agent_skills",
-    "crates/agent_ui",
-    "crates/assets",
-    "crates/audio",
-    "crates/auto_update",
-    "crates/auto_update_helper",
-    "crates/auto_update_ui",
+    "crates/framework/acp_thread",
+    "crates/framework/acp_tools",
+    "crates/framework/action_log",
+    "crates/framework/activity_indicator",
+    "crates/framework/agent",
+    "crates/framework/agent_servers",
+    "crates/framework/agent_settings",
+    "crates/framework/agent_skills",
+    "crates/framework/agent_ui",
+    "crates/framework/assets",
+    "crates/framework/audio",
+    "crates/framework/auto_update",
+    "crates/framework/auto_update_helper",
+    "crates/framework/auto_update_ui",
     #"crates/benchmarks",
-    "crates/breadcrumbs",
-    "crates/buffer_diff",
-    "crates/call_hierarchy",
-    "crates/cli",
-    "crates/client",
-    "crates/clock",
-    "crates/collections",
-    "crates/command_palette",
-    "crates/command_palette_hooks",
-    "crates/component",
-    "crates/component_preview",
-    "crates/context_server",
-    "crates/crashes",
-    "crates/credentials_provider",
-    "crates/db",
+    "crates/framework/breadcrumbs",
+    "crates/framework/buffer_diff",
+    "crates/framework/call_hierarchy",
+    "crates/framework/cli",
+    "crates/framework/client",
+    "crates/framework/clock",
+    "crates/framework/collections",
+    "crates/framework/command_palette",
+    "crates/framework/command_palette_hooks",
+    "crates/framework/component",
+    "crates/framework/component_preview",
+    "crates/framework/context_server",
+    "crates/framework/crashes",
+    "crates/framework/credentials_provider",
+    "crates/framework/db",
     #"crates/debug_adapter_extension",
-    "crates/deepseek",
-    "crates/diagnostics",
-    "crates/edit_prediction",
+    "crates/framework/deepseek",
+    "crates/framework/diagnostics",
+    "crates/framework/edit_prediction",
     #"crates/edit_prediction_cli",
-    "crates/edit_prediction_context",
-    "crates/edit_prediction_metrics",
-    "crates/edit_prediction_types",
-    "crates/edit_prediction_ui",
-    "crates/editor",
+    "crates/framework/edit_prediction_context",
+    "crates/framework/edit_prediction_metrics",
+    "crates/framework/edit_prediction_types",
+    "crates/framework/edit_prediction_ui",
+    "crates/framework/editor",
     #"crates/editor_benchmarks",
-    "crates/encoding_selector",
-    "crates/env_var",
-    "crates/etw_tracing",
+    "crates/framework/encoding_selector",
+    "crates/framework/env_var",
+    "crates/framework/etw_tracing",
     #"crates/eval_cli",
-    "crates/eval_utils",
-    "crates/feature_flags",
-    "crates/feature_flags_macros",
-    "crates/feedback",
-    "crates/file_finder",
-    "crates/file_icons",
-    "crates/fs",
+    "crates/framework/eval_utils",
+    "crates/framework/feature_flags",
+    "crates/framework/feature_flags_macros",
+    "crates/framework/feedback",
+    "crates/framework/file_finder",
+    "crates/framework/file_icons",
+    "crates/framework/fs",
     #"crates/fs_benchmarks",
-    "crates/fuzzy",
-    "crates/fuzzy_nucleo",
-    "crates/go_to_line",
-    "crates/gpui",
-    "crates/gpui_linux",
-    "crates/gpui_macros",
-    "crates/gpui_platform",
-    "crates/gpui_shared_string",
-    "crates/gpui_tokio",
-    "crates/gpui_util",
-    "crates/gpui_web",
-    "crates/gpui_wgpu",
-    "crates/gpui_windows",
-    "crates/grammars",
-    "crates/html_to_markdown",
-    "crates/http_client",
-    "crates/http_client_tls",
-    "crates/http_proxy",
-    "crates/icons",
-    "crates/image_viewer",
-    "crates/input_latency_ui",
-    "crates/inspector_ui",
-    "crates/install_cli",
-    "crates/journal",
-    "crates/json_schema_store",
-    "crates/keymap_editor",
-    "crates/language",
-    "crates/language_core",
+    "crates/framework/fuzzy",
+    "crates/framework/fuzzy_nucleo",
+    "crates/framework/go_to_line",
+    "crates/framework/gpui",
+    "crates/framework/gpui_linux",
+    "crates/framework/gpui_macros",
+    "crates/framework/gpui_platform",
+    "crates/framework/gpui_shared_string",
+    "crates/framework/gpui_tokio",
+    "crates/framework/gpui_util",
+    "crates/framework/gpui_web",
+    "crates/framework/gpui_wgpu",
+    "crates/framework/gpui_windows",
+    "crates/framework/grammars",
+    "crates/framework/html_to_markdown",
+    "crates/framework/http_client",
+    "crates/framework/http_client_tls",
+    "crates/framework/http_proxy",
+    "crates/framework/icons",
+    "crates/framework/image_viewer",
+    "crates/framework/input_latency_ui",
+    "crates/framework/inspector_ui",
+    "crates/framework/install_cli",
+    "crates/framework/journal",
+    "crates/framework/json_schema_store",
+    "crates/framework/keymap_editor",
+    "crates/framework/language",
+    "crates/framework/language_core",
     #"crates/language_extension",
-    "crates/language_model",
-    "crates/language_model_core",
-    "crates/language_models",
-    "crates/line_ending_selector",
-    "crates/llama_cpp",
-    "crates/lmstudio",
-    "crates/lsp",
-    "crates/lsp_locations",
-    "crates/markdown",
-    "crates/markdown_preview",
-    "crates/menu",
-    "crates/mermaid_render",
-    "crates/migrator",
-    "crates/miniprofiler_ui",
-    "crates/multi_buffer",
-    "crates/net",
-    "crates/node_runtime",
-    "crates/notifications",
-    "crates/oauth_callback_server",
-    "crates/ollama",
-    "crates/onboarding",
-    "crates/open_ai",
-    "crates/open_path_prompt",
-    "crates/outline",
-    "crates/outline_panel",
-    "crates/path",
-    "crates/paths",
-    "crates/picker",
-    "crates/picker_preview",
-    "crates/platform_title_bar",
-    "crates/prettier",
-    "crates/project",
+    "crates/framework/language_model",
+    "crates/framework/language_model_core",
+    "crates/framework/language_models",
+    "crates/framework/line_ending_selector",
+    "crates/framework/llama_cpp",
+    "crates/framework/lmstudio",
+    "crates/framework/lsp",
+    "crates/framework/lsp_locations",
+    "crates/framework/markdown",
+    "crates/framework/markdown_preview",
+    "crates/framework/menu",
+    "crates/framework/mermaid_render",
+    "crates/framework/migrator",
+    "crates/framework/miniprofiler_ui",
+    "crates/framework/multi_buffer",
+    "crates/framework/net",
+    "crates/framework/node_runtime",
+    "crates/framework/notifications",
+    "crates/framework/oauth_callback_server",
+    "crates/framework/ollama",
+    "crates/framework/onboarding",
+    "crates/framework/open_ai",
+    "crates/framework/open_path_prompt",
+    "crates/framework/outline",
+    "crates/framework/outline_panel",
+    "crates/framework/path",
+    "crates/framework/paths",
+    "crates/framework/picker",
+    "crates/framework/picker_preview",
+    "crates/framework/platform_title_bar",
+    "crates/framework/prettier",
+    "crates/framework/project",
     #"crates/project_benchmarks",
-    "crates/project_panel",
-    "crates/project_symbols",
-    "crates/prompt_store",
-    "crates/proto",
-    "crates/proxy_handshake",
-    "crates/recent_projects",
-    "crates/refineable",
-    "crates/refineable/derive_refineable",
-    "crates/release_channel",
-    "crates/repl",
-    "crates/reqwest_client",
-    "crates/rope",
-    "crates/rpc",
-    "crates/sandbox",
-    "crates/scheduler",
+    "crates/framework/project_panel",
+    "crates/framework/project_symbols",
+    "crates/framework/prompt_store",
+    "crates/framework/proto",
+    "crates/framework/proxy_handshake",
+    "crates/framework/recent_projects",
+    "crates/framework/refineable",
+    "crates/framework/refineable/derive_refineable",
+    "crates/framework/release_channel",
+    "crates/framework/repl",
+    "crates/framework/reqwest_client",
+    "crates/framework/rope",
+    "crates/framework/rpc",
+    "crates/framework/sandbox",
+    "crates/framework/scheduler",
     #"crates/schema_generator",
-    "crates/search",
-    "crates/session",
-    "crates/settings",
-    "crates/settings_content",
-    "crates/settings_json",
-    "crates/settings_macros",
-    "crates/settings_profile_selector",
-    "crates/settings_ui",
-    "crates/shell_command_parser",
-    "crates/sidebar",
-    "crates/snippet",
-    "crates/snippet_provider",
-    "crates/snippets_ui",
-    "crates/sqlez",
-    "crates/sqlez_macros",
-    "crates/streaming_diff",
-    "crates/sum_tree",
-    "crates/svg_preview",
-    "crates/syntax_theme",
-    "crates/system_specs",
-    "crates/tab_switcher",
-    "crates/tabular_data_preview",
-    "crates/task",
-    "crates/tasks_ui",
-    "crates/telemetry",
-    "crates/telemetry_events",
-    "crates/terminal",
-    "crates/terminal_view",
-    "crates/text",
-    "crates/theme",
+    "crates/framework/search",
+    "crates/framework/session",
+    "crates/framework/settings",
+    "crates/framework/settings_content",
+    "crates/framework/settings_json",
+    "crates/framework/settings_macros",
+    "crates/framework/settings_profile_selector",
+    "crates/framework/settings_ui",
+    "crates/framework/shell_command_parser",
+    "crates/framework/sidebar",
+    "crates/framework/snippet",
+    "crates/framework/snippet_provider",
+    "crates/framework/snippets_ui",
+    "crates/framework/sqlez",
+    "crates/framework/sqlez_macros",
+    "crates/framework/streaming_diff",
+    "crates/framework/sum_tree",
+    "crates/framework/svg_preview",
+    "crates/framework/syntax_theme",
+    "crates/framework/system_specs",
+    "crates/framework/tab_switcher",
+    "crates/framework/tabular_data_preview",
+    "crates/framework/task",
+    "crates/framework/tasks_ui",
+    "crates/framework/telemetry",
+    "crates/framework/telemetry_events",
+    "crates/framework/terminal",
+    "crates/framework/terminal_view",
+    "crates/framework/text",
+    "crates/framework/theme",
     #"crates/theme_extension",
-    "crates/theme_importer",
-    "crates/theme_selector",
-    "crates/theme_settings",
-    "crates/time_format",
-    "crates/title_bar",
-    "crates/toolchain_selector",
-    "crates/ui",
-    "crates/ui_input",
-    "crates/ui_macros",
-    "crates/ui_prompt",
-    "crates/util",
-    "crates/util_macros",
-    "crates/watch",
-    "crates/which_key",
-    "crates/windows_resources",
-    "crates/workspace",
-    "crates/worktree",
+    "crates/framework/theme_importer",
+    "crates/framework/theme_selector",
+    "crates/framework/theme_settings",
+    "crates/framework/time_format",
+    "crates/framework/title_bar",
+    "crates/framework/toolchain_selector",
+    "crates/framework/ui",
+    "crates/framework/ui_input",
+    "crates/framework/ui_macros",
+    "crates/framework/ui_prompt",
+    "crates/framework/util",
+    "crates/framework/util_macros",
+    "crates/framework/watch",
+    "crates/framework/which_key",
+    "crates/framework/windows_resources",
+    "crates/framework/workspace",
+    "crates/framework/worktree",
     #"crates/worktree_benchmarks",
-    "crates/zed",
-    "crates/zed_actions",
-    "crates/zed_credentials_provider",
-    "crates/zed_env_vars",
-    "crates/zeta_prompt",
-    "crates/zlog",
-    "crates/zlog_settings",
-    "crates/ztracing",
-    "crates/ztracing_macro",
+    "crates/framework/zed",
+    "crates/framework/zed_actions",
+    "crates/framework/zed_credentials_provider",
+    "crates/framework/zed_env_vars",
+    "crates/framework/zeta_prompt",
+    "crates/framework/zlog",
+    "crates/framework/zlog_settings",
+    "crates/framework/ztracing",
+    "crates/framework/ztracing_macro",
 
     #
     # gpui-kit
     #
 
-    "crates/gpui-base",
-    "crates/gpui-component",
-    "crates/gpui-component-macros",
-    "crates/fps",
-    "crates/gpui-kit",
-    "crates/gpui-kit-assets",
-    "crates/gpui-kit-showcase",
+    # The upstream GPUI Kit tree, vendored whole under `crates/gpui-kit/` and
+    # reduced to the crates Zed builds: the foundation (`base`), the styled
+    # components (`component`, `component-macros`), the FPS HUD (`fps`), the
+    # facade (`kit`) and its icon set (`assets`).
+    #
+    # `shell`, `story`, `story-web` and `webview` are vendored alongside them but
+    # stay out of the build: `shell` pins a QuickJS revision that cannot be
+    # fetched on this machine (see the comment further down), and `webview`
+    # selects GPUI Fast, which this tree does not vendor.
+    "crates/gpui-kit/base",
+    "crates/gpui-kit/component",
+    "crates/gpui-kit/component-macros",
+    "crates/gpui-kit/fps",
+    "crates/gpui-kit/kit",
+    "crates/gpui-kit/assets",
+    "crates/framework/gpui-kit-showcase",
     # The script host and everything built on it are vendored but kept out of the
     # build, because one pinned QuickJS revision could not be fetched into
     # cargo's git db on this machine (the object is absent, so both `--offline`
-    # and every retry fail; see `gpui-kit/PROVENANCE.md`). Sources are complete.
+    # and every retry fail). Sources are complete.
     #
-    # To re-enable, fetch the missing revision first, then uncomment the four
-    # members below, `crates/gpui-kit-examples/dock`, the three
-    # `[workspace.dependencies]` entries and the `rquickjs` patch:
+    # To re-enable, fetch the missing revision first, then uncomment the members
+    # below, the `[workspace.dependencies]` entries they need and the `rquickjs`
+    # patch:
     #
     #   git -C "$env:USERPROFILE\.cargo\git\db\quickjs-jit-85f77f3fd15b7d92" \
     #       fetch --no-tags --force --update-head-ok \
@@ -218,20 +227,10 @@ members = [
     #
     # (or `$env:CARGO_NET_GIT_FETCH_WITH_CLI='true'; cargo fetch`).
     #
-    #"crates/gpui-shell",
-    #"crates/gpui-shell/rquickjs-compat",
-    #"crates/gpui-component-shell",
-    #"crates/gpui-component-story",
-
-    #
-    # gpui-kit examples
-    #
-
-    #"crates/gpui-kit-examples/dock",
-    "crates/gpui-kit-examples/example-input",
-    "crates/gpui-kit-examples/example-sidebar",
-    "crates/gpui-kit-examples/system_monitor",
-    "crates/gpui-kit-examples/table_in_scrollable",
+    #"crates/gpui-kit/shell",
+    #"crates/gpui-kit/story",
+    #"crates/gpui-kit/story-web",
+    #"crates/gpui-kit/webview",
 
     #
     # Tooling
@@ -243,7 +242,7 @@ members = [
     # Octos (merged from the octos workspace; see AGENTS.md and .rules)
     #
     # These are Octos' own crates, merged into this tree. `default-members`
-    # stays `crates/zed`, so a plain `cargo build` at the root still builds Zed
+    # stays `crates/framework/zed`, so a plain `cargo build` at the root still builds Zed
     # only; build Octos with `-p octos-cli` (or `--workspace`).
     #
 
@@ -359,8 +358,32 @@ members = [
     "crates/cesiumrust/specs",
     "crates/cesiumrust/tools/gen_offline_assets",
     "crates/cesiumrust/tools/pixel_diff",
+
+    #
+    # dameng (达梦数据库驱动、连接池与查询层)
+    #
+    # Copied in whole from `D:\Rust\dameng`, which was its own workspace. Its
+    # crates all inherit `version.workspace` / `edition.workspace` /
+    # `rust-version.workspace` / `license.workspace`, so they have to be members
+    # here — the nearest `[workspace]` is this one and they now inherit Zed's
+    # `[workspace.package]` instead of dameng's.
+    #
+    # Only the crates a connection needs are listed: the Toasty-facing ones
+    # (`toasty-driver-dameng`, `toasty-sql`, and the `dameng` facade that pulls
+    # both) are left out, because `Help > Dameng` connects and runs SQL, and
+    # nothing in this build wants an ORM. `dm-migrate` is left out with them (it
+    # depends on toasty's SQL layer too).
+    #
+
+    "crates/dameng/dm-error",
+    "crates/dameng/dm-core",
+    "crates/dameng/dm-macros",
+    "crates/dameng/dm-odbc",
+    "crates/dameng/dm-dpi",
+    "crates/dameng/dm-pool",
+    "crates/dameng/dm-query",
 ]
-default-members = ["crates/zed"]
+default-members = ["crates/framework/zed"]
 
 exclude = ["vendor/octocrab"]
 
@@ -383,205 +406,216 @@ repository = "https://github.com/octos-org/octos"
 # Workspace member crates
 #
 
-acp_thread = { path = "crates/acp_thread" }
-acp_tools = { path = "crates/acp_tools" }
-action_log = { path = "crates/action_log" }
-activity_indicator = { path = "crates/activity_indicator" }
-agent = { path = "crates/agent" }
-agent_servers = { path = "crates/agent_servers" }
-agent_settings = { path = "crates/agent_settings" }
-agent_skills = { path = "crates/agent_skills" }
-agent_ui = { path = "crates/agent_ui" }
-assets = { path = "crates/assets" }
-audio = { path = "crates/audio" }
-auto_update = { path = "crates/auto_update" }
-auto_update_ui = { path = "crates/auto_update_ui" }
-breadcrumbs = { path = "crates/breadcrumbs" }
-buffer_diff = { path = "crates/buffer_diff" }
-call_hierarchy = { path = "crates/call_hierarchy" }
-cli = { path = "crates/cli" }
-client = { path = "crates/client" }
+acp_thread = { path = "crates/framework/acp_thread" }
+acp_tools = { path = "crates/framework/acp_tools" }
+action_log = { path = "crates/framework/action_log" }
+activity_indicator = { path = "crates/framework/activity_indicator" }
+agent = { path = "crates/framework/agent" }
+agent_servers = { path = "crates/framework/agent_servers" }
+agent_settings = { path = "crates/framework/agent_settings" }
+agent_skills = { path = "crates/framework/agent_skills" }
+agent_ui = { path = "crates/framework/agent_ui" }
+assets = { path = "crates/framework/assets" }
+audio = { path = "crates/framework/audio" }
+auto_update = { path = "crates/framework/auto_update" }
+auto_update_ui = { path = "crates/framework/auto_update_ui" }
+breadcrumbs = { path = "crates/framework/breadcrumbs" }
+buffer_diff = { path = "crates/framework/buffer_diff" }
+call_hierarchy = { path = "crates/framework/call_hierarchy" }
+cli = { path = "crates/framework/cli" }
+client = { path = "crates/framework/client" }
 # The package is `zed-clock`: Octos' `crates/octos/app-skills/time` is also named
 # `clock`, and a workspace cannot hold two packages with one name. The key stays
 # `clock`, so every `clock.workspace = true` dependent is unaffected.
-clock = { path = "crates/clock", package = "zed-clock" }
-collections = { path = "crates/collections", version = "0.1.0" }
-command_palette = { path = "crates/command_palette" }
-command_palette_hooks = { path = "crates/command_palette_hooks" }
-component = { path = "crates/component" }
-component_preview = { path = "crates/component_preview" }
-context_server = { path = "crates/context_server" }
-crashes = { path = "crates/crashes" }
-credentials_provider = { path = "crates/credentials_provider" }
-db = { path = "crates/db" }
+clock = { path = "crates/framework/clock", package = "zed-clock" }
+collections = { path = "crates/framework/collections", version = "0.1.0" }
+command_palette = { path = "crates/framework/command_palette" }
+command_palette_hooks = { path = "crates/framework/command_palette_hooks" }
+component = { path = "crates/framework/component" }
+component_preview = { path = "crates/framework/component_preview" }
+context_server = { path = "crates/framework/context_server" }
+crashes = { path = "crates/framework/crashes" }
+credentials_provider = { path = "crates/framework/credentials_provider" }
+db = { path = "crates/framework/db" }
 #debug_adapter_extension = { path = "crates/debug_adapter_extension" }
-deepseek = { path = "crates/deepseek" }
-derive_refineable = { path = "crates/refineable/derive_refineable" }
-diagnostics = { path = "crates/diagnostics" }
-edit_prediction = { path = "crates/edit_prediction" }
-edit_prediction_context = { path = "crates/edit_prediction_context" }
-edit_prediction_metrics = { path = "crates/edit_prediction_metrics" }
-edit_prediction_types = { path = "crates/edit_prediction_types" }
-edit_prediction_ui = { path = "crates/edit_prediction_ui" }
-editor = { path = "crates/editor" }
-encoding_selector = { path = "crates/encoding_selector" }
-env_var = { path = "crates/env_var" }
-etw_tracing = { path = "crates/etw_tracing" }
-eval_utils = { path = "crates/eval_utils" }
-feature_flags = { path = "crates/feature_flags" }
-feature_flags_macros = { path = "crates/feature_flags_macros" }
-feedback = { path = "crates/feedback" }
-file_finder = { path = "crates/file_finder" }
-file_icons = { path = "crates/file_icons" }
-fs = { path = "crates/fs" }
-fuzzy = { path = "crates/fuzzy" }
-fuzzy_nucleo = { path = "crates/fuzzy_nucleo" }
-go_to_line = { path = "crates/go_to_line" }
-gpui = { path = "crates/gpui", default-features = false }
-gpui_linux = { path = "crates/gpui_linux", default-features = false }
-gpui_macros = { path = "crates/gpui_macros" }
-gpui_platform = { path = "crates/gpui_platform", default-features = false }
-gpui_shared_string = { path = "crates/gpui_shared_string" }
-gpui_tokio = { path = "crates/gpui_tokio" }
-gpui_util = { path = "crates/gpui_util" }
-gpui_web = { path = "crates/gpui_web" }
-gpui_wgpu = { path = "crates/gpui_wgpu" }
-gpui_windows = { path = "crates/gpui_windows", default-features = false }
-grammars = { path = "crates/grammars" }
-html_to_markdown = { path = "crates/html_to_markdown" }
-http_client = { path = "crates/http_client" }
-http_client_tls = { path = "crates/http_client_tls" }
-http_proxy = { path = "crates/http_proxy" }
-icons = { path = "crates/icons" }
-image_viewer = { path = "crates/image_viewer" }
-input_latency_ui = { path = "crates/input_latency_ui" }
-inspector_ui = { path = "crates/inspector_ui" }
-install_cli = { path = "crates/install_cli" }
-journal = { path = "crates/journal" }
-json_schema_store = { path = "crates/json_schema_store" }
-keymap_editor = { path = "crates/keymap_editor" }
-language = { path = "crates/language" }
-language_core = { path = "crates/language_core" }
+deepseek = { path = "crates/framework/deepseek" }
+derive_refineable = { path = "crates/framework/refineable/derive_refineable" }
+diagnostics = { path = "crates/framework/diagnostics" }
+edit_prediction = { path = "crates/framework/edit_prediction" }
+edit_prediction_context = { path = "crates/framework/edit_prediction_context" }
+edit_prediction_metrics = { path = "crates/framework/edit_prediction_metrics" }
+edit_prediction_types = { path = "crates/framework/edit_prediction_types" }
+edit_prediction_ui = { path = "crates/framework/edit_prediction_ui" }
+editor = { path = "crates/framework/editor" }
+encoding_selector = { path = "crates/framework/encoding_selector" }
+env_var = { path = "crates/framework/env_var" }
+etw_tracing = { path = "crates/framework/etw_tracing" }
+eval_utils = { path = "crates/framework/eval_utils" }
+feature_flags = { path = "crates/framework/feature_flags" }
+feature_flags_macros = { path = "crates/framework/feature_flags_macros" }
+feedback = { path = "crates/framework/feedback" }
+file_finder = { path = "crates/framework/file_finder" }
+file_icons = { path = "crates/framework/file_icons" }
+fs = { path = "crates/framework/fs" }
+fuzzy = { path = "crates/framework/fuzzy" }
+fuzzy_nucleo = { path = "crates/framework/fuzzy_nucleo" }
+go_to_line = { path = "crates/framework/go_to_line" }
+gpui = { path = "crates/framework/gpui", default-features = false }
+gpui_linux = { path = "crates/framework/gpui_linux", default-features = false }
+gpui_macros = { path = "crates/framework/gpui_macros" }
+gpui_platform = { path = "crates/framework/gpui_platform", default-features = false }
+gpui_shared_string = { path = "crates/framework/gpui_shared_string" }
+gpui_tokio = { path = "crates/framework/gpui_tokio" }
+gpui_util = { path = "crates/framework/gpui_util" }
+gpui_web = { path = "crates/framework/gpui_web" }
+gpui_wgpu = { path = "crates/framework/gpui_wgpu" }
+gpui_windows = { path = "crates/framework/gpui_windows", default-features = false }
+grammars = { path = "crates/framework/grammars" }
+html_to_markdown = { path = "crates/framework/html_to_markdown" }
+http_client = { path = "crates/framework/http_client" }
+http_client_tls = { path = "crates/framework/http_client_tls" }
+http_proxy = { path = "crates/framework/http_proxy" }
+icons = { path = "crates/framework/icons" }
+image_viewer = { path = "crates/framework/image_viewer" }
+input_latency_ui = { path = "crates/framework/input_latency_ui" }
+inspector_ui = { path = "crates/framework/inspector_ui" }
+install_cli = { path = "crates/framework/install_cli" }
+journal = { path = "crates/framework/journal" }
+json_schema_store = { path = "crates/framework/json_schema_store" }
+keymap_editor = { path = "crates/framework/keymap_editor" }
+language = { path = "crates/framework/language" }
+language_core = { path = "crates/framework/language_core" }
 #language_extension = { path = "crates/language_extension" }
-language_model = { path = "crates/language_model" }
-language_model_core = { path = "crates/language_model_core" }
-language_models = { path = "crates/language_models" }
-line_ending_selector = { path = "crates/line_ending_selector" }
-llama_cpp = { path = "crates/llama_cpp" }
-lmstudio = { path = "crates/lmstudio" }
-lsp = { path = "crates/lsp" }
-lsp_locations = { path = "crates/lsp_locations" }
-markdown = { path = "crates/markdown" }
-markdown_preview = { path = "crates/markdown_preview" }
-menu = { path = "crates/menu" }
-mermaid_render = { path = "crates/mermaid_render" }
-migrator = { path = "crates/migrator" }
-miniprofiler_ui = { path = "crates/miniprofiler_ui" }
-multi_buffer = { path = "crates/multi_buffer" }
-net = { path = "crates/net" }
-node_runtime = { path = "crates/node_runtime" }
-notifications = { path = "crates/notifications" }
-oauth_callback_server = { path = "crates/oauth_callback_server" }
-ollama = { path = "crates/ollama" }
-onboarding = { path = "crates/onboarding" }
-open_ai = { path = "crates/open_ai" }
-open_path_prompt = { path = "crates/open_path_prompt" }
-outline = { path = "crates/outline" }
-outline_panel = { path = "crates/outline_panel" }
-path = { path = "crates/path" }
-paths = { path = "crates/paths" }
+language_model = { path = "crates/framework/language_model" }
+language_model_core = { path = "crates/framework/language_model_core" }
+language_models = { path = "crates/framework/language_models" }
+line_ending_selector = { path = "crates/framework/line_ending_selector" }
+llama_cpp = { path = "crates/framework/llama_cpp" }
+lmstudio = { path = "crates/framework/lmstudio" }
+lsp = { path = "crates/framework/lsp" }
+lsp_locations = { path = "crates/framework/lsp_locations" }
+markdown = { path = "crates/framework/markdown" }
+markdown_preview = { path = "crates/framework/markdown_preview" }
+menu = { path = "crates/framework/menu" }
+mermaid_render = { path = "crates/framework/mermaid_render" }
+migrator = { path = "crates/framework/migrator" }
+miniprofiler_ui = { path = "crates/framework/miniprofiler_ui" }
+multi_buffer = { path = "crates/framework/multi_buffer" }
+net = { path = "crates/framework/net" }
+node_runtime = { path = "crates/framework/node_runtime" }
+notifications = { path = "crates/framework/notifications" }
+oauth_callback_server = { path = "crates/framework/oauth_callback_server" }
+ollama = { path = "crates/framework/ollama" }
+onboarding = { path = "crates/framework/onboarding" }
+open_ai = { path = "crates/framework/open_ai" }
+open_path_prompt = { path = "crates/framework/open_path_prompt" }
+outline = { path = "crates/framework/outline" }
+outline_panel = { path = "crates/framework/outline_panel" }
+path = { path = "crates/framework/path" }
+paths = { path = "crates/framework/paths" }
 perf = { path = "tooling/perf" }
-picker = { path = "crates/picker" }
-picker_preview = { path = "crates/picker_preview" }
-platform_title_bar = { path = "crates/platform_title_bar" }
-prettier = { path = "crates/prettier" }
-project = { path = "crates/project" }
-project_panel = { path = "crates/project_panel" }
-project_symbols = { path = "crates/project_symbols" }
-prompt_store = { path = "crates/prompt_store" }
-proto = { path = "crates/proto" }
-proxy_handshake = { path = "crates/proxy_handshake" }
-recent_projects = { path = "crates/recent_projects" }
-refineable = { path = "crates/refineable" }
-release_channel = { path = "crates/release_channel" }
-repl = { path = "crates/repl" }
-reqwest_client = { path = "crates/reqwest_client" }
+picker = { path = "crates/framework/picker" }
+picker_preview = { path = "crates/framework/picker_preview" }
+platform_title_bar = { path = "crates/framework/platform_title_bar" }
+prettier = { path = "crates/framework/prettier" }
+project = { path = "crates/framework/project" }
+project_panel = { path = "crates/framework/project_panel" }
+project_symbols = { path = "crates/framework/project_symbols" }
+prompt_store = { path = "crates/framework/prompt_store" }
+proto = { path = "crates/framework/proto" }
+proxy_handshake = { path = "crates/framework/proxy_handshake" }
+recent_projects = { path = "crates/framework/recent_projects" }
+refineable = { path = "crates/framework/refineable" }
+release_channel = { path = "crates/framework/release_channel" }
+repl = { path = "crates/framework/repl" }
+reqwest_client = { path = "crates/framework/reqwest_client" }
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "e50e726ddd0292f6ef9de0dda6b90af4ed1fb66a", features = ["wav", "playback", "wav_output", "recording"] }
-rope = { path = "crates/rope" }
-rpc = { path = "crates/rpc" }
-sandbox = { path = "crates/sandbox" }
-scheduler = { path = "crates/scheduler" }
-search = { path = "crates/search" }
-session = { path = "crates/session" }
-settings = { path = "crates/settings" }
-settings_content = { path = "crates/settings_content" }
-settings_json = { path = "crates/settings_json", default-features = false }
-settings_macros = { path = "crates/settings_macros" }
-settings_profile_selector = { path = "crates/settings_profile_selector" }
-settings_ui = { path = "crates/settings_ui" }
-shell_command_parser = { path = "crates/shell_command_parser" }
-sidebar = { path = "crates/sidebar" }
-snippet = { path = "crates/snippet" }
-snippet_provider = { path = "crates/snippet_provider" }
-snippets_ui = { path = "crates/snippets_ui" }
-sqlez = { path = "crates/sqlez" }
-sqlez_macros = { path = "crates/sqlez_macros" }
-streaming_diff = { path = "crates/streaming_diff" }
-sum_tree = { path = "crates/sum_tree" }
-svg_preview = { path = "crates/svg_preview" }
-syntax_theme = { path = "crates/syntax_theme" }
-system_specs = { path = "crates/system_specs" }
-tab_switcher = { path = "crates/tab_switcher" }
-tabular_data_preview = { path = "crates/tabular_data_preview"}
-task = { path = "crates/task" }
-tasks_ui = { path = "crates/tasks_ui" }
-telemetry = { path = "crates/telemetry" }
-telemetry_events = { path = "crates/telemetry_events" }
-terminal = { path = "crates/terminal" }
-terminal_view = { path = "crates/terminal_view" }
-text = { path = "crates/text" }
-theme = { path = "crates/theme" }
+rope = { path = "crates/framework/rope" }
+rpc = { path = "crates/framework/rpc" }
+sandbox = { path = "crates/framework/sandbox" }
+scheduler = { path = "crates/framework/scheduler" }
+search = { path = "crates/framework/search" }
+session = { path = "crates/framework/session" }
+settings = { path = "crates/framework/settings" }
+settings_content = { path = "crates/framework/settings_content" }
+settings_json = { path = "crates/framework/settings_json", default-features = false }
+settings_macros = { path = "crates/framework/settings_macros" }
+settings_profile_selector = { path = "crates/framework/settings_profile_selector" }
+settings_ui = { path = "crates/framework/settings_ui" }
+shell_command_parser = { path = "crates/framework/shell_command_parser" }
+sidebar = { path = "crates/framework/sidebar" }
+snippet = { path = "crates/framework/snippet" }
+snippet_provider = { path = "crates/framework/snippet_provider" }
+snippets_ui = { path = "crates/framework/snippets_ui" }
+sqlez = { path = "crates/framework/sqlez" }
+sqlez_macros = { path = "crates/framework/sqlez_macros" }
+streaming_diff = { path = "crates/framework/streaming_diff" }
+sum_tree = { path = "crates/framework/sum_tree" }
+svg_preview = { path = "crates/framework/svg_preview" }
+syntax_theme = { path = "crates/framework/syntax_theme" }
+system_specs = { path = "crates/framework/system_specs" }
+tab_switcher = { path = "crates/framework/tab_switcher" }
+tabular_data_preview = { path = "crates/framework/tabular_data_preview"}
+task = { path = "crates/framework/task" }
+tasks_ui = { path = "crates/framework/tasks_ui" }
+telemetry = { path = "crates/framework/telemetry" }
+telemetry_events = { path = "crates/framework/telemetry_events" }
+terminal = { path = "crates/framework/terminal" }
+terminal_view = { path = "crates/framework/terminal_view" }
+text = { path = "crates/framework/text" }
+theme = { path = "crates/framework/theme" }
 #theme_extension = { path = "crates/theme_extension" }
-theme_selector = { path = "crates/theme_selector" }
-theme_settings = { path = "crates/theme_settings" }
-time_format = { path = "crates/time_format" }
-title_bar = { path = "crates/title_bar" }
-toolchain_selector = { path = "crates/toolchain_selector" }
-ui = { path = "crates/ui" }
-ui_input = { path = "crates/ui_input" }
-ui_macros = { path = "crates/ui_macros" }
-ui_prompt = { path = "crates/ui_prompt" }
-util = { path = "crates/util" }
-util_macros = { path = "crates/util_macros" }
-watch = { path = "crates/watch" }
-which_key = { path = "crates/which_key" }
-workspace = { path = "crates/workspace" }
-worktree = { path = "crates/worktree" }
-zed_actions = { path = "crates/zed_actions" }
-zed_credentials_provider = { path = "crates/zed_credentials_provider" }
-zed_env_vars = { path = "crates/zed_env_vars" }
-zeta_prompt = { path = "crates/zeta_prompt" }
-zlog = { path = "crates/zlog" }
-zlog_settings = { path = "crates/zlog_settings" }
-ztracing = { path = "crates/ztracing" }
-ztracing_macro = { path = "crates/ztracing_macro" }
+theme_selector = { path = "crates/framework/theme_selector" }
+theme_settings = { path = "crates/framework/theme_settings" }
+time_format = { path = "crates/framework/time_format" }
+title_bar = { path = "crates/framework/title_bar" }
+toolchain_selector = { path = "crates/framework/toolchain_selector" }
+ui = { path = "crates/framework/ui" }
+ui_input = { path = "crates/framework/ui_input" }
+ui_macros = { path = "crates/framework/ui_macros" }
+ui_prompt = { path = "crates/framework/ui_prompt" }
+util = { path = "crates/framework/util" }
+util_macros = { path = "crates/framework/util_macros" }
+watch = { path = "crates/framework/watch" }
+which_key = { path = "crates/framework/which_key" }
+workspace = { path = "crates/framework/workspace" }
+worktree = { path = "crates/framework/worktree" }
+zed_actions = { path = "crates/framework/zed_actions" }
+zed_credentials_provider = { path = "crates/framework/zed_credentials_provider" }
+zed_env_vars = { path = "crates/framework/zed_env_vars" }
+zeta_prompt = { path = "crates/framework/zeta_prompt" }
+zlog = { path = "crates/framework/zlog" }
+zlog_settings = { path = "crates/framework/zlog_settings" }
+ztracing = { path = "crates/framework/ztracing" }
+ztracing_macro = { path = "crates/framework/ztracing_macro" }
 
 #
 # gpui-kit
 #
 # The gpui-kit stack ("GPUI Kit" by longbridge, Apache-2.0) vendored as workspace
-# members. Its crates originally depended on the `gpui-pre-*` snapshots of the
-# upstream Zed crates published to crates.io; here they are redirected to this
-# fork's own `gpui*` crates.
+# members under `crates/gpui-kit/`. Its crates originally depended on the
+# `gpui-pre-*` snapshots of the upstream Zed crates published to crates.io and on
+# the `gpui-fast` renderer; here they are redirected to this fork's own `gpui*`
+# crates, and the `gpui-fast` half of their feature tables is removed (nothing in
+# this tree vendors it, and Cargo resolves `{ workspace = true }` entries even
+# when the dependency is optional).
 #
 
-gpui-base = { path = "crates/gpui-base" }
-gpui-component = { path = "crates/gpui-component" }
-gpui-component-macros = { path = "crates/gpui-component-macros" }
-gpui-fps = { path = "crates/fps" }
-gpui-kit = { path = "crates/gpui-kit" }
-gpui-kit-assets = { path = "crates/gpui-kit-assets" }
-gpui-kit-showcase = { path = "crates/gpui-kit-showcase" }
+gpui-base = { path = "crates/gpui-kit/base" }
+gpui-component = { path = "crates/gpui-kit/component" }
+gpui-component-macros = { path = "crates/gpui-kit/component-macros" }
+gpui-fps = { path = "crates/gpui-kit/fps" }
+gpui-kit = { path = "crates/gpui-kit/kit" }
+gpui-kit-assets = { path = "crates/gpui-kit/assets" }
+gpui-kit-showcase = { path = "crates/framework/gpui-kit-showcase" }
+# Optional syntax highlighting for `gpui-component`'s Markdown, Input and Diff.
+# Off by default; the versions are the ones upstream pins.
+syntect = { version = "5.3.0", default-features = false, features = [
+    "parsing",
+    "default-syntaxes",
+    "regex-fancy",
+] }
+two-face = { version = "0.4.5", default-features = false, features = ["syntect-fancy"] }
 # Vendored, not members: see the comment in the `members` list above.
 #gpui-shell = { path = "crates/gpui-shell" }
 #gpui-component-shell = { path = "crates/gpui-component-shell" }
@@ -680,6 +714,44 @@ cesium-app = { path = "crates/cesiumrust/application/cesium-app" }
 cesium-specs = { path = "crates/cesiumrust/specs" }
 pixel_diff = { path = "crates/cesiumrust/tools/pixel_diff" }
 gen_offline_assets = { path = "crates/cesiumrust/tools/gen_offline_assets" }
+
+#
+# dameng
+#
+# Transcribed from `D:\Rust\dameng\Cargo.toml`, dameng's own workspace root,
+# which is the authority for these versions and feature lists while the tree is
+# untracked. Keys dameng shares with Zed (`bytes`, `chrono`, `thiserror`,
+# `tracing`, `tokio`, `syn`, `quote`, `proc-macro2`, `proptest`, `async-trait`)
+# are deliberately *not* repeated below: this table is the only declarations
+# cargo reads, so repeating them would fork the version Zed already pins.
+#
+# Two constraints worth keeping:
+#
+# * `odbc-api` must never grow the `narrow` feature. It turns `SqlChar` into
+#   `u8` on Windows, which corrupts Chinese text on the way in and panics on
+#   `SQL_DBMS_NAME`. `default-features = false` plus the explicit two features
+#   below is what `dm-odbc` was developed and tested against.
+# * `dm-dpi` builds on every platform without the Dameng client installed: the
+#   `dmdpi.dll` / `libdmdpi.so` handle is opened at *runtime* (`LoadLibraryW` /
+#   `dlopen`), so only `-ldl` on non-Windows is a build-time concern, and
+#   `dm-dpi/build.rs` adds it itself.
+#
+
+dm-dpi = { path = "crates/dameng/dm-dpi" }
+dm-error = { path = "crates/dameng/dm-error" }
+dm-core = { path = "crates/dameng/dm-core" }
+dm-macros = { path = "crates/dameng/dm-macros" }
+dm-odbc = { path = "crates/dameng/dm-odbc" }
+dm-pool = { path = "crates/dameng/dm-pool" }
+dm-query = { path = "crates/dameng/dm-query" }
+odbc-api = { version = "29.2", default-features = false, features = [
+    "odbc_version_3_80",
+    "wide",
+] }
+odbc-sys = "0.31"
+rust_decimal = "1"
+futures-core = "0.3"
+insta = "1"
 
 #
 # External crates
@@ -848,7 +920,7 @@ nanoid = "0.4"
 nbformat = "1.2.0"
 nix = "0.30"
 # Used by gpui-kit's gpui-component to watch theme files. Pinned to the same
-# release candidate `crates/fs` uses so the `[patch.crates-io]` entry below
+# release candidate `crates/framework/fs` uses so the `[patch.crates-io]` entry below
 # (and the shared `notify-types`) applies to both.
 notify = "9.0.0-rc.4"
 notify-rust = "4"
@@ -1092,7 +1164,7 @@ octos-fleet-worker = { path = "crates/octos/octos-fleet-worker" }
 octos-embed-llama = { path = "crates/octos/octos-embed-llama" }
 # The Octos kernel as a library. Zed embeds `octos_cli::embedded::serve_io`
 # in-process instead of spawning the `octos` binary; see
-# `crates/zed/src/zed/octos.rs`. `default-features = false` keeps the CLI's
+# `crates/framework/zed/src/zed/octos.rs`. `default-features = false` keeps the CLI's
 # default `embed-llama` (libclang) and `impersonate` (BoringSSL/cmake) builds
 # out of a host's build; consumers add the features they need (`api` for Zed).
 octos-cli = { path = "crates/octos/octos-cli", default-features = false }

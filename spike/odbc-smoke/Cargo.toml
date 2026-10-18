@@ -1,0 +1,18 @@
+[package]
+name = "odbc-smoke"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Explicitly disable default features: the default `prompt` feature pulls in `winit`.
+odbc-api = { version = "29.2", default-features = false, features = ["odbc_version_3_80"] }
+
+[features]
+default = []
+# Forward to odbc-api's own features so that we can build the narrow (SQL*A, bytes
+# assumed UTF-8) and wide (SQL*W, UTF-16) variants of the very same source file.
+#   cargo run                    -> on Windows this is already the WIDE build
+#   cargo run --features wide    -> same, but explicit
+#   cargo run --features narrow  -> narrow build
+narrow = ["odbc-api/narrow"]
+wide = ["odbc-api/wide"]

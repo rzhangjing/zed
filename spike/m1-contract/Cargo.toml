@@ -1,0 +1,15 @@
+[package]
+name = "m1-contract"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "M1/T1.2 连通信封合同验证：用 dm-core 渲染的连接串真机连达梦"
+
+# 独立实验 crate，不属于 workspace 交付物（根 Cargo.toml 的 exclude 里有它）。
+[workspace]
+
+[dependencies]
+dm-core = { path = "../../crates/dm-core" }
+dm-error = { path = "../../crates/dm-error" }
+# 与交付物完全相同的 feature 口径：关默认（`prompt` 会拉 winit）、绝不开 `narrow`。
+odbc-api = { version = "29.2", default-features = false, features = ["odbc_version_3_80"] }

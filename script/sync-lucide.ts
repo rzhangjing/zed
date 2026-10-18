@@ -21,7 +21,7 @@ async function main() {
     return;
   }
 
-  const root = resolve(import.meta.dir, "../crates/assets");
+  const root = resolve(import.meta.dir, "../crates/framework/assets");
   const manifest: {
     version: string;
     archive_url: string;

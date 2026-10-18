@@ -1,0 +1,15 @@
+[package]
+name = "dm-macros"
+description = "达梦中间件的过程宏：#[derive(FromRow)]"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn.workspace = true
+quote.workspace = true
+proc-macro2.workspace = true

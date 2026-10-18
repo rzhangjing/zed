@@ -3,7 +3,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.." || exit 1
-cd crates/json_schema_store/src/schemas
+cd crates/framework/json_schema_store/src/schemas
 
 if [[ $# -gt 1 ]]; then
     echo "Usage: script/update-json-schemas [schemastore-commit]" >&2

@@ -211,7 +211,7 @@ fi
 # Determine which PRs touch code gated behind feature flags.
 # Features behind flags aren't generally available and shouldn't be documented yet.
 FLAGGED_PRS=()
-FLAGS_FILE="$REPO_ROOT/crates/feature_flags/src/flags.rs"
+FLAGS_FILE="$REPO_ROOT/crates/framework/feature_flags/src/flags.rs"
 if [[ -f "$FLAGS_FILE" ]]; then
     # Extract feature flag struct names (e.g. SubagentsFeatureFlag)
     FLAG_NAMES=$(grep -oE 'pub struct \w+FeatureFlag' "$FLAGS_FILE" | awk '{print $3}')

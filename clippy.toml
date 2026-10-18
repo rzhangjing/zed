@@ -18,3 +18,16 @@ disallowed-types = [
     # { path = "indexmap::IndexSet", replacement = "collections::IndexSet" },
     # { path = "indexmap::IndexMap", replacement = "collections::IndexMap" },
 ]
+
+# 单个 lint 的等级要在源码里用属性设置（见 crates/dm-pool/src/lib.rs）。
+#
+# 见 docs/设计方案.md §5.8：持有锁跨 await 是本项目最危险的模式之一——
+# 池的 Mutex 与阻塞线程池的 oneshot 回传一旦交叉会直接死锁。
+# `clippy::await_holding_lock` 只认标准库的三种守卫，所以这里再把这些
+# 类型也纳入 `await_holding_invalid_type` 的检查范围。
+await-holding-invalid-types = [
+    "std::sync::MutexGuard",
+    "std::sync::RwLockReadGuard",
+    "std::sync::RwLockWriteGuard",
+]
+

@@ -13,7 +13,7 @@ gpui-kit.workspace = true
 anyhow.workspace = true
 
 # WebView dependencies
-gpui-webview = { path = "../../crates/webview" }
+gpui-webview = { path = "../../crates/gpui-kit/webview" }
 wry = { version = "0.53.3", package = "lb-wry" }
 
 [lints]

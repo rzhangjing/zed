@@ -228,7 +228,7 @@ impl Output {
     /// a prefix set.
     pub fn merge<'a>(&mut self, other: Self, pref_other: impl Into<Option<&'a str>>) {
         let pref = if let Some(pref) = pref_other.into() {
-            "crates/".to_string() + pref + "::"
+            "crates/framework/".to_string() + pref + "::"
         } else {
             String::new()
         };

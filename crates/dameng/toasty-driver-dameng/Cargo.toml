@@ -1,0 +1,112 @@
+[package]
+name = "toasty-driver-dameng"
+description = "Toasty 的达梦驱动：实现 toasty_core::driver::Driver / Connection"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dm-error.workspace = true
+dm-core.workspace = true
+dm-query = { workspace = true, default-features = false, features = ["chrono", "decimal"] }
+# 自研连接池（T7 产物）：`DamengDriver` 持有 `Arc<DmPool>`，连接借还都在池子上做。
+# `dm-query` 的 `PooledConn` 是它的薄封装，两条路径都用。
+dm-pool = { workspace = true, default-features = false }
+tracing.workspace = true
+
+# M8 引入（设计方案 §9、§14 V-12）：`toasty-core` 提供 Driver/Connection trait 与
+# `Capability`。
+#
+# ⚠️ feature 必须显式开：`toasty-core` 的 `default = []`
+# （`toasty-core-0.11.0/Cargo.toml:40-57`，只有 `uuid` 是非可选依赖）。
+# 不开 `jiff`/`rust_decimal` 时，`stmt::Value::Timestamp/Date/Time/DateTime/Decimal`
+# 这些变体**根本不存在**（`src/stmt/value.rs:99-130`），时间列与小数列就无从实现。
+#
+# `net` / `bigdecimal` 是**故意**一起开的（0.11.0 的 `Value::Cidr/Inet/MacAddr/
+# MacAddr8` 与 `Value::BigDecimal` 由它们门控）：这两个 feature 会被**任何**依赖它的
+# crate 打开（例如 dev-dependency `toasty-driver-integration-suite` 就开了 `net` +
+# `bigdecimal`），feature 取并集后变体集合变了、匹配就会从「能编译」变成
+# 「非穷尽」——那种「换个依赖图就编译不过」的驱动是不可接受的。显式打开后
+# `value.rs` 对这两族变体有确定的分支：网络地址族按文本存（我们 `Capability`
+# 的 `native_cidr/inet/macaddr/macaddr8 = false` + `default_*_type = Text`），
+# `BigDecimal` 走 `unsupported_feature`（`bigdecimal_implemented = false`）。
+toasty-core = { version = "0.11", features = [
+    "jiff",
+    "rust_decimal",
+    "net",
+    "bigdecimal",
+] }
+
+# vendored fork（T8.1/T8.2/T8.3）：上游 `toasty-sql` 0.11.0 没有达梦方言，
+# 而 `Dialect` 是 `toasty-core` 里的闭枚举，加第 5 个变体要级联 fork 三个 crate
+# （§9.1.1 的 T8.0 结案）⇒ 只 fork `toasty-sql`，在**它内部**用本地 `Flavor`
+# 枚举表达达梦方言，方言身份（`Capability.sql`）仍复用 `Dialect::Mysql`。
+# 上游快照 `toasty-v0.11.0`，改动清单见 docs/设计方案.md §9.8。
+#
+# feature 四件套显式转开（T8.15）：上游的驱动也是这么做的
+# （`toasty-driver-mysql-0.11.0/Cargo.toml:41-61` 把 `jiff`/`rust_decimal`/
+# `bigdecimal`/`net` 逐个转发成 `toasty-sql/<同名 feature>`）。不转开的话，
+# fork 里 `#[cfg(feature = …)]` 门控的 JSON 叶子 `CAST` 映射（`expr.rs` 的
+# `mysql_json_cast`/`pg_json_cast`，以及 T8.15 给达梦加的对应函数）会被编译掉，
+# 而 `toasty-core` 侧的同名 feature 是**开着**的（上面那几个）⇒ 同一个
+# `stmt::Type`/`stmt::Value` 变体在两边表现不一致。
+toasty-sql = { path = "../toasty-sql", version = "0.11.0", features = [
+    "jiff",
+    "rust_decimal",
+    "net",
+    "bigdecimal",
+] }
+
+# `Driver`/`Connection` 在上游是用 `#[async_trait]` 声明的
+# （`toasty-core` 自己依赖 `async-trait 0.1.89`，非可选），实现侧必须配同一个属性宏。
+async-trait = "0.1.89"
+
+# `DamengDriver::lazy` 用 `tokio::sync::OnceCell` 做「同步构造、异步建池」
+# （上游 `Driver` 是同步构造的，见 driver.rs 的模块文档）。只用到 `sync`
+# feature；workspace 的 tokio 已经开了它。
+tokio.workspace = true
+
+# 值编解码（§9.4.1）需要直接命名这些类型：`jiff` 是 `stmt::Value` 的时间载体，
+# `chrono` 是 `DmValue` 的时间载体，`rust_decimal`/`uuid` 分别对应 Decimal/Uuid 变体。
+jiff = "0.2.23"
+uuid = "1"
+chrono.workspace = true
+rust_decimal.workspace = true
+# T8.14：`BigDecimal` 列的解码要把文本还原成任意精度十进制，所以必须能命名
+# `bigdecimal::BigDecimal`（与 `toasty-core` 的 `stmt::Value::BigDecimal` 是同一个类型）。
+bigdecimal.workspace = true
+
+[features]
+# 默认后端是 DPI（与 `dm-pool` 的同名 feature 联动）；退回 ODBC 用
+# `--no-default-features`。
+default = ["dpi"]
+# T8.9：打开它才会编译并运行**官方一致性套件**（`tests/driver_suite.rs` 整个文件
+# 挂在 `#![cfg(feature = "real")]` 后面）。套件生成的用例必须连真库，不能进默认
+# `cargo test`。
+real = []
+# 把底层连接池的后端切到 DPI（dm-pool/dpi）：官方一致性套件可以直接跑在 DPI 上。
+dpi = ["dm-pool/dpi", "dm-query/dpi"]
+
+[dev-dependencies]
+# T8.1a/T8.9：端到端真机联调要用 Toasty 门面（引擎 + `Model` derive）。不依赖
+# `toasty-driver-mysql` 等任何上游驱动——我们的驱动由 `Db::builder().build(driver)` 注入。
+#
+# ⚠️ `default-features = false`：`toasty` 的默认 feature 是 `rustls`，只影响可选的
+# MySQL 驱动；但显式关掉能让依赖面更小、也避免哪天默认变成「拉一个真驱动」。
+# feature 必须与上面的 `toasty-core` 对齐（同一个 `toasty-core` 实例，feature 取并集）。
+toasty = { version = "0.11", default-features = false, features = ["jiff", "rust_decimal"] }
+# T8.10：`examples/toasty_crud.rs` 用 `#[tokio::main]`（默认多线程调度器），而 workspace
+# 的 tokio 只开了 `rt`（`#[tokio::test]` 用的是 current_thread，所以集成测试不需要）。
+# 只在本包的 dev 依赖上加 `rt-multi-thread`，真机示例就能跟真实应用一样跑多线程运行时。
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+# 真机联调要看 SQL：驱动在 `toasty::query` target 上打 DDL/语句日志，测试里接一个
+# 最小订阅器就能把它们打到 stderr（`--nocapture` 可见）。
+tracing-subscriber = "0.3"
+# T8.9：上游官方一致性套件（crates.io 上的独立 crate，0.11.0 已发布）。
+# 它与我们的驱动共用同一个 `toasty-core 0.11.0`（crates.io 解析到同一份源码），
+# 所以 `Setup::driver()` 里 `Box<dyn toasty_core::driver::Driver>` 的类型身份一致。
+toasty-driver-integration-suite = "0.11"
+# 套件的 `generate_driver_tests!` 把测试代码**展开到我们 crate 里**，展开结果直接
+# 引用 `hashbrown`（上游那个 `tests` crate 也是这么依赖的）。版本跟上游 0.17。
+hashbrown = "0.17"
