@@ -826,6 +826,64 @@ impl TextLayout {
         }
     }
 
+    /// Paint the background of every shaped line, without its glyphs.
+    ///
+    /// Renderers that interleave their own quads between the text and its
+    /// backgrounds — selection highlights, for example — call this, paint
+    /// their own quads, and then call [`TextLayout::paint_foreground`].
+    pub fn paint_background(&self, window: &mut Window, cx: &mut App) -> anyhow::Result<()> {
+        let element_state = self.0.borrow();
+        let Some(element_state) = element_state.as_ref() else {
+            return Ok(());
+        };
+        let Some(bounds) = element_state.bounds else {
+            return Ok(());
+        };
+        let line_height = element_state.line_height;
+        let mut line_origin = bounds.origin;
+        let text_style = window.text_style();
+        for line in &element_state.lines {
+            line.paint_background(
+                line_origin,
+                line_height,
+                text_style.text_align,
+                Some(bounds),
+                window,
+                cx,
+            )
+            .log_err();
+            line_origin.y += line.size(line_height).height;
+        }
+        Ok(())
+    }
+
+    /// Paint the shaped glyphs of every line, without their backgrounds.
+    pub fn paint_foreground(&self, window: &mut Window, cx: &mut App) -> anyhow::Result<()> {
+        let element_state = self.0.borrow();
+        let Some(element_state) = element_state.as_ref() else {
+            return Ok(());
+        };
+        let Some(bounds) = element_state.bounds else {
+            return Ok(());
+        };
+        let line_height = element_state.line_height;
+        let mut line_origin = bounds.origin;
+        let text_style = window.text_style();
+        for line in &element_state.lines {
+            line.paint(
+                line_origin,
+                line_height,
+                text_style.text_align,
+                Some(bounds),
+                window,
+                cx,
+            )
+            .log_err();
+            line_origin.y += line.size(line_height).height;
+        }
+        Ok(())
+    }
+
     /// Get the byte index into the input of the pixel position.
     pub fn index_for_position(&self, mut position: Point<Pixels>) -> Result<usize, usize> {
         let element_state = self.0.borrow();

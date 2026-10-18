@@ -327,6 +327,15 @@ pub fn init(cx: &mut App) {
     // what such a check is testing.
     dameng::init(cx);
 
+    // Same startup override shape as `ZED_ABOUT_OPEN` above and `ZED_DAMENG_OPEN`
+    // in `dameng`: it exists because checking that the gallery's real window
+    // renders the full component set means looking at the window, not clicking
+    // through `Help > gpui-kit`.
+    if std::env::var("ZED_GPUI_KIT_OPEN").is_ok_and(|value| value != "0") {
+        log::info!("[gpui-kit] opening the showcase window at startup (ZED_GPUI_KIT_OPEN)");
+        cx.defer(open_gpui_kit_showcase);
+    }
+
     // The About window is opened from `Help > About`; this is only its startup
     // override (`ZED_ABOUT_OPEN`), the same shape as `ZED_CESIUMRUST_OPEN` above
     // and `ZED_OCTOS_OPEN_STATUS` in `octos`. It exists because verifying that
@@ -5903,15 +5912,14 @@ mod tests {
     /// window used a global that tests do not register.
     #[gpui::test]
     async fn test_dameng_opens_one_window(cx: &mut TestAppContext) {
+        // The window's root view is the Kit's `Root`, not the form, so the count
+        // goes through the module's own predicate rather than a downcast to
+        // `DamengWindow`.
         fn dameng_windows(cx: &mut TestAppContext) -> usize {
             cx.read(|cx| {
                 cx.windows()
                     .into_iter()
-                    .filter(|window| {
-                        window
-                            .downcast::<crate::zed::dameng::DamengWindow>()
-                            .is_some()
-                    })
+                    .filter(|window| crate::zed::dameng::is_dameng_window(window, cx))
                     .count()
             })
         }

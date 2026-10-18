@@ -133,6 +133,10 @@ gpui = { workspace = true, features = ["profiler", "stacker"] }
 # `gpui` crate directly, so nothing here imports `gpui_kit::*` (which would
 # make `gpui::` paths ambiguous in macro output — E0659).
 gpui-kit-showcase.workspace = true
+# The Kit itself, for the controls the Dameng test window is built from
+# (`Help > Dameng`). Only that module's named imports come from here; the
+# gallery below is still what keeps the Kit's own `init` reachable.
+gpui-kit.workspace = true
 gpui_platform = { workspace = true, features = [
     "screen-capture",
     "font-kit",

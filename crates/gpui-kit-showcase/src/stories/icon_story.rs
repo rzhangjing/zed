@@ -13,9 +13,9 @@ use gpui_kit::{
 
 use crate::section;
 
-const SEARCH_SVG: &[u8] = include_bytes!("../../../gpui-kit-assets/assets/icons/search.svg");
-const ARROW_SVG: &[u8] = include_bytes!("../../../gpui-kit-assets/assets/icons/arrow-up.svg");
-const LOADER_SVG: &[u8] = include_bytes!("../../../gpui-kit-assets/assets/icons/loader-circle.svg");
+const SEARCH_SVG: &[u8] = include_bytes!("../../../gpui-kit/assets/assets/icons/search.svg");
+const ARROW_SVG: &[u8] = include_bytes!("../../../gpui-kit/assets/assets/icons/arrow-up.svg");
+const LOADER_SVG: &[u8] = include_bytes!("../../../gpui-kit/assets/assets/icons/loader-circle.svg");
 
 struct Search;
 

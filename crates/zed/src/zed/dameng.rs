@@ -42,15 +42,22 @@
 //! loads `dmdpi.dll` at runtime and talks to it directly. Which one is
 //! configured on a given machine is exactly the thing a test window is for.
 //!
-//! ## Keyboard
+//! ## The form is the Kit's
 //!
-//! The form is text drawn by hand, not a set of `TextInput`s — Zed's UI crate
-//! has none, and the GPUI Kit's `Input` needs a window root this window does not
-//! install. The root element tracks focus and handles keys, so the window
-//! behaves like a form: `Tab`/`Shift-Tab` move between fields, `Enter` runs the
-//! job that matches the selected field (SQL runs the statement, anything else
-//! tests the connection), `Backspace` deletes, and everything else that is a
-//! printable character is appended. Clicking a row selects it.
+//! The fields are real text inputs, not hand-drawn ones: `Input` and `Textarea`
+//! from the GPUI Kit — the same controls `Help > gpui-kit` shows — with `Button`
+//! for the jobs. The Kit's controls read window-level component state
+//! (notifications, dialogs, tooltips, window text selection) off the *window
+//! root*, so [`show_window`] returns [`Root`] from `open_window` rather than the
+//! view itself, exactly as `open_gpui_kit_showcase` does. A window rooted at the
+//! bare view panics with "component window state is missing" the first time one
+//! of those controls touches that state.
+//!
+//! `Tab` and `Shift-Tab` move between the fields (the Kit's focus order).
+//! `Enter` in a single-line field tests the connection, `ctrl-Enter`/`cmd-Enter`
+//! runs the SQL, and the buttons do the same jobs directly. The Kit also gives
+//! the fields selection, undo, a context menu and masking for the password,
+//! which the hand-drawn version never had.
 
 use std::{
     sync::mpsc,
@@ -58,13 +65,24 @@ use std::{
 };
 
 use gpui::{
-    App, AppContext as _, Context, FocusHandle, KeyDownEvent, Render, SharedString, Size,
-    TitlebarOptions, Window, WindowBounds, WindowKind, WindowOptions, px,
+    AnyElement, AnyWindowHandle, App, ClickEvent, Context, Entity, Focusable as _, FontWeight,
+    Render, SharedString, Size, Subscription, TitlebarOptions, Window, WindowBounds, WindowKind,
+    WindowOptions, div, prelude::*, px,
+};
+use gpui_kit::{
+    base::Root,
+    component::{
+        Disableable as _, Sizable as _, Size as ComponentSize,
+        button::{Button as KitButton, ButtonVariants as _},
+        h_flex,
+        input::{Input, InputEvent, InputState, Textarea, TextareaState},
+        theme::{Theme as KitTheme, ThemeMode as KitThemeMode},
+        v_flex,
+    },
 };
 use release_channel::ReleaseChannel;
 use serde::{Deserialize, Serialize};
 use theme::ActiveTheme as _;
-use ui::{Button, ButtonStyle, Color, Label, LabelSize, TintColor, prelude::*};
 
 /// The configuration file, relative to [`paths::config_dir`].
 const CONFIG_FILE: &str = "dameng_test.json";
@@ -407,24 +425,87 @@ impl Outcome {
 
 /// The window's root view.
 pub struct DamengWindow {
+    /// What the form was last saved as. The live values are in the inputs; this
+    /// is only what [`Config::load`] produced plus the backend switch, so the
+    /// config file is written by whoever is about to run something.
     config: Config,
-    focus: FocusHandle,
-    /// The field keystrokes go to.
-    focused: Field,
+    /// One Kit input per [`FIELDS`] entry, in the same order.
+    inputs: [Entity<InputState>; 8],
+    sql: Entity<TextareaState>,
+    /// Dropping these drops the `Enter` handlers with them.
+    _subscriptions: Vec<Subscription>,
     log: Vec<LogLine>,
     /// A job is on the worker thread. Buttons are disabled while it is.
     running: bool,
 }
 
 impl DamengWindow {
-    pub fn new(cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let config = Config::load();
+
+        let inputs: [Entity<InputState>; 8] = FIELDS.map(|field| {
+            let value = config.field(field).to_owned();
+            let secret = field.secret();
+            // `&mut *window`: the closure `map` takes is an `FnMut`, so it may
+            // not move the `&mut Window` it captured out of itself.
+            cx.new(|cx| {
+                InputState::new(&mut *window, cx)
+                    .placeholder(field.hint())
+                    .default_value(value.as_str())
+                    .masked(secret)
+            })
+        });
+
+        let mut subscriptions = Vec::with_capacity(FIELDS.len() + 1);
+        for state in &inputs {
+            subscriptions.push(cx.subscribe(state, |this, _, event: &InputEvent, cx| {
+                let InputEvent::PressEnter { secondary, shift } = event else {
+                    return;
+                };
+                if *secondary {
+                    this.run(Job::RunSql, cx);
+                } else if !*shift {
+                    this.run(Job::TestConnection, cx);
+                }
+            }));
+        }
+
+        let sql = cx.new(|cx| {
+            TextareaState::new(&mut *window, cx)
+                .auto_grow(2, 6)
+                .placeholder(Field::Sql.hint())
+                .default_value(config.sql.as_str())
+        });
+        subscriptions.push(cx.subscribe(&sql, |this, _, event: &InputEvent, cx| {
+            // A plain `Enter` in a textarea inserts a newline and emits the same
+            // event, so only the submit chord runs anything there.
+            if let InputEvent::PressEnter { secondary: true, .. } = event {
+                this.run(Job::RunSql, cx);
+            }
+        }));
+
         Self {
-            config: Config::load(),
-            focus: cx.focus_handle(),
-            focused: Field::Server,
+            config,
+            inputs,
+            sql,
+            _subscriptions: subscriptions,
             log: Vec::new(),
             running: false,
         }
+    }
+
+    /// The form as it stands in the inputs.
+    ///
+    /// The inputs are the source of truth for the field values: the Kit writes
+    /// into its own state, so reading them back is how a job sees what is on
+    /// screen. Only the backend switch is not a widget.
+    fn snapshot(&self, cx: &App) -> Config {
+        let mut config = self.config.clone();
+        for (index, field) in FIELDS.into_iter().enumerate() {
+            *config.field_mut(field) = self.inputs[index].read(cx).value().to_string();
+        }
+        config.sql = self.sql.read(cx).value().to_string();
+        config
     }
 
     /// Appends a line to the transcript, dropping the oldest ones past
@@ -440,37 +521,29 @@ impl DamengWindow {
         }
     }
 
-    /// Selects `field` and gives it the keyboard.
-    fn select(&mut self, field: Field, window: &mut Window, cx: &mut Context<Self>) {
-        self.focused = field;
-        self.focus.focus(window, cx);
+    /// Writes the form to [`Config::path`].
+    fn save_config(&mut self, cx: &mut Context<Self>) {
+        let config = self.snapshot(cx);
+        config.save();
+        self.config = config;
+        self.push_line(
+            LogKind::Info,
+            SharedString::from(format!("配置已保存到 {}", Config::path().display())),
+        );
         cx.notify();
     }
 
-    /// Moves to the previous or next field, wrapping around.
-    fn select_relative(&mut self, backwards: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let order: Vec<Field> = FIELDS.iter().copied().chain([Field::Sql]).collect();
-        let current = order
-            .iter()
-            .position(|field| *field == self.focused)
-            .unwrap_or(0);
-        let next = if backwards {
-            (current + order.len() - 1) % order.len()
-        } else {
-            (current + 1) % order.len()
-        };
-        self.select(order[next], window, cx);
-    }
-
-    /// Appends typed text to the selected field.
-    fn type_text(&mut self, text: &str, cx: &mut Context<Self>) {
-        self.config.field_mut(self.focused).push_str(text);
-        cx.notify();
-    }
-
-    /// Deletes the last character of the selected field.
-    fn delete_last(&mut self, cx: &mut Context<Self>) {
-        self.config.field_mut(self.focused).pop();
+    /// Switches between the two backends the merged stack has.
+    fn toggle_backend(&mut self, cx: &mut Context<Self>) {
+        self.config.dpi = !self.config.dpi;
+        self.push_line(
+            LogKind::Info,
+            if self.config.dpi {
+                "DPI（dmdpi.dll）：驱动字段不再使用"
+            } else {
+                "ODBC（驱动管理器）：需要使用已注册的 ODBC 驱动"
+            },
+        );
         cx.notify();
     }
 
@@ -510,7 +583,11 @@ impl DamengWindow {
             return;
         }
 
-        let params = match parse(&self.config) {
+        // The inputs hold the live values, so the configuration that runs is the
+        // one the user is looking at rather than the one last written to disk.
+        let config = self.snapshot(cx);
+
+        let params = match parse(&config) {
             Ok(params) => params,
             Err(error) => {
                 self.push_line(LogKind::Error, error);
@@ -522,7 +599,8 @@ impl DamengWindow {
         // Remember what is on screen now, not what was there when it last
         // worked: the configuration that runs is the configuration that is
         // restored.
-        self.config.save();
+        config.save();
+        self.config = config;
 
         self.running = true;
         let backend = if params.dpi {
@@ -904,88 +982,182 @@ fn one_line(error: &str) -> String {
 /// Draws the form and the transcript.
 impl Render for DamengWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let accent = cx.theme().colors().border_focused;
         let border = cx.theme().colors().border;
-        let field_background = cx.theme().colors().element_background;
-        let pressed_background = cx.theme().colors().element_hover;
+        let muted = cx.theme().colors().text_muted;
+        let status = cx.theme().status();
+        let (success, error) = (status.success, status.error);
+
+        let running = self.running;
+        let backend = if self.config.dpi {
+            "DPI（dmdpi.dll）"
+        } else {
+            "ODBC（驱动管理器）"
+        };
+        let state = if running { "运行中…" } else { "空闲" };
+
+        // A button handler takes `&mut App` rather than a `Context`, so each one
+        // reaches the view through a weak handle instead of `cx.listener`. A
+        // click already queued when the window goes away then does nothing
+        // rather than resurrecting it.
+        let this = cx.entity().downgrade();
 
         let mut fields = Vec::with_capacity(FIELDS.len());
-        for field in FIELDS {
-            let selected = self.focused == field;
-            let raw = self.config.field(field);
-            let empty = raw.is_empty();
-            let shown = if empty {
-                SharedString::from(field.hint())
-            } else if field.secret() {
-                SharedString::from("•".repeat(raw.chars().count().min(32)))
-            } else {
-                SharedString::from(flatten(raw))
-            };
+        for (index, field) in FIELDS.into_iter().enumerate() {
             fields.push(
                 h_flex()
-                    .id(SharedString::from(format!("dameng-field-{}", field.label())))
                     .gap_2()
                     .items_center()
                     .child(
                         div()
-                            .w(px(52.))
-                            .child(Label::new(field.label()).color(Color::Muted).size(LabelSize::XSmall)),
+                            .w(px(58.))
+                            .text_xs()
+                            .text_color(muted)
+                            .child(field.label()),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .px_2()
-                            .py_1()
-                            .rounded_sm()
-                            .border_1()
-                            .border_color(if selected { accent } else { border })
-                            .bg(if selected { pressed_background } else { field_background })
-                            .child(
-                                Label::new(shown)
-                                    .color(if empty { Color::Placeholder } else { Color::Default })
-                                    .size(LabelSize::Small),
-                            ),
+                        div().flex_1().child(
+                            Input::new(&self.inputs[index])
+                                .with_size(ComponentSize::Small)
+                                .cleanable(!running)
+                                .disabled(running),
+                        ),
                     )
-                    .on_click(cx.listener(move |this, _, window, cx| this.select(field, window, cx)))
                     .into_any_element(),
             );
         }
 
-        let sql_selected = self.focused == Field::Sql;
-        let sql_shown: SharedString = if self.config.sql.is_empty() {
-            SharedString::from(Field::Sql.hint())
-        } else {
-            SharedString::from(format!("{}▌", self.config.sql))
-        };
-
-        let running = self.running;
-
-        let mut transcript = self
+        let mut transcript: Vec<AnyElement> = self
             .log
             .iter()
             .rev()
             .take(VISIBLE_LOG)
             .rev()
             .map(|line| {
-                Label::new(line.text.clone())
-                    .color(match line.kind {
-                        LogKind::Info => Color::Muted,
-                        LogKind::Done => Color::Success,
-                        LogKind::Error => Color::Error,
+                div()
+                    .text_xs()
+                    .text_color(match line.kind {
+                        LogKind::Info => muted,
+                        LogKind::Done => success,
+                        LogKind::Error => error,
                     })
-                    .size(LabelSize::XSmall)
+                    .child(line.text.clone())
+                    .into_any_element()
             })
-            .collect::<Vec<_>>();
+            .collect();
         if transcript.is_empty() {
             transcript.push(
-                Label::new("还没有运行过任何任务：先「测试连接」，再「生成测试数据」")
-                    .color(Color::Muted)
-                    .size(LabelSize::XSmall),
+                div()
+                    .text_xs()
+                    .text_color(muted)
+                    .child("还没有运行过任何任务：先「测试连接」，再「生成测试数据」")
+                    .into_any_element(),
             );
         }
 
-        let backend = if self.config.dpi { "DPI" } else { "ODBC" };
-        let status = if running { "运行中…" } else { "空闲" };
+        let header = h_flex()
+            .items_center()
+            .justify_between()
+            .child(
+                h_flex()
+                    .gap_2()
+                    .items_center()
+                    .child(
+                        div()
+                            .text_base()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child("Dameng"),
+                    )
+                    .child(div().text_xs().text_color(muted).child("达梦测试数据")),
+            )
+            .child(
+                h_flex()
+                    .gap_2()
+                    .items_center()
+                    .child(div().text_xs().text_color(muted).child("后端"))
+                    .child(
+                        KitButton::new("dameng-backend")
+                            .label(backend)
+                            .compact()
+                            .on_click({
+                                let this = this.clone();
+                                move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                                    this.update(cx, |this, cx| this.toggle_backend(cx)).ok();
+                                }
+                            }),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(if running { success } else { muted })
+                            .child(state),
+                    ),
+            );
+
+        let buttons = h_flex()
+            .gap_2()
+            .child(
+                KitButton::new("dameng-test")
+                    .label("测试连接")
+                    .primary()
+                    .disabled(running)
+                    .on_click({
+                        let this = this.clone();
+                        move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                            this.update(cx, |this, cx| this.run(Job::TestConnection, cx))
+                                .ok();
+                        }
+                    }),
+            )
+            .child(
+                KitButton::new("dameng-seed")
+                    .label("生成测试数据")
+                    .outline()
+                    .disabled(running)
+                    .on_click({
+                        let this = this.clone();
+                        move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                            this.update(cx, |this, cx| this.run(Job::Seed, cx)).ok();
+                        }
+                    }),
+            )
+            .child(
+                KitButton::new("dameng-run")
+                    .label("执行 SQL")
+                    .outline()
+                    .disabled(running)
+                    .on_click({
+                        let this = this.clone();
+                        move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                            this.update(cx, |this, cx| this.run(Job::RunSql, cx)).ok();
+                        }
+                    }),
+            )
+            .child(
+                KitButton::new("dameng-save")
+                    .label("保存配置")
+                    .ghost()
+                    .on_click({
+                        let this = this.clone();
+                        move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                            this.update(cx, |this, cx| this.save_config(cx)).ok();
+                        }
+                    }),
+            )
+            .child(
+                KitButton::new("dameng-clear")
+                    .label("清空日志")
+                    .ghost()
+                    .on_click({
+                        let this = this.clone();
+                        move |_: &ClickEvent, _: &mut Window, cx: &mut App| {
+                            this.update(cx, |this, cx| {
+                                this.log.clear();
+                                cx.notify();
+                            })
+                            .ok();
+                        }
+                    }),
+            );
 
         v_flex()
             .id("dameng-window")
@@ -993,178 +1165,22 @@ impl Render for DamengWindow {
             .overflow_hidden()
             .bg(cx.theme().colors().editor_background)
             .text_color(cx.theme().colors().text)
-            .p_4()
+            .p_3()
             .gap_3()
-            // The root owns the keyboard, the way the Octos console does: key
-            // events bubble up from whatever was clicked, so typing keeps
-            // working after a button has taken focus.
-            .track_focus(&self.focus)
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                let keystroke = &event.keystroke;
-                if keystroke.modifiers.control
-                    || keystroke.modifiers.alt
-                    || keystroke.modifiers.platform
-                {
-                    return;
-                }
-                match keystroke.key.as_str() {
-                    "tab" => this.select_relative(keystroke.modifiers.shift, window, cx),
-                    "enter" => {
-                        let job = if this.focused == Field::Sql {
-                            Job::RunSql
-                        } else {
-                            Job::TestConnection
-                        };
-                        this.run(job, cx);
-                    }
-                    "backspace" => this.delete_last(cx),
-                    _ => {
-                        if let Some(text) = keystroke.key_char.as_ref() {
-                            this.type_text(text, cx);
-                        }
-                    }
-                }
-            }))
-            .on_click(cx.listener(|this, _, window, cx| this.focus.focus(window, cx)))
-            .child(
-                h_flex()
-                    .justify_between()
-                    .items_center()
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .items_center()
-                            .child(Headline::new("Dameng"))
-                            .child(
-                                Label::new("达梦测试数据")
-                                    .color(Color::Muted)
-                                    .size(LabelSize::XSmall),
-                            ),
-                    )
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .items_center()
-                            .child(
-                                Label::new("后端")
-                                    .color(Color::Muted)
-                                    .size(LabelSize::XSmall),
-                            )
-                            .child(
-                                Button::new("dameng-backend", backend)
-                                    .style(ButtonStyle::OutlinedGhost)
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.config.dpi = !this.config.dpi;
-                                        let backend = if this.config.dpi {
-                                            "DPI（dmdpi.dll）：驱动字段不再使用"
-                                        } else {
-                                            "ODBC（驱动管理器）：需要使用已注册的 ODBC 驱动"
-                                        };
-                                        this.push_line(LogKind::Info, backend);
-                                        cx.notify();
-                                    })),
-                            )
-                            .child(
-                                Label::new(status)
-                                    .color(if running { Color::Accent } else { Color::Muted })
-                                    .size(LabelSize::XSmall),
-                            ),
-                    ),
-            )
+            .child(header)
             .child(
                 v_flex()
                     .gap_1()
-                    .child(
-                        Label::new("连接")
-                            .color(Color::Muted)
-                            .size(LabelSize::XSmall),
-                    )
+                    .child(div().text_xs().text_color(muted).child("连接"))
                     .children(fields),
             )
             .child(
                 v_flex()
                     .gap_1()
-                    .child(
-                        Label::new("SQL")
-                            .color(Color::Muted)
-                            .size(LabelSize::XSmall),
-                    )
-                    .child(
-                        div()
-                            .id("dameng-sql")
-                            .h(px(64.))
-                            .overflow_hidden()
-                            .px_2()
-                            .py_1()
-                            .rounded_sm()
-                            .border_1()
-                            .border_color(if sql_selected { accent } else { border })
-                            .bg(if sql_selected {
-                                pressed_background
-                            } else {
-                                field_background
-                            })
-                            .child(
-                                Label::new(sql_shown)
-                                    .color(if self.config.sql.is_empty() {
-                                        Color::Placeholder
-                                    } else {
-                                        Color::Default
-                                    })
-                                    .size(LabelSize::Small),
-                            )
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.select(Field::Sql, window, cx)
-                            })),
-                    ),
+                    .child(div().text_xs().text_color(muted).child("SQL"))
+                    .child(Textarea::new(&self.sql).h(px(96.)).disabled(running)),
             )
-            .child(
-                h_flex()
-                    .gap_2()
-                    .child(
-                        Button::new("dameng-test", "测试连接")
-                            .style(ButtonStyle::Tinted(TintColor::Accent))
-                            .disabled(running)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.run(Job::TestConnection, cx)
-                            })),
-                    )
-                    .child(
-                        Button::new("dameng-seed", "生成测试数据")
-                            .style(ButtonStyle::Outlined)
-                            .disabled(running)
-                            .on_click(cx.listener(|this, _, _, cx| this.run(Job::Seed, cx))),
-                    )
-                    .child(
-                        Button::new("dameng-run", "执行 SQL")
-                            .style(ButtonStyle::Outlined)
-                            .disabled(running)
-                            .on_click(cx.listener(|this, _, _, cx| this.run(Job::RunSql, cx))),
-                    )
-                    .child(
-                        Button::new("dameng-save", "保存配置")
-                            .style(ButtonStyle::OutlinedGhost)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.config.save();
-                                this.push_line(
-                                    LogKind::Info,
-                                    SharedString::from(format!(
-                                        "配置已保存到 {}",
-                                        Config::path().display()
-                                    )),
-                                );
-                                cx.notify();
-                            })),
-                    )
-                    .child(
-                        Button::new("dameng-clear", "清空日志")
-                            .style(ButtonStyle::OutlinedGhost)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.log.clear();
-                                cx.notify();
-                            })),
-                    ),
-            )
+            .child(buttons)
             .child(
                 v_flex()
                     .id("dameng-log")
@@ -1204,18 +1220,43 @@ pub fn open(cx: &mut App) {
     show_window(cx);
 }
 
+/// Whether `window` is the Dameng test window.
+///
+/// The root view of the window is the Kit's [`Root`], not the form itself — the
+/// controls need it for their window-level state — so reaching the form means
+/// downcasting the window to the root, taking the view off it, and downcasting
+/// that. A window showing the Kit gallery answers the same first downcast and
+/// differs only in the second.
+pub fn is_dameng_window(window: &AnyWindowHandle, cx: &App) -> bool {
+    window
+        .downcast::<Root>()
+        .and_then(|root| root.read(cx).ok())
+        .is_some_and(|root| root.view().clone().downcast::<DamengWindow>().is_ok())
+}
+
 /// Opens the window, or focuses it if it is already open.
 fn show_window(cx: &mut App) {
     if let Some(existing) = cx
         .windows()
         .into_iter()
-        .find_map(|window| window.downcast::<DamengWindow>())
+        .find(|window| is_dameng_window(window, cx))
     {
         if let Err(error) = existing.update(cx, |_, window, _| window.activate_window()) {
             log::warn!("[dameng] could not focus the test window: {error}");
         }
         return;
     }
+
+    // The controls are the Kit's, so its globals and theme have to exist before
+    // the first frame draws; `gpui_kit::init` is idempotent, so the gallery
+    // having initialized them already is fine. The theme mode follows Zed's, so
+    // the inputs and buttons do not come out light on a dark editor.
+    gpui_kit::init(cx);
+    let mode = match cx.theme().appearance() {
+        theme::Appearance::Dark => KitThemeMode::Dark,
+        theme::Appearance::Light => KitThemeMode::Light,
+    };
+    KitTheme::change(mode, None, cx);
 
     let window_size = Size {
         width: px(720.),
@@ -1238,13 +1279,22 @@ fn show_window(cx: &mut App) {
             ..Default::default()
         },
         |window, cx| {
-            let view = cx.new(DamengWindow::new);
-            let focus = view.read(cx).focus.clone();
-            window.activate_window();
+            let view = cx.new(|cx| DamengWindow::new(window, cx));
+            let focus = view.read(cx).inputs[0].read(cx).focus_handle(cx);
+            // Deliberately no `activate_window` here: a window that has just
+            // activated itself is the window an action dispatches through, and a
+            // window being updated cannot be read back — `is_dameng_window` would
+            // then miss it and the next `Help > Dameng` would open a second copy.
+            // `WindowOptions::focus` (on by default) already brings the window to
+            // the front, and the gallery is opened the same way.
+            //
             // Focus after the first frame: an element that has not been rendered
             // yet cannot take focus.
             window.defer(cx, move |window, cx| focus.focus(window, cx));
-            view.into()
+            // The root, not the view: the Kit's controls read their window-level
+            // state off it, and one of them touching that state without a root
+            // above it panics with "component window state is missing".
+            cx.new(|cx| Root::new(view, window, cx)).into()
         },
     );
 

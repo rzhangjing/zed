@@ -195,21 +195,30 @@ members = [
     # gpui-kit
     #
 
-    "crates/gpui-base",
-    "crates/gpui-component",
-    "crates/gpui-component-macros",
-    "crates/fps",
-    "crates/gpui-kit",
-    "crates/gpui-kit-assets",
+    # The upstream GPUI Kit tree, vendored whole under `crates/gpui-kit/` and
+    # reduced to the crates Zed builds: the foundation (`base`), the styled
+    # components (`component`, `component-macros`), the FPS HUD (`fps`), the
+    # facade (`kit`) and its icon set (`assets`).
+    #
+    # `shell`, `story`, `story-web` and `webview` are vendored alongside them but
+    # stay out of the build: `shell` pins a QuickJS revision that cannot be
+    # fetched on this machine (see the comment further down), and `webview`
+    # selects GPUI Fast, which this tree does not vendor.
+    "crates/gpui-kit/base",
+    "crates/gpui-kit/component",
+    "crates/gpui-kit/component-macros",
+    "crates/gpui-kit/fps",
+    "crates/gpui-kit/kit",
+    "crates/gpui-kit/assets",
     "crates/gpui-kit-showcase",
     # The script host and everything built on it are vendored but kept out of the
     # build, because one pinned QuickJS revision could not be fetched into
     # cargo's git db on this machine (the object is absent, so both `--offline`
-    # and every retry fail; see `gpui-kit/PROVENANCE.md`). Sources are complete.
+    # and every retry fail). Sources are complete.
     #
-    # To re-enable, fetch the missing revision first, then uncomment the four
-    # members below, `crates/gpui-kit-examples/dock`, the three
-    # `[workspace.dependencies]` entries and the `rquickjs` patch:
+    # To re-enable, fetch the missing revision first, then uncomment the members
+    # below, the `[workspace.dependencies]` entries they need and the `rquickjs`
+    # patch:
     #
     #   git -C "$env:USERPROFILE\.cargo\git\db\quickjs-jit-85f77f3fd15b7d92" \
     #       fetch --no-tags --force --update-head-ok \
@@ -218,20 +227,10 @@ members = [
     #
     # (or `$env:CARGO_NET_GIT_FETCH_WITH_CLI='true'; cargo fetch`).
     #
-    #"crates/gpui-shell",
-    #"crates/gpui-shell/rquickjs-compat",
-    #"crates/gpui-component-shell",
-    #"crates/gpui-component-story",
-
-    #
-    # gpui-kit examples
-    #
-
-    #"crates/gpui-kit-examples/dock",
-    "crates/gpui-kit-examples/example-input",
-    "crates/gpui-kit-examples/example-sidebar",
-    "crates/gpui-kit-examples/system_monitor",
-    "crates/gpui-kit-examples/table_in_scrollable",
+    #"crates/gpui-kit/shell",
+    #"crates/gpui-kit/story",
+    #"crates/gpui-kit/story-web",
+    #"crates/gpui-kit/webview",
 
     #
     # Tooling
@@ -594,18 +593,29 @@ ztracing_macro = { path = "crates/ztracing_macro" }
 # gpui-kit
 #
 # The gpui-kit stack ("GPUI Kit" by longbridge, Apache-2.0) vendored as workspace
-# members. Its crates originally depended on the `gpui-pre-*` snapshots of the
-# upstream Zed crates published to crates.io; here they are redirected to this
-# fork's own `gpui*` crates.
+# members under `crates/gpui-kit/`. Its crates originally depended on the
+# `gpui-pre-*` snapshots of the upstream Zed crates published to crates.io and on
+# the `gpui-fast` renderer; here they are redirected to this fork's own `gpui*`
+# crates, and the `gpui-fast` half of their feature tables is removed (nothing in
+# this tree vendors it, and Cargo resolves `{ workspace = true }` entries even
+# when the dependency is optional).
 #
 
-gpui-base = { path = "crates/gpui-base" }
-gpui-component = { path = "crates/gpui-component" }
-gpui-component-macros = { path = "crates/gpui-component-macros" }
-gpui-fps = { path = "crates/fps" }
-gpui-kit = { path = "crates/gpui-kit" }
-gpui-kit-assets = { path = "crates/gpui-kit-assets" }
+gpui-base = { path = "crates/gpui-kit/base" }
+gpui-component = { path = "crates/gpui-kit/component" }
+gpui-component-macros = { path = "crates/gpui-kit/component-macros" }
+gpui-fps = { path = "crates/gpui-kit/fps" }
+gpui-kit = { path = "crates/gpui-kit/kit" }
+gpui-kit-assets = { path = "crates/gpui-kit/assets" }
 gpui-kit-showcase = { path = "crates/gpui-kit-showcase" }
+# Optional syntax highlighting for `gpui-component`'s Markdown, Input and Diff.
+# Off by default; the versions are the ones upstream pins.
+syntect = { version = "5.3.0", default-features = false, features = [
+    "parsing",
+    "default-syntaxes",
+    "regex-fancy",
+] }
+two-face = { version = "0.4.5", default-features = false, features = ["syntect-fancy"] }
 # Vendored, not members: see the comment in the `members` list above.
 #gpui-shell = { path = "crates/gpui-shell" }
 #gpui-component-shell = { path = "crates/gpui-component-shell" }

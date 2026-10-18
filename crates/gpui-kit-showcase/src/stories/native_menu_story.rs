@@ -38,7 +38,7 @@ fn demo_menu(word_wrap: bool) -> NativeMenu {
         .menu_with_icon(
             "Search (SVG bytes)",
             Icon::default()
-                .data(include_bytes!("../../../gpui-kit-assets/assets/icons/search.svg")),
+                .data(include_bytes!("../../../gpui-kit/assets/assets/icons/search.svg")),
             click("Search"),
         )
         .separator()
