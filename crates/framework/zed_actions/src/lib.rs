@@ -75,6 +75,8 @@ actions!(
         OpenOctos,
         /// Opens the Dameng test-data configuration and test window.
         OpenDameng,
+        /// Opens the drawing test window: GPUI Kit charts and a freehand canvas.
+        OpenPlot,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.

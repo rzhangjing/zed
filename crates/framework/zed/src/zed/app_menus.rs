@@ -297,6 +297,7 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
                 MenuItem::action("cesiumrust", zed_actions::OpenCesiumrust),
                 MenuItem::action("Octos", zed_actions::OpenOctos),
                 MenuItem::action("Dameng", zed_actions::OpenDameng),
+                MenuItem::action("Plot", zed_actions::OpenPlot),
                 MenuItem::separator(),
                 MenuItem::action("File Bug Report...", zed_actions::feedback::FileBugReport),
                 MenuItem::action("Request Feature...", zed_actions::feedback::RequestFeature),

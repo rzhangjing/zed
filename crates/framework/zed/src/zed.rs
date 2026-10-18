@@ -12,6 +12,9 @@ pub(crate) mod move_to_applications;
 mod open_listener;
 mod open_url_modal;
 mod octos;
+/// The drawing test window: GPUI Kit charts and a freehand canvas, opened from
+/// `Help > Plot`.
+pub mod plot;
 mod quick_action_bar;
 #[cfg(all(target_os = "macos", feature = "visual-tests"))]
 pub mod visual_tests;
@@ -309,6 +312,9 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &zed_actions::OpenDameng, cx| {
         dameng::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenPlot, cx| {
+        plot::open(cx);
     });
 
     // The Octos kernel is started here, as a library inside this process rather
@@ -326,6 +332,12 @@ pub fn init(cx: &mut App) {
     // running the window on that machine, and clicking through `Help` is not
     // what such a check is testing.
     dameng::init(cx);
+
+    // The drawing test window is opened from `Help > Plot`; this is only its
+    // startup override (`ZED_PLOT_OPEN`), and a no-op otherwise. Same reason as
+    // the two above: looking at how the charts draw is the point, and clicking
+    // through `Help` is not part of what such a check is testing.
+    plot::init(cx);
 
     // Same startup override shape as `ZED_ABOUT_OPEN` above and `ZED_DAMENG_OPEN`
     // in `dameng`: it exists because checking that the gallery's real window
@@ -5939,6 +5951,133 @@ mod tests {
 
         assert_eq!(dameng_windows(cx), 1);
         assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+    }
+
+    /// The Help menu carries Plot, and the item dispatches the action
+    /// `plot::open` is registered for.
+    #[gpui::test]
+    fn test_plot_menu_item(cx: &mut App) {
+        settings::init(cx);
+        release_channel::init(Version::new(0, 0, 0), cx);
+
+        let help = app_menus(cx)
+            .into_iter()
+            .find(|menu| menu.name == "Help")
+            .expect("the Help menu exists");
+        let action = help
+            .items
+            .into_iter()
+            .find_map(|item| match item {
+                MenuItem::Action { name, action, .. } if name == "Plot" => Some(action),
+                _ => None,
+            })
+            .expect("the Help menu has a Plot item");
+
+        assert_eq!(
+            action.name(),
+            <zed_actions::OpenPlot as Action>::name_for_type()
+        );
+    }
+
+    /// Help > Plot opens the drawing window, and a second dispatch focuses that
+    /// window rather than opening another.
+    ///
+    /// The first paint is part of what this covers: the window draws GPUI Kit
+    /// charts, so it would panic if the Kit's globals and theme were not
+    /// initialized before the frame, and that is exactly what `show_window` does
+    /// for a caller that never went through `Help > gpui-kit`.
+    #[gpui::test]
+    async fn test_plot_opens_one_window(cx: &mut TestAppContext) {
+        // The window's root view is the Kit's `Root`, not the window view, so the
+        // count goes through the module's own predicate rather than a downcast to
+        // `PlotWindow`.
+        fn plot_windows(cx: &mut TestAppContext) -> usize {
+            cx.read(|cx| {
+                cx.windows()
+                    .into_iter()
+                    .filter(|window| crate::zed::plot::is_plot_window(window, cx))
+                    .count()
+            })
+        }
+        init_test(cx);
+        cx.update(init);
+
+        // Dispatched the way the menu item dispatches it, so this covers the
+        // `on_action` registration as well as the window itself.
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenPlot));
+        cx.run_until_parked();
+
+        assert_eq!(plot_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenPlot));
+        cx.run_until_parked();
+
+        assert_eq!(plot_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+    }
+
+    /// Dragging on the drawing board's canvas leaves a stroke behind.
+    ///
+    /// The state machine behind the canvas has its own tests in `plot`; this one
+    /// covers the wiring between the two — that the canvas actually receives the
+    /// mouse events and that they reach the view that draws the ink.
+    #[gpui::test]
+    async fn test_plot_draws_a_stroke(cx: &mut TestAppContext) {
+        init_test(cx);
+        cx.update(init);
+
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenPlot));
+        cx.run_until_parked();
+
+        let window = cx.read(|cx| {
+            cx.windows()
+                .into_iter()
+                .find(|window| crate::zed::plot::is_plot_window(window, cx))
+                .expect("the drawing window is open")
+        });
+
+        let cx = &mut VisualTestContext::from_window(window.into(), cx);
+        // The tab is switched on the view rather than by clicking its button,
+        // which would make the test depend on where the layout puts the button.
+        // View state is read through the app, not through `VisualTestContext`:
+        // its updates lease the root view, which is what holds the plot window.
+        cx.cx
+            .update(|cx| crate::zed::plot::show_freehand(&window, cx));
+        cx.run_until_parked();
+        assert_eq!(
+            cx.cx
+                .update(|cx| crate::zed::plot::active_tab(&window, cx)),
+            Some("freehand"),
+            "the board is the page that is shown"
+        );
+
+        // Mouse events are hit-tested against the last painted frame, and the
+        // frame that was painted still showed the chart grid. Draw once so the
+        // canvas is the element under the cursor.
+        cx.update(|window, cx| window.draw(cx).clear(cx));
+        let canvas = cx
+            .debug_bounds("plot-canvas")
+            .expect("the drawing board's canvas is laid out");
+        let origin = canvas.center();
+        cx.simulate_mouse_down(origin, gpui::MouseButton::Left, Modifiers::none());
+        cx.simulate_mouse_move(
+            origin + point(px(60.), px(40.)),
+            gpui::MouseButton::Left,
+            Modifiers::none(),
+        );
+        cx.simulate_mouse_up(
+            origin + point(px(60.), px(40.)),
+            gpui::MouseButton::Left,
+            Modifiers::none(),
+        );
+        cx.run_until_parked();
+        assert_eq!(
+            cx.cx
+                .update(|cx| crate::zed::plot::stroke_count(&window, cx)),
+            Some(1),
+            "the drag became one finished stroke"
+        );
     }
 
     #[gpui::test]
