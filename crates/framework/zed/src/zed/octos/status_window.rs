@@ -17,13 +17,13 @@
 //! 1. **The seam under test is the turn loop, not docking.** Approvals and tool
 //!    activity have to be reachable and keyboard-answerable while a turn is
 //!    live; a window that is already wired to the kernel does that today, and
-//!    `Help > Octos`/`ZED_OCTOS_OPEN_STATUS=1` open it deterministically on a
-//!    machine where clicking is not what is being tested. A panel would add
+//!    `ZED_OCTOS_OPEN_CONSOLE=1` opens it deterministically on a machine where
+//!    clicking is not what is being tested. A panel would add
 //!    `Panel::position`/`position_is_valid`/serialization/focus-routing surface
 //!    before any of the protocol work could be exercised on real hardware.
 //! 2. **Two panels is a worse answer than one window.** The status window
 //!    (`super::status`) is real, useful and already the target of
-//!    `ZED_OCTOS_OPEN_STATUS`. Folding it into the console keeps one Octos
+//!    `ZED_OCTOS_OPEN_CONSOLE`. Folding it into the console keeps one Octos
 //!    surface; a panel would leave two, with the old one orphaned.
 //! 3. **A panel needs a workspace; the kernel does not.** A window owns its own
 //!    lifetime and can be open with no project at all — which is exactly the
@@ -51,8 +51,9 @@
 //!   are handled by this window's own element (`on_key_down` on the root), so
 //!   nothing is bound globally and the main window is untouched.
 //!
-//! Opened by `Help > Octos`, which focuses an existing window rather than
-//! opening a second one, the way the About window behaves. With no Octos profile
+//! Opened by `ZED_OCTOS_OPEN_CONSOLE=1`, which focuses an existing window rather
+//! than opening a second one, the way the About window behaves. `Help > Octos`
+//! runs the CLI in a terminal instead ([`super::open`]). With no Octos profile
 //! configured the kernel refuses to open a session, so the console shows that
 //! reason and how to fix it instead of an input box that cannot work.
 
@@ -1086,9 +1087,9 @@ impl HostToolExecutor for EditorOpenExecutor {
 /// Opens the console, or focuses the one that is already open.
 pub fn open(cx: &mut App) {
     // Rendering needs `theme::GlobalTheme`, and `render` would panic without it
-    // ("no state of type theme::GlobalTheme exists"). A menu click always
-    // happens long after the theme is registered, but the
-    // `ZED_OCTOS_OPEN_STATUS` startup path can run before that, so wait for it
+    // ("no state of type theme::GlobalTheme exists"). Opening from the menu
+    // always happens long after the theme is registered, but the
+    // `ZED_OCTOS_OPEN_CONSOLE` startup path can run before that, so wait for it
     // instead of opening a window that cannot draw.
     if cx.try_global::<theme::GlobalTheme>().is_none() {
         log::info!("[octos] waiting for the theme before opening the console");
@@ -1153,10 +1154,10 @@ fn show_window(cx: &mut App) {
             // `SetForegroundWindow` cannot promote it and the process's
             // existing window keeps the keyboard — the console then renders,
             // sits behind the editor, and every keystroke goes to the editor.
-            // This is not a theory: `Help > Octos` (and the
-            // `ZED_OCTOS_OPEN_STATUS` path) opened exactly such a window, and
-            // typing into it produced no `prompt submitted` line at all
-            // (`crates/zed/src/zed/octos/mod.rs:1470`).
+            // This is not a theory: the old `Help > Octos` path (and the
+            // `ZED_OCTOS_OPEN_CONSOLE` startup path) opened exactly such a
+            // window, and typing into it produced no `prompt submitted` line at
+            // all (`crates/zed/src/zed/octos/mod.rs:1470`).
             window.on_next_frame(move |window, cx| take_keyboard(window, &focus, cx));
             console.into()
         },

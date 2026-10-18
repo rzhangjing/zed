@@ -17,14 +17,16 @@
 //!
 //! What runs today: [`start`] boots an in-process kernel on a Tokio runtime Zed
 //! owns, opens one session, and keeps the connection ([`connection::Connection`])
-//! available to the rest of the process. `Help > Octos` opens
-//! [`status_window`] — the first host-side Octos UI module, and the template for
-//! the panels that follow (turn progress, approvals, tool activity).
+//! available to the rest of the process. The Agent Panel drives that kernel over
+//! ACP; `Help > Octos` runs the real `octos chat` CLI in the workspace's terminal
+//! panel instead ([`open`]), so the menu item and the embedded path are two
+//! entries into the same agent rather than two window implementations.
 //!
 //! The frames the kernel initiates are **fanned out** as well as routed to the
 //! console: [`Octos::subscribe`] hands any host-side consumer its own stream of
 //! [`OctosFrame`]s, which is the seam the panels above are built on. The console
-//! keeps its own path, unchanged — see [`forward_notifications`].
+//! keeps its own path, unchanged — see [`forward_notifications`] — and remains
+//! reachable with `ZED_OCTOS_OPEN_CONSOLE=1`; the menu no longer opens it.
 //!
 //! The contract, from `crates/octos/octos-cli/src/embedded.rs`:
 //!
@@ -40,6 +42,12 @@
 //!   `<home>/.config/octos`. `home` defaults to `octos/` inside Zed's data
 //!   directory. Without a stored main profile `serve_io` fails with "Configure
 //!   the local LLM profile", which [`open`] surfaces to the user.
+//! * **The terminal shares that home.** `Help > Octos` exports the kernel's
+//!   `OCTOS_HOME`/`OCTOS_CONFIG_DIR` to `octos chat` and passes
+//!   `--no-session-persistence`: the embedded kernel holds the episode DB lock,
+//!   and that flag keeps the profile, memory, tools and skills while degrading
+//!   episodes to an in-memory handle instead of failing with "Database already
+//!   open".
 //! * **A session is what makes it do anything.** One `session/open` frame goes
 //!   out on connect, matching the crate's own host test.
 //!
@@ -51,9 +59,13 @@
 //!
 //! Environment overrides:
 //!
-//! * `ZED_OCTOS_HOME` — the embedded kernel's home directory.
+//! * `ZED_OCTOS_HOME` — the embedded kernel's home directory (the terminal's
+//!   `OCTOS_HOME`/`OCTOS_CONFIG_DIR` are derived from it).
 //! * `ZED_OCTOS_AUTOSTART` — `0`/`false`/`off` stops it starting with Zed.
-//! * `ZED_OCTOS_OPEN_STATUS` — `1` opens the Octos window as Zed starts.
+//! * `ZED_OCTOS_OPEN_STATUS` — `1` opens the Octos terminal as Zed starts.
+//! * `ZED_OCTOS_OPEN_CONSOLE` — `1` opens the old embedded-kernel console window.
+//! * `ZED_OCTOS_BINARY` — the `octos` executable the terminal runs.
+//! * `ZED_OCTOS_CHAT_MESSAGE` — sends one chat message and exits (verification).
 
 pub mod agent_thread;
 pub mod connection;
@@ -62,10 +74,11 @@ pub mod model_selector;
 pub mod peers;
 pub mod status_window;
 
+use collections::HashMap;
 use connection::{CallFailure, Connection};
 use futures::channel::mpsc;
 use futures::StreamExt as _;
-use gpui::{App, Global, Task, TaskExt as _};
+use gpui::{App, AppContext as _, Context, Global, Task, TaskExt as _, Window};
 use octos_core::ui_protocol::{QuestionId, TurnId, TurnInterruptParams, TurnInterruptResult};
 use peers::{ActivityState, ApprovalRequest, AskedQuestions, HostPeer, ToolActivity};
 use serde_json::{Value, json};
@@ -75,15 +88,33 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use task::{
+    HideStrategy, RevealStrategy, RevealTarget, SaveStrategy, Shell, SpawnInTerminal, TaskId,
+};
+use terminal_view::terminal_panel::TerminalPanel;
 use tokio::{runtime::Runtime, sync::broadcast};
+use workspace::Workspace;
+use workspace::notifications::{NotificationId, simple_message_notification::MessageNotification};
 
 /// `0`, `false` or `off` stops the kernel from starting with Zed.
 const ENV_AUTOSTART: &str = "ZED_OCTOS_AUTOSTART";
 /// The embedded kernel's home directory.
 const ENV_HOME: &str = "ZED_OCTOS_HOME";
-/// 1 opens the Octos window as Zed starts (the menu item's path, without the
-/// menu) — handy for verifying the window on a machine where clicking is not it.
+/// 1 opens the Octos terminal as Zed starts (the menu item's path, without the
+/// menu) — handy for verifying the terminal on a machine where clicking is not
+/// what is being tested.
 const ENV_OPEN_STATUS: &str = "ZED_OCTOS_OPEN_STATUS";
+/// 1 opens the old self-drawn console window as Zed starts. The menu no longer
+/// opens it; it stays reachable as the embedded kernel's approval/question
+/// surface (see [`status_window`]).
+const ENV_OPEN_CONSOLE: &str = "ZED_OCTOS_OPEN_CONSOLE";
+/// The `octos` executable that `Help > Octos` runs. Takes precedence over the
+/// sibling executable and PATH, and is the escape hatch on a machine where
+/// neither of those is the build you want.
+const ENV_BINARY: &str = "ZED_OCTOS_BINARY";
+/// Sends one chat message and exits. Only meant for scripted verification of
+/// the terminal: the normal path opens an interactive `octos chat`.
+const ENV_CHAT_MESSAGE: &str = "ZED_OCTOS_CHAT_MESSAGE";
 /// `0`, `false` or `off` stops this host registering its own tools
 /// ([`peers`]) on the session. The kernel then offers the model no Zed tool.
 const ENV_HOST_TOOLS: &str = "ZED_OCTOS_HOST_TOOLS";
@@ -534,12 +565,18 @@ pub fn init(cx: &mut App) {
     // that can only fail to open a session.
     agent_thread::register_backend(cx);
 
-    // The menu item's path without the menu, for verifying the window on a
+    // The menu item's path without the menu, for verifying the terminal on a
     // machine where clicking it is not what you are testing.
     if env::var(ENV_OPEN_STATUS).is_ok_and(|value| value != "0") {
-        cx.defer(open_status);
+        cx.defer(open);
     }
 
+    // The old console is no longer on the menu, but it is still the surface the
+    // embedded kernel's approvals and questions render on; keep a startup hook
+    // so that surface does not become unreachable.
+    if env::var(ENV_OPEN_CONSOLE).is_ok_and(|value| value != "0") {
+        cx.defer(open_console);
+    }
 }
 
 /// Install the executor that runs this host's tools, and the pump that delivers
@@ -616,14 +653,296 @@ fn apply_editor_open(cx: &mut App, open: &peers::EditorOpen) {
     }
 }
 
-
-/// Help > Octos Status: show the Octos window (see [status_window]).
+/// Help > Octos: run `octos chat` in a terminal tab of the active workspace.
 ///
-/// A window rather than a modal prompt: the embedded frontend has no HTTP
-/// console to open, and the Octos surface is meant to sit next to the user's
-/// work — the same reason later Octos panels belong here too.
-pub fn open_status(cx: &mut App) {
+/// This is the host-side surface for the same agent the Agent Panel drives over
+/// ACP: the menu no longer opens a self-drawn console, it starts the real
+/// `octos` CLI in the terminal the user already has. `ZED_OCTOS_OPEN_STATUS=1`
+/// calls this function too, so the menu path and the startup hook cannot drift
+/// apart.
+///
+/// The embedded kernel ([`start`]) is not involved: `octos chat` is its own
+/// process with its own session. Both share one home (see [`home`]) so a profile
+/// configured once works in either place.
+pub fn open(cx: &mut App) {
+    log::info!("[octos] opening the Octos terminal");
+
+    let binary = match resolve_binary() {
+        Ok(binary) => binary,
+        Err(reason) => {
+            let message = format!(
+                "Octos was not started: {reason}.\n\n\
+                 Build it with `cargo build -p octos-cli --release --no-default-features \
+                 --features api`, put `octos.exe` next to Zed, or set `{ENV_BINARY}` to \
+                 the executable."
+            );
+            log::error!("[octos] {message}");
+            with_active_workspace(cx, move |workspace, _window, cx| {
+                show_failure(workspace, cx, message.clone());
+            });
+            return;
+        }
+    };
+
+    log::info!("[octos] using Octos binary {}", describe_binary(&binary));
+    with_active_workspace(cx, move |workspace, window, cx| {
+        spawn_terminal(workspace, window, cx, &binary);
+    });
+}
+
+/// Runs `f` in the active workspace, waiting for one if Zed is still starting.
+///
+/// Not `workspace::with_active_or_new_workspace`: that opens a new window when
+/// there is none, and during `zed::init` it dereferences `GlobalAppState` before
+/// that global exists, which panics. `ZED_OCTOS_OPEN_STATUS=1` runs exactly at
+/// that point, so wait for the first real workspace window instead. A menu click
+/// always has one, so this defers once and runs immediately.
+fn with_active_workspace(
+    cx: &mut App,
+    f: impl FnOnce(&mut Workspace, &mut Window, &mut Context<Workspace>) + Send + 'static,
+) {
+    if let Some(window) = active_workspace_window(cx) {
+        cx.defer(move |cx| apply_in_workspace(window, cx, f));
+        return;
+    }
+
+    log::info!("[octos] waiting for a workspace window before opening the Octos terminal");
+    cx.spawn(async move |cx| {
+        let mut f = Some(f);
+        for _ in 0..300 {
+            if let Some(window) = cx.update(|cx| active_workspace_window(cx)) {
+                cx.update(|cx| {
+                    if let Some(f) = f.take() {
+                        apply_in_workspace(window, cx, f);
+                    }
+                });
+                return;
+            }
+            smol::Timer::after(Duration::from_millis(100)).await;
+        }
+        log::error!("[octos] no workspace window appeared; the Octos terminal was not opened");
+    })
+    .detach();
+}
+
+fn active_workspace_window(cx: &App) -> Option<gpui::WindowHandle<workspace::MultiWorkspace>> {
+    cx.active_window()
+        .and_then(|window| window.downcast::<workspace::MultiWorkspace>())
+}
+
+fn apply_in_workspace(
+    window: gpui::WindowHandle<workspace::MultiWorkspace>,
+    cx: &mut App,
+    f: impl FnOnce(&mut Workspace, &mut Window, &mut Context<Workspace>) + 'static,
+) {
+    if let Err(error) = window.update(cx, |multi_workspace, window, cx| {
+        let workspace = multi_workspace.workspace().clone();
+        workspace.update(cx, |workspace, cx| f(workspace, window, cx))
+    }) {
+        log::error!("[octos] could not reach the workspace window: {error}");
+    }
+}
+
+/// Opens the embedded kernel's console window ([`status_window`]).
+///
+/// `Help > Octos` no longer opens it — the menu runs the CLI in a terminal — but
+/// the embedded kernel's approvals and questions still render in it, so
+/// `ZED_OCTOS_OPEN_CONSOLE=1` keeps the surface reachable.
+pub fn open_console(cx: &mut App) {
     status_window::open(cx);
+}
+
+/// Starts one `octos chat --profile _main` tab in the workspace's terminal panel.
+fn spawn_terminal(
+    workspace: &mut Workspace,
+    window: &mut Window,
+    cx: &mut Context<Workspace>,
+    binary: &Path,
+) {
+    let Some(terminal_panel) = workspace.panel::<TerminalPanel>(cx) else {
+        let reason = "the terminal panel is unavailable in this workspace".to_owned();
+        log::error!("[octos] {reason}");
+        show_failure(workspace, cx, reason);
+        return;
+    };
+
+    let home = home();
+    let data_dir = home.join(".octos");
+    let config_dir = home.join(".config").join("octos");
+    let args = octos_chat_args(env::var(ENV_CHAT_MESSAGE).ok().as_deref());
+    log::info!(
+        "[octos] running `{} {}` in a terminal tab labelled Octos \
+         (OCTOS_HOME={}, OCTOS_CONFIG_DIR={})",
+        binary.display(),
+        args.join(" "),
+        data_dir.display(),
+        config_dir.display()
+    );
+
+    let task = octos_task(binary, &home, &args);
+    // `TerminalPanel::spawn_task` reads the workspace back
+    // (`self.workspace.read(cx)`), and we are inside `Workspace::update`;
+    // calling it here would double-lease the workspace and panic in debug
+    // builds. Defer one frame so the read happens after this update ends.
+    window.defer(cx, move |window, cx| {
+        let spawned = terminal_panel.update(cx, |terminal_panel, cx| {
+            terminal_panel.spawn_task(&task, window, cx)
+        });
+        spawned.detach_and_log_err(cx);
+    });
+}
+
+/// The arguments `Help > Octos` passes to the CLI.
+///
+/// `--no-session-persistence` is required, not cosmetic: the embedded kernel
+/// (Agent Panel) holds the episode DB lock in the same home. The CLI documents
+/// this flag as the way to run concurrently against one `--data-dir`; it keeps
+/// the shared profile, memory, tools and skills and falls back to an in-memory
+/// episode handle instead of failing with "Database already open".
+///
+/// `ZED_OCTOS_CHAT_MESSAGE` appends `--message <text>`, which makes `chat` answer
+/// one turn and exit: that is how a script proves the terminal really reaches the
+/// model. It is not part of the normal path.
+fn octos_chat_args(message: Option<&str>) -> Vec<String> {
+    let mut args = vec![
+        "chat".to_owned(),
+        "--profile".to_owned(),
+        octos_core::MAIN_PROFILE_ID.to_owned(),
+        "--no-session-persistence".to_owned(),
+    ];
+    if let Some(message) = message.map(str::trim).filter(|message| !message.is_empty()) {
+        args.push("--message".to_owned());
+        args.push(message.to_owned());
+    }
+    args
+}
+
+/// The [`SpawnInTerminal`] for `octos chat`.
+///
+/// `command`/`args` are moved into [`Shell::WithArguments`] and then out again by
+/// `prepare_task_for_spawn`, which is how the terminal runs the absolute path
+/// directly instead of passing it through a shell that would have to quote spaces
+/// in it (the same shape as agent_ui's external-agent login).
+fn octos_task(binary: &Path, home: &Path, args: &[String]) -> SpawnInTerminal {
+    let mut env = HashMap::default();
+    // `octos_cli::embedded::serve_io` derives both paths from `home` the same
+    // way. Setting the CLI's env to those exact paths is what makes the terminal
+    // see the profile (`<home>/.octos/profiles/_main.json`) the kernel uses.
+    env.insert(
+        "OCTOS_HOME".to_owned(),
+        home.join(".octos").to_string_lossy().into_owned(),
+    );
+    env.insert(
+        "OCTOS_CONFIG_DIR".to_owned(),
+        home.join(".config")
+            .join("octos")
+            .to_string_lossy()
+            .into_owned(),
+    );
+    let program = binary.to_string_lossy().into_owned();
+
+    SpawnInTerminal {
+        id: TaskId("octos-chat".to_owned()),
+        full_label: "Octos".to_owned(),
+        label: "Octos".to_owned(),
+        command: None,
+        args: Vec::new(),
+        command_label: program.clone(),
+        cwd: None,
+        env,
+        use_new_terminal: true,
+        allow_concurrent_runs: true,
+        reveal: RevealStrategy::Always,
+        reveal_target: RevealTarget::Dock,
+        hide: HideStrategy::Never,
+        shell: Shell::WithArguments {
+            program,
+            args: args.to_vec(),
+            title_override: Some("Octos".to_owned()),
+        },
+        show_summary: false,
+        show_command: true,
+        show_rerun: false,
+        save: SaveStrategy::None,
+    }
+}
+
+/// `ZED_OCTOS_BINARY`, then `octos[.exe]` next to Zed, then `octos[.exe]` on PATH.
+///
+/// `Err` carries a reason fit to show the user; nothing here panics.
+fn resolve_binary() -> Result<PathBuf, String> {
+    if let Some(configured) = env::var_os(ENV_BINARY) {
+        let configured = PathBuf::from(configured);
+        if configured.is_file() {
+            return Ok(absolute(configured));
+        }
+        return Err(format!(
+            "{ENV_BINARY} is set to {}, which is not a file",
+            configured.display()
+        ));
+    }
+
+    let sibling = env::current_exe()
+        .ok()
+        .map(|exe| exe.with_file_name(format!("octos{}", env::consts::EXE_SUFFIX)));
+    if let Some(sibling) = sibling.as_ref().filter(|path| path.is_file()) {
+        return Ok(sibling.clone());
+    }
+
+    if let Some(on_path) = find_on_path() {
+        return Ok(on_path);
+    }
+
+    Err(format!(
+        "no Octos executable found ({ENV_BINARY} is unset, {}, and `octos{}` is not on PATH)",
+        sibling
+            .as_deref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "the directory next to Zed".to_owned()),
+        env::consts::EXE_SUFFIX
+    ))
+}
+
+/// The `octos[.exe]` on `PATH`, if any.
+fn find_on_path() -> Option<PathBuf> {
+    let name = format!("octos{}", env::consts::EXE_SUFFIX);
+    env::var_os("PATH").and_then(|paths| {
+        env::split_paths(&paths)
+            .map(|directory| directory.join(&name))
+            .find(|candidate| candidate.is_file())
+    })
+}
+
+/// Absolute without resolving symlinks, so the log names the file that was run.
+fn absolute(path: PathBuf) -> PathBuf {
+    std::path::absolute(&path).unwrap_or(path)
+}
+
+/// The selected binary as an absolute path and its mtime.
+///
+/// The mtime is the point: `target/debug/octos.exe` can be an older build than
+/// the source tree, and that is otherwise invisible until the CLI behaves unlike
+/// the code in front of you.
+fn describe_binary(path: &Path) -> String {
+    match fs::metadata(path).and_then(|metadata| metadata.modified()) {
+        Ok(modified) => {
+            let modified: chrono::DateTime<chrono::Local> = modified.into();
+            format!(
+                "{} (modified {})",
+                path.display(),
+                modified.format("%Y-%m-%d %H:%M:%S")
+            )
+        }
+        Err(error) => format!("{} (mtime unavailable: {error})", path.display()),
+    }
+}
+
+/// Shows a terminal-start failure in the workspace, not just in the log.
+fn show_failure(workspace: &mut Workspace, cx: &mut Context<Workspace>, message: String) {
+    struct OctosTerminalError;
+    workspace.show_notification(NotificationId::unique::<OctosTerminalError>(), cx, |cx| {
+        cx.new(|cx| MessageNotification::new(message, cx))
+    });
 }
 
 /// The status as one copyable block (the window's Copy button and the log).
@@ -731,7 +1050,7 @@ fn hints(cx: &App) -> Vec<String> {
     }
     hints.push(format!(
         "{ENV_AUTOSTART}=0 stops Octos starting with Zed; {ENV_OPEN_STATUS}=1 opens \
-         this window at startup."
+         the Octos terminal at startup; {ENV_OPEN_CONSOLE}=1 opens this window."
     ));
     hints
 }
@@ -3326,6 +3645,79 @@ mod tests {
         assert!(
             next_frame(&mut subscriber).await.is_none(),
             "a closed connection ends the stream instead of hanging it"
+        );
+    }
+
+    /// `Help > Octos` must start the CLI directly, not a shell-quoted string:
+    /// the task carries the resolved binary as its program and the chat
+    /// arguments as its arguments, with the same home the embedded kernel uses.
+    #[test]
+    fn octos_terminal_task_runs_chat_against_the_embedded_home() {
+        let home = Path::new("zed-data").join("octos");
+        let binary = Path::new("tools").join(format!("octos{}", env::consts::EXE_SUFFIX));
+        let task = octos_task(&binary, &home, &octos_chat_args(None));
+
+        assert_eq!(task.label, "Octos");
+        assert_eq!(task.full_label, "Octos");
+        assert!(task.use_new_terminal);
+        assert!(task.allow_concurrent_runs);
+        assert_eq!(task.reveal, RevealStrategy::Always);
+        assert_eq!(task.reveal_target, RevealTarget::Dock);
+
+        let expected_data = home.join(".octos").to_string_lossy().into_owned();
+        let expected_config = home
+            .join(".config")
+            .join("octos")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(task.env.get("OCTOS_HOME"), Some(&expected_data));
+        assert_eq!(task.env.get("OCTOS_CONFIG_DIR"), Some(&expected_config));
+
+        match &task.shell {
+            Shell::WithArguments {
+                program,
+                args,
+                title_override,
+            } => {
+                assert_eq!(program, &binary.to_string_lossy().into_owned());
+                assert_eq!(
+                    args,
+                    &[
+                        "chat".to_owned(),
+                        "--profile".to_owned(),
+                        octos_core::MAIN_PROFILE_ID.to_owned(),
+                        "--no-session-persistence".to_owned(),
+                    ]
+                );
+                assert_eq!(title_override.as_deref(), Some("Octos"));
+            }
+            other => panic!("expected a direct program, got {other:?}"),
+        }
+    }
+
+    /// The verification hook appends `--message <text>`; a blank value must not
+    /// turn into an empty prompt.
+    #[test]
+    fn a_verification_message_appends_the_one_shot_flag() {
+        assert_eq!(
+            octos_chat_args(Some(" 1+1? ")),
+            [
+                "chat",
+                "--profile",
+                octos_core::MAIN_PROFILE_ID,
+                "--no-session-persistence",
+                "--message",
+                "1+1?"
+            ]
+        );
+        assert_eq!(
+            octos_chat_args(Some("   ")),
+            [
+                "chat",
+                "--profile",
+                octos_core::MAIN_PROFILE_ID,
+                "--no-session-persistence"
+            ]
         );
     }
 }

@@ -71,7 +71,7 @@ actions!(
         OpenGpuiKitShowcase,
         /// Opens the cesiumrust 3D globe in a window of its own.
         OpenCesiumrust,
-        /// Opens the Octos console for the embedded kernel.
+        /// Opens the Octos chat in a terminal tab.
         OpenOctos,
         /// Opens the Dameng test-data configuration and test window.
         OpenDameng,

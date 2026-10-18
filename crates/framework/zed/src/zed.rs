@@ -308,7 +308,7 @@ pub fn init(cx: &mut App) {
         cesium::open_cesiumrust(cx);
     })
     .on_action(|_: &zed_actions::OpenOctos, cx| {
-        octos::open_status(cx);
+        octos::open(cx);
     })
     .on_action(|_: &zed_actions::OpenDameng, cx| {
         dameng::open(cx);
@@ -318,8 +318,9 @@ pub fn init(cx: &mut App) {
     });
 
     // The Octos kernel is started here, as a library inside this process rather
-    // than as a child, and tied to Zed's lifetime; `Help > Octos` opens the
-    // console that drives it over the in-process connection. See `octos`.
+    // than as a child, and tied to Zed's lifetime; the Agent Panel drives it over
+    // ACP. `Help > Octos` runs the real `octos chat` CLI in the terminal panel
+    // (`octos::open`), sharing the kernel's home. See `octos`.
     octos::init(cx);
 
     // The cesiumrust globe window is opened from `Help > cesiumrust`; this is
@@ -5753,7 +5754,7 @@ mod tests {
     }
 
     /// The Help menu carries Octos, and the item dispatches the action
-    /// `octos::open_status` is registered for.
+    /// `octos::open` is registered for.
     #[gpui::test]
     fn test_octos_menu_item(cx: &mut App) {
         settings::init(cx);
