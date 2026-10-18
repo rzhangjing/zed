@@ -31,3 +31,11 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 
 [features]
+
+# The vendored sources still carry `#[cfg(feature = "gpui-fast")]` arms, but
+# this tree removed that feature (`[workspace.dependencies]` in the root
+# manifest explains why). The workspace's `unexpected_cfgs = { level = "allow" }`
+# is how the sibling gpui-kit crates (base, component, kit, fps) already silence
+# the resulting warning; this crate was the only gpui-kit member not opted in.
+[lints]
+workspace = true

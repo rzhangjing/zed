@@ -742,7 +742,13 @@ dm-error = { path = "crates/dameng/dm-error" }
 dm-core = { path = "crates/dameng/dm-core" }
 dm-macros = { path = "crates/dameng/dm-macros" }
 dm-odbc = { path = "crates/dameng/dm-odbc" }
-dm-pool = { path = "crates/dameng/dm-pool" }
+# `default-features = false` is required, not cosmetic: the dameng crates each
+# choose the pool backend through their own `dpi` feature (`dm-query/dpi =
+# ["dm-pool/dpi"]`), and cargo refuses to let a member override a workspace
+# dependency's defaults ("default-features = false cannot override workspace's
+# default-features"). Consumers that want the DPI default backend enable that
+# feature, which is how dameng's own workspace root declared this entry.
+dm-pool = { path = "crates/dameng/dm-pool", default-features = false }
 dm-query = { path = "crates/dameng/dm-query" }
 odbc-api = { version = "29.2", default-features = false, features = [
     "odbc_version_3_80",
