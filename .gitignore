@@ -68,12 +68,18 @@ ZED_FORK_TRIM_PLAN.md
 # IDE
 .idea/
 .vscode/
+*.rs.bk
+*.pdb
+*.ilk
 *.swp
 *.swo
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+*.tmp
+.tmp-*/
 
 # Claude Code agent worktrees (Agent-tool isolation creates these as nested
 # git checkouts). They must never be tracked — committed as gitlinks they

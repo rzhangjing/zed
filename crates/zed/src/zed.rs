@@ -1,6 +1,8 @@
 mod app_menus;
 /// The cesiumrust globe window, opened from `Help > cesiumrust`.
 pub mod cesium;
+/// The Dameng (达梦) test-data window, opened from `Help > Dameng`.
+pub mod dameng;
 pub mod edit_prediction_registry;
 #[cfg(target_os = "macos")]
 pub(crate) mod mac_only_instance;
@@ -304,6 +306,9 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &zed_actions::OpenOctos, cx| {
         octos::open_status(cx);
+    })
+    .on_action(|_: &zed_actions::OpenDameng, cx| {
+        dameng::open(cx);
     });
 
     // The Octos kernel is started here, as a library inside this process rather
@@ -314,6 +319,13 @@ pub fn init(cx: &mut App) {
     // The cesiumrust globe window is opened from `Help > cesiumrust`; this is
     // only its startup override (`ZED_CESIUMRUST_OPEN`), and a no-op otherwise.
     cesium::init(cx);
+
+    // The Dameng test window is opened from `Help > Dameng`; this is only its
+    // startup override (`ZED_DAMENG_OPEN`), and a no-op otherwise. It exists
+    // because checking a connection against a real Dameng instance means
+    // running the window on that machine, and clicking through `Help` is not
+    // what such a check is testing.
+    dameng::init(cx);
 
     // The About window is opened from `Help > About`; this is only its startup
     // override (`ZED_ABOUT_OPEN`), the same shape as `ZED_CESIUMRUST_OPEN` above
@@ -5853,6 +5865,71 @@ mod tests {
         cx.run_until_parked();
 
         assert_eq!(cesium_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+    }
+
+    /// The Help menu carries Dameng, and the item dispatches the action
+    /// `dameng::open` is registered for.
+    #[gpui::test]
+    fn test_dameng_menu_item(cx: &mut App) {
+        settings::init(cx);
+        release_channel::init(Version::new(0, 0, 0), cx);
+
+        let help = app_menus(cx)
+            .into_iter()
+            .find(|menu| menu.name == "Help")
+            .expect("the Help menu exists");
+        let action = help
+            .items
+            .into_iter()
+            .find_map(|item| match item {
+                MenuItem::Action { name, action, .. } if name == "Dameng" => Some(action),
+                _ => None,
+            })
+            .expect("the Help menu has a Dameng item");
+
+        assert_eq!(
+            action.name(),
+            <zed_actions::OpenDameng as Action>::name_for_type()
+        );
+    }
+
+    /// Help > Dameng opens the test window, and a second dispatch focuses that
+    /// window rather than opening another.
+    ///
+    /// Like the cesiumrust window this does no work until it is used, so the
+    /// test covers the action, the `on_action` registration and the window
+    /// itself — including its first paint, which is what would panic if the
+    /// window used a global that tests do not register.
+    #[gpui::test]
+    async fn test_dameng_opens_one_window(cx: &mut TestAppContext) {
+        fn dameng_windows(cx: &mut TestAppContext) -> usize {
+            cx.read(|cx| {
+                cx.windows()
+                    .into_iter()
+                    .filter(|window| {
+                        window
+                            .downcast::<crate::zed::dameng::DamengWindow>()
+                            .is_some()
+                    })
+                    .count()
+            })
+        }
+        init_test(cx);
+        cx.update(init);
+
+        // Dispatched the way the menu item dispatches it, so this covers the
+        // `on_action` registration as well as the window itself.
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenDameng));
+        cx.run_until_parked();
+
+        assert_eq!(dameng_windows(cx), 1);
+        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
+
+        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenDameng));
+        cx.run_until_parked();
+
+        assert_eq!(dameng_windows(cx), 1);
         assert_eq!(cx.read(|cx| cx.windows().len()), 1);
     }
 

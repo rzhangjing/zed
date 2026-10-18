@@ -1,0 +1,13 @@
+[package]
+name = "dm-error"
+description = "达梦中间件的统一错误模型：错误分类、诊断链、与连接池的硬契约"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

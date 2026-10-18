@@ -73,6 +73,8 @@ actions!(
         OpenCesiumrust,
         /// Opens the Octos console for the embedded kernel.
         OpenOctos,
+        /// Opens the Dameng test-data configuration and test window.
+        OpenDameng,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.

@@ -1,0 +1,380 @@
+﻿################################################################
+# odbc-api + DM8 ODBC driver :: smoke probe
+# crate build mode : WIDE  (odbc-api calls the Unicode SQL*W entry points, UTF-16 on the wire)
+# target_os        : windows
+# odbc-api         : 29.2 (default-features = false, features = [odbc_version_3_80])
+# own features     : narrow=false wide=false
+# compiler profile : release
+################################################################
+
+===== Q1 : can we connect, and with which connection string =====
+[Q1] Environment::new() OK
+[Q1] Environment::drivers() -> 4 driver(s)
+[Q1]   driver description="SQL Server" attributes={"SQLLevel": "1", "ConnectFunctions": "YYY", "CPTimeout": "60", "DriverODBCVer": "03.50", "FileUsage": "0", "UsageCount": "", "APILevel": "2"}
+[Q1]   driver description="DM8 ODBC DRIVER" attributes={}
+[Q1]   driver description="PostgreSQL ODBC Driver(ANSI)" attributes={"ConnectFunctions": "YYN", "FileUsage": "0", "SQLLevel": "1", "DriverODBCVer": "13.02.0000", "APILevel": "1"}
+[Q1]   driver description="PostgreSQL ODBC Driver(UNICODE)" attributes={"ConnectFunctions": "YYN", "FileUsage": "0", "DriverODBCVer": "13.02.0000", "APILevel": "1", "SQLLevel": "1"}
+[Q1] Environment::data_sources() -> <no user DSN registered at all>
+[Q1] Environment::system_data_sources() -> <no system DSN registered>
+[Q1] attempt A base -> SUCCESS in 32.2312ms
+[Q1]   conn_str: DRIVER={DM8 ODBC DRIVER};SERVER=localhost;TCP_PORT=5236;UID=SYSDBA;PWD=SYSDBA
+[Q1] attempt B base+PROTOCOL_TYPE=TCP -> SUCCESS in 15.4758ms
+[Q1]   conn_str: DRIVER={DM8 ODBC DRIVER};SERVER=localhost;TCP_PORT=5236;UID=SYSDBA;PWD=SYSDBA;PROTOCOL_TYPE=TCP
+[Q1] attempt C base+CHARACTER_CODE=PG_UTF8 -> SUCCESS in 15.6379ms
+[Q1]   conn_str: DRIVER={DM8 ODBC DRIVER};SERVER=localhost;TCP_PORT=5236;UID=SYSDBA;PWD=SYSDBA;CHARACTER_CODE=PG_UTF8
+[Q1] attempt D base+PROTOCOL_TYPE=TCP+CHARACTER_CODE=PG_UTF8 -> SUCCESS in 15.328ms
+[Q1]   conn_str: DRIVER={DM8 ODBC DRIVER};SERVER=localhost;TCP_PORT=5236;UID=SYSDBA;PWD=SYSDBA;PROTOCOL_TYPE=TCP;CHARACTER_CODE=PG_UTF8
+[Q1] attempt E base+CHARACTER_CODE=PG_GB18030 -> SUCCESS in 15.0802ms
+[Q1]   conn_str: DRIVER={DM8 ODBC DRIVER};SERVER=localhost;TCP_PORT=5236;UID=SYSDBA;PWD=SYSDBA;CHARACTER_CODE=PG_GB18030
+[Q1] attempt F DSN variant -> FAILED in 239µs
+[Q1]   conn_str: DSN=DM8;UID=SYSDBA;PWD=SYSDBA
+[Q1]   error display: ODBC emitted an error calling 'SQLDriverConnect':
+State: IM002, Native error: 0, Message: [Microsoft][ODBC 驱动程序管理器] 未发现数据源名称并且未指定默认驱动程序
+[Q1]   error debug  : Diagnostics { record: State: IM002, Native error: 0, Message: [Microsoft][ODBC 驱动程序管理器] 未发现数据源名称并且未指定默认驱动程序, function: "SQLDriverConnect" }
+[Q1] attempt G DSN variant 2 -> FAILED in 62.1µs
+[Q1]   conn_str: DSN=DM;UID=SYSDBA;PWD=SYSDBA
+[Q1]   error display: ODBC emitted an error calling 'SQLDriverConnect':
+State: IM002, Native error: 0, Message: [Microsoft][ODBC 驱动程序管理器] 未发现数据源名称并且未指定默认驱动程序
+[Q1]   error debug  : Diagnostics { record: State: IM002, Native error: 0, Message: [Microsoft][ODBC 驱动程序管理器] 未发现数据源名称并且未指定默认驱动程序, function: "SQLDriverConnect" }
+[Q6] time to establish the working connection = 15.402 ms (connection string "A base")
+[Q1] SQL_DBMS_NAME = "达梦数据库管理系统"
+[Q1] server probe `select banner as b from v$version` -> Some("DM Database Server 64 V8")
+[Q1] server probe `select id as b from v$instance` FAILED: execute: ODBC emitted an error calling 'SQLExecDirect':
+State: 42S22, Native error: -2111, Message: 第1 行附近出现错误:
+无效的列名[ID]
+[Q1] server probe `select unicode() as c from dual` -> Some("0")
+
+===== Q2 : select unicode() from dual (server charset id) =====
+[Q2] `select unicode() as c from dual` -> narrow get_text value = Some("0")
+[Q2] `select cast(unicode() as varchar(20)) as c from dual` -> narrow get_text value = Some("0")
+[Q2] get_text(col 1)      -> Ok(true)
+                 [Q2] get_text: len=1 bytes=[30]
+                 [Q2] get_text: from_utf8 OK  -> 0
+                 [Q2] get_text: from_utf8_lossy -> 0
+[Q2] get_wide_text(col 2) -> Ok(true)
+            [Q2] get_wide_text: len=1 u16=[0030]
+            [Q2] get_wide_text: from_utf16 OK  -> 0
+
+===== Q3 : select '中文测试' as c from dual, narrow vs wide fetch =====
+  NOTE: the literal travels as SQL text, so the build mode decides how the
+        driver sees it. Both fetch paths are exercised on the SAME row.
+[Q3] get_text(col 1, SQL_C_CHAR)       -> Ok(true)
+              [Q3] narrow path: len=8 bytes=[D6 D0 CE C4 B2 E2 CA D4]
+              [Q3] narrow path: from_utf8 ERR -> invalid utf-8 sequence of 1 bytes from index 0
+              [Q3] narrow path: from_utf8_lossy -> ���Ĳ���
+              [Q3] narrow path: == expected GB18030/CP936 of "中文测试"
+[Q3] get_wide_text(col 2, SQL_C_WCHAR) -> Ok(true)
+                [Q3] wide path: len=4 u16=[4E2D 6587 6D4B 8BD5]
+                [Q3] wide path: from_utf16 OK  -> 中文测试
+                [Q3] wide path: == expected UTF-16 of "中文测试"
+[Q3] narrow-decoded == wide-decoded ? false
+[Q3] expected encodings of "中文测试":
+[Q3]   UTF-8          = E4 B8 AD E6 96 87 E6 B5 8B E8 AF 95
+[Q3]   GB18030/CP936  = D6 D0 CE C4 B2 E2 CA D4
+[Q3]   UTF-16         = 4E2D 6587 6D4B 8BD5
+
+===== Q3b : does CHARACTER_CODE=... change what the client receives? =====
+[Q3b] default (no CHARACTER_CODE): narrow bytes = [D6 D0 CE C4 B2 E2 CA D4]
+[Q3b] default (no CHARACTER_CODE): narrow decodes as UTF-8? NO (invalid utf-8 sequence of 1 bytes from index 0)
+[Q3b] default (no CHARACTER_CODE): narrow == GB18030 bytes? true
+[Q3b] default (no CHARACTER_CODE): wide   = [4E2D 6587 6D4B 8BD5] -> Some("中文测试")
+[Q3b] CHARACTER_CODE=PG_UTF8: narrow bytes = [E4 B8 AD E6 96 87 E6 B5 8B E8 AF 95]
+[Q3b] CHARACTER_CODE=PG_UTF8: narrow decodes as UTF-8? 中文测试
+[Q3b] CHARACTER_CODE=PG_UTF8: narrow == GB18030 bytes? false
+[Q3b] CHARACTER_CODE=PG_UTF8: wide   = [4E2D 6587 6D4B 8BD5] -> Some("中文测试")
+[Q3b] CHARACTER_CODE=PG_GB18030: narrow bytes = [D6 D0 CE C4 B2 E2 CA D4]
+[Q3b] CHARACTER_CODE=PG_GB18030: narrow decodes as UTF-8? NO (invalid utf-8 sequence of 1 bytes from index 0)
+[Q3b] CHARACTER_CODE=PG_GB18030: narrow == GB18030 bytes? true
+[Q3b] CHARACTER_CODE=PG_GB18030: wide   = [4E2D 6587 6D4B 8BD5] -> Some("中文测试")
+
+===== Q4 : create table t_odbcprobe, parameter-bound insert, lengthb/length/rawtohex =====
+[Q4] ERROR :: drop table t_odbcprobe
+[Q4]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE]
+[Q4]   debug  : Diagnostics { record: State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE], function: "SQLExecDirect" }
+[Q4] OK    :: create table t_odbcprobe(id int primary key, v varchar(100))
+[Q4] insert id=1 chars=4 utf8_bytes=12 -> OK
+[Q4] insert id=2 chars=49 utf8_bytes=147 -> OK
+[Q4] insert id=3 chars=50 utf8_bytes=150 -> OK
+[Q4] insert id=4 chars=51 utf8_bytes=153 -> ERROR ODBC emitted an error calling 'SQLExecute':
+State: 22001, Native error: -70005, Message: 字符串截断
+[Q4]   debug: Diagnostics { record: State: 22001, Native error: -70005, Message: 字符串截断, function: "SQLExecute" }
+[Q4] insert id=5 chars=60 utf8_bytes=180 -> ERROR ODBC emitted an error calling 'SQLExecute':
+State: 22001, Native error: -70005, Message: 字符串截断
+[Q4]   debug: Diagnostics { record: State: 22001, Native error: -70005, Message: 字符串截断, function: "SQLExecute" }
+[Q4] insert id=6 chars=100 utf8_bytes=300 -> ERROR ODBC emitted an error calling 'SQLExecute':
+State: 22001, Native error: -70005, Message: 字符串截断
+[Q4]   debug: Diagnostics { record: State: 22001, Native error: -70005, Message: 字符串截断, function: "SQLExecute" }
+[Q4] read back (narrow text path for all columns):
+[Q4] id | lengthb(v) | length(v) | rawtohex(v) | v
+[Q4] 1 | 8 | 4 | D6D0CEC4B2E2CAD4 | ���Ĳ���
+[Q4] 2 | 98 | 49 | D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0 | ��������������������������������������������������������������������������������������������������
+[Q4] 3 | 100 | 50 | D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0 | ����������������������������������������������������������������������������������������������������
+[Q4] server view of cast(10 x 中 as varchar(100)): lengthb=Some("20") length=Some("10") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server view of cast(33 x 中 as varchar(100)): lengthb=Some("66") length=Some("33") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server view of cast(34 x 中 as varchar(100)): lengthb=Some("68") length=Some("34") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server view of cast(49 x 中 as varchar(100)): lengthb=Some("98") length=Some("49") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] client narrow path reports 98 raw byte(s) for cast(49 x 中); first 6 = [D6 D0 D6 D0 D6 D0]
+[Q4] server view of cast(50 x 中 as varchar(100)): lengthb=Some("100") length=Some("50") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server view of cast(51 x 中 as varchar(100)): lengthb=Some("100") length=Some("50") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server view of cast(60 x 中 as varchar(100)): lengthb=Some("100") length=Some("50") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server view of cast(100 x 中 as varchar(100)): lengthb=Some("100") length=Some("50") rawtohex=Some("D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0D6D0")
+[Q4] server side length semantics parameters:
+[Q4]   v$dm_ini [Some("COMPATIBLE_MODE"), Some("0")]
+[Q4]   v$dm_ini [Some("GLOBAL_CHARSET"), Some("0")]
+[Q4]   v$dm_ini [Some("LENGTH_IN_CHAR"), Some("0")]
+[Q4] `select para_value as c from v$dm_ini where para_name = 'LENGTH_IN_CHAR'` -> Some("0")
+
+===== Q5 : SQLDescribeCol / ResultSetMetadata semantics =====
+-- (a) declared column varchar(100) holding the 4-char Chinese value (id=1)
+[Q5a] num_result_cols = 1
+[Q5a] col 1 name=Ok("V") data_type=Varchar { length: Some(100) }
+[Q5a] col 1 ColumnDescription.data_type.column_size() = Some(100)
+[Q5a] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5a] col 1 ColumnDescription.nullability = Nullable
+[Q5a] col 1 SQLColAttribute col_octet_length = Some(100)
+[Q5a] col 1 SQLColAttribute col_display_size = Some(100)
+[Q5a] col 1 SQLColAttribute col_precision = 100
+[Q5a] col 1 SQLColAttribute col_scale = 0
+[Q5a] col 1 SQLColAttribute col_nullability = Nullable
+[Q5a] col 1 col_data_type = Varchar { length: Some(100) }
+-- (b) same column re-described on the widest row actually inserted (id=3: 50 chars = 100 bytes)
+[Q5b] num_result_cols = 1
+[Q5b] col 1 name=Ok("V") data_type=Varchar { length: Some(100) }
+[Q5b] col 1 ColumnDescription.data_type.column_size() = Some(100)
+[Q5b] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5b] col 1 ColumnDescription.nullability = Nullable
+[Q5b] col 1 SQLColAttribute col_octet_length = Some(100)
+[Q5b] col 1 SQLColAttribute col_display_size = Some(100)
+[Q5b] col 1 SQLColAttribute col_precision = 100
+[Q5b] col 1 SQLColAttribute col_scale = 0
+[Q5b] col 1 SQLColAttribute col_nullability = Nullable
+[Q5b] col 1 col_data_type = Varchar { length: Some(100) }
+-- (c) the integer column, for contrast
+[Q5c] num_result_cols = 1
+[Q5c] col 1 name=Ok("ID") data_type=Integer
+[Q5c] col 1 ColumnDescription.data_type.column_size() = None
+[Q5c] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5c] col 1 ColumnDescription.nullability = NoNulls
+[Q5c] col 1 SQLColAttribute col_octet_length = Some(4)
+[Q5c] col 1 SQLColAttribute col_display_size = Some(11)
+[Q5c] col 1 SQLColAttribute col_precision = 10
+[Q5c] col 1 SQLColAttribute col_scale = 0
+[Q5c] col 1 SQLColAttribute col_nullability = NoNulls
+[Q5c] col 1 col_data_type = Integer
+-- (d) select cast(? as varchar(10)) from dual with a Chinese parameter
+[Q5d] describe_param(1) = Ok(ColumnType { nullability: Nullable, data_type: Varchar { length: Some(8188) } })
+[Q5d] num_result_cols = 2
+[Q5d] col 1 name=Ok("C_NARROW") data_type=Varchar { length: Some(10) }
+[Q5d] col 1 ColumnDescription.data_type.column_size() = Some(10)
+[Q5d] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5d] col 1 ColumnDescription.nullability = Nullable
+[Q5d] col 1 SQLColAttribute col_octet_length = Some(10)
+[Q5d] col 1 SQLColAttribute col_display_size = Some(10)
+[Q5d] col 1 SQLColAttribute col_precision = 10
+[Q5d] col 1 SQLColAttribute col_scale = 0
+[Q5d] col 1 SQLColAttribute col_nullability = Nullable
+[Q5d] col 1 col_data_type = Varchar { length: Some(10) }
+[Q5d] col 2 name=Ok("C_WIDE") data_type=Varchar { length: Some(10) }
+[Q5d] col 2 ColumnDescription.data_type.column_size() = Some(10)
+[Q5d] col 2 ColumnDescription.data_type.decimal_digits() = 0
+[Q5d] col 2 ColumnDescription.nullability = Nullable
+[Q5d] col 2 SQLColAttribute col_octet_length = Some(10)
+[Q5d] col 2 SQLColAttribute col_display_size = Some(10)
+[Q5d] col 2 SQLColAttribute col_precision = 10
+[Q5d] col 2 SQLColAttribute col_scale = 0
+[Q5d] col 2 SQLColAttribute col_nullability = Nullable
+[Q5d] col 2 col_data_type = Varchar { length: Some(10) }
+            [Q5d] value narrow: len=8 bytes=[D6 D0 CE C4 B2 E2 CA D4]
+            [Q5d] value narrow: from_utf8 ERR -> invalid utf-8 sequence of 1 bytes from index 0
+            [Q5d] value narrow: from_utf8_lossy -> ���Ĳ���
+            [Q5d] value narrow: == expected GB18030/CP936 of "中文测试"
+              [Q5d] value wide: len=4 u16=[4E2D 6587 6D4B 8BD5]
+              [Q5d] value wide: from_utf16 OK  -> 中文测试
+              [Q5d] value wide: == expected UTF-16 of "中文测试"
+-- (e) casts of different shapes
+[Q5e] --- select cast('ab' as varchar(100)) as c from dual
+[Q5e] num_result_cols = 1
+[Q5e] col 1 name=Ok("C") data_type=Varchar { length: Some(100) }
+[Q5e] col 1 ColumnDescription.data_type.column_size() = Some(100)
+[Q5e] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5e] col 1 ColumnDescription.nullability = Nullable
+[Q5e] col 1 SQLColAttribute col_octet_length = Some(100)
+[Q5e] col 1 SQLColAttribute col_display_size = Some(100)
+[Q5e] col 1 SQLColAttribute col_precision = 100
+[Q5e] col 1 SQLColAttribute col_scale = 0
+[Q5e] col 1 SQLColAttribute col_nullability = Nullable
+[Q5e] col 1 col_data_type = Varchar { length: Some(100) }
+[Q5e] --- select cast('中文测试' as varchar(100)) as c from dual
+[Q5e] num_result_cols = 1
+[Q5e] col 1 name=Ok("C") data_type=Varchar { length: Some(100) }
+[Q5e] col 1 ColumnDescription.data_type.column_size() = Some(100)
+[Q5e] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5e] col 1 ColumnDescription.nullability = Nullable
+[Q5e] col 1 SQLColAttribute col_octet_length = Some(100)
+[Q5e] col 1 SQLColAttribute col_display_size = Some(100)
+[Q5e] col 1 SQLColAttribute col_precision = 100
+[Q5e] col 1 SQLColAttribute col_scale = 0
+[Q5e] col 1 SQLColAttribute col_nullability = Nullable
+[Q5e] col 1 col_data_type = Varchar { length: Some(100) }
+[Q5e] --- select cast('中文测试' as varchar(10)) as c from dual
+[Q5e] num_result_cols = 1
+[Q5e] col 1 name=Ok("C") data_type=Varchar { length: Some(10) }
+[Q5e] col 1 ColumnDescription.data_type.column_size() = Some(10)
+[Q5e] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5e] col 1 ColumnDescription.nullability = Nullable
+[Q5e] col 1 SQLColAttribute col_octet_length = Some(10)
+[Q5e] col 1 SQLColAttribute col_display_size = Some(10)
+[Q5e] col 1 SQLColAttribute col_precision = 10
+[Q5e] col 1 SQLColAttribute col_scale = 0
+[Q5e] col 1 SQLColAttribute col_nullability = Nullable
+[Q5e] col 1 col_data_type = Varchar { length: Some(10) }
+[Q5e] --- select cast('中文测试' as char(10)) as c from dual
+[Q5e] num_result_cols = 1
+[Q5e] col 1 name=Ok("C") data_type=Char { length: Some(10) }
+[Q5e] col 1 ColumnDescription.data_type.column_size() = Some(10)
+[Q5e] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5e] col 1 ColumnDescription.nullability = Nullable
+[Q5e] col 1 SQLColAttribute col_octet_length = Some(10)
+[Q5e] col 1 SQLColAttribute col_display_size = Some(10)
+[Q5e] col 1 SQLColAttribute col_precision = 10
+[Q5e] col 1 SQLColAttribute col_scale = 0
+[Q5e] col 1 SQLColAttribute col_nullability = Nullable
+[Q5e] col 1 col_data_type = Char { length: Some(10) }
+[Q5e] --- select cast('中文测试' as varchar2(4000)) as c from dual
+[Q5e] num_result_cols = 1
+[Q5e] col 1 name=Ok("C") data_type=Varchar { length: Some(4000) }
+[Q5e] col 1 ColumnDescription.data_type.column_size() = Some(4000)
+[Q5e] col 1 ColumnDescription.data_type.decimal_digits() = 0
+[Q5e] col 1 ColumnDescription.nullability = Nullable
+[Q5e] col 1 SQLColAttribute col_octet_length = Some(4000)
+[Q5e] col 1 SQLColAttribute col_display_size = Some(4000)
+[Q5e] col 1 SQLColAttribute col_precision = 4000
+[Q5e] col 1 SQLColAttribute col_scale = 0
+[Q5e] col 1 SQLColAttribute col_nullability = Nullable
+[Q5e] col 1 col_data_type = Varchar { length: Some(4000) }
+
+===== Q6 : latency =====
+[Q6] connect (one-shot, measured above) = 15.402 ms
+[Q6] Connection::execute("select 1 from dual") x1000 (fresh statement each time)
+[Q6]   n=1000 mean=38.6us min=28us p50=34us p90=49us p99=116us max=189us
+[Q6] Preallocated::execute x1000 (handle reused, SQL re-sent + re-prepared)
+[Q6]   n=1000 mean=34.8us min=26us p50=31us p90=40us p99=87us max=200us
+[Q6] Prepared::execute x1000 (SQL PREPAREd once, no params)
+[Q6]   n=1000 mean=31.9us min=22us p50=29us p90=35us p99=79us max=130us
+[Q6] Prepared::execute(&param) x1000 (PREPAREd once, 1 param rebound each round)
+[Q6]   n=1000 mean=32.9us min=24us p50=30us p90=37us p99=74us max=179us
+
+===== Q7 : identifier quote character =====
+[Q7] Connection::identifier_quote_char() = Some('"') (U+0022)
+[Q7] ERROR :: select `id` from t_odbcprobe
+[Q7]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42000, Native error: -2007, Message: 第 1 行, 第 13 列[`]附近出现错误: 
+语法分析出错
+[Q7]   debug  : Diagnostics { record: State: 42000, Native error: -2007, Message: 第 1 行, 第 13 列[`]附近出现错误: 
+语法分析出错, function: "SQLExecDirect" }
+[Q7] ERROR :: select "id" from t_odbcprobe
+[Q7]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42S22, Native error: -2111, Message: 第1 行附近出现错误:
+无效的列名[id]
+[Q7]   debug  : Diagnostics { record: State: 42S22, Native error: -2111, Message: 第1 行附近出现错误:
+无效的列名[id], function: "SQLExecDirect" }
+[Q7] OK    :: select "ID" from t_odbcprobe
+[Q7] OK    :: select id from t_odbcprobe
+
+===== Q7(raw) / Q8 : low level probes via odbc_api::sys + odbc_api::handles =====
+  (odbc-api has no safe wrapper for SQLGetInfo / SQLSetStmtAttr, so these use
+   the escape hatch `odbc_api::sys`, which the crate re-exports itself.)
+[RAW] SQLSetEnvAttr(SQL_ATTR_ODBC_VERSION=SQL_OV_ODBC3_80) -> SQL_SUCCESS
+[RAW] raw second connection established OK
+[Q7-raw] SQLGetInfoW(SQL_IDENTIFIER_QUOTE_CHAR) -> SQL_SUCCESS(0) len_bytes=2 raw_u16=[0022 0000 0000 0000 0000 0000 0000 0000]
+[Q7-raw] SQLGetInfoA(SQL_IDENTIFIER_QUOTE_CHAR) -> SQL_SUCCESS(0) len_bytes=1 raw_bytes=[22 00 00 00 00 00 00 00]
+[Q8] SQLGetInfoW(SQL_ASYNC_MODE) -> SQL_SUCCESS(0) value=0 (0=SQL_AM_NONE, 1=SQL_AM_CONNECTION, 2=SQL_AM_STATEMENT)
+[Q8] SQLSetStmtAttr(stmt, SQL_ATTR_ASYNC_ENABLE, SQL_ASYNC_ENABLE_ON=1) -> SQL_ERROR(-1)
+[Q8]   diag: SQLSTATE=HYC00 native=-70054 msg="特性未实现"
+[Q8] SQLGetStmtAttr(stmt, SQL_ATTR_ASYNC_ENABLE) -> SQL_ERROR(-1) value=4294967295
+[Q8]   diag: SQLSTATE=HYC00 native=-70054 msg="特性未实现"
+[Q8] SQLExecDirectW("select 1 from dual") with SQL_ATTR_ASYNC_ENABLE=ON -> SQL_SUCCESS(0) (SQL_STILL_EXECUTING would mean really async)
+[Q8] SQLSetStmtAttr(stmt, SQL_ATTR_ASYNC_ENABLE, SQL_ASYNC_ENABLE_OFF=0) -> SQL_ERROR(-1)
+[Q8]   diag: SQLSTATE=HYC00 native=-70054 msg="特性未实现"
+.\target\release\odbc-smoke.exe : 
+所在位置 行:2 字符: 28
++ ...  ($LASTEXITCODE -eq 0) { .\target\release\odbc-smoke.exe 2>&1 | Out-F ...
++                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+thread 'main' (24796) panicked at C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\odbc-api-
+29.2.0\src\handles.rs:71:17:
+SQLFreeHandle failed with error code: -1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[Q8] *** odbc-api PANICKED (caught, probe continues): SQLFreeHandle failed with error code: -1
+-- odbc-api level: Preallocated::into_polling() (internally SQLSetStmtAttr(SQL_ATTR_ASYNC_ENABLE, ON))
+[Q8] Preallocated::into_polling() -> Err: ODBC emitted an error calling 'SQLSetStmtAttr':
+State: HYC00, Native error: -70054, Message: 特性未实现
+[Q8]   debug: Diagnostics { record: State: HYC00, Native error: -70054, Message: 特性未实现, function: "SQLSetStmtAttr" }
+
+===== Q9 : MySQL dialect statements =====
+[Q9.1] ERROR :: select `id` from t_odbcprobe
+[Q9.1]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42000, Native error: -2007, Message: 第 1 行, 第 13 列[`]附近出现错误: 
+语法分析出错
+[Q9.1]   debug  : Diagnostics { record: State: 42000, Native error: -2007, Message: 第 1 行, 第 13 列[`]附近出现错误: 
+语法分析出错, function: "SQLExecDirect" }
+[Q9.2] OK    :: select id from t_odbcprobe limit 0, 1
+[Q9.3] OK    :: create table t_odbcprobe2(id int auto_increment primary key, v varchar(20))
+[Q9.3b] OK    :: insert into t_odbcprobe2(v) values('a')
+[Q9.3b] OK    :: insert into t_odbcprobe2(v) values('b')
+[Q9.3b] t_odbcprobe2 row = [Some("1"), Some("a")]
+[Q9.3b] t_odbcprobe2 row = [Some("2"), Some("b")]
+[Q9.4] ERROR :: insert into t_odbcprobe(id,v) values(1,'x') on duplicate key update v='y'
+[Q9.4]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42000, Native error: -2007, Message: 第 1 行, 第 76 列[on]附近出现错误: 
+语法分析出错
+[Q9.4]   debug  : Diagnostics { record: State: 42000, Native error: -2007, Message: 第 1 行, 第 76 列[on]附近出现错误: 
+语法分析出错, function: "SQLExecDirect" }
+[Q9.5] OK    :: drop table if exists t_odbcprobe2
+
+===== Q10 : bulk array insert vs single-row prepared loop =====
+[Q10] OK    :: delete from t_odbcprobe where id between 1000 and 200000
+[Q10] into_column_inserter OK, capacity=1000
+[Q10] ColumnarBulkInserter N=1000 -> OK in 3.759 ms
+[Q10] rows present after bulk insert = Some("1000")
+[Q10] DISTINCT v values written by the bulk insert = Some("1000")
+[Q10] sample row after bulk insert: [Some("1000"), Some("11"), Some("62756C6B2D302DD6D0CEC4")]
+[Q10] sample row after bulk insert: [Some("1001"), Some("11"), Some("62756C6B2D312DD6D0CEC4")]
+[Q10] sample row after bulk insert: [Some("1002"), Some("11"), Some("62756C6B2D322DD6D0CEC4")]
+[Q10] sample row after bulk insert: [Some("1003"), Some("11"), Some("62756C6B2D332DD6D0CEC4")]
+[Q10] sample row after bulk insert: [Some("1004"), Some("11"), Some("62756C6B2D342DD6D0CEC4")]
+[Q10] OK    :: delete from t_odbcprobe where id between 1000 and 1999
+[Q10] single-row Prepared::execute loop N=1000 -> 1000 ok, 124.160 ms
+[Q10] rows present after single-row loop = Some("1000")
+[Q10] bulk=3.759 ms   single-row-loop=124.160 ms   ratio(loop/bulk)=33.03x
+[Q10] per-row: bulk=3.8 us   loop=124.2 us
+
+===== cleanup =====
+[cleanup] OK    :: drop table t_odbcprobe
+[cleanup] ERROR :: drop table t_odbcprobe2
+[cleanup]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE2]
+[cleanup]   debug  : Diagnostics { record: State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE2], function: "SQLExecDirect" }
+[cleanup] ERROR :: drop table T_ODBCPROBE
+[cleanup]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE]
+[cleanup]   debug  : Diagnostics { record: State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE], function: "SQLExecDirect" }
+[cleanup] ERROR :: drop table T_ODBCPROBE2
+[cleanup]   display: ODBC emitted an error calling 'SQLExecDirect':
+State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE2]
+[cleanup]   debug  : Diagnostics { record: State: 42S02, Native error: -2106, Message: 第1 行附近出现错误:
+无效的表或视图名[T_ODBCPROBE2], function: "SQLExecDirect" }
+[cleanup] objects named T_ODBCPROBE* still visible in the data dictionary:
+[cleanup]   <none>
+
+[SUMMARY] build mode = WIDE | total wall clock = 0.489 s

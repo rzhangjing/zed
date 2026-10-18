@@ -1,0 +1,20 @@
+[package]
+name = "dm-core"
+description = "达梦中间件的配置、连接串、值模型与能力表（不依赖 tokio，也不依赖 odbc-api）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dm-error.workspace = true
+chrono = { workspace = true, optional = true }
+rust_decimal = { workspace = true, optional = true }
+
+[features]
+default = ["chrono", "decimal"]
+chrono = ["dep:chrono"]
+decimal = ["dep:rust_decimal"]
+
+[dev-dependencies]
+proptest.workspace = true

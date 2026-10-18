@@ -1,0 +1,43 @@
+
+===== T1.2 连通信封合同验证 =====
+[✓] 构建口径：narrow 关闭 + prompt 关闭
+      Cargo.toml 固定 default-features = false + features = ["odbc_version_3_80"]；无 narrow、无 prompt(winit)
+[✓] 步骤① 配置来源
+      driver=DM8 ODBC DRIVER server=localhost port=5236 user=SYSDBA schema=None extra=0 项
+[✓] 步骤①b 可连性预检 validate_connectable
+      server/user 齐备
+[✓] 步骤② 驱动注册预检 check_registered
+      driver_path=Some("D:\\dmdbms\\bin\\dodbc.dll")（来源：注册表 HKLM\SOFTWARE\ODBC\ODBCINST.INI）
+[✓] 连接串由 dm_core::render_odbc_string 渲染
+      117 字节，DRIVER 段="DRIVER={DM8 ODBC DRIVER}"
+[✓] Environment::new()
+      ODBC 环境已分配
+[✓] 连接串变体 base
+      建连 37 ms
+[✓] 连接串变体 +PROTOCOL_TYPE=TCP
+      建连 15 ms
+[✓] 连接串变体 +CHARACTER_CODE=PG_UTF8
+      建连 15 ms
+[✓] 连接串变体 +CHARACTER_CODE=PG_GB18030
+      建连 16 ms
+[!] 建连耗时落在 §4.2 区间
+      实测 37 ms，基线 13–32 ms
+[✓] DSN 反例（本机未注册 DSN）
+      报错如预期：ODBC emitted an error calling 'SQLDriverConnect':
+State: IM002, Native error: 0, Message: [Microsoft][ODBC 驱动程序管理器] 未发现数据源名称并且未指定默认驱动程序
+[✓] select 1 from dual
+      值="1"
+[✓] 步骤⑥ 字符集自检 select unicode() from dual
+      值=0（0=GB18030，与 §4.1 一致）
+[✓] 中文往返（SQL 文本输入 + SQL_C_WCHAR 输出）
+      期望 "中文测试"，实得 "中文测试"
+[✓] 窄路径现象记录（不应据以做设计）
+      get_text 得到 "���Ĳ���"（乱码属预期，§4.3）
+[✓] select 1 延迟（未预处理，对标 §4.2 的 38.6 µs）
+      实测 p50=38 µs / P99=76 µs；§4.2 同口径（每次重新 execute）为 **38.6 µs**。注意 §4.2 另有一行写 `p50 29–34 µs`，那是更窄的计时边界，与本项不可直接比
+[✓] 预编译复用收益（§4.2：38.6 → 31.9 µs，仅 17%）
+      Prepared p50=31 µs（§4.2 为 31.9 µs，判定 true）vs 每次重新 execute p50=38 µs → 收益 18.4%（§4.2 为 17%）
+[✓] 参数绑定路径（V-15）状态
+      本项只验证连通与取值；中文**参数**（而非字面量）的绑定路径留待 M3 按 V-15 专项验证
+
+结论：PASS（硬检查 14 项，失败 0 项）

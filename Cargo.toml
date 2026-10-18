@@ -359,6 +359,30 @@ members = [
     "crates/cesiumrust/specs",
     "crates/cesiumrust/tools/gen_offline_assets",
     "crates/cesiumrust/tools/pixel_diff",
+
+    #
+    # dameng (达梦数据库驱动、连接池与查询层)
+    #
+    # Copied in whole from `D:\Rust\dameng`, which was its own workspace. Its
+    # crates all inherit `version.workspace` / `edition.workspace` /
+    # `rust-version.workspace` / `license.workspace`, so they have to be members
+    # here — the nearest `[workspace]` is this one and they now inherit Zed's
+    # `[workspace.package]` instead of dameng's.
+    #
+    # Only the crates a connection needs are listed: the Toasty-facing ones
+    # (`toasty-driver-dameng`, `toasty-sql`, and the `dameng` facade that pulls
+    # both) are left out, because `Help > Dameng` connects and runs SQL, and
+    # nothing in this build wants an ORM. `dm-migrate` is left out with them (it
+    # depends on toasty's SQL layer too).
+    #
+
+    "crates/dameng/dm-error",
+    "crates/dameng/dm-core",
+    "crates/dameng/dm-macros",
+    "crates/dameng/dm-odbc",
+    "crates/dameng/dm-dpi",
+    "crates/dameng/dm-pool",
+    "crates/dameng/dm-query",
 ]
 default-members = ["crates/zed"]
 
@@ -680,6 +704,44 @@ cesium-app = { path = "crates/cesiumrust/application/cesium-app" }
 cesium-specs = { path = "crates/cesiumrust/specs" }
 pixel_diff = { path = "crates/cesiumrust/tools/pixel_diff" }
 gen_offline_assets = { path = "crates/cesiumrust/tools/gen_offline_assets" }
+
+#
+# dameng
+#
+# Transcribed from `D:\Rust\dameng\Cargo.toml`, dameng's own workspace root,
+# which is the authority for these versions and feature lists while the tree is
+# untracked. Keys dameng shares with Zed (`bytes`, `chrono`, `thiserror`,
+# `tracing`, `tokio`, `syn`, `quote`, `proc-macro2`, `proptest`, `async-trait`)
+# are deliberately *not* repeated below: this table is the only declarations
+# cargo reads, so repeating them would fork the version Zed already pins.
+#
+# Two constraints worth keeping:
+#
+# * `odbc-api` must never grow the `narrow` feature. It turns `SqlChar` into
+#   `u8` on Windows, which corrupts Chinese text on the way in and panics on
+#   `SQL_DBMS_NAME`. `default-features = false` plus the explicit two features
+#   below is what `dm-odbc` was developed and tested against.
+# * `dm-dpi` builds on every platform without the Dameng client installed: the
+#   `dmdpi.dll` / `libdmdpi.so` handle is opened at *runtime* (`LoadLibraryW` /
+#   `dlopen`), so only `-ldl` on non-Windows is a build-time concern, and
+#   `dm-dpi/build.rs` adds it itself.
+#
+
+dm-dpi = { path = "crates/dameng/dm-dpi" }
+dm-error = { path = "crates/dameng/dm-error" }
+dm-core = { path = "crates/dameng/dm-core" }
+dm-macros = { path = "crates/dameng/dm-macros" }
+dm-odbc = { path = "crates/dameng/dm-odbc" }
+dm-pool = { path = "crates/dameng/dm-pool" }
+dm-query = { path = "crates/dameng/dm-query" }
+odbc-api = { version = "29.2", default-features = false, features = [
+    "odbc_version_3_80",
+    "wide",
+] }
+odbc-sys = "0.31"
+rust_decimal = "1"
+futures-core = "0.3"
+insta = "1"
 
 #
 # External crates

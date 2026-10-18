@@ -1,0 +1,17 @@
+[package]
+name = "dm-dpi"
+description = "达梦 DPI 后端：直连 dmdpi.dll / libdmdpi.so 的 FFI 绑定（不经过 ODBC 层）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+rust_decimal.workspace = true
+tracing.workspace = true
+dm-error.workspace = true
+dm-core.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

@@ -1442,6 +1442,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atoi"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d12c37257553c19e9aee6cba77814fdc9e07844abfc8b3a2c377cd920ee5a993"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "atomic"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2660,7 +2669,7 @@ dependencies = [
  "bitflags 2.13.1",
  "cexpr",
  "clang-sys",
- "itertools 0.11.0",
+ "itertools 0.13.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -2680,7 +2689,7 @@ dependencies = [
  "bitflags 2.13.1",
  "cexpr",
  "clang-sys",
- "itertools 0.11.0",
+ "itertools 0.13.0",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -5580,6 +5589,90 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
 dependencies = [
  "libloading",
+]
+
+[[package]]
+name = "dm-core"
+version = "2.0.3-rc.13"
+dependencies = [
+ "chrono",
+ "dm-error",
+ "proptest 1.10.0",
+ "rust_decimal",
+]
+
+[[package]]
+name = "dm-dpi"
+version = "2.0.3-rc.13"
+dependencies = [
+ "chrono",
+ "dm-core",
+ "dm-error",
+ "rust_decimal",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dm-error"
+version = "2.0.3-rc.13"
+dependencies = [
+ "insta",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "dm-macros"
+version = "2.0.3-rc.13"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "dm-odbc"
+version = "2.0.3-rc.13"
+dependencies = [
+ "bytes",
+ "chrono",
+ "dm-core",
+ "dm-error",
+ "insta",
+ "odbc-api",
+ "odbc-sys",
+ "rust_decimal",
+ "tracing",
+]
+
+[[package]]
+name = "dm-pool"
+version = "2.0.3-rc.13"
+dependencies = [
+ "dm-core",
+ "dm-dpi",
+ "dm-error",
+ "dm-odbc",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "dm-query"
+version = "2.0.3-rc.13"
+dependencies = [
+ "chrono",
+ "dm-core",
+ "dm-error",
+ "dm-macros",
+ "dm-odbc",
+ "dm-pool",
+ "futures-core",
+ "insta",
+ "rust_decimal",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -9833,6 +9926,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "insta"
+version = "1.49.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b67d3d2e287e4b86c10b3f3b641033d1f89b74bdb39d05f34952e2b9a6fe21cd"
+dependencies = [
+ "console",
+ "once_cell",
+ "similar",
+ "tempfile",
+]
+
+[[package]]
 name = "install_cli"
 version = "0.1.0"
 dependencies = [
@@ -10937,9 +11042,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.29"
+version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 dependencies = [
  "serde_core",
  "value-bag",
@@ -13920,6 +14025,25 @@ dependencies = [
  "blake3",
  "serde_json",
 ]
+
+[[package]]
+name = "odbc-api"
+version = "29.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8532ca21ccfef7f60246ce4f4d25d4a46d2aa501832dfaab17e2a27e621fb52"
+dependencies = [
+ "atoi",
+ "log",
+ "odbc-sys",
+ "thiserror 2.0.21",
+ "widestring",
+]
+
+[[package]]
+name = "odbc-sys"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "245cb4fe8236df4fd352ba96075d754233c6509d654d9f1c1482158b7d6c083d"
 
 [[package]]
 name = "offset-allocator"
@@ -24197,6 +24321,12 @@ dependencies = [
  "crashes",
  "db",
  "diagnostics",
+ "dm-core",
+ "dm-dpi",
+ "dm-error",
+ "dm-odbc",
+ "dm-pool",
+ "dm-query",
  "edit_prediction",
  "edit_prediction_ui",
  "editor",

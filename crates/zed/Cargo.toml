@@ -107,6 +107,16 @@ command_palette.workspace = true
 component_preview.workspace = true
 crashes.workspace = true
 db.workspace = true
+# The Dameng driver stack behind `Help > Dameng` (`src/zed/dameng.rs`). Both
+# backends are named directly: the window offers ODBC (`dm-odbc`) and DPI
+# (`dm-dpi`, which talks to `dmdpi.dll` at runtime) as a runtime choice, so the
+# pool is instantiated for each of them from one generic helper.
+dm-core.workspace = true
+dm-dpi.workspace = true
+dm-error.workspace = true
+dm-odbc.workspace = true
+dm-pool.workspace = true
+dm-query.workspace = true
 diagnostics.workspace = true
 editor.workspace = true
 encoding_selector.workspace = true

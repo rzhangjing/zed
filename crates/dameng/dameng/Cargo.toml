@@ -1,0 +1,37 @@
+[package]
+name = "dameng"
+description = "达梦数据库 Rust 中间件门面 crate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dm-error.workspace = true
+dm-core.workspace = true
+dm-odbc.workspace = true
+dm-pool = { workspace = true, default-features = false }
+dm-query = { workspace = true, default-features = false, features = ["chrono", "decimal"] }
+dm-macros.workspace = true
+dm-migrate = { workspace = true, default-features = false }
+toasty-driver-dameng = { workspace = true, default-features = false }
+tracing.workspace = true
+
+[dev-dependencies]
+# 示例（`examples/`）是独立 crate，`#[tokio::main]` 要在这里声明。
+tokio.workspace = true
+# `manual_snippets` 演示 `RowStream` 作为 `futures_core::Stream` 的用法（手册 §11）。
+futures-core.workspace = true
+
+[features]
+default = ["chrono", "decimal", "dpi"]
+chrono = ["dm-core/chrono"]
+decimal = ["dm-core/decimal"]
+rw-split = ["dm-pool/rw-split"]
+dpi = ["dm-pool/dpi", "dm-query/dpi", "dm-migrate/dpi", "toasty-driver-dameng/dpi"]
+
+[[bench]]
+# AC-12 后半的真机延迟基准（设计方案 §12.3 T7.3）。自己当 main，
+# 不引 `criterion`（与 `dm-query` 的 `batch_insert`/`overhead` 同一惯例）。
+name = "latency"
+harness = false
