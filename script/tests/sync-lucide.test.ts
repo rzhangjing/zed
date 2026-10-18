@@ -7,10 +7,10 @@ test("sync validates the archive, checks without writes, and preserves custom ic
   const root = await mkdtemp(join(tmpdir(), "gpui-lucide-sync-"));
   try {
     await mkdir(join(root, "script"));
-    await mkdir(join(root, "crates/assets/assets/icons"), { recursive: true });
+    await mkdir(join(root, "crates/framework/assets/assets/icons"), { recursive: true });
     const script = join(root, "script/sync-lucide.ts");
     await copyFile(resolve(import.meta.dir, "../sync-lucide.ts"), script);
-    const assets = join(root, "crates/assets");
+    const assets = join(root, "crates/framework/assets");
     const archive = new Bun.Archive({
       "lucide/icons/search.svg": "<svg>search</svg>",
       "lucide/icons/check.svg": "<svg>check</svg>",

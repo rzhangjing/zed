@@ -9,24 +9,24 @@ extend-exclude = [
     ".mailmap",
 
     # File suffixes aren't typos.
-    "crates/theme/src/icon_theme.rs",
+    "crates/framework/theme/src/icon_theme.rs",
 
     # Vendored JSON schemas from SchemaStore.
-    "crates/json_schema_store/src/schemas/",
+    "crates/framework/json_schema_store/src/schemas/",
 
     # Not our typos.
     # Editor, file finder, and fuzzy matching rely on partial typing and custom in-string syntax.
-    "crates/file_finder/src/file_finder_tests.rs",
-    "crates/fuzzy_nucleo/src/strings.rs",
-    "crates/editor/src/editor_tests.rs",
-    "crates/editor/src/edit_prediction_tests.rs",
+    "crates/framework/file_finder/src/file_finder_tests.rs",
+    "crates/framework/fuzzy_nucleo/src/strings.rs",
+    "crates/framework/editor/src/editor_tests.rs",
+    "crates/framework/editor/src/edit_prediction_tests.rs",
     # We have some base64-encoded data that is incorrectly being flagged.
-    "crates/rpc/src/auth.rs",
+    "crates/framework/rpc/src/auth.rs",
     # Windows likes its abbreviations.
-    "crates/gpui_windows/src/directx_renderer.rs",
-    "crates/gpui_windows/src/events.rs",
-    "crates/gpui_windows/src/direct_write.rs",
-    "crates/gpui_windows/src/window.rs",
+    "crates/framework/gpui_windows/src/directx_renderer.rs",
+    "crates/framework/gpui_windows/src/events.rs",
+    "crates/framework/gpui_windows/src/direct_write.rs",
+    "crates/framework/gpui_windows/src/window.rs",
     # Some typos in the base mdBook CSS.
     "docs/theme/css/",
     # Automatically generated JS.
@@ -34,19 +34,19 @@ extend-exclude = [
     # Spellcheck triggers on `|Fixe[sd]|` regex part.
     "script/danger/dangerfile.ts",
     # File type extensions are not typos
-    "crates/zed/resources/windows/zed.iss",
+    "crates/framework/zed/resources/windows/zed.iss",
     # typos-cli doesn't understand our `vˇariable` markup
-    "crates/editor/src/hover_links.rs",
+    "crates/framework/editor/src/hover_links.rs",
     # typos-cli doesn't understand `setis` is intentional test case
-    "crates/editor/src/code_completion_tests.rs",
+    "crates/framework/editor/src/code_completion_tests.rs",
     # Linux repository structure is not a valid text, hence we should not check it for typos
-    "crates/project_panel/benches/linux_repo_snapshot.txt",
+    "crates/framework/project_panel/benches/linux_repo_snapshot.txt",
     # Some multibuffer test cases have word fragments that register as typos
-    "crates/multi_buffer/src/multi_buffer_tests.rs",
+    "crates/framework/multi_buffer/src/multi_buffer_tests.rs",
     # Tests contain partially incomplete words (by design)
-    "crates/edit_prediction_metrics/src/kept_rate.rs",
+    "crates/framework/edit_prediction_metrics/src/kept_rate.rs",
     # Tests contain `baˇr` that cause `"ba" should be "by" or "be".`-like false-positives
-    "crates/editor/src/document_symbols.rs",
+    "crates/framework/editor/src/document_symbols.rs",
 
     # --- Octos (merged) ---
     "**/*.js",
