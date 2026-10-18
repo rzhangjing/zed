@@ -199,7 +199,7 @@ fn decode_semantic_tokens(
 mod tests {
     use super::*;
     use gpui::hsla;
-    use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokensLegend};
+    use lsp_types::{SemanticTokenType, SemanticTokensLegend};
 
     fn legend() -> SemanticTokensLegend {
         SemanticTokensLegend {
@@ -222,23 +222,13 @@ mod tests {
     #[test]
     fn test_decode_semantic_tokens_delta() {
         // Two tokens: "keyword" at (0,0..4) and "comment" at (1,2..7).
+        // `data` packs five words per token: delta_line, delta_start,
+        // length, token_type and the modifiers bitset.
         let tokens = SemanticTokens {
             result_id: None,
             data: vec![
-                SemanticToken {
-                    delta_line: 0,
-                    delta_start: 0,
-                    length: 4,
-                    token_type: 0,
-                    token_modifiers_bitset: 0,
-                },
-                SemanticToken {
-                    delta_line: 1,
-                    delta_start: 2,
-                    length: 5,
-                    token_type: 1,
-                    token_modifiers_bitset: 0,
-                },
+                0, 0, 4, 0, 0, // keyword at (0, 0..4)
+                1, 2, 5, 1, 0, // comment at (1, 2..7)
             ],
         };
 
@@ -258,13 +248,8 @@ mod tests {
     fn test_decode_skips_out_of_legend_index() {
         let tokens = SemanticTokens {
             result_id: None,
-            data: vec![SemanticToken {
-                delta_line: 0,
-                delta_start: 0,
-                length: 3,
-                token_type: 99, // out of legend bounds
-                token_modifiers_bitset: 0,
-            }],
+            // token_type 99 is out of legend bounds
+            data: vec![0, 0, 3, 99, 0],
         };
         assert!(decode_semantic_tokens(&tokens, &legend()).is_empty());
     }

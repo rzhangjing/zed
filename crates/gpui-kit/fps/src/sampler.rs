@@ -526,9 +526,6 @@ mod tests {
             invalidations,
             draw_start: start,
             draw_end: start + draw,
-            refresh_interval: None,
-            signal_at: None,
-            phases: Default::default(),
         }
     }
 
@@ -555,9 +552,6 @@ mod tests {
             invalidations,
             draw_start: start,
             draw_end: start + draw,
-            refresh_interval: None,
-            signal_at: None,
-            phases: Default::default(),
         }
     }
 

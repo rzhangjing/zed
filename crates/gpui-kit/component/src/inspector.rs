@@ -679,10 +679,16 @@ mod tests {
         );
 
         assert_eq!(diagnostics.len(), 2);
-        assert_eq!(diagnostics[0].message, "unknown method `unknown_method`");
+        assert_eq!(
+            diagnostics[0].message.to_string(),
+            "unknown method `unknown_method`"
+        );
         assert_eq!(diagnostics[0].range.start, Position::new(4, 9));
         assert_eq!(diagnostics[0].range.end, Position::new(4, 23));
-        assert_eq!(diagnostics[1].message, "unknown method `bad_method`");
+        assert_eq!(
+            diagnostics[1].message.to_string(),
+            "unknown method `bad_method`"
+        );
         assert_eq!(diagnostics[1].range.start, Position::new(5, 9));
         assert_eq!(diagnostics[1].range.end, Position::new(5, 19));
     }

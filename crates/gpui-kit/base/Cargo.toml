@@ -81,7 +81,7 @@ windows = { workspace = true, features = ["Win32_Foundation", "Win32_UI_WindowsA
 ashpd = { version = "0.13", default-features = false, features = ["async-io", "settings"] }
 
 [dev-dependencies]
-criterion = "0.8"
+criterion.workspace = true
 gpui = { workspace = true, features = ["test-support", "bench-support"] }
 gpui_platform = { workspace = true, features = ["bench-support"] }
 indoc = "2"

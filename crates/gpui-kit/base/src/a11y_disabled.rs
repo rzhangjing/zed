@@ -289,6 +289,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "test-support")]
     #[gpui::test]
     fn the_test_support_snapshot_sees_the_flag(cx: &mut TestAppContext) {
         for disabled in [false, true] {

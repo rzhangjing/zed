@@ -9,6 +9,9 @@
 /// `use gpui_kit::*;` alone is GPUI, so a file needs nothing else for it.
 mod glob_is_gpui {
     use gpui_kit::*;
+    // The glob above re-exports the `gpui` crate too, so the bare `gpui` path
+    // that derive macros emit needs one explicit binding to stay unambiguous.
+    use ::gpui;
 
     type Element = Div;
     type Window_ = Window;

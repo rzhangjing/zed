@@ -20,6 +20,11 @@ rustflags = [
 
 [env]
 MACOSX_DEPLOYMENT_TARGET = "10.15.7"
+# `llama-cpp-sys-2` (reached by `cargo check --workspace --all-targets`) runs
+# bindgen, which needs libclang. A Windows x64 copy is vendored in
+# `tools/libclang`, so no LLVM installation is required; see that directory's
+# README for provenance, licensing and how to use a system LLVM elsewhere.
+LIBCLANG_PATH = { value = "tools/libclang", relative = true }
 
 # 原先这里把 TMP/TEMP 指到 target/cl-tmp 以绕开 MSVC cl.exe 的 D8050；该目录在当前
 # 工作区并不存在（旧路径还写的是 D:\Rust\zed），而 GNU 构建的 gcc 需要一个真实可写的
