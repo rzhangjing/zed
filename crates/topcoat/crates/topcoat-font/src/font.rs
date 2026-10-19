@@ -1,0 +1,121 @@
+use std::sync::LazyLock;
+
+use topcoat_core::fnv1a::Fnv1a;
+
+use crate::FontFaces;
+
+/// A font's family name, faces, and content hash.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FontData {
+    family: String,
+    faces: FontFaces,
+    hash: u64,
+}
+
+impl FontData {
+    /// Creates the data for a font named `family`, backed by `faces`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `faces` cannot be converted into a non-empty [`FontFaces`].
+    #[must_use]
+    #[track_caller]
+    pub fn new(family: impl Into<String>, faces: impl TryInto<FontFaces>) -> Self {
+        let family = family.into();
+        let faces = faces
+            .try_into()
+            .unwrap_or_else(|_| panic!("font faces must not be empty"));
+        let h = Fnv1a::<u64>::new().write(family.as_bytes()).write(b"\0");
+        let hash = faces.hash(h).finish();
+        Self {
+            family,
+            faces,
+            hash,
+        }
+    }
+
+    /// The font's family name.
+    #[must_use]
+    pub fn family(&self) -> &str {
+        &self.family
+    }
+
+    /// The font's faces.
+    #[must_use]
+    pub fn faces(&self) -> &FontFaces {
+        &self.faces
+    }
+
+    /// The content hash of the family name and every face setting.
+    #[must_use]
+    pub fn hash(&self) -> u64 {
+        self.hash
+    }
+}
+
+/// A lightweight, [`Copy`] handle to a font.
+///
+/// Create a handle with `font!`. Its data is initialized on first access and
+/// shared by every copy.
+#[derive(Debug, Clone, Copy)]
+pub struct Font(&'static LazyLock<FontData>);
+
+impl Font {
+    /// Creates a font handle backed by `data`.
+    #[must_use]
+    pub const fn new(data: &'static LazyLock<FontData>) -> Self {
+        Self(data)
+    }
+
+    /// The font's family name.
+    #[must_use]
+    pub fn family(&self) -> &str {
+        self.0.family()
+    }
+
+    /// The font's faces.
+    #[must_use]
+    pub fn faces(&self) -> &FontFaces {
+        self.0.faces()
+    }
+
+    /// The content hash of the family name and every face setting.
+    ///
+    /// Identical settings produce the same hash across builds.
+    #[must_use]
+    pub fn hash(&self) -> u64 {
+        self.0.hash()
+    }
+}
+
+impl PartialEq for Font {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.0, other.0)
+    }
+}
+
+impl Eq for Font {}
+
+#[cfg(feature = "discover")]
+inventory::collect!(Font);
+
+/// Registers a [`Font`] for discovery when the `discover` feature is enabled,
+/// and expands to nothing otherwise.
+///
+/// The feature gate lives here, in the defining crate, so it reflects
+/// topcoat-font's own `discover` feature rather than the calling crate's.
+#[doc(hidden)]
+#[cfg(feature = "discover")]
+#[macro_export]
+macro_rules! register_font {
+    ($font:expr) => {
+        $crate::internal::inventory::submit! { $font }
+    };
+}
+
+#[doc(hidden)]
+#[cfg(not(feature = "discover"))]
+#[macro_export]
+macro_rules! register_font {
+    ($font:expr) => {};
+}

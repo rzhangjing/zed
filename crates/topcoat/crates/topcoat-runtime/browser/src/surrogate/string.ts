@@ -1,0 +1,134 @@
+import type { AttributeValueViewParts, NodeViewParts } from "../dom/view";
+import { Bool } from "./bool";
+import { Integer, serverUsizeType } from "./integer";
+
+const TEXT_ENCODER = new TextEncoder();
+
+// Rust trims Unicode White_Space. JavaScript's trim uses a different set,
+// removing U+FEFF and keeping U+0085 where Rust does the opposite.
+const WHITE_SPACE =
+	"\\t\\n\\v\\f\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000";
+const TRIM_START = new RegExp(`^[${WHITE_SPACE}]+`, "u");
+const TRIM_END = new RegExp(`[${WHITE_SPACE}]+$`, "u");
+
+// Compare Unicode code points to match Rust's UTF-8 ordering. JavaScript's
+// UTF-16 ordering differs for characters represented by surrogate pairs.
+function compare(a: string, b: string): number {
+	const left = a[Symbol.iterator]();
+	const right = b[Symbol.iterator]();
+	for (;;) {
+		const x = left.next();
+		const y = right.next();
+		// A string that ran out is a prefix of the other, so it sorts first.
+		if (x.done || y.done) return Number(y.done) - Number(x.done);
+		if (x.value !== y.value) {
+			return (
+				(x.value.codePointAt(0) as number) - (y.value.codePointAt(0) as number)
+			);
+		}
+	}
+}
+
+export class Str implements AttributeValueViewParts, NodeViewParts {
+	constructor(protected readonly v: string) {}
+
+	eq(other: Str): Bool {
+		return new Bool(this.v === other.v);
+	}
+
+	ne(other: Str): Bool {
+		return new Bool(this.v !== other.v);
+	}
+
+	gt(other: Str): Bool {
+		return new Bool(compare(this.v, other.v) > 0);
+	}
+
+	lt(other: Str): Bool {
+		return new Bool(compare(this.v, other.v) < 0);
+	}
+
+	ge(other: Str): Bool {
+		return new Bool(compare(this.v, other.v) >= 0);
+	}
+
+	le(other: Str): Bool {
+		return new Bool(compare(this.v, other.v) <= 0);
+	}
+
+	to_owned(): String {
+		return new String(this.v);
+	}
+
+	is_empty(): Bool {
+		return new Bool(this.v.length === 0);
+	}
+
+	len(): Integer {
+		return new Integer(
+			BigInt(TEXT_ENCODER.encode(this.v).length),
+			serverUsizeType(),
+		);
+	}
+
+	trim(): Str {
+		return new Str(this.v.replace(TRIM_START, "").replace(TRIM_END, ""));
+	}
+
+	trim_start(): Str {
+		return new Str(this.v.replace(TRIM_START, ""));
+	}
+
+	trim_end(): Str {
+		return new Str(this.v.replace(TRIM_END, ""));
+	}
+
+	starts_with(other: Str): Bool {
+		return new Bool(this.v.startsWith(other.v));
+	}
+
+	ends_with(other: Str): Bool {
+		return new Bool(this.v.endsWith(other.v));
+	}
+
+	contains(other: Str): Bool {
+		return new Bool(this.v.includes(other.v));
+	}
+
+	isAttributePresent(): boolean {
+		return true;
+	}
+
+	toAttributeValue(): string {
+		return this.v;
+	}
+
+	toNodeText(): string {
+		return this.v;
+	}
+
+	dehydrate(): string {
+		return this.v;
+	}
+
+	toString(): string {
+		return this.v.toString();
+	}
+}
+
+// biome-ignore lint/suspicious/noShadowRestrictedNames: Surrogate type
+export class String extends Str {
+	// Return the borrowed form. Returning `this` would let repeated
+	// dereferencing loop forever.
+	deref(): Str {
+		return new Str(this.v);
+	}
+
+	clone(): String {
+		return new String(this.v);
+	}
+
+	dehydrate(): string {
+		return this.v;
+	}
+}

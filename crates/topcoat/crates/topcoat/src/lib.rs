@@ -1,0 +1,63 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![doc = include_str!("../README.md")]
+
+extern crate self as topcoat;
+
+#[cfg(feature = "router")]
+pub mod dev;
+
+#[cfg(feature = "serve")]
+mod serve;
+
+pub use topcoat_core::error::Error;
+
+pub type Result<T, E = topcoat_core::error::Error> = topcoat_core::error::Result<T, E>;
+
+#[cfg(feature = "alpine-ajax")]
+pub mod alpine_ajax;
+
+#[cfg(feature = "asset")]
+pub mod asset;
+
+#[cfg(feature = "cookie")]
+pub mod cookie;
+
+pub mod context;
+
+pub mod core;
+
+#[cfg(feature = "datastar")]
+pub mod datastar;
+
+#[cfg(feature = "font")]
+pub mod font;
+
+#[cfg(feature = "htmx")]
+pub mod htmx;
+
+#[cfg(feature = "icon")]
+pub mod icon;
+
+#[cfg(feature = "mail")]
+pub mod mail;
+
+#[cfg(feature = "router")]
+pub mod router;
+
+#[cfg(feature = "view")]
+pub mod view;
+
+#[cfg(feature = "serve")]
+pub use serve::{serve, serve_until, start};
+
+#[cfg(feature = "runtime")]
+pub mod runtime;
+
+#[cfg(feature = "session")]
+pub mod session;
+
+#[cfg(feature = "tailwind")]
+pub mod tailwind;
+
+#[doc(hidden)]
+pub mod internal;

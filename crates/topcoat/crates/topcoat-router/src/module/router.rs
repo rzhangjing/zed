@@ -1,0 +1,671 @@
+use std::borrow::Cow;
+
+use heck::ToKebabCase;
+
+use super::{
+    layer::ResolvedLayer,
+    page::{ResolvedLayout, ResolvedPage},
+    route::ResolvedRoute,
+};
+use crate::{
+    ModuleLayer, ModuleLayout, ModulePage, ModuleRoute, Path, PathBuf, PathSegment, RouterBuilder,
+    Segment, SegmentKind, Segments,
+};
+
+/// The module-based router builder, created by the `module_router!` macro.
+///
+/// Builds a [`RouterBuilder`] from the modules below `root_module_path`.
+/// Each module adds a route segment. Names starting with `_` become groups,
+/// and static segment names use kebab case.
+///
+/// Register `segment!` overrides before handlers so their paths use the
+/// selected segment kinds and names. A handler's relative path is appended
+/// to its module-derived path.
+#[doc(hidden)]
+pub struct ModuleRouterBuilder {
+    inner: RouterBuilder,
+    root_module_path: &'static str,
+    segments: Segments,
+}
+
+impl ModuleRouterBuilder {
+    /// Creates a new `ModuleRouterBuilder` rooted at the given module path.
+    ///
+    /// The `root_module_path` is the `module_path!()` of the module calling
+    /// `module_router!`.
+    #[must_use]
+    pub fn new(root_module_path: &'static str) -> Self {
+        Self {
+            root_module_path,
+            inner: RouterBuilder::new(),
+            segments: Segments::new(),
+        }
+    }
+
+    /// Returns the module path relative to the root.
+    ///
+    /// This is the key used to look up [`Segment`] overrides and to derive
+    /// route path segments.
+    #[track_caller]
+    fn relative_module_path(&self, module_path: &'static str) -> &'static str {
+        if module_path == self.root_module_path {
+            return "";
+        }
+        module_path
+            .strip_prefix(self.root_module_path)
+            .and_then(|s| s.strip_prefix("::"))
+            .expect("module path must be under module router's root")
+    }
+
+    /// Whether `module_path` is `root_module_path` or a module below it.
+    /// Discovery skips everything else, so routers rooted in different crates
+    /// or modules can live in one binary.
+    #[cfg(any(feature = "discover", test))]
+    fn owns(root_module_path: &str, module_path: &str) -> bool {
+        module_path == root_module_path
+            || module_path
+                .strip_prefix(root_module_path)
+                .is_some_and(|rest| rest.starts_with("::"))
+    }
+
+    /// Registers a [`Segment`] override for a module path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any pages or layouts have already been registered, since
+    /// segment overrides affect path computation and must come first.
+    #[must_use]
+    #[track_caller]
+    pub fn segment(mut self, segment: Segment) -> Self {
+        assert!(
+            self.inner.is_empty(),
+            "`segment` must be called before registering any resource"
+        );
+        self.segments
+            .register(self.relative_module_path(segment.module_path()), segment);
+        self
+    }
+
+    /// Converts a module path to a route [`PathBuf`].
+    ///
+    /// Walks each `::`-separated component of the relative module path, applying
+    /// segment overrides and defaults (kebab-case for static, `_` prefix for
+    /// groups) to build the final route path.
+    fn module_path_to_path(&self, module_path: &'static str) -> PathBuf {
+        let relative = self.relative_module_path(module_path);
+        let mut path_buf = PathBuf::new();
+
+        if relative.is_empty() {
+            return path_buf;
+        }
+
+        // Iterate over the module structure. At each module level, check if there is a matching
+        // [`Segment`] for that path specified by the user that overrides the default behavior.
+        let mut prefix_end = 0;
+        for (i, component) in relative.split("::").enumerate() {
+            if i > 0 {
+                prefix_end += "::".len();
+            }
+            prefix_end += component.len();
+            let segment = self.segments.get(&relative[..prefix_end]);
+
+            // A module is a group segment if it starts with "_" or a static segment otherwise,
+            // unless this is overridden by the user.
+            let kind = match segment.and_then(|segment| segment.kind()) {
+                Some(kind) => *kind,
+                None => {
+                    if component.starts_with('_') {
+                        SegmentKind::Group
+                    } else {
+                        SegmentKind::Static
+                    }
+                }
+            };
+            // Static segments are converted to kebab-case, other modules names are left as is.
+            // This can also be overridden by the user.
+            let name = match segment.and_then(|segment| segment.rename()) {
+                Some(rename) => Cow::Borrowed(rename),
+                None => match kind {
+                    SegmentKind::Static => Cow::Owned(component.to_kebab_case()),
+                    _ => Cow::Borrowed(component),
+                },
+            };
+
+            let path_segment = match kind {
+                SegmentKind::Static => PathSegment::Static(&name),
+                SegmentKind::Group => PathSegment::Group(&name),
+                SegmentKind::Param => PathSegment::Param(&name),
+                SegmentKind::CatchAll => PathSegment::CatchAll(&name),
+            };
+
+            path_buf += path_segment;
+        }
+        path_buf
+    }
+
+    /// Computes the route path of a handler declared in `module_path` with
+    /// `relative_path` below it. The root relative path stands for the module
+    /// path with a trailing slash.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the trailing slash is asked of the root path, which has none.
+    fn resolve_path(&self, module_path: &'static str, relative_path: Option<&Path>) -> PathBuf {
+        let mut path = self.module_path_to_path(module_path);
+        match relative_path {
+            None => {}
+            Some(relative_path) if relative_path.is_empty() => {
+                assert!(
+                    !path.is_empty(),
+                    "the root path has no trailing slash form; `./` cannot be used in the \
+                     module router's root module"
+                );
+                path += PathSegment::Static("");
+            }
+            Some(relative_path) => path += relative_path,
+        }
+        path
+    }
+
+    /// Registers a [`ModulePage`], computing its route path from the module path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a page has already been registered for the same path.
+    #[must_use]
+    pub fn page(mut self, page: impl ModulePage) -> Self {
+        let path = self.resolve_path(page.module_path(), page.relative_path());
+        self.inner = self.inner.page(ResolvedPage::new(page, path));
+        self
+    }
+
+    /// Registers a [`ModuleLayout`], computing its route path from the module path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a layout has already been registered for the same path.
+    #[must_use]
+    pub fn layout(mut self, layout: impl ModuleLayout) -> Self {
+        let path = self.resolve_path(layout.module_path(), layout.relative_path());
+        self.inner = self.inner.layout(ResolvedLayout::new(layout, path));
+        self
+    }
+
+    /// Registers a [`ModuleRoute`], computing its route path from the module path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a route has already been registered for the same path.
+    #[must_use]
+    pub fn route(mut self, route: impl ModuleRoute) -> Self {
+        let path = self.resolve_path(route.module_path(), route.relative_path());
+        self.inner = self.inner.route(ResolvedRoute::new(route, path));
+        self
+    }
+
+    /// Registers a [`ModuleLayer`], computing its path prefix from the module path.
+    #[must_use]
+    pub fn layer(mut self, layer: impl ModuleLayer) -> Self {
+        let path = self.resolve_path(layer.module_path(), layer.relative_path());
+        self.inner = self.inner.layer(ResolvedLayer::new(layer, path));
+        self
+    }
+
+    /// Registers every [`Segment`] override declared with `segment!` and
+    /// collected at link time.
+    ///
+    /// Segments must be registered before any pages or layouts, since they
+    /// affect path computation.
+    #[cfg(feature = "discover")]
+    #[must_use]
+    pub fn discover_segments(mut self) -> Self {
+        let root = self.root_module_path;
+
+        for segment in inventory::iter::<Segment>()
+            .filter(|s| Self::owns(root, s.module_path()))
+            .cloned()
+        {
+            self = self.segment(segment);
+        }
+        self
+    }
+
+    /// Registers every [`ModulePage`] annotated with `#[page]` and collected
+    /// at link time, deriving each path from the module tree.
+    #[cfg(feature = "discover")]
+    #[must_use]
+    pub fn discover_pages(mut self) -> Self {
+        let root = self.root_module_path;
+
+        for &page in inventory::iter::<&'static dyn ModulePage>()
+            .filter(|p| Self::owns(root, p.module_path()))
+        {
+            self = self.page(page);
+        }
+        self
+    }
+
+    /// Registers every [`ModuleLayout`] annotated with `#[layout]` and
+    /// collected at link time, deriving each path from the module tree.
+    ///
+    /// At most one discovered layout is allowed per path: a page's layouts nest
+    /// by path prefix, so two layouts resolving to the same path would have an
+    /// undefined nesting order. To attach more than one layout to a page, give
+    /// them distinct paths or compose them in a single layout component.
+    ///
+    /// # Panics
+    ///
+    /// Panics if two discovered layouts resolve to the same path.
+    #[cfg(feature = "discover")]
+    #[must_use]
+    #[track_caller]
+    pub fn discover_layouts(mut self) -> Self {
+        let mut seen = std::collections::HashSet::new();
+        let root = self.root_module_path;
+
+        for &layout in inventory::iter::<&'static dyn ModuleLayout>()
+            .filter(|l| Self::owns(root, l.module_path()))
+        {
+            let path = self.resolve_path(layout.module_path(), layout.relative_path());
+            assert!(
+                seen.insert(path.clone()),
+                "multiple discovered layouts registered for the same path \"{path}\"",
+            );
+            self = self.layout(layout);
+        }
+        self
+    }
+
+    /// Registers every [`ModuleRoute`] annotated with `#[route]` and collected
+    /// at link time, deriving each path from the module tree.
+    #[cfg(feature = "discover")]
+    #[must_use]
+    pub fn discover_routes(mut self) -> Self {
+        let root = self.root_module_path;
+
+        for &route in inventory::iter::<&'static dyn ModuleRoute>()
+            .filter(|r| Self::owns(root, r.module_path()))
+        {
+            self = self.route(route);
+        }
+        self
+    }
+
+    /// Registers every [`ModuleLayer`] annotated with `#[layer]` and collected
+    /// at link time, deriving each path from the module tree.
+    ///
+    /// Discovered layers must have unique paths because discovery does not
+    /// define their order. To stack layers at one path, register them with
+    /// [`RouterBuilder::layer`](crate::RouterBuilder::layer).
+    ///
+    /// # Panics
+    ///
+    /// Panics if two discovered layers resolve to the same path.
+    #[cfg(feature = "discover")]
+    #[must_use]
+    #[track_caller]
+    pub fn discover_layers(mut self) -> Self {
+        let mut seen = std::collections::HashSet::new();
+        let root = self.root_module_path;
+
+        for &layer in inventory::iter::<&'static dyn ModuleLayer>()
+            .filter(|l| Self::owns(root, l.module_path()))
+        {
+            let path = self.resolve_path(layer.module_path(), layer.relative_path());
+            assert!(
+                seen.insert(path.clone()),
+                "multiple discovered layers registered for the same path \"{path}\"",
+            );
+            self = self.layer(layer);
+        }
+        self
+    }
+
+    /// Discovers and registers all segments, pages, layouts, routes, and layers
+    /// collected at link time.
+    ///
+    /// Segments are registered first, since they must precede pages and
+    /// layouts.
+    ///
+    /// # Panics
+    ///
+    /// Panics if two discovered layers resolve to the same path; see
+    /// [`discover_layers`](Self::discover_layers).
+    #[cfg(feature = "discover")]
+    #[must_use]
+    pub fn discover(self) -> Self {
+        self.discover_segments()
+            .discover_pages()
+            .discover_layouts()
+            .discover_routes()
+            .discover_layers()
+    }
+}
+
+impl From<ModuleRouterBuilder> for RouterBuilder {
+    fn from(value: ModuleRouterBuilder) -> Self {
+        value.inner
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use topcoat_core::context::Cx;
+    use topcoat_view::BoxView;
+
+    use super::*;
+    use crate::{Body, Method, Methods, RouteId};
+
+    /// A [`ModulePage`] whose render function is never invoked; used to
+    /// exercise registration and path computation without running a page.
+    struct PageAt {
+        id: RouteId,
+        module_path: &'static str,
+        relative_path: Option<&'static Path>,
+    }
+
+    impl ModulePage for PageAt {
+        fn id(&self) -> RouteId {
+            self.id
+        }
+
+        fn methods(&self) -> Methods<'_> {
+            Methods::Only(&[Method::GET])
+        }
+
+        fn module_path(&self) -> &'static str {
+            self.module_path
+        }
+
+        fn relative_path(&self) -> Option<&Path> {
+            self.relative_path
+        }
+
+        fn render<'a>(&'a self, _cx: &'a Cx, _body: Body) -> BoxView<'a> {
+            unreachable!("test render function is never called")
+        }
+    }
+
+    fn page_at(module_path: &'static str) -> PageAt {
+        PageAt {
+            id: RouteId::new(),
+            module_path,
+            relative_path: None,
+        }
+    }
+
+    fn page_below(module_path: &'static str, relative_path: &'static Path) -> PageAt {
+        PageAt {
+            id: RouteId::new(),
+            module_path,
+            relative_path: Some(relative_path),
+        }
+    }
+
+    fn builder() -> ModuleRouterBuilder {
+        ModuleRouterBuilder::new("app")
+    }
+
+    // -- owns --
+
+    #[test]
+    fn owns_root_and_descendants() {
+        assert!(ModuleRouterBuilder::owns("app", "app"));
+        assert!(ModuleRouterBuilder::owns("app", "app::users"));
+    }
+
+    #[test]
+    fn does_not_own_other_trees_or_shared_prefixes() {
+        assert!(!ModuleRouterBuilder::owns("app", "admin::users"));
+        assert!(!ModuleRouterBuilder::owns("app", "application::users"));
+        assert!(!ModuleRouterBuilder::owns("portal::routes", "crm::routes"));
+    }
+
+    // -- relative_module_path --
+
+    #[test]
+    fn relative_path_of_root_is_empty() {
+        assert_eq!(builder().relative_module_path("app"), "");
+    }
+
+    #[test]
+    fn relative_path_strips_root_prefix() {
+        assert_eq!(builder().relative_module_path("app::users"), "users");
+        assert_eq!(
+            builder().relative_module_path("app::users::id"),
+            "users::id"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "module path must be under module router's root")]
+    fn relative_path_outside_root_panics() {
+        builder().relative_module_path("other::thing");
+    }
+
+    #[test]
+    #[should_panic(expected = "module path must be under module router's root")]
+    fn relative_path_requires_module_boundary() {
+        // `application` shares the `app` prefix but is not a submodule of it.
+        builder().relative_module_path("application");
+    }
+
+    // -- module_path_to_path --
+
+    fn path_of(module_path: &'static str) -> String {
+        builder().module_path_to_path(module_path).to_string()
+    }
+
+    #[test]
+    fn root_maps_to_empty_path() {
+        assert_eq!(path_of("app"), "");
+    }
+
+    #[test]
+    fn static_segment_is_kebab_cased() {
+        assert_eq!(path_of("app::about"), "/about");
+        assert_eq!(path_of("app::blog_posts"), "/blog-posts");
+    }
+
+    #[test]
+    fn nested_static_segments() {
+        assert_eq!(path_of("app::settings::profile"), "/settings/profile");
+        assert_eq!(
+            path_of("app::user_settings::email_address"),
+            "/user-settings/email-address"
+        );
+    }
+
+    #[test]
+    fn underscore_module_is_a_group() {
+        let path = builder().module_path_to_path("app::_marketing::pricing");
+        // The group segment is recorded in the path but stripped from the URL.
+        assert_eq!(path.to_string(), "/(_marketing)/pricing");
+        assert_eq!(path.to_matchit_path(), "/pricing");
+    }
+
+    // -- module_path_to_path with segment overrides --
+
+    fn builder_with(segment: Segment) -> ModuleRouterBuilder {
+        builder().segment(segment)
+    }
+
+    #[test]
+    fn override_kind_param() {
+        let builder = builder_with(Segment::new(
+            "app::users::id",
+            Some(SegmentKind::Param),
+            None,
+        ));
+        assert_eq!(
+            builder.module_path_to_path("app::users::id").to_string(),
+            "/users/{id}"
+        );
+    }
+
+    #[test]
+    fn override_kind_catch_all() {
+        let builder = builder_with(Segment::new(
+            "app::files::rest",
+            Some(SegmentKind::CatchAll),
+            None,
+        ));
+        assert_eq!(
+            builder.module_path_to_path("app::files::rest").to_string(),
+            "/files/{*rest}"
+        );
+    }
+
+    #[test]
+    fn override_kind_group_strips_from_url() {
+        let builder = builder_with(Segment::new(
+            "app::marketing",
+            Some(SegmentKind::Group),
+            None,
+        ));
+        let path = builder.module_path_to_path("app::marketing::pricing");
+        assert_eq!(path.to_string(), "/(marketing)/pricing");
+        assert_eq!(path.to_matchit_path(), "/pricing");
+    }
+
+    #[test]
+    fn override_kind_static_promotes_group_module() {
+        // A `_`-prefixed module forced back to a static URL segment.
+        let builder = builder_with(Segment::new("app::_group", Some(SegmentKind::Static), None));
+        assert_eq!(
+            builder.module_path_to_path("app::_group").to_string(),
+            "/group"
+        );
+    }
+
+    #[test]
+    fn override_rename_is_used_verbatim() {
+        // A rename is used as-is, without kebab-casing.
+        let builder = builder_with(Segment::new(
+            "app::blog_post",
+            None,
+            Some("articles".into()),
+        ));
+        assert_eq!(
+            builder.module_path_to_path("app::blog_post").to_string(),
+            "/articles"
+        );
+    }
+
+    #[test]
+    fn override_applies_at_intermediate_segment() {
+        let builder = builder_with(Segment::new("app::users", Some(SegmentKind::Param), None));
+        assert_eq!(
+            builder.module_path_to_path("app::users::posts").to_string(),
+            "/{users}/posts"
+        );
+    }
+
+    // -- resolve_path --
+
+    fn resolved_path(page: &PageAt) -> String {
+        builder()
+            .resolve_path(page.module_path(), page.relative_path())
+            .to_string()
+    }
+
+    #[test]
+    fn resolve_path_without_relative_path_is_module_path() {
+        assert_eq!(resolved_path(&page_at("app::settings")), "/settings");
+    }
+
+    #[test]
+    fn resolve_path_appends_relative_path() {
+        assert_eq!(
+            resolved_path(&page_below("app::settings", Path::new("/export"))),
+            "/settings/export"
+        );
+        assert_eq!(
+            resolved_path(&page_below("app::users", Path::new("/{id}/posts"))),
+            "/users/{id}/posts"
+        );
+    }
+
+    #[test]
+    fn resolve_path_at_root_module() {
+        assert_eq!(
+            resolved_path(&page_below("app", Path::new("/about"))),
+            "/about"
+        );
+    }
+
+    #[test]
+    fn resolve_path_root_relative_path_adds_a_trailing_slash() {
+        assert_eq!(
+            resolved_path(&page_below("app::settings", Path::ROOT)),
+            "/settings/"
+        );
+        assert_eq!(
+            resolved_path(&page_below("app::users::posts", Path::ROOT)),
+            "/users/posts/"
+        );
+    }
+
+    #[test]
+    fn resolve_path_keeps_a_relative_trailing_slash() {
+        assert_eq!(
+            resolved_path(&page_below("app::settings", Path::new("/export/"))),
+            "/settings/export/"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "the root path has no trailing slash form")]
+    fn resolve_path_rejects_a_trailing_slash_at_the_root_module() {
+        resolved_path(&page_below("app", Path::ROOT));
+    }
+
+    #[test]
+    fn resolve_path_applies_segment_overrides_before_relative_path() {
+        let builder = builder_with(Segment::new("app::users", Some(SegmentKind::Param), None));
+        assert_eq!(
+            builder
+                .resolve_path("app::users", Some(Path::new("/edit")))
+                .to_string(),
+            "/{users}/edit"
+        );
+    }
+
+    #[test]
+    fn pages_in_one_module_with_distinct_relative_paths_both_register() {
+        // Two pages at the same path would panic, so distinct relative paths
+        // must keep them apart.
+        let inner = RouterBuilder::from(
+            builder()
+                .page(page_at("app::settings"))
+                .page(page_below("app::settings", Path::new("/export"))),
+        );
+        assert!(!inner.is_empty());
+    }
+
+    // -- segment registration --
+
+    #[test]
+    #[should_panic(expected = "must be called before registering any resource")]
+    fn segment_after_resource_panics() {
+        let _ = builder().page(page_at("app::home")).segment(Segment::new(
+            "app::users",
+            Some(SegmentKind::Param),
+            None,
+        ));
+    }
+
+    // -- resource registration and conversion --
+
+    #[test]
+    fn fresh_builder_converts_to_empty_router_builder() {
+        let inner = RouterBuilder::from(builder());
+        assert!(inner.is_empty());
+    }
+
+    #[test]
+    fn registering_a_page_is_observable_after_conversion() {
+        let inner = RouterBuilder::from(builder().page(page_at("app::about")));
+        assert!(!inner.is_empty());
+    }
+}

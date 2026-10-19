@@ -1,0 +1,425 @@
+use std::{
+    future::poll_fn,
+    io,
+    pin::{Pin, pin},
+};
+
+use topcoat::{
+    Result,
+    context::Cx,
+    view::{View, ViewExt, ViewFirst, ViewSwap, component, emit, live, view},
+};
+
+#[component]
+async fn load(fail: bool) -> Result<impl View> {
+    if fail {
+        return Err(io::Error::other("boom").into());
+    }
+    Ok(view! { <p>"loaded"</p> })
+}
+
+/// Polls `view` for its first content.
+async fn first<V: View>(view: &mut Pin<&mut V>) -> Result<ViewFirst> {
+    poll_fn(|cx| view.as_mut().poll_first(cx)).await
+}
+
+/// Polls `view` for its next swap.
+async fn next_swap<V: View>(view: &mut Pin<&mut V>) -> Result<Option<ViewSwap>> {
+    poll_fn(|cx| view.as_mut().poll_swap(cx)).await
+}
+
+#[tokio::test]
+async fn region_emitting_once_renders_as_plain_content() {
+    let cx = &Cx::default();
+    let html = view! { cx => <main>(live! { emit! { load(fail: false) } })</main> }
+        .single()
+        .await
+        .unwrap()
+        .render(cx);
+
+    assert_eq!(html, "<main><p>loaded</p></main>");
+}
+
+#[tokio::test]
+async fn region_emitting_once_is_not_live() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! { cx => <main>(live! { emit! { load(fail: false) } })</main> });
+
+    assert!(!first(&mut view).await.unwrap().live);
+    assert!(next_swap(&mut view).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn region_emitting_a_view_against_its_own_cx_renders_its_content() {
+    let cx = &Cx::default();
+    let html = view! { cx => <main>(live! { emit! { cx => <p>"own"</p> } })</main> }
+        .single()
+        .await
+        .unwrap()
+        .render(cx);
+
+    assert_eq!(html, "<main><p>own</p></main>");
+}
+
+#[tokio::test]
+async fn region_remapping_a_failed_emission_renders_as_plain_content() {
+    let cx = &Cx::default();
+    let html = view! {
+        cx =>
+        <main>
+            (live! {
+                match emit! { load(fail: true) } {
+                    Err(error) => emit! { <p class="error">(error.to_string())</p> },
+                    emitted => emitted,
+                }
+            })
+        </main>
+    }
+    .single()
+    .await
+    .unwrap()
+    .render(cx);
+
+    assert_eq!(html, r#"<main><p class="error">boom</p></main>"#);
+}
+
+#[tokio::test]
+async fn an_explicit_context_is_owned_by_the_live_body() {
+    let region = {
+        let cx = Cx::default();
+        let region = live! { cx => emit! { load(fail: false) } };
+        drop(cx);
+        region
+    };
+    let cx = &Cx::default();
+    let html = view! { cx => (region) }.single().await.unwrap().render(cx);
+    assert_eq!(html, "<p>loaded</p>");
+}
+
+#[tokio::test]
+async fn an_explicit_context_reference_is_cloned_into_the_view() {
+    let (plain, live) = {
+        let context = Cx::default();
+        let cx = &context;
+        (
+            view! { cx => load(fail: false) },
+            live! { cx => emit! { load(fail: false) } },
+        )
+    };
+    let cx = &Cx::default();
+
+    assert_eq!(plain.single().await.unwrap().render(cx), "<p>loaded</p>");
+    assert_eq!(live.single().await.unwrap().render(cx), "<p>loaded</p>");
+}
+
+#[tokio::test]
+async fn region_failing_before_its_content_fails_the_view() {
+    let cx = &Cx::default();
+    let error = view! { cx => <main>(live! { emit! { load(fail: true) } })</main> }
+        .single()
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.to_string(), "boom");
+}
+
+#[tokio::test]
+async fn region_failing_after_an_emission_fails_the_view() {
+    let cx = &Cx::default();
+    let error = view! {
+        cx =>
+        <main>
+            (live! {
+                emit! { <p>"first"</p> }?;
+                Err(io::Error::other("late").into())
+            })
+        </main>
+    }
+    .single()
+    .await
+    .unwrap_err();
+
+    assert_eq!(error.to_string(), "late");
+}
+
+#[tokio::test]
+async fn region_hoisting_sync_control_flow_renders() {
+    let cx = &Cx::default();
+    let html = view! {
+        cx =>
+        <main>
+            (live! {
+                emit! {
+                    <ul>
+                        for x in ["a", "b"] {
+                            <li data-x=(x)>"item"</li>
+                        }
+                    </ul>
+                }
+            })
+        </main>
+    }
+    .single()
+    .await
+    .unwrap()
+    .render(cx);
+
+    assert_eq!(
+        html,
+        r#"<main><ul><li data-x="a">item</li><li data-x="b">item</li></ul></main>"#
+    );
+}
+
+#[tokio::test]
+async fn swapped_emission_hoisting_sync_control_flow_renders() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <main>
+            (live! {
+                emit! { <p>"first"</p> }?;
+                emit! {
+                    <ul>
+                        for x in ["a", "b"] {
+                            <li data-x=(x)>"item"</li>
+                        }
+                    </ul>
+                }
+            })
+        </main>
+    });
+
+    assert!(first(&mut view).await.unwrap().live);
+    let swap = next_swap(&mut view).await.unwrap().unwrap();
+    assert_eq!(
+        swap.replacement.render(cx),
+        r#"<ul><li data-x="a">item</li><li data-x="b">item</li></ul>"#
+    );
+    assert!(next_swap(&mut view).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn region_emitting_twice_swaps_its_content() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <main>
+            (live! {
+                emit! { <p>"first"</p> }?;
+                emit! { <p>"second"</p> }
+            })
+        </main>
+    });
+
+    // The first content marks the region off, so the swap can find it again.
+    let content = first(&mut view).await.unwrap();
+    assert!(content.live);
+
+    let swap = next_swap(&mut view).await.unwrap().unwrap();
+    let region = swap.region;
+    assert_eq!(
+        content.content.render(cx),
+        format!(
+            "<main><!--::topcoat::region::start({region})--><p>first</p>\
+             <!--::topcoat::region::end({region})--></main>"
+        )
+    );
+    assert_eq!(swap.replacement.render(cx), "<p>second</p>");
+
+    // The body ran out of emissions, so the region is done.
+    assert!(next_swap(&mut view).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn region_ids_are_stable_across_root_views() {
+    let mut previous = None;
+    for _ in 0..2 {
+        let cx = &Cx::default();
+        let mut view = pin!(view! {
+            cx =>
+            <main>
+                (live! {
+                    emit! { <p>"first"</p> }?;
+                    emit! { <p>"second"</p> }
+                })
+            </main>
+        });
+
+        let content = first(&mut view).await.unwrap();
+        assert!(content.live);
+        let swap = next_swap(&mut view).await.unwrap().unwrap();
+        let region = swap.region;
+        assert_eq!(
+            content.content.render(cx),
+            format!(
+                "<main><!--::topcoat::region::start({region})--><p>first</p>\
+             <!--::topcoat::region::end({region})--></main>"
+            )
+        );
+        if let Some(previous) = previous {
+            assert_eq!(region, previous);
+        }
+        previous = Some(region);
+        assert!(next_swap(&mut view).await.unwrap().is_none());
+    }
+}
+
+#[tokio::test]
+async fn region_emitting_three_times_swaps_its_content_twice() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <main>
+            (live! {
+                emit! { <p>"one"</p> }?;
+                emit! { <p>"two"</p> }?;
+                emit! { <p>"three"</p> }
+            })
+        </main>
+    });
+
+    assert!(first(&mut view).await.unwrap().live);
+    let swap = next_swap(&mut view).await.unwrap().unwrap();
+    assert_eq!(swap.replacement.render(cx), "<p>two</p>");
+    let swap = next_swap(&mut view).await.unwrap().unwrap();
+    assert_eq!(swap.replacement.render(cx), "<p>three</p>");
+    assert!(next_swap(&mut view).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn first_loop_iteration_delivers_its_swap() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <ul>
+            #[key(label)]
+            for label in ["only"] {
+                <li>(live! {
+                    emit! { <i>(label) "1"</i> }?;
+                    emit! { <i>(label) "2"</i> }
+                })</li>
+            }
+        </ul>
+    });
+
+    assert!(first(&mut view).await.unwrap().live);
+    let swap = next_swap(&mut view).await.unwrap().unwrap();
+    assert_eq!(swap.replacement.render(cx), "<i>only2</i>");
+    assert!(next_swap(&mut view).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn live_loop_iterations_take_turns_swapping() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <ul>
+            #[key(label)]
+            for label in ["a", "b"] {
+                <li>(live! {
+                    emit! { <i>(label) "1"</i> }?;
+                    emit! { <i>(label) "2"</i> }?;
+                    emit! { <i>(label) "3"</i> }
+                })</li>
+            }
+        </ul>
+    });
+
+    assert!(first(&mut view).await.unwrap().live);
+
+    let mut swaps = Vec::new();
+    while let Some(swap) = next_swap(&mut view).await.unwrap() {
+        swaps.push(swap.replacement.render(cx));
+    }
+    assert_eq!(swaps, ["<i>a2</i>", "<i>b2</i>", "<i>a3</i>", "<i>b3</i>"]);
+}
+
+#[tokio::test]
+#[should_panic(expected = "used `.single()` on a View that is live")]
+async fn single_panics_on_a_region_that_may_update() {
+    let cx = &Cx::default();
+    let _ = view! {
+        cx =>
+        <main>
+            (live! {
+                emit! { <p>"first"</p> }?;
+                emit! { <p>"second"</p> }
+            })
+        </main>
+    }
+    .single()
+    .await;
+}
+
+#[tokio::test]
+async fn joined_emissions_all_reach_the_region() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <main>
+            (live! {
+                let (a, b) = tokio::join!(
+                    async { emit! { <p>"a"</p> } },
+                    async { emit! { <p>"b"</p> } },
+                );
+                a?;
+                b
+            })
+        </main>
+    });
+
+    // Both emissions happen in the same poll of the body. One becomes the
+    // first content and the other waits its turn to swap it out.
+    let content = first(&mut view).await.unwrap();
+    assert!(content.live);
+    let swap = next_swap(&mut view).await.unwrap().unwrap();
+    let region = swap.region;
+    assert_eq!(
+        content.content.render(cx),
+        format!(
+            "<main><!--::topcoat::region::start({region})--><p>a</p>\
+             <!--::topcoat::region::end({region})--></main>"
+        )
+    );
+    assert_eq!(swap.replacement.render(cx), "<p>b</p>");
+    assert!(next_swap(&mut view).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn joined_emissions_deliver_the_swaps_of_a_nested_region() {
+    let cx = &Cx::default();
+    let mut view = pin!(view! {
+        cx =>
+        <main>
+            (live! {
+                let (a, b) = tokio::join!(
+                    async {
+                        emit! {
+                            (live! {
+                                emit! { <i>"1"</i> }?;
+                                emit! { <i>"2"</i> }
+                            })
+                        }
+                    },
+                    async { emit! { <p>"b"</p> } },
+                );
+                a?;
+                b
+            })
+        </main>
+    });
+
+    let content = first(&mut view).await.unwrap();
+    assert!(content.live);
+    let html = content.content.render(cx);
+    assert!(html.contains("<i>1</i>"), "{html}");
+
+    // The nested region's swap and the sibling emission both get delivered,
+    // even though they compete for the same poll.
+    let mut swaps = Vec::new();
+    while let Some(swap) = next_swap(&mut view).await.unwrap() {
+        swaps.push(swap.replacement.render(cx));
+    }
+    swaps.sort();
+    assert_eq!(swaps, ["<i>2</i>", "<p>b</p>"]);
+}

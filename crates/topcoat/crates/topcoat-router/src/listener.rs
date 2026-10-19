@@ -1,0 +1,84 @@
+use std::{future::Future, io, net::SocketAddr};
+
+#[cfg(unix)]
+use tokio::net::UnixListener;
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    net::TcpListener,
+};
+
+/// A bound listener the serve functions can accept connections from.
+///
+/// The serve functions are generic over this trait, so a router can be served
+/// over any connection-oriented transport. Implementations are provided for
+/// [`TcpListener`] and, on Unix, [`UnixListener`].
+pub trait Listener: Send + 'static {
+    /// The I/O stream of an accepted connection.
+    type Io: AsyncRead + AsyncWrite + Unpin + Send + 'static;
+
+    /// Accepts the next connection and returns its I/O stream and the remote
+    /// IP address and port, if available.
+    ///
+    /// Topcoat stores the address as [`RemoteAddr`](crate::RemoteAddr) in
+    /// every request received over the connection. Return `None` for
+    /// connections without an IP address, such as Unix sockets.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O error if accepting the connection fails.
+    fn accept(&mut self)
+    -> impl Future<Output = io::Result<(Self::Io, Option<SocketAddr>)>> + Send;
+
+    /// The local TCP address the listener is bound to, when it has one.
+    ///
+    /// The serve functions report this address to the `topcoat dev` server so
+    /// it can proxy to the application. Listeners without a TCP address, like
+    /// Unix domain sockets, return `None`, the default.
+    fn tcp_addr(&self) -> Option<SocketAddr> {
+        None
+    }
+}
+
+impl Listener for TcpListener {
+    type Io = tokio::net::TcpStream;
+
+    async fn accept(&mut self) -> io::Result<(Self::Io, Option<SocketAddr>)> {
+        let (stream, addr) = TcpListener::accept(self).await?;
+        Ok((stream, Some(addr)))
+    }
+
+    fn tcp_addr(&self) -> Option<SocketAddr> {
+        TcpListener::local_addr(self).ok()
+    }
+}
+
+/// Serves over a Unix domain socket, typically behind a reverse proxy that
+/// forwards HTTP to the socket path.
+///
+/// Unix socket connections have no IP address, so requests have no
+/// [`RemoteAddr`](crate::RemoteAddr). If a reverse proxy connects through
+/// this socket, use [`TrustedProxies::nearest`](crate::TrustedProxies::nearest)
+/// to trust it and read the client's IP address from its headers.
+///
+/// Binding fails with `AddrInUse` if the socket file already exists, and
+/// dropping the listener does not remove it, so remove any stale file from a
+/// previous run before binding:
+///
+/// ```no_run
+/// # #[cfg(unix)]
+/// # fn bind() -> std::io::Result<tokio::net::UnixListener> {
+/// let path = "/run/my-app.sock";
+/// let _ = std::fs::remove_file(path);
+/// let listener = tokio::net::UnixListener::bind(path)?;
+/// # Ok(listener)
+/// # }
+/// ```
+#[cfg(unix)]
+impl Listener for UnixListener {
+    type Io = tokio::net::UnixStream;
+
+    async fn accept(&mut self) -> io::Result<(Self::Io, Option<SocketAddr>)> {
+        let (stream, _addr) = UnixListener::accept(self).await?;
+        Ok((stream, None))
+    }
+}

@@ -1,0 +1,1 @@
+view! { if show { <p>"visible"</p> } else { <p>"hidden"</p> }  }

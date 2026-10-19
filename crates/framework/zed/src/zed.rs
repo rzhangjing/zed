@@ -1,3 +1,5 @@
+/// The admin demo runner window, opened from `Help > Admin Demo`.
+pub mod admin_demo;
 mod app_menus;
 /// The cesiumrust globe window, opened from `Help > cesiumrust`.
 pub mod cesium;
@@ -315,6 +317,9 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &zed_actions::OpenPlot, cx| {
         plot::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenAdminDemo, cx| {
+        admin_demo::open(cx);
     });
 
     // The Octos kernel is started here, as a library inside this process rather
@@ -339,6 +344,12 @@ pub fn init(cx: &mut App) {
     // the two above: looking at how the charts draw is the point, and clicking
     // through `Help` is not part of what such a check is testing.
     plot::init(cx);
+
+    // The admin demo is opened from `Help > Admin Demo`; this is only its
+    // startup override (`ZED_ADMIN_DEMO_OPEN`), and a no-op otherwise. Same
+    // reason as the two above: whether the demo really serves in this process is
+    // what is being checked, and clicking through `Help` is not part of it.
+    admin_demo::init(cx);
 
     // Same startup override shape as `ZED_ABOUT_OPEN` above and `ZED_DAMENG_OPEN`
     // in `dameng`: it exists because checking that the gallery's real window

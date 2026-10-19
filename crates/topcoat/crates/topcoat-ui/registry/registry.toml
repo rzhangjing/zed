@@ -1,0 +1,121 @@
+# The built-in component registry, shipped by the `topcoat-ui-registry` crate.
+# Each theme and component names its source file; hashes are computed from the
+# source at runtime. The registry's identity is its crate name
+# (`topcoat-ui-registry`), so the manifest records only the format version, the
+# themes, and the components.
+
+version = 1
+
+[themes.neutral]
+source = "themes/neutral.css"
+
+[components.accordion]
+source = "src/components/accordion.rs"
+
+[components.alert]
+source = "src/components/alert.rs"
+
+[components.alert_dialog]
+source = "src/components/alert_dialog.rs"
+dependencies = ["dialog"]
+
+[components.avatar]
+source = "src/components/avatar.rs"
+
+[components.badge]
+source = "src/components/badge.rs"
+
+[components.breadcrumb]
+source = "src/components/breadcrumb.rs"
+
+[components.button]
+source = "src/components/button.rs"
+
+[components.card]
+source = "src/components/card.rs"
+
+[components.checkbox]
+source = "src/components/checkbox.rs"
+
+[components.dialog]
+source = "src/components/dialog.rs"
+
+[components.dropdown_menu]
+source = "src/components/dropdown_menu.rs"
+dependencies = ["floating"]
+
+[components.field]
+source = "src/components/field.rs"
+dependencies = ["label"]
+
+[components.floating]
+source = "src/components/floating.rs"
+
+[components.hover_card]
+source = "src/components/hover_card.rs"
+dependencies = ["floating"]
+
+[components.input]
+source = "src/components/input.rs"
+
+[components.kbd]
+source = "src/components/kbd.rs"
+
+[components.label]
+source = "src/components/label.rs"
+
+[components.navigation_menu]
+source = "src/components/navigation_menu.rs"
+
+[components.pagination]
+source = "src/components/pagination.rs"
+dependencies = ["button"]
+
+[components.popover]
+source = "src/components/popover.rs"
+dependencies = ["floating"]
+
+[components.progress]
+source = "src/components/progress.rs"
+
+[components.radio_group]
+source = "src/components/radio_group.rs"
+
+[components.select]
+source = "src/components/select.rs"
+
+[components.separator]
+source = "src/components/separator.rs"
+
+[components.sheet]
+source = "src/components/sheet.rs"
+dependencies = ["dialog"]
+
+[components.sidebar]
+source = "src/components/sidebar.rs"
+dependencies = ["button", "input", "separator", "sheet", "skeleton"]
+
+[components.skeleton]
+source = "src/components/skeleton.rs"
+
+[components.spinner]
+source = "src/components/spinner.rs"
+
+[components.switch]
+source = "src/components/switch.rs"
+
+[components.table]
+source = "src/components/table.rs"
+
+[components.tabs]
+source = "src/components/tabs.rs"
+
+[components.textarea]
+source = "src/components/textarea.rs"
+
+[components.toggle]
+source = "src/components/toggle.rs"
+
+[components.tooltip]
+source = "src/components/tooltip.rs"
+dependencies = ["floating"]

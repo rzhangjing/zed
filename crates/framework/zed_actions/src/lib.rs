@@ -77,6 +77,8 @@ actions!(
         OpenDameng,
         /// Opens the drawing test window: GPUI Kit charts and a freehand canvas.
         OpenPlot,
+        /// Opens the admin demo runner window: process control and log.
+        OpenAdminDemo,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.

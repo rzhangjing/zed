@@ -1,0 +1,13 @@
+[package]
+name = "cookie"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+topcoat.workspace = true
+
+[lints]
+workspace = true

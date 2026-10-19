@@ -1,0 +1,111 @@
+//! Font display strategies for the `font-display` descriptor on `@font-face`
+//! rules.
+
+/// How text appears while a font loads, set by CSS `font-display`.
+///
+/// During the block period, text is invisible while the browser waits for the
+/// font. During the swap period, a fallback font is visible and is replaced if
+/// the font finishes loading. The default is [`Auto`](Self::Auto).
+///
+/// Displays as its CSS keyword.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum FontDisplay {
+    /// The font display strategy is defined by the user agent, CSS `auto`.
+    #[default]
+    Auto,
+    /// Gives the font face a short block period and an infinite swap period,
+    /// CSS `block`.
+    Block,
+    /// Gives the font face an extremely small block period and an infinite swap
+    /// period, CSS `swap`.
+    Swap,
+    /// Gives the font face an extremely small block period and a short swap
+    /// period, CSS `fallback`.
+    Fallback,
+    /// Gives the font face an extremely small block period and no swap period,
+    /// CSS `optional`.
+    Optional,
+}
+
+impl FontDisplay {
+    /// The CSS keyword for this strategy, as written for the `font-display`
+    /// descriptor.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Block => "block",
+            Self::Swap => "swap",
+            Self::Fallback => "fallback",
+            Self::Optional => "optional",
+        }
+    }
+
+    /// The strategy named by the given CSS `font-display` keyword, if the
+    /// keyword names a known strategy.
+    #[must_use]
+    pub fn from_keyword(keyword: &str) -> Option<Self> {
+        Some(match keyword {
+            "auto" => Self::Auto,
+            "block" => Self::Block,
+            "swap" => Self::Swap,
+            "fallback" => Self::Fallback,
+            "optional" => Self::Optional,
+            _ => return None,
+        })
+    }
+
+    /// Folds this strategy into a running content hash.
+    pub(crate) const fn hash(
+        self,
+        h: topcoat_core::fnv1a::Fnv1a<u64>,
+    ) -> topcoat_core::fnv1a::Fnv1a<u64> {
+        h.write(self.keyword().as_bytes())
+    }
+}
+
+impl std::fmt::Display for FontDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.keyword())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_is_auto() {
+        assert_eq!(FontDisplay::default(), FontDisplay::Auto);
+    }
+
+    #[test]
+    fn displays_as_its_keyword() {
+        assert_eq!(FontDisplay::Auto.to_string(), "auto");
+        assert_eq!(FontDisplay::Block.to_string(), "block");
+        assert_eq!(FontDisplay::Swap.to_string(), "swap");
+        assert_eq!(FontDisplay::Fallback.to_string(), "fallback");
+        assert_eq!(FontDisplay::Optional.to_string(), "optional");
+    }
+
+    #[test]
+    fn from_keyword_round_trips() {
+        for strategy in [
+            FontDisplay::Auto,
+            FontDisplay::Block,
+            FontDisplay::Swap,
+            FontDisplay::Fallback,
+            FontDisplay::Optional,
+        ] {
+            assert_eq!(
+                FontDisplay::from_keyword(strategy.keyword()),
+                Some(strategy)
+            );
+        }
+    }
+
+    #[test]
+    fn from_keyword_rejects_unknown() {
+        assert_eq!(FontDisplay::from_keyword("infinite"), None);
+    }
+}

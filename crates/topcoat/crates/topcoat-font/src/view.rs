@@ -1,0 +1,23 @@
+use topcoat_core::context::{Cx, app_context};
+use topcoat_view::{AttributeValueViewParts, DynViewPart, HtmlWriter, PartsWriter};
+
+use crate::{Font, FontResolver};
+
+impl DynViewPart for Font {
+    #[track_caller]
+    fn render(&self, cx: &Cx, w: &mut HtmlWriter<'_, '_>) {
+        let _ = app_context::<FontResolver>(cx).resolve(*self, w);
+    }
+}
+
+impl AttributeValueViewParts for Font {
+    #[inline]
+    fn attribute_present(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_dyn(Box::new(self));
+    }
+}

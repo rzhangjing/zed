@@ -1,0 +1,192 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.9.0...topcoat-cli-v0.10.0) - 2026-10-03
+
+### Added
+
+- *(cli)* --check flag for topcoat fmt ([#482](https://github.com/tokio-rs/topcoat/pull/482))
+- *(cli)* add --version flag support ([#472](https://github.com/tokio-rs/topcoat/pull/472))
+- *(cli)* --rustfmt cli flag to run rustfmt automatically ([#456](https://github.com/tokio-rs/topcoat/pull/456))
+- *(ui)* implement new --all flag for `ui add` CLI command ([#450](https://github.com/tokio-rs/topcoat/pull/450))
+
+### Fixed
+
+- *(cli)* stop stripping cargo environment variables ([#483](https://github.com/tokio-rs/topcoat/pull/483))
+- *(cli)* dev server `live!` reload ([#481](https://github.com/tokio-rs/topcoat/pull/481))
+- *(cli)* `cargo topcoat` not working ([#480](https://github.com/tokio-rs/topcoat/pull/480))
+- *(cli)* honor `[package] default-run` in `topcoat dev` ([#477](https://github.com/tokio-rs/topcoat/pull/477))
+
+### Other
+
+- restructure repository documentation ([#454](https://github.com/tokio-rs/topcoat/pull/454))
+- *(router)* use module router as the recommended example router ([#453](https://github.com/tokio-rs/topcoat/pull/453))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.8.1...topcoat-cli-v0.9.0) - 2026-09-24
+
+### Added
+
+- *(cli)* stateful hot reload ([#421](https://github.com/tokio-rs/topcoat/pull/421))
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.6.2...topcoat-cli-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+- *(cli)* port retry on dev server init ([#364](https://github.com/tokio-rs/topcoat/pull/364))
+- *(cli)* expose run method on `TopcoatCli` ([#363](https://github.com/tokio-rs/topcoat/pull/363))
+
+### Fixed
+
+- *(cli)* don't reload over in-flight navigations on reconnect ([#365](https://github.com/tokio-rs/topcoat/pull/365))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.5.0...topcoat-cli-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(cli)* warn on version mismatch between topcoat and cli ([#305](https://github.com/tokio-rs/topcoat/pull/305))
+
+### Fixed
+
+- *(cli)* add '/ws' to exempt OriginPolicy on dev ([#348](https://github.com/tokio-rs/topcoat/pull/348))
+- *(cli)* exclude build script outputs from final output detection ([#301](https://github.com/tokio-rs/topcoat/pull/301))
+- *(asset)* [**breaking**] write the bundle next to the executable it was scanned from ([#243](https://github.com/tokio-rs/topcoat/pull/243))
+
+### Other
+
+- sort imports
+- make request and response dedicated modules
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.4.0...topcoat-cli-v0.5.0) - 2026-07-27
+
+### Added
+
+- *(router)* server-sent events ([#218](https://github.com/tokio-rs/topcoat/pull/218))
+- *(mail)* email prototype ([#216](https://github.com/tokio-rs/topcoat/pull/216))
+- topcoat dev reports more build errors ([#208](https://github.com/tokio-rs/topcoat/pull/208))
+- support wasm asset bundling ([#199](https://github.com/tokio-rs/topcoat/pull/199))
+- websocket support ([#195](https://github.com/tokio-rs/topcoat/pull/195))
+
+### Fixed
+
+- *(asset)* improve asset linking system ([#217](https://github.com/tokio-rs/topcoat/pull/217))
+- formatter exiting with code 0 on failed stdin formatting ([#207](https://github.com/tokio-rs/topcoat/pull/207))
+- keep embedded asset declarations alive on MSVC builds ([#170](https://github.com/tokio-rs/topcoat/pull/170))
+- topcoat dev hot reload never succeeds on Windows (exe file lock) ([#169](https://github.com/tokio-rs/topcoat/pull/169))
+
+### Other
+
+- fix outdated documentation ([#211](https://github.com/tokio-rs/topcoat/pull/211))
+
+## [0.4.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.3.1...topcoat-cli-v0.4.0) - 2026-07-22
+
+### Added
+
+- bundler prallelism ([#157](https://github.com/tokio-rs/topcoat/pull/157))
+
+## [0.3.1](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.3.0...topcoat-cli-v0.3.1) - 2026-07-20
+
+### Added
+
+- more sophisticated dev server file watching ([#146](https://github.com/tokio-rs/topcoat/pull/146))
+
+## [0.3.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.2.0...topcoat-cli-v0.3.0) - 2026-07-19
+
+### Added
+
+- manual reload in dev server ([#144](https://github.com/tokio-rs/topcoat/pull/144))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.1.3...topcoat-cli-v0.2.0) - 2026-07-19
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.0.2](https://github.com/tokio-rs/topcoat/compare/topcoat-cli-v0.0.1...topcoat-cli-v0.0.2) - 2026-07-14
+
+### Other
+
+- release v0.0.1 ([#93](https://github.com/tokio-rs/topcoat/pull/93))
+- add udeps workflow ([#96](https://github.com/tokio-rs/topcoat/pull/96))
+- Merge crates ([#94](https://github.com/tokio-rs/topcoat/pull/94))
+- Work around release-plz bug
+- Topcoat UI components: `card`, `input`, `select`, and `dropdown_menu` ([#91](https://github.com/tokio-rs/topcoat/pull/91))
+- Use dotted topcoat paths
+- Release plz ([#92](https://github.com/tokio-rs/topcoat/pull/92))
+- Fix topcoat fmt line numbers ([#88](https://github.com/tokio-rs/topcoat/pull/88))
+- Topcoat UI registry crate ([#87](https://github.com/tokio-rs/topcoat/pull/87))
+- Add class macro ([#84](https://github.com/tokio-rs/topcoat/pull/84))
+- Share version and edition across workspace
+- Refactor ast/runtime split crates into grammar crates ([#83](https://github.com/tokio-rs/topcoat/pull/83))
+- Icon improvements ([#76](https://github.com/tokio-rs/topcoat/pull/76))
+- Support running commands in release mode ([#68](https://github.com/tokio-rs/topcoat/pull/68))
+- Purge special characters ([#61](https://github.com/tokio-rs/topcoat/pull/61))
+- Better dev server ([#60](https://github.com/tokio-rs/topcoat/pull/60))
+- Remove README headlines
+- Improve source code formatter ([#53](https://github.com/tokio-rs/topcoat/pull/53))
+- Pretty printing for font macros ([#52](https://github.com/tokio-rs/topcoat/pull/52))
+- Enable pedantic lints ([#45](https://github.com/tokio-rs/topcoat/pull/45))
+- Ditch mod.rs ([#42](https://github.com/tokio-rs/topcoat/pull/42))
+- Improve build times ([#41](https://github.com/tokio-rs/topcoat/pull/41))
+- Better docs ([#37](https://github.com/tokio-rs/topcoat/pull/37))
+- Topcoat UI ([#27](https://github.com/tokio-rs/topcoat/pull/27))
+- Exclude non-mutating file access events from the dev file watcher ([#21](https://github.com/tokio-rs/topcoat/pull/21))
+- Merge develop ([#11](https://github.com/tokio-rs/topcoat/pull/11))
+- New example project and docs ([#9](https://github.com/tokio-rs/topcoat/pull/9))
+- Fix cargo fingerprint issues
+- Serve dev script from dev server
+- Fix spinner issues
+- Add progress numbers for dev rebuild
+- Minor improvements
+- Fix warning
+- Refactor asset cli
+- Refactor CLI
+- Add clean command
+- Add web assets
+- Add default topcoat fmt
+- Refactor view crate ast folder
+- Add working route prototype
+- Improve dev server asset error handling
+- Minor improvements
+- Add incremental bundling
+- Refactor
+- Add bundle CLI
+- WIP
+- Add asset list functionality
+- Rename MacroRegistry to Registry
+- Fix warnings
+- Extract pretty printing into separate crate
+- Fix CI errors
+- Add formatting elapsed time print
+- Improve formatter file logic
+- Add topcoat fmt globbing
+- Move rust str formatting to view macro crate
+- Improve error printing
+- Pretty print progress
+- Start pretty printer
+- Support multiple watch dirs
+- Fix casing
+- Use stable port for dev server
+- First working dev server demo
+- Clean up Cargo.tomls
+- More improvements
+- Add prettier dev server output
+- Basic dev server
+- Add basic CLI crate
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-cli-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

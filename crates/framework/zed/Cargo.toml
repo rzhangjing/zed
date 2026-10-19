@@ -69,6 +69,11 @@ acp_thread.workspace = true
 acp_tools.workspace = true
 action_log.workspace = true
 activity_indicator.workspace = true
+# The topcoat admin demo, run **in this process** from `Help > Admin Demo`
+# (`src/zed/admin_demo.rs`). `crates/admin` is its own workspace (it inherits
+# topcoat's dependency table), so it is a path dependency here rather than a
+# member of this workspace; `crates/admin/src/lib.rs` exposes `serve_in`.
+admin = { path = "../../admin" }
 agent-client-protocol.workspace = true
 agent.workspace = true
 agent_servers = { workspace = true, optional = true }

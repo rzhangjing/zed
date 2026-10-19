@@ -1,0 +1,16 @@
+# Build output
+dist/*
+!dist/index.js
+!dist/coherence.js
+
+# Node.js
+node_modules
+
+# Yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

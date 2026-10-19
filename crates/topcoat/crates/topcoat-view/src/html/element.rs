@@ -1,0 +1,125 @@
+use topcoat_core::context::Cx;
+
+use crate::{PartsWriter, PromotedStr, StaticStr, Unescaped};
+
+/// Converts a value used as an element name into view parts.
+///
+/// Implement this trait to use a type as a dynamic element name in
+/// [`view!`](https://docs.rs/topcoat/latest/topcoat/view/macro.view.html):
+///
+/// ```rust
+/// # use topcoat::view::{View, component, view};
+/// # #[component]
+/// # async fn example() -> topcoat::Result<impl View> {
+/// # let tag_name = "div";
+/// Ok(view! {
+///     <(tag_name)></(tag_name)>
+/// })
+/// # }
+/// ```
+pub trait ElementNameViewParts {
+    /// Appends this element name to the view being built.
+    fn into_view_parts(self, cx: &Cx, parts: &mut PartsWriter<'_>);
+}
+
+impl ElementNameViewParts for String {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_string(self);
+    }
+}
+
+impl ElementNameViewParts for &str {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_str(self);
+    }
+}
+
+impl ElementNameViewParts for PromotedStr {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_promoted_str(self.0);
+    }
+}
+
+impl ElementNameViewParts for StaticStr {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_static_str(self.0);
+    }
+}
+
+impl ElementNameViewParts for Unescaped<String> {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_string_unescaped(self.0);
+    }
+}
+
+impl ElementNameViewParts for Unescaped<&'static str> {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_static_str_unescaped(self.0);
+    }
+}
+
+impl ElementNameViewParts for Unescaped<PromotedStr> {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_promoted_str_unescaped(self.0.0);
+    }
+}
+
+impl ElementNameViewParts for Unescaped<StaticStr> {
+    #[inline]
+    fn into_view_parts(self, _cx: &Cx, parts: &mut PartsWriter<'_>) {
+        parts.push_static_str_unescaped(self.0.0);
+    }
+}
+
+impl ElementNameViewParts for &String {
+    #[inline]
+    fn into_view_parts(self, cx: &Cx, parts: &mut PartsWriter<'_>) {
+        self.as_str().into_view_parts(cx, parts);
+    }
+}
+
+impl<'b, T: ?Sized> ElementNameViewParts for &&'b T
+where
+    &'b T: ElementNameViewParts,
+{
+    #[inline]
+    fn into_view_parts(self, cx: &Cx, parts: &mut PartsWriter<'_>) {
+        (*self).into_view_parts(cx, parts);
+    }
+}
+
+macro_rules! impl_tuple {
+    ($($ty:ident),+) => {
+        impl<$($ty),+> ElementNameViewParts for ($($ty,)+)
+        where
+            $($ty: ElementNameViewParts,)+
+        {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn into_view_parts(self, cx: &Cx, parts: &mut PartsWriter<'_>) {
+                let ($($ty,)+) = self;
+                $($ty.into_view_parts(cx, parts);)+
+            }
+        }
+    };
+}
+
+impl_tuple!(T1);
+impl_tuple!(T1, T2);
+impl_tuple!(T1, T2, T3);
+impl_tuple!(T1, T2, T3, T4);
+impl_tuple!(T1, T2, T3, T4, T5);
+impl_tuple!(T1, T2, T3, T4, T5, T6);
+impl_tuple!(T1, T2, T3, T4, T5, T6, T7);
+impl_tuple!(T1, T2, T3, T4, T5, T6, T7, T8);
+impl_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9);
+impl_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+impl_tuple!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);

@@ -1,0 +1,89 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.9.0...topcoat-router-macro-v0.10.0) - 2026-10-03
+
+### Added
+
+- *(router)* module_param! macro ([#460](https://github.com/tokio-rs/topcoat/pull/460))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.8.1...topcoat-router-macro-v0.9.0) - 2026-09-24
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+
+## [0.8.1](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.8.0...topcoat-router-macro-v0.8.1) - 2026-09-13
+
+### Added
+
+- *(router)* trailing slash support and automatic redirects ([#407](https://github.com/tokio-rs/topcoat/pull/407))
+- *(router)* relative module router routes  ([#406](https://github.com/tokio-rs/topcoat/pull/406))
+
+## [0.8.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.7.0...topcoat-router-macro-v0.8.0) - 2026-09-09
+
+### Added
+
+- *(runtime)* [**breaking**] morph HTML after shard/page rerun instead of replacing it ([#392](https://github.com/tokio-rs/topcoat/pull/392))
+
+### Fixed
+
+- *(router)* treat an empty form or query value as None for Option<T> ([#383](https://github.com/tokio-rs/topcoat/pull/383))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.6.2...topcoat-router-macro-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.5.0...topcoat-router-macro-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(router)* `href!` macro ([#350](https://github.com/tokio-rs/topcoat/pull/350))
+- *(core)* [**breaking**] add scoped context using `cx.with(...)` ([#338](https://github.com/tokio-rs/topcoat/pull/338))
+- *(core)* [**breaking**] make Cx detachable, remove CxBuilder ([#322](https://github.com/tokio-rs/topcoat/pull/322))
+- *(router)* [**breaking**] add not_found macro and no longer run layers and layouts by default on unmatched requests ([#298](https://github.com/tokio-rs/topcoat/pull/298))
+- *(router)* [**breaking**] replace path parameter attribute macro ([#242](https://github.com/tokio-rs/topcoat/pull/242))
+
+### Other
+
+- *(router)* [**breaking**] replace handler structs with traits in preparation for href ([#346](https://github.com/tokio-rs/topcoat/pull/346))
+- *(router)* remove PathBuf Arc pointer indirection ([#323](https://github.com/tokio-rs/topcoat/pull/323))
+- make request and response dedicated modules
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.4.0...topcoat-router-macro-v0.5.0) - 2026-07-27
+
+### Added
+
+- *(router)* server-sent events ([#218](https://github.com/tokio-rs/topcoat/pull/218))
+- make page HTTP methods customizable ([#181](https://github.com/tokio-rs/topcoat/pull/181))
+- add support for routes that handle multiple (or all) methods ([#180](https://github.com/tokio-rs/topcoat/pull/180))
+
+### Other
+
+- fix outdated documentation ([#211](https://github.com/tokio-rs/topcoat/pull/211))
+- clarify module router paths and parameter handling ([#185](https://github.com/tokio-rs/topcoat/pull/185))
+- [**breaking**] dedicated router error module ([#183](https://github.com/tokio-rs/topcoat/pull/183))
+- improve router macro docs ([#178](https://github.com/tokio-rs/topcoat/pull/178))
+- improve router macro docs
+- [**breaking**] pass layouts the rendered Result<View> instead of a Slot future ([#166](https://github.com/tokio-rs/topcoat/pull/166))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-macro-v0.1.3...topcoat-router-macro-v0.2.0) - 2026-07-19
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-router-macro-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

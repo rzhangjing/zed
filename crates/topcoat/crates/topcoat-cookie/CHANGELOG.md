@@ -1,0 +1,65 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cookie-v0.9.0...topcoat-cookie-v0.10.0) - 2026-10-03
+
+### Fixed
+
+- *(cli)* `cargo topcoat` not working ([#480](https://github.com/tokio-rs/topcoat/pull/480))
+
+### Other
+
+- *(router)* use module router as the recommended example router ([#453](https://github.com/tokio-rs/topcoat/pull/453))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cookie-v0.8.1...topcoat-cookie-v0.9.0) - 2026-09-24
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+
+## [0.8.1](https://github.com/tokio-rs/topcoat/compare/topcoat-cookie-v0.8.0...topcoat-cookie-v0.8.1) - 2026-09-13
+
+### Fixed
+
+- *(cookie)* cookies not being applied when responding with an error ([#408](https://github.com/tokio-rs/topcoat/pull/408))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cookie-v0.5.0...topcoat-cookie-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(core)* [**breaking**] add scoped context using `cx.with(...)` ([#338](https://github.com/tokio-rs/topcoat/pull/338))
+- *(cookie)* protect cookie jar from being written to after response… ([#324](https://github.com/tokio-rs/topcoat/pull/324))
+- *(core)* [**breaking**] make Cx detachable, remove CxBuilder ([#322](https://github.com/tokio-rs/topcoat/pull/322))
+- use #[track_caller] where appropriate ([#262](https://github.com/tokio-rs/topcoat/pull/262))
+
+### Other
+
+- *(router)* [**breaking**] replace handler structs with traits in preparation for href ([#346](https://github.com/tokio-rs/topcoat/pull/346))
+- sort imports
+- make request and response dedicated modules
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cookie-v0.4.0...topcoat-cookie-v0.5.0) - 2026-07-27
+
+### Added
+
+- support wasm builds ([#191](https://github.com/tokio-rs/topcoat/pull/191))
+- add support for routes that handle multiple (or all) methods ([#180](https://github.com/tokio-rs/topcoat/pull/180))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-cookie-v0.1.3...topcoat-cookie-v0.2.0) - 2026-07-19
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-cookie-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

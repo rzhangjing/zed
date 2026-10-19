@@ -1,0 +1,6 @@
+view! {
+    <br>
+    <hr>
+    <img>
+    <input>
+}

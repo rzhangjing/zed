@@ -385,7 +385,14 @@ members = [
 ]
 default-members = ["crates/framework/zed"]
 
-exclude = ["vendor/octocrab"]
+# `crates/admin` is the topcoat demo (`Help > Admin Demo`) and `crates/topcoat`
+# is the copy of topcoat it is built against. Each keeps its own workspace root
+# (they inherit `workspace.package`/`workspace.dependencies` from it), and
+# `crates/framework/zed` reaches `crates/admin` as a path dependency. Excluding
+# both trees keeps cargo from adopting them as members of this workspace, which
+# would make every `workspace = true` key in their manifests resolve against this
+# file instead (and fail: this file has no `description` and no topcoat table).
+exclude = ["vendor/octocrab", "crates/admin", "crates/topcoat"]
 
 [workspace.package]
 publish = false

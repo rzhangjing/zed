@@ -1,0 +1,77 @@
+# Embedded admin demo.
+#
+# This is topcoat's `demos/admin`, copied to `crates/admin` so that Zed's
+# `Help > Admin Demo` window can run it **in this process**:
+# `crates/framework/zed` depends on this crate by path and calls
+# `admin::serve_on(listener, shutdown)`.
+#
+# Because it no longer sits below `crates/topcoat/demos/`, it is not a member of
+# topcoat's own workspace. The `[workspace]` table below makes it its own
+# workspace root, so the `*.workspace = true` inheritance in `[package]` still
+# resolves; the path dependencies point at the copy of topcoat vendored under
+# `crates/topcoat/crates/`.
+[workspace]
+resolver = "2"
+
+[workspace.package]
+version = "0.10.0"
+edition = "2024"
+rust-version = "1.98"
+
+# Mirrors topcoat's workspace dependency table for the entries this demo uses.
+[workspace.dependencies]
+argon2 = "0.6"
+jiff = "0.2"
+serde = "1"
+toasty = "0.11"
+toasty-cli = "0.11"
+tokio = "1.51.1"
+topcoat = { path = "../topcoat/crates/topcoat" }
+topcoat-asset = { path = "../topcoat/crates/topcoat-asset" }
+topcoat-ui = { path = "../topcoat/crates/topcoat-ui" }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[workspace.lints.clippy]
+mod_module_files = "deny"
+pedantic = { level = "warn", priority = -1 }
+too_many_lines = "allow"
+
+[package]
+name = "admin"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+argon2.workspace = true
+jiff.workspace = true
+serde = { workspace = true, features = ["derive"] }
+toasty = { workspace = true, features = ["jiff", "migration", "sqlite"] }
+toasty-cli.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+topcoat = { workspace = true, features = ["font-fontsource", "icon-iconify", "tailwind", "ui"] }
+# `admin-bundle-assets` uses the bundler. It is **not** optional: topcoat's
+# macros resolve `asset!`/`fontsource_font!` against a direct `topcoat-asset`
+# dependency when the manifest has one ("direct dependencies take precedence
+# over the facade"), so an optional dependency that is off would leave the
+# generated `topcoat_asset::…` paths unresolved.
+topcoat-asset = { workspace = true, features = ["bundler"] }
+
+[[bin]]
+name = "admin-bundle-assets"
+path = "src/bin/bundle_assets.rs"
+
+[build-dependencies]
+# We cannot use `workspace = true` with `default-features = false`.
+topcoat = { path = "../topcoat/crates/topcoat", default-features = false, features = ["icon-iconify", "tailwind"] }
+
+[dev-dependencies]
+topcoat-ui.workspace = true
+
+[lints]
+workspace = true
