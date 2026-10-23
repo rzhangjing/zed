@@ -613,18 +613,13 @@ fn main() {
         workspace::init(app_state.clone(), cx);
         ui_prompt::init(cx);
 
-        go_to_line::init(cx);
         file_finder::init(cx);
         tab_switcher::init(cx);
         outline::init(cx);
-        call_hierarchy::init(cx);
-        project_symbols::init(cx);
         project_panel::init(cx);
         outline_panel::init(cx);
         tasks_ui::init(cx);
-        snippets_ui::init(cx);
         search::init(cx);
-        lsp_locations::init(cx);
         cx.set_global(workspace::PaneSearchBarCallbacks {
             setup_search_bar: |languages, toolbar, window, cx| {
                 let search_bar = cx.new(|cx| search::BufferSearchBar::new(languages, window, cx));
@@ -636,8 +631,6 @@ fn main() {
         });
         terminal_view::init(cx);
         journal::init(app_state.clone(), cx);
-        encoding_selector::init(cx);
-        line_ending_selector::init(cx);
         toolchain_selector::init(cx);
         theme_selector::init(cx);
         settings_profile_selector::init(cx);
@@ -653,7 +646,6 @@ fn main() {
         inspector_ui::init(app_state.clone(), cx);
         json_schema_store::init(cx);
         miniprofiler_ui::init(*STARTUP_TIME.get().unwrap(), cx);
-        which_key::init(cx);
         #[cfg(target_os = "windows")]
         etw_tracing::init(cx);
 

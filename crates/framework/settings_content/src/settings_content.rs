@@ -182,8 +182,6 @@ pub struct SettingsContent {
     /// Settings related to the file finder.
     pub file_finder: Option<FileFinderSettingsContent>,
 
-    pub call_hierarchy: Option<CallHierarchySettingsContent>,
-
     pub tabs: Option<ItemSettingsContent>,
     pub tab_bar: Option<TabBarSettingsContent>,
     pub status_bar: Option<StatusBarSettingsContent>,
@@ -272,9 +270,6 @@ pub struct SettingsContent {
     // Settings related to calls in Zed
     pub calls: Option<CallSettingsContent>,
 
-    /// Settings for the which-key popup.
-    pub which_key: Option<WhichKeySettingsContent>,
-
     /// Number of lines to search for modelines at the beginning and end of files.
     /// Modelines contain editor directives (e.g., vim/emacs settings) that configure
     /// the editor behavior for specific files.
@@ -358,12 +353,12 @@ impl SettingsContent {
 fallible_options::flattened_deserialize!(SettingsContent {
     sections: { project, theme, workspace, editor },
     options: {
-        call_hierarchy, file_finder, tabs, tab_bar, status_bar, preview_tabs, agent,
+        file_finder, tabs, tab_bar, status_bar, preview_tabs, agent,
         agent_servers, audio, auto_update, base_keymap, collaboration_panel, diagnostics,
         global_lsp_settings, image_viewer, markdown_preview, repl, hide_mouse,
         journal, log, line_indicator_format, language_models, outline_panel, project_panel,
         node, proxy, reduce_motion, session, telemetry, terminal,
-        title_bar, calls, which_key, modeline_lines, feature_flags,
+        title_bar, calls, modeline_lines, feature_flags,
         instrumentation,
     },
     defaults: {},
@@ -718,15 +713,6 @@ impl ModalWidthContent {
     }
 }
 
-#[with_fallible_options]
-#[derive(Clone, Default, Serialize, Deserialize, JsonSchema, MergeFrom, Debug, PartialEq)]
-pub struct CallHierarchySettingsContent {
-    /// Determines how much space the call hierarchy picker can take up in relation to the available window width.
-    ///
-    /// Default: medium
-    pub modal_max_width: Option<ModalWidthContent>,
-}
-
 /// Settings specific to journaling
 #[with_fallible_options]
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, MergeFrom, PartialEq)]
@@ -956,21 +942,6 @@ pub struct ReplSettingsContent {
     ///
     /// Default: 0
     pub output_max_height_lines: Option<usize>,
-}
-
-/// Settings for configuring the which-key popup behaviour.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema, MergeFrom)]
-pub struct WhichKeySettingsContent {
-    /// Whether to show the which-key popup when holding down key combinations.
-    /// When enabled, the pending keystrokes indicator remains visible, but its binding preview
-    /// popover is disabled.
-    ///
-    /// Default: false
-    pub enabled: Option<bool>,
-    /// Delay in milliseconds before showing the which-key popup.
-    ///
-    /// Default: 1000
-    pub delay_ms: Option<u64>,
 }
 
 // An ExtendingVec in the settings can only accumulate new values.

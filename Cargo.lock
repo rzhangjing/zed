@@ -3365,32 +3365,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ade8366b8bd5ba243f0a58f036cc0ca8a2f069cff1a2351ef1cac6b083e16fc0"
 
 [[package]]
-name = "call_hierarchy"
-version = "0.1.0"
-dependencies = [
- "editor",
- "futures",
- "fuzzy",
- "gpui",
- "language",
- "log",
- "lsp",
- "menu",
- "picker",
- "project",
- "proto",
- "serde_json",
- "settings",
- "theme",
- "theme_settings",
- "tree-sitter-rust",
- "ui",
- "util",
- "workspace",
- "zed_actions",
-]
-
-[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4405,7 +4379,6 @@ dependencies = [
  "db",
  "editor",
  "fuzzy_nucleo",
- "go_to_line",
  "gpui",
  "language",
  "log",
@@ -6583,22 +6556,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "encoding_selector"
-version = "0.1.0"
-dependencies = [
- "editor",
- "encoding_rs",
- "fuzzy",
- "gpui",
- "language",
- "picker",
- "project",
- "ui",
- "util",
- "workspace",
-]
-
-[[package]]
 name = "endi"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8632,27 +8589,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c4ee00b289aba7a9e5306d57c2d05499b2e5dc427f84ac708bd2c090212cf3e"
 dependencies = [
  "gl_generator",
-]
-
-[[package]]
-name = "go_to_line"
-version = "0.1.0"
-dependencies = [
- "editor",
- "gpui",
- "indoc",
- "language",
- "menu",
- "multi_buffer",
- "project",
- "rope",
- "serde_json",
- "settings",
- "text",
- "theme",
- "ui",
- "util",
- "workspace",
 ]
 
 [[package]]
@@ -11400,19 +11336,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "line_ending_selector"
-version = "0.1.0"
-dependencies = [
- "editor",
- "gpui",
- "language",
- "picker",
- "project",
- "ui",
- "workspace",
-]
-
-[[package]]
 name = "linebender_resource_handle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11769,31 +11692,6 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
-]
-
-[[package]]
-name = "lsp_locations"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "collections",
- "editor",
- "file_icons",
- "fuzzy",
- "gpui",
- "indoc",
- "language",
- "log",
- "lsp",
- "picker",
- "picker_preview",
- "project",
- "settings",
- "text",
- "theme_settings",
- "ui",
- "util",
- "workspace",
 ]
 
 [[package]]
@@ -16119,31 +16017,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "project_symbols"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "editor",
- "futures",
- "fuzzy",
- "gpui",
- "language",
- "lsp",
- "ordered-float",
- "picker",
- "picker_preview",
- "project",
- "release_channel",
- "semver",
- "serde_json",
- "settings",
- "theme",
- "theme_settings",
- "util",
- "workspace",
-]
-
-[[package]]
 name = "prompt_store"
 version = "0.1.0"
 dependencies = [
@@ -19398,23 +19271,6 @@ dependencies = [
  "serde_json_lenient",
  "snippet",
  "util",
-]
-
-[[package]]
-name = "snippets_ui"
-version = "0.1.0"
-dependencies = [
- "file_icons",
- "fuzzy",
- "gpui",
- "language",
- "open_path_prompt",
- "paths",
- "picker",
- "settings",
- "ui",
- "util",
- "workspace",
 ]
 
 [[package]]
@@ -24510,22 +24366,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "which_key"
-version = "0.1.0"
-dependencies = [
- "collections",
- "command_palette",
- "gpui",
- "settings",
- "theme",
- "theme_settings",
- "ui",
- "util",
- "workspace",
- "zed_actions",
-]
-
-[[package]]
 name = "whoami"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -26051,7 +25891,6 @@ dependencies = [
  "auto_update_ui",
  "bevy",
  "breadcrumbs",
- "call_hierarchy",
  "cargo_metadata",
  "cesium-app",
  "cesium-bevy-render",
@@ -26074,7 +25913,6 @@ dependencies = [
  "edit_prediction",
  "edit_prediction_ui",
  "editor",
- "encoding_selector",
  "env_logger",
  "etw_tracing",
  "feature_flags",
@@ -26082,7 +25920,6 @@ dependencies = [
  "file_finder",
  "fs",
  "futures",
- "go_to_line",
  "gpui",
  "gpui-kit",
  "gpui-kit-showcase",
@@ -26101,9 +25938,7 @@ dependencies = [
  "language",
  "language_model",
  "language_models",
- "line_ending_selector",
  "log",
- "lsp_locations",
  "markdown 0.1.0",
  "markdown_preview",
  "menu",
@@ -26124,7 +25959,6 @@ dependencies = [
  "profiling",
  "project",
  "project_panel",
- "project_symbols",
  "prompt_store",
  "proto",
  "rayon",
@@ -26147,7 +25981,6 @@ dependencies = [
  "smallvec 1.15.2",
  "smol",
  "snippet_provider",
- "snippets_ui",
  "spin 0.10.0",
  "svg_preview",
  "sysinfo 0.39.6",
@@ -26176,7 +26009,6 @@ dependencies = [
  "util",
  "uuid",
  "watch",
- "which_key",
  "windows 0.62.2",
  "windows_resources",
  "workspace",

@@ -642,31 +642,18 @@ pub fn initialize_workspace(app_state: Arc<AppState>, cx: &mut App) {
             cx.new(|cx| diagnostics::items::DiagnosticIndicator::new(workspace, cx));
         let active_file_name = cx.new(|_| workspace::active_file_name::ActiveFileName::new());
         let activity_indicator = activity_indicator::ActivityIndicator::new(workspace, window, cx);
-        let active_buffer_encoding =
-            cx.new(|_| encoding_selector::ActiveBufferEncoding::new(workspace));
         let active_toolchain_language =
             cx.new(|cx| toolchain_selector::ActiveToolchain::new(workspace, window, cx));
-        let pending_keystrokes_indicator =
-            cx.new(|cx| which_key::PendingKeystrokesIndicator::new(window, cx));
         let image_info = cx.new(|_cx| ImageInfo::new(workspace));
 
-        let cursor_position =
-            cx.new(|_| go_to_line::cursor_position::CursorPosition::new(workspace));
-        let line_ending_indicator =
-            cx.new(|_| line_ending_selector::LineEndingIndicator::default());
         workspace.status_bar().update(cx, |status_bar, cx| {
             status_bar.add_left_item(search_button, window, cx);
             status_bar.add_left_item(diagnostic_summary, window, cx);
             status_bar.add_left_item(active_file_name, window, cx);
             status_bar.add_left_item(activity_indicator, window, cx);
             status_bar.add_right_item(edit_prediction_ui, window, cx);
-            status_bar.add_right_item(active_buffer_encoding, window, cx);
             status_bar.add_right_item(active_toolchain_language, window, cx);
-            status_bar.add_right_item(line_ending_indicator, window, cx);
-            status_bar.add_right_item(cursor_position, window, cx);
             status_bar.add_right_item(image_info, window, cx);
-            // Keep these last so they stay leftmost and can change without moving the other items.
-            status_bar.add_right_item(pending_keystrokes_indicator, window, cx);
         });
 
         let panels_task = initialize_panels(window, cx);
@@ -5623,7 +5610,6 @@ mod tests {
                 "diagnostics",
                 "edit_prediction",
                 "editor",
-                "encoding_selector",
                 "feedback",
                 "file_finder",
                 "git",
@@ -5635,7 +5621,6 @@ mod tests {
                 "keymap_editor",
                 "keystroke_input",
                 "welcome",
-                "line_ending_selector",
                 "markdown",
                 "menu",
                 "multi_workspace",
@@ -5655,7 +5640,6 @@ mod tests {
                 "settings_editor",
                 "settings_profile_selector",
                 "skill_creator",
-                "snippets",
                 "svg",
                 "tab_switcher",
                 "tabular_data",
@@ -6268,7 +6252,6 @@ mod tests {
             tasks_ui::init(cx);
             initialize_workspace(app_state.clone(), cx);
             search::init(cx);
-            lsp_locations::init(cx);
             cx.set_global(workspace::PaneSearchBarCallbacks {
                 setup_search_bar: |languages, toolbar, window, cx| {
                     let search_bar =

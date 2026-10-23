@@ -1673,48 +1673,6 @@ fn editor_page() -> SettingsPage {
         ]
     }
 
-    fn which_key_section() -> [SettingsPageItem; 3] {
-        [
-            SettingsPageItem::SectionHeader("Which-key Menu"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Show Which-key Menu",
-                description: "Display the which-key menu with matching bindings while a multi-stroke binding is pending. The pending keystrokes indicator remains visible, but its binding preview popover is disabled.",
-                field: Box::new(SettingField {
-                    json_path: Some("which_key.enabled"),
-                    pick: |settings_content| {
-                        settings_content
-                            .which_key
-                            .as_ref()
-                            .and_then(|settings| settings.enabled.as_ref())
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content.which_key.get_or_insert_default().enabled = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Menu Delay",
-                description: "Delay in milliseconds before the which-key menu appears.",
-                field: Box::new(SettingField {
-                    json_path: Some("which_key.delay_ms"),
-                    pick: |settings_content| {
-                        settings_content
-                            .which_key
-                            .as_ref()
-                            .and_then(|settings| settings.delay_ms.as_ref())
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content.which_key.get_or_insert_default().delay_ms = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
     fn multibuffer_section() -> [SettingsPageItem; 7] {
         [
             SettingsPageItem::SectionHeader("Multibuffer"),
@@ -2708,7 +2666,6 @@ fn editor_page() -> SettingsPage {
 
     let items = concat_sections!(
         auto_save_section(),
-        which_key_section(),
         multibuffer_section(),
         scrolling_section(),
         signature_help_section(),
@@ -3488,7 +3445,7 @@ fn window_and_layout_page() -> SettingsPage {
             }),
             SettingsPageItem::SettingItem(SettingItem {
                 title: "Pending Keystrokes Indicator",
-                description: "Show an indicator with a countdown while a multi-stroke key binding is pending. Its binding preview popover is disabled when the which-key menu is enabled.",
+                description: "Show an indicator with a countdown while a multi-stroke key binding is pending.",
                 field: Box::new(SettingField {
                     json_path: Some("status_bar.pending_keystrokes_indicator"),
                     pick: |settings_content| {

@@ -44,8 +44,7 @@ Jump to where a symbol is defined with {#kb editor::GoToDefinition} (or `Cmd+Cli
 
 ## Go to Symbol {#go-to-symbol}
 
-- **Current file:** {#kb outline::Toggle} opens an outline of symbols in the active file
-- **Entire project:** {#kb project_symbols::Toggle} searches symbols across all files
+- Use {#kb outline::Toggle} to open an outline of symbols in the active file
 
 ## Outline Panel {#outline-panel}
 
@@ -69,7 +68,6 @@ Quickly switch between open tabs with {#kb tab_switcher::Toggle}. Tabs are sorte
 | Go to definition  | {#kb editor::GoToDefinition}     |
 | Find references   | {#kb editor::FindAllReferences}  |
 | Symbol in file    | {#kb outline::Toggle}            |
-| Symbol in project | {#kb project_symbols::Toggle}    |
 | Outline Panel     | {#kb outline_panel::ToggleFocus} |
 | Tab Switcher      | {#kb tab_switcher::Toggle}       |
 

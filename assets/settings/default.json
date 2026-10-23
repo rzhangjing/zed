@@ -1385,13 +1385,6 @@
     // If `enable_preview_file_from_code_navigation` or `enable_preview_multibuffer_from_code_navigation` is also true, the new tab may replace the existing one.
     "enable_keep_preview_on_code_navigation": false,
   },
-  // Settings related to the call hierarchy picker.
-  "call_hierarchy": {
-    // Determines how much space the call hierarchy picker can take up in relation to the available window width.
-    //
-    // Default: medium
-    "modal_max_width": "medium",
-  },
   // Settings related to the file finder.
   "file_finder": {
     // Whether to show file icons in the file finder.
@@ -1716,8 +1709,7 @@
     // Control when to show the active encoding in the status bar.
     "active_encoding_button": "non_utf8",
     // Whether to show an indicator with a countdown while timed multi-stroke
-    // input is pending. Hovering the indicator pauses the timeout. Its binding
-    // preview popover is disabled when "which_key.enabled" is true.
+    // input is pending. Hovering the indicator pauses the timeout.
     "pending_keystrokes_indicator": true,
   },
   // Settings specific to the terminal
@@ -2318,15 +2310,6 @@
     // Maximum number of columns of output to display before scaling images.
     // Set to 0 to disable output width limits.
     "output_max_width_columns": 0,
-  },
-  // Which-key popup settings
-  "which_key": {
-    // Whether to show the which-key popup when holding down key combinations.
-    // When enabled, the pending keystrokes indicator remains visible, but its
-    // binding preview popover is disabled.
-    "enabled": false,
-    // Delay in milliseconds before showing the which-key popup.
-    "delay_ms": 1000,
   },
   // Settings overrides to use when using Zed Preview.
   // Mostly useful for developers who are managing multiple instances of Zed.

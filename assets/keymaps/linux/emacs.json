@@ -15,7 +15,7 @@
     // NOTE: in macos the 'ctrl-x' 'ctrl-p' and 'ctrl-n' rebindings are not needed, since they default to 'cmd'.
     "context": "Editor",
     "bindings": {
-      "ctrl-g": null, // currently activates `go_to_line::Toggle` when there is nothing to cancel
+      "ctrl-g": null, // unbind so a propagated ctrl-g does not fall through to a fallback binding
       "ctrl-x": null, // currently activates `editor::Cut` if no following key is pressed for 1 second
       // `null` only stops binding resolution in a user keymap, so these use a targeted unbind:
       // `editor::MoveUp`/`MoveDown` propagate when the cursor doesn't move, which at the ends of
@@ -28,8 +28,6 @@
     "context": "Editor",
     "bindings": {
       "ctrl-g": "editor::Cancel",
-      "alt-g g": "go_to_line::Toggle", // goto-line
-      "alt-g alt-g": "go_to_line::Toggle", // goto-line
       "ctrl-space": "editor::SetMark", // set-mark
       "ctrl-@": "editor::SetMark", // set-mark
       "ctrl-x ctrl-x": "editor::SwapSelectionEnds", // exchange-point-and-mark

@@ -41,7 +41,7 @@ If you're coming from WebStorm, the fastest way to feel at home is to use the Je
 2. Search for `Base Keymap`
 3. Select `JetBrains`
 
-This maps familiar shortcuts like {#kb:jetbrains project_symbols::Toggle} for Go to Class and {#kb:jetbrains command_palette::Toggle} for Find Action.
+This maps familiar shortcuts like {#kb:jetbrains file_finder::Toggle} for Go to File and {#kb:jetbrains command_palette::Toggle} for Find Action.
 
 In editors, the JetBrains keymap also makes `Alt+Left` / `Alt+Right` and `Shift+Alt+Left` / `Shift+Alt+Right` move and select by subword, so identifiers like `camelCase` and `snake_case` behave like WebStorm's CamelHumps navigation.
 
@@ -76,7 +76,7 @@ Once inside a project:
 
 - Use {#kb:jetbrains file_finder::Toggle} to jump between files quickly (like WebStorm's "Recent Files")
 - Use {#kb:jetbrains command_palette::Toggle} to open the Command Palette (like WebStorm's "Search Everywhere")
-- Use {#kb:jetbrains project_symbols::Toggle} to search for symbols (like WebStorm's "Go to Symbol")
+- Use {#kb:jetbrains outline::Toggle} to browse symbols in the current file (like WebStorm's "File Structure")
 
 Open buffers appear as tabs across the top. The Project Panel shows your file tree. Toggle it with {#kb:jetbrains project_panel::ToggleFocus} (just like WebStorm's Project tool window).
 
@@ -91,7 +91,6 @@ If you chose the JetBrains keymap during onboarding, most of your shortcuts shou
 | Search Everywhere             | {#kb:jetbrains command_palette::Toggle}                                                               |
 | Find Action / Command Palette | {#kb:jetbrains command_palette::Toggle}                                                               |
 | Go to File                    | {#kb:jetbrains file_finder::Toggle}                                                                   |
-| Go to Symbol                  | {#kb:jetbrains project_symbols::Toggle}                                                               |
 | Recent Files                  | {#kb:jetbrains file_finder::Toggle}                                                                   |
 | Go to Definition              | {#kb:jetbrains editor::GoToDefinition}                                                                |
 | Find Usages                   | {#kb:jetbrains editor::FindAllReferences}                                                             |
@@ -145,7 +144,7 @@ WebStorm's index enables features like finding all usages across your entire cod
 
 **How to adapt:**
 
-- Search symbols across the project with {#kb:jetbrains project_symbols::Toggle} (powered by the TypeScript language server)
+- Find symbol definitions with {#kb:jetbrains editor::GoToDefinition} (powered by the TypeScript language server)
 - Find files by name with {#kb:jetbrains file_finder::Toggle}
 - Use {#kb pane::DeploySearch} for text search—it stays fast even in large monorepos
 - Run `tsc --noEmit` or `eslint .` from the terminal when you need deeper project-wide analysis

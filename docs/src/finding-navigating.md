@@ -39,17 +39,7 @@ Jump to where a symbol is defined with {#kb editor::GoToDefinition} (or `Cmd+Cli
 
 ## Go to Symbol
 
-- **Current file:** {#kb outline::Toggle} opens an outline of symbols in the active file
-- **Entire project:** {#kb project_symbols::Toggle} searches symbols across all files
-
-## Call Hierarchy
-
-With the cursor on a function, {#action call_hierarchy::ShowIncomingCalls} ({#kb call_hierarchy::ShowIncomingCalls}) lists the functions that call it, and {#action call_hierarchy::ShowOutgoingCalls} lists the functions it calls.
-Both open a picker; selecting an entry jumps to the call site, and the secondary confirm opens it in an adjacent pane.
-While the picker is open, {#action call_hierarchy::ToggleDirection} switches between callers and callees, {#action menu::SelectChild} re-roots the hierarchy at the selected function to explore one level deeper, and {#action menu::SelectParent} steps back up; the picker's footer shows the corresponding key bindings.
-Both actions are also available in the editor's right-click menu.
-The modal's width can be changed via the `call_hierarchy.modal_max_width` setting.
-This requires the language server to support call hierarchy.
+- Use {#kb outline::Toggle} to open an outline of symbols in the active file
 
 ## Outline Panel
 
@@ -74,7 +64,6 @@ Quickly switch between open tabs with {#kb tab_switcher::Toggle}. Tabs are sorte
 | Go to definition   | {#kb editor::GoToDefinition}         |
 | Find references    | {#kb editor::FindAllReferences}      |
 | Symbol in file     | {#kb outline::Toggle}                |
-| Symbol in project  | {#kb project_symbols::Toggle}        |
 | Outline Panel      | {#kb outline_panel::ToggleFocus}     |
 | Tab Switcher       | {#kb tab_switcher::Toggle}           |
 | Project Panel      | {#kb project_panel::ToggleFocus}     |

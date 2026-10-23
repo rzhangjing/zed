@@ -227,7 +227,6 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
                 MenuItem::action("Command Palette...", zed_actions::command_palette::Toggle),
                 MenuItem::separator(),
                 MenuItem::action("Go to File...", workspace::ToggleFileFinder::default()),
-                // MenuItem::action("Go to Symbol in Project", project_symbols::Toggle),
                 MenuItem::action(
                     "Go to Symbol in Editor...",
                     zed_actions::outline::ToggleOutline,
@@ -250,8 +249,6 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
                     "Find All References",
                     editor::actions::FindAllReferences::default(),
                 ),
-                MenuItem::action("Show Incoming Calls", call_hierarchy::ShowIncomingCalls),
-                MenuItem::action("Show Outgoing Calls", call_hierarchy::ShowOutgoingCalls),
                 MenuItem::separator(),
                 MenuItem::action("Next Problem", editor::actions::GoToDiagnostic::default()),
                 MenuItem::action(

@@ -547,7 +547,6 @@
       "shift-f12": "editor::GoToImplementation",
       "alt-ctrl-f12": "editor::GoToTypeDefinitionSplit",
       "alt-shift-f12": "editor::FindAllReferences",
-      "ctrl-k ctrl-h": "call_hierarchy::ShowIncomingCalls",
       "ctrl-m": "editor::MoveToEnclosingBracket", // from jetbrains
       "ctrl-|": "editor::MoveToEnclosingBracket",
       "ctrl-{": "editor::Fold",
@@ -605,7 +604,6 @@
     "context": "Editor && mode == full",
     "bindings": {
       "ctrl-shift-o": "outline::Toggle",
-      "ctrl-g": "go_to_line::Toggle",
     },
   },
   {
@@ -667,7 +665,6 @@
       "ctrl-k ctrl-t": "theme_selector::Toggle",
       "ctrl-k ctrl-shift-t": "theme::ToggleMode",
       "ctrl-alt-super-p": "settings_profile_selector::Toggle",
-      "ctrl-t": "project_symbols::Toggle",
       "ctrl-p": "file_finder::Toggle",
       "ctrl-shift-tab": ["tab_switcher::Toggle", { "select_last": true }],
       "ctrl-tab": "tab_switcher::Toggle",
@@ -680,7 +677,6 @@
       "ctrl-?": "agent::ToggleFocus",
       "alt-save": "workspace::SaveAll",
       "ctrl-alt-s": "workspace::SaveAll",
-      "ctrl-k n": "encoding_selector::Toggle",
       "ctrl-k ctrl-m": "toolchain::AddToolchain",
       "escape": "workspace::Unfollow",
       "ctrl-k ctrl-left": "workspace::ActivatePaneLeft",
@@ -1017,7 +1013,6 @@
   {
     "context": "CallHierarchyPicker > Picker > Editor",
     "bindings": {
-      "ctrl-k ctrl-h": "call_hierarchy::ToggleDirection",
       "ctrl-k right": "menu::SelectChild",
       "ctrl-k left": "menu::SelectParent",
     },

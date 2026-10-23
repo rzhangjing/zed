@@ -190,7 +190,6 @@ impl VsCodeSettings {
             collaboration_panel: None,
             diagnostics: None,
             editor: self.editor_settings_content(),
-            call_hierarchy: None,
             file_finder: None,
             global_lsp_settings: skip_default(GlobalLspSettingsContent {
                 semantic_token_rules: self.semantic_token_rules(),
@@ -225,7 +224,6 @@ impl VsCodeSettings {
             theme: Box::new(self.theme_settings_content()),
             title_bar: None,
             workspace: self.workspace_settings_content(),
-            which_key: None,
             modeline_lines: None,
             feature_flags: None,
             instrumentation: None,

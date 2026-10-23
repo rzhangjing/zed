@@ -815,9 +815,7 @@ mod tests {
 
     use super::*;
     use editor::Editor;
-    use go_to_line::GoToLine;
     use gpui::{TestAppContext, VisualTestContext};
-    use language::Point;
     use project::Project;
     use settings::KeymapFile;
     use workspace::{AppState, MultiWorkspace, Workspace};
@@ -1145,44 +1143,32 @@ mod tests {
         });
     }
 
-    #[gpui::test]
-    async fn test_go_to_line(cx: &mut TestAppContext) {
-        let app_state = init_test(cx);
-        let project = Project::test(app_state.fs.clone(), [], cx).await;
-        let (multi_workspace, cx) =
-            cx.add_window_view(|window, cx| MultiWorkspace::test_new(project.clone(), window, cx));
-        let workspace = multi_workspace.read_with(cx, |mw, _| mw.workspace().clone());
+    struct TestModal(FocusHandle);
 
-        cx.simulate_keystrokes("cmd-n");
+    impl TestModal {
+        fn new(_: &mut Window, cx: &mut Context<Self>) -> Self {
+            Self(cx.focus_handle())
+        }
+    }
 
-        let editor = workspace.update(cx, |workspace, cx| {
-            workspace.active_item_as::<Editor>(cx).unwrap()
-        });
-        editor.update_in(cx, |editor, window, cx| {
-            editor.set_text("1\n2\n3\n4\n5\n6\n", window, cx)
-        });
+    impl EventEmitter<DismissEvent> for TestModal {}
 
-        cx.simulate_keystrokes("cmd-shift-p");
-        cx.simulate_input("go to line: Toggle");
-        cx.simulate_keystrokes("enter");
+    impl Focusable for TestModal {
+        fn focus_handle(&self, _cx: &App) -> FocusHandle {
+            self.0.clone()
+        }
+    }
 
-        workspace.update(cx, |workspace, cx| {
-            assert!(workspace.active_modal::<GoToLine>(cx).is_some())
-        });
+    impl ModalView for TestModal {}
 
-        cx.simulate_keystrokes("3 enter");
-
-        editor.update_in(cx, |editor, window, cx| {
-            assert!(editor.focus_handle(cx).is_focused(window));
-            assert_eq!(
-                editor
-                    .selections
-                    .last::<Point>(&editor.display_snapshot(cx))
-                    .range()
-                    .start,
-                Point::new(2, 0)
-            );
-        });
+    impl Render for TestModal {
+        fn render(
+            &mut self,
+            _window: &mut Window,
+            _cx: &mut Context<TestModal>,
+        ) -> impl IntoElement {
+            div().track_focus(&self.0)
+        }
     }
 
     #[gpui::test]
@@ -1197,12 +1183,13 @@ mod tests {
         cx.simulate_keystrokes("cmd-n");
 
         for _ in 0..2 {
+            workspace.update_in(cx, |workspace, window, cx| {
+                workspace.toggle_modal(window, cx, TestModal::new);
+            });
             cx.simulate_keystrokes("cmd-shift-p");
-            cx.simulate_input("go to line: Toggle");
-            cx.simulate_keystrokes("enter");
 
             workspace.update(cx, |workspace, cx| {
-                assert!(workspace.active_modal::<GoToLine>(cx).is_some());
+                assert!(workspace.active_modal::<CommandPalette>(cx).is_some());
             });
         }
     }
@@ -1213,7 +1200,6 @@ mod tests {
             theme_settings::init(theme::LoadThemes::JustBase, cx);
             editor::init(cx);
             menu::init();
-            go_to_line::init(cx);
             workspace::init(app_state.clone(), cx);
             init(cx);
             cx.bind_keys(KeymapFile::load_panic_on_failure(
