@@ -76,7 +76,6 @@ members = [
     "crates/framework/install_cli",
     "crates/framework/journal",
     "crates/framework/json_schema_store",
-    "crates/framework/keymap_editor",
     "crates/framework/language",
     "crates/framework/language_core",
     #"crates/language_extension",
@@ -87,7 +86,6 @@ members = [
     "crates/framework/lmstudio",
     "crates/framework/lsp",
     "crates/framework/markdown",
-    "crates/framework/markdown_preview",
     "crates/framework/menu",
     "crates/framework/mermaid_render",
     "crates/framework/migrator",
@@ -101,14 +99,11 @@ members = [
     "crates/framework/onboarding",
     "crates/framework/open_ai",
     "crates/framework/open_path_prompt",
-    "crates/framework/outline",
-    "crates/framework/outline_panel",
     "crates/framework/path",
     "crates/framework/paths",
     "crates/framework/picker",
     "crates/framework/picker_preview",
     "crates/framework/platform_title_bar",
-    "crates/framework/prettier",
     "crates/framework/project",
     #"crates/project_benchmarks",
     "crates/framework/project_panel",
@@ -119,7 +114,6 @@ members = [
     "crates/framework/refineable",
     "crates/framework/refineable/derive_refineable",
     "crates/framework/release_channel",
-    "crates/framework/repl",
     "crates/framework/reqwest_client",
     "crates/framework/rope",
     "crates/framework/rpc",
@@ -478,7 +472,6 @@ inspector_ui = { path = "crates/framework/inspector_ui" }
 install_cli = { path = "crates/framework/install_cli" }
 journal = { path = "crates/framework/journal" }
 json_schema_store = { path = "crates/framework/json_schema_store" }
-keymap_editor = { path = "crates/framework/keymap_editor" }
 language = { path = "crates/framework/language" }
 language_core = { path = "crates/framework/language_core" }
 #language_extension = { path = "crates/language_extension" }
@@ -489,7 +482,6 @@ llama_cpp = { path = "crates/framework/llama_cpp" }
 lmstudio = { path = "crates/framework/lmstudio" }
 lsp = { path = "crates/framework/lsp" }
 markdown = { path = "crates/framework/markdown" }
-markdown_preview = { path = "crates/framework/markdown_preview" }
 menu = { path = "crates/framework/menu" }
 mermaid_render = { path = "crates/framework/mermaid_render" }
 migrator = { path = "crates/framework/migrator" }
@@ -503,15 +495,12 @@ ollama = { path = "crates/framework/ollama" }
 onboarding = { path = "crates/framework/onboarding" }
 open_ai = { path = "crates/framework/open_ai" }
 open_path_prompt = { path = "crates/framework/open_path_prompt" }
-outline = { path = "crates/framework/outline" }
-outline_panel = { path = "crates/framework/outline_panel" }
 path = { path = "crates/framework/path" }
 paths = { path = "crates/framework/paths" }
 perf = { path = "tooling/perf" }
 picker = { path = "crates/framework/picker" }
 picker_preview = { path = "crates/framework/picker_preview" }
 platform_title_bar = { path = "crates/framework/platform_title_bar" }
-prettier = { path = "crates/framework/prettier" }
 project = { path = "crates/framework/project" }
 project_panel = { path = "crates/framework/project_panel" }
 prompt_store = { path = "crates/framework/prompt_store" }
@@ -520,7 +509,6 @@ proxy_handshake = { path = "crates/framework/proxy_handshake" }
 recent_projects = { path = "crates/framework/recent_projects" }
 refineable = { path = "crates/framework/refineable" }
 release_channel = { path = "crates/framework/release_channel" }
-repl = { path = "crates/framework/repl" }
 reqwest_client = { path = "crates/framework/reqwest_client" }
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "e50e726ddd0292f6ef9de0dda6b90af4ed1fb66a", features = ["wav", "playback", "wav_output", "recording"] }
 rope = { path = "crates/framework/rope" }
@@ -1446,9 +1434,7 @@ lmstudio = { codegen-units = 1 }
 menu = { codegen-units = 1 }
 notifications = { codegen-units = 1 }
 ollama = { codegen-units = 1 }
-outline = { codegen-units = 1 }
 paths = { codegen-units = 1 }
-prettier = { codegen-units = 1 }
 refineable = { codegen-units = 1 }
 release_channel = { codegen-units = 1 }
 reqwest_client = { codegen-units = 1 }

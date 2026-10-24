@@ -1,12 +1,11 @@
 mod preview;
-mod repl_menu;
 
 use agent_settings::AgentSettings;
 use editor::actions::{
     AddSelectionAbove, AddSelectionBelow, CodeActionSource, DuplicateLineDown, GoToDiagnostic,
     GoToHunk, GoToPreviousDiagnostic, GoToPreviousHunk, MoveLineDown, MoveLineUp, SelectAll,
     SelectLargerSyntaxNode, SelectNext, SelectSmallerSyntaxNode, ToggleCodeActions,
-    ToggleDiagnostics, ToggleGoToLine, ToggleInlineDiagnostics,
+    ToggleDiagnostics, ToggleInlineDiagnostics,
 };
 use editor::code_context_menus::{CodeContextMenu, ContextMenuOrigin};
 use editor::{Editor, EditorSettings};
@@ -29,7 +28,7 @@ use workspace::item::ItemBufferKind;
 use workspace::{
     ToolbarItemEvent, ToolbarItemLocation, ToolbarItemView, Workspace, item::ItemHandle,
 };
-use zed_actions::{agent::AddSelectionToThread, outline::ToggleOutline};
+use zed_actions::agent::AddSelectionToThread;
 
 const MAX_CODE_ACTION_MENU_LINES: u32 = 16;
 
@@ -282,9 +281,6 @@ impl Render for QuickActionBar {
                                     Box::new(AddSelectionToThread),
                                 )
                             })
-                            .separator()
-                            .action("Go to Symbol", Box::new(ToggleOutline))
-                            .action("Go to Line/Column", Box::new(ToggleGoToLine))
                             .separator()
                             .action("Next Problem", Box::new(GoToDiagnostic::default()))
                             .action(
@@ -567,7 +563,6 @@ impl Render for QuickActionBar {
         h_flex()
             .id("quick action bar")
             .gap(DynamicSpacing::Base01.rems(cx))
-            .children(self.render_repl_menu(cx))
             .children(self.render_preview_button(cx))
             .children(search_button)
             .children(code_actions_dropdown)

@@ -6,10 +6,8 @@ use client::zed_urls;
 use db::kvp::Dismissable;
 use editor::{Editor, MultiBuffer};
 use gpui::{
-    App, DismissEvent, Entity, EventEmitter, FocusHandle, Focusable, TaskExt, Window, actions,
-    prelude::*,
+    App, DismissEvent, EventEmitter, FocusHandle, Focusable, TaskExt, Window, actions, prelude::*,
 };
-use markdown_preview::markdown_preview_view::{MarkdownPreviewMode, MarkdownPreviewView};
 use prompt_store::rules_to_skills_migration;
 use release_channel::{AppVersion, ReleaseChannel};
 use semver::Version;
@@ -140,12 +138,7 @@ fn view_release_notes_locally(
             let project = workspace
                 .read_with(cx, |workspace, _| workspace.project().clone())
                 .ok()?;
-            let (language_registry, buffer) = project.update(cx, |project, cx| {
-                (
-                    project.languages().clone(),
-                    project.create_buffer(markdown, false, cx),
-                )
-            });
+            let buffer = project.update(cx, |project, cx| project.create_buffer(markdown, false, cx));
             let buffer = buffer.await.ok()?;
             buffer.update(cx, |buffer, cx| {
                 buffer.edit([(0..0, body.release_notes)], None, cx)
@@ -153,26 +146,11 @@ fn view_release_notes_locally(
 
             let buffer = cx.new(|cx| MultiBuffer::singleton(buffer, cx).with_title(body.title));
 
-            let ws_handle = workspace.clone();
             workspace
                 .update_in(cx, |workspace, window, cx| {
                     let editor =
                         cx.new(|cx| Editor::for_multibuffer(buffer, Some(project), window, cx));
-                    let markdown_preview: Entity<MarkdownPreviewView> = MarkdownPreviewView::new(
-                        MarkdownPreviewMode::Default,
-                        editor,
-                        ws_handle,
-                        language_registry,
-                        window,
-                        cx,
-                    );
-                    workspace.add_item_to_active_pane(
-                        Box::new(markdown_preview),
-                        None,
-                        true,
-                        window,
-                        cx,
-                    );
+                    workspace.add_item_to_active_pane(Box::new(editor), None, true, window, cx);
                     cx.notify();
                 })
                 .ok()

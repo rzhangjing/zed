@@ -13,9 +13,7 @@ use std::ops::Range;
 use text::PointUtf16;
 use workspace::OpenInTerminal;
 use zed_actions::agent::AddSelectionToThread;
-use zed_actions::preview::{
-    markdown::OpenPreview as OpenMarkdownPreview, svg::OpenPreview as OpenSvgPreview,
-};
+use zed_actions::preview::svg::OpenPreview as OpenSvgPreview;
 
 #[derive(Debug)]
 pub enum MenuPosition {
@@ -212,13 +210,6 @@ pub fn deploy_context_menu(
             cx,
         );
 
-        let is_markdown = editor
-            .buffer()
-            .read(cx)
-            .as_singleton()
-            .and_then(|buffer| buffer.read(cx).language())
-            .is_some_and(|language| language.name().as_ref() == "Markdown");
-
         let is_svg = editor
             .buffer()
             .read(cx)
@@ -247,14 +238,6 @@ pub fn deploy_context_menu(
                     "Find All References",
                     Box::new(FindAllReferences::default()),
                 )
-                .action(
-                    "Show Incoming Calls",
-                    Box::new(zed_actions::ShowIncomingCalls),
-                )
-                .action(
-                    "Show Outgoing Calls",
-                    Box::new(zed_actions::ShowOutgoingCalls),
-                )
                 .separator()
                 .action("Rename Symbol", Box::new(Rename))
                 .action("Format Buffer", Box::new(Format))
@@ -282,9 +265,6 @@ pub fn deploy_context_menu(
                     ui::utils::reveal_in_file_manager_label(false),
                     Box::new(RevealInFileManager),
                 )
-                .when(is_markdown, |builder| {
-                    builder.action("Open Markdown Preview", Box::new(OpenMarkdownPreview))
-                })
                 .when(is_svg, |builder| {
                     builder.action("Open SVG Preview", Box::new(OpenSvgPreview))
                 })

@@ -169,14 +169,6 @@
     },
   },
   {
-    "context": "Editor && jupyter",
-    "use_key_equivalents": true,
-    "bindings": {
-      "ctrl-shift-enter": "repl::Run",
-      "ctrl-alt-enter": "repl::RunInPlace",
-    },
-  },
-  {
     "context": "Editor && !agent_diff",
     "use_key_equivalents": true,
     "bindings": {
@@ -577,14 +569,6 @@
     },
   },
   {
-    "context": "Editor && extension == md",
-    "use_key_equivalents": true,
-    "bindings": {
-      "ctrl-k v": "markdown::OpenPreviewToTheSide",
-      "ctrl-shift-v": "markdown::OpenPreview",
-    },
-  },
-  {
     "context": "Editor && extension == svg",
     "use_key_equivalents": true,
     "bindings": {
@@ -598,13 +582,6 @@
     "bindings": {
       "ctrl-k v": "tabular_data::OpenPreviewToTheSide",
       "ctrl-shift-v": "tabular_data::OpenPreview",
-    },
-  },
-  {
-    "context": "Editor && mode == full",
-    "use_key_equivalents": true,
-    "bindings": {
-      "ctrl-shift-o": "outline::Toggle",
     },
   },
   {
@@ -654,7 +631,6 @@
       "ctrl-shift-h": ["pane::DeploySearch", { "replace_enabled": true }],
       "ctrl-shift-t": "pane::ReopenClosedItem",
       "ctrl-k ctrl-p": "workspace::ReopenLastPicker",
-      "ctrl-k ctrl-s": "zed::OpenKeymap",
       "ctrl-k ctrl-t": "theme_selector::Toggle",
       "ctrl-k ctrl-shift-t": "theme::ToggleMode",
       "ctrl-alt-super-p": "settings_profile_selector::Toggle",
@@ -666,7 +642,6 @@
       "ctrl-shift-p": "command_palette::Toggle",
       "ctrl-shift-m": "diagnostics::Deploy",
       "ctrl-shift-e": "project_panel::ToggleFocus",
-      "ctrl-shift-b": "outline_panel::ToggleFocus",
       "ctrl-shift-/": "agent::ToggleFocus",
       "ctrl-k s": "workspace::SaveAll",
       "ctrl-m ctrl-m": "toolchain::AddToolchain",
@@ -892,22 +867,6 @@
     },
   },
   {
-    "context": "OutlinePanel && not_editing",
-    "use_key_equivalents": true,
-    "bindings": {
-      "left": "outline_panel::CollapseSelectedEntry",
-      "right": "outline_panel::ExpandSelectedEntry",
-      "shift-alt-c": "outline_panel::CopyPath",
-      "ctrl-shift-alt-c": "workspace::CopyRelativePath",
-      "ctrl-alt-r": "outline_panel::RevealInFileManager",
-      "space": "outline_panel::OpenSelectedEntry",
-      "shift-down": "menu::SelectNext",
-      "shift-up": "menu::SelectPrevious",
-      "alt-enter": "editor::OpenExcerpts",
-      "ctrl-alt-enter": "editor::OpenExcerptsSplit",
-    },
-  },
-  {
     "context": "ProjectPanel",
     "use_key_equivalents": true,
     "bindings": {
@@ -1007,14 +966,6 @@
     "use_key_equivalents": true,
     "bindings": {
       "enter": "editor::Newline",
-    },
-  },
-  {
-    "context": "CallHierarchyPicker > Picker > Editor",
-    "use_key_equivalents": true,
-    "bindings": {
-      "ctrl-k right": "menu::SelectChild",
-      "ctrl-k left": "menu::SelectParent",
     },
   },
   {
@@ -1162,64 +1113,6 @@
     },
   },
   {
-    "context": "MarkdownPreview",
-    "use_key_equivalents": true,
-    "bindings": {
-      "pageup": "markdown::ScrollPageUp",
-      "pagedown": "markdown::ScrollPageDown",
-      "up": "markdown::ScrollUp",
-      "down": "markdown::ScrollDown",
-      "alt-up": "markdown::ScrollUpByItem",
-      "alt-down": "markdown::ScrollDownByItem",
-      "ctrl-home": "markdown::ScrollToTop",
-      "ctrl-end": "markdown::ScrollToBottom",
-      "ctrl-shift-v": "markdown::CloseAndReturnToEditor",
-      "find": "buffer_search::Deploy",
-      "ctrl-f": "buffer_search::Deploy",
-    },
-  },
-  {
-    "context": "KeymapEditor",
-    "use_key_equivalents": true,
-    "bindings": {
-      "ctrl-f": "search::FocusSearch",
-      "alt-f": "keymap_editor::ToggleKeystrokeSearch",
-      "alt-c": "keymap_editor::ToggleConflictFilter",
-      "enter": "keymap_editor::EditBinding",
-      "alt-enter": "keymap_editor::CreateBinding",
-      "ctrl-k": "keymap_editor::OpenCreateKeybindingModal",
-      "ctrl-c": "keymap_editor::CopyAction",
-      "ctrl-shift-c": "keymap_editor::CopyContext",
-      "ctrl-t": "keymap_editor::ShowMatchingKeybinds",
-      "ctrl-e": "zed::OpenKeymapFile",
-    },
-  },
-  {
-    "context": "KeystrokeInput",
-    "use_key_equivalents": true,
-    "bindings": {
-      "enter": "keystroke_input::StartRecording",
-      "escape escape escape": "keystroke_input::StopRecording",
-      "delete": "keystroke_input::ClearKeystrokes",
-    },
-  },
-  {
-    "context": "KeybindEditorModal",
-    "use_key_equivalents": true,
-    "bindings": {
-      "ctrl-enter": "menu::Confirm",
-      "escape": "menu::Cancel",
-    },
-  },
-  {
-    "context": "KeybindEditorModal > Editor",
-    "use_key_equivalents": true,
-    "bindings": {
-      "up": "menu::SelectPrevious",
-      "down": "menu::SelectNext",
-    },
-  },
-  {
     "context": "Onboarding",
     "use_key_equivalents": true,
     "bindings": {
@@ -1327,43 +1220,6 @@
     "use_key_equivalents": true,
     "bindings": {
       "ctrl-shift-,": "zed::OpenWorktreeSetupTasks",
-    },
-  },
-  {
-    "context": "NotebookEditor",
-    "bindings": {
-      "shift-enter": "notebook::RunAndAdvance",
-      "ctrl-enter": "notebook::Run",
-      "ctrl-shift-enter": "notebook::RunAll",
-      "alt-up": "notebook::MoveCellUp",
-      "alt-down": "notebook::MoveCellDown",
-      "ctrl-m": "notebook::AddCodeBlock",
-      "ctrl-shift-m": "notebook::AddMarkdownBlock",
-      "ctrl-shift-r": "notebook::RestartKernel",
-      "ctrl-c": "notebook::InterruptKernel",
-    },
-  },
-  {
-    "context": "NotebookEditor && notebook_mode == command",
-    "bindings": {
-      "enter": "notebook::EnterEditMode",
-      "down": "menu::SelectNext",
-      "up": "menu::SelectPrevious",
-    },
-  },
-  {
-    "context": "NotebookEditor > Editor",
-    "bindings": {
-      "enter": "editor::Newline",
-      "shift-enter": "notebook::RunAndAdvance",
-      "ctrl-enter": "notebook::Run",
-      "ctrl-shift-enter": "notebook::RunAll",
-      "alt-up": "notebook::MoveCellUp",
-      "alt-down": "notebook::MoveCellDown",
-      "ctrl-m": "notebook::AddCodeBlock",
-      "ctrl-shift-m": "notebook::AddMarkdownBlock",
-      "ctrl-shift-r": "notebook::RestartKernel",
-      "escape": "notebook::EnterCommandMode",
     },
   },
   {

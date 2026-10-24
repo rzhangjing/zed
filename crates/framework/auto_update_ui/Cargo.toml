@@ -19,7 +19,6 @@ client.workspace = true
 db.workspace = true
 editor.workspace = true
 gpui.workspace = true
-markdown_preview.workspace = true
 prompt_store.workspace = true
 release_channel.workspace = true
 semver.workspace = true

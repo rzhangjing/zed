@@ -32,7 +32,7 @@ use project::{
 
 use settings::{SeedQuerySetting, Settings};
 use std::{any::TypeId, sync::Arc};
-use zed_actions::{outline::ToggleOutline, workspace::CopyPath, workspace::CopyRelativePath};
+use zed_actions::{workspace::CopyPath, workspace::CopyRelativePath};
 
 use ui::{BASE_REM_SIZE_IN_PX, IconButtonShape, Tooltip, prelude::*, utils::SearchInputWidth};
 use util::{ResultExt, paths::PathMatcher};
@@ -468,11 +468,6 @@ impl Render for BufferSearchBar {
             .on_action(cx.listener(Self::dismiss))
             .on_action(cx.listener(Self::select_next_match))
             .on_action(cx.listener(Self::select_prev_match))
-            .on_action(cx.listener(|this, _: &ToggleOutline, window, cx| {
-                if let Some(active_searchable_item) = &mut this.active_searchable_item {
-                    active_searchable_item.relay_action(Box::new(ToggleOutline), window, cx);
-                }
-            }))
             .on_action(cx.listener(|this, _: &CopyPath, window, cx| {
                 if let Some(active_searchable_item) = &mut this.active_searchable_item {
                     active_searchable_item.relay_action(Box::new(CopyPath), window, cx);

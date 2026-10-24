@@ -1,4 +1,4 @@
-use gpui::{Action as _, App};
+use gpui::App;
 use itertools::Itertools as _;
 use settings::{
     AudioInputDeviceName, AudioOutputDeviceName,
@@ -1515,31 +1515,6 @@ fn appearance_page() -> SettingsPage {
 }
 
 fn keymap_page() -> SettingsPage {
-    fn keybindings_section() -> [SettingsPageItem; 2] {
-        [
-            SettingsPageItem::SectionHeader("Keybindings"),
-            SettingsPageItem::ActionLink(ActionLink {
-                title: "Edit Keybindings".into(),
-                description: Some("Customize keybindings in the keymap editor.".into()),
-                button_text: "Open Keymap".into(),
-                on_click: Arc::new(|settings_window, window, cx| {
-                    let Some(original_window) = settings_window.original_window else {
-                        return;
-                    };
-                    original_window
-                        .update(cx, |_workspace, original_window, cx| {
-                            original_window
-                                .dispatch_action(zed_actions::OpenKeymap.boxed_clone(), cx);
-                            original_window.activate_window();
-                        })
-                        .ok();
-                    window.remove_window();
-                }),
-                files: USER,
-            }),
-        ]
-    }
-
     fn base_keymap_section() -> [SettingsPageItem; 2] {
         [
             SettingsPageItem::SectionHeader("Base Keymap"),
@@ -1562,10 +1537,7 @@ fn keymap_page() -> SettingsPage {
         ]
     }
 
-    let items: Box<[SettingsPageItem]> = concat_sections!(
-        keybindings_section(),
-        base_keymap_section(),
-    );
+    let items: Box<[SettingsPageItem]> = concat_sections!(base_keymap_section());
 
     SettingsPage {
         title: "Keymap",
@@ -8766,107 +8738,7 @@ fn non_editor_language_settings_data() -> Box<[SettingsPageItem]> {
         ]
     }
 
-    fn prettier_section() -> [SettingsPageItem; 5] {
-        [
-            SettingsPageItem::SectionHeader("Prettier"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Allowed",
-                description: "Enables or disables formatting with Prettier for a given language.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).prettier.allowed"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.prettier.as_ref()?.allowed.as_ref()
-                        })
-                    },
-                    write: |settings_content, value, _| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.prettier.get_or_insert_default().allowed = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Parser",
-                description: "Forces Prettier integration to use a specific parser name when formatting files with the language.",
-                field: Box::new(SettingField {
-                    json_path: Some("languages.$(language).prettier.parser"),
-                    pick: |settings_content| {
-                        language_settings_field(settings_content, |language| {
-                            language.prettier.as_ref()?.parser.as_ref()
-                        })
-                    },
-                    write: |settings_content, value, _| {
-                        language_settings_field_mut(settings_content, value, |language, value| {
-                            language.prettier.get_or_insert_default().parser = value;
-                        })
-                    },
-                }),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Plugins",
-                description: "Forces Prettier integration to use specific plugins when formatting files with the language.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("languages.$(language).prettier.plugins"),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language.prettier.as_ref()?.plugins.as_ref()
-                            })
-                        },
-                        write: |settings_content, value, _| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language.prettier.get_or_insert_default().plugins = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Options",
-                description: "Default Prettier options, in the format as in package.json section for Prettier.",
-                field: Box::new(
-                    SettingField {
-                        json_path: Some("languages.$(language).prettier.options"),
-                        pick: |settings_content| {
-                            language_settings_field(settings_content, |language| {
-                                language.prettier.as_ref()?.options.as_ref()
-                            })
-                        },
-                        write: |settings_content, value, _| {
-                            language_settings_field_mut(
-                                settings_content,
-                                value,
-                                |language, value| {
-                                    language.prettier.get_or_insert_default().options = value;
-                                },
-                            )
-                        },
-                    }
-                    .unimplemented(),
-                ),
-                metadata: None,
-                files: USER | PROJECT,
-            }),
-        ]
-    }
-
-    concat_sections!(
-        lsp_section(),
-        lsp_completions_section(),
-        prettier_section(),
-    )
+    concat_sections!(lsp_section(), lsp_completions_section())
 }
 
 fn edit_prediction_language_settings_section() -> [SettingsPageItem; 5] {

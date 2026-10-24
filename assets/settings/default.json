@@ -1468,8 +1468,7 @@
   "format_on_save": "off",
   // How to perform a buffer format. This setting can take multiple values:
   //
-  // 1. Default. Format files using Zed's Prettier integration (if applicable),
-  //    or falling back to formatting via language server:
+  // 1. Default. Format files using the current language server:
   //     "formatter": "auto"
   // 2. Format code using the current language server:
   //     "formatter": "language_server"
@@ -1482,12 +1481,10 @@
   //         "arguments": ["--stdin-filepath", "{buffer_path}"]
   //       }
   //     }
-  // 5. Format code using Zed's Prettier integration:
-  //     "formatter": "prettier"
-  // 6. Format code using a code action
+  // 5. Format code using a code action
   //     "formatter": {"code_action": "source.fixAll.eslint"}
-  // 7. An array of any format step specified above to apply in order
-  //     "formatter": [{"code_action": "source.fixAll.eslint"}, "prettier"]
+  // 6. An array of any format step specified above to apply in order
+  //     "formatter": [{"code_action": "source.fixAll.eslint"}, "language_server"]
   "formatter": "auto",
   // How to soft-wrap long lines of text.
   // Possible values:
@@ -2200,24 +2197,6 @@
     // Default: false
     "trust_all_worktrees": false,
   },
-  // Zed's Prettier integration settings.
-  // Allows to enable/disable formatting with Prettier
-  // and configure default Prettier, used when no project-level Prettier installation is found.
-  "prettier": {
-    // Enables or disables formatting with Prettier for any given language.
-    "allowed": false,
-    // Forces Prettier integration to use a specific parser name when formatting files with the language.
-    "plugins": [],
-    // Default Prettier options, in the format as in package.json section for Prettier.
-    // If project installs Prettier via its package.json, these options will be ignored.
-    // "trailingComma": "es5",
-    // "tabWidth": 4,
-    // "semi": false,
-    // "singleQuote": true
-    // Forces Prettier integration to use a specific parser name when formatting files with the language
-    // when set to a non-empty string.
-    "parser": "",
-  },
   // Settings for auto-closing of JSX tags.
   "jsx_tag_auto_close": {
     "enabled": true,
@@ -2295,21 +2274,6 @@
     //    "python": "conda-base"
     //    "typescript": "deno"
     // }
-  },
-  // REPL settings.
-  "repl": {
-    // Maximum number of columns to keep in REPL's scrollback buffer.
-    // Clamped with [20, 512] range.
-    "max_columns": 128,
-    // Maximum number of lines to keep in REPL's scrollback buffer.
-    // Clamped with [4, 256] range.
-    "max_lines": 32,
-    // Maximum number of lines of output to display before scrolling.
-    // Set to 0 to disable output height limits.
-    "output_max_height_lines": 0,
-    // Maximum number of columns of output to display before scaling images.
-    // Set to 0 to disable output width limits.
-    "output_max_width_columns": 0,
   },
   // Settings overrides to use when using Zed Preview.
   // Mostly useful for developers who are managing multiple instances of Zed.

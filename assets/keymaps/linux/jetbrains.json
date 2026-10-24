@@ -60,7 +60,6 @@
   {
     "context": "Editor && mode == full",
     "bindings": {
-      "ctrl-f12": "outline::Toggle",
       "ctrl-r": ["buffer_search::Deploy", { "replace_enabled": true }],
       "ctrl-e": "file_finder::Toggle",
       "ctrl-shift-n": "file_finder::Toggle",
@@ -114,7 +113,6 @@
       "shift shift": "command_palette::Toggle",
       "alt-1": "project_panel::ToggleFocus",
       "alt-6": "diagnostics::Deploy",
-      "alt-7": "outline_panel::ToggleFocus",
     },
   },
   {
@@ -125,7 +123,6 @@
       "alt-3": null, // Find Panel (bottom dock)
       "alt-4": null, // Run Panel (bottom dock)
       "alt-6": "diagnostics::Deploy",
-      "alt-7": "outline_panel::ToggleFocus",
       "alt-8": null, // Services (bottom dock)
       "alt-9": null, // Git History (bottom dock)
     },

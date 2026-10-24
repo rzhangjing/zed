@@ -597,7 +597,6 @@ fn main() {
         );
         zed::watch_user_agents_md(app_state.fs.clone(), cx);
 
-        repl::init(app_state.fs.clone(), cx);
         recent_projects::init(cx);
 
         load_embedded_fonts(cx);
@@ -606,7 +605,6 @@ fn main() {
 
         editor::init(cx);
         image_viewer::init(cx);
-        repl::notebook::init(cx);
         diagnostics::init(cx);
 
         audio::init(cx);
@@ -615,9 +613,7 @@ fn main() {
 
         file_finder::init(cx);
         tab_switcher::init(cx);
-        outline::init(cx);
         project_panel::init(cx);
-        outline_panel::init(cx);
         tasks_ui::init(cx);
         search::init(cx);
         cx.set_global(workspace::PaneSearchBarCallbacks {
@@ -636,12 +632,10 @@ fn main() {
         settings_profile_selector::init(cx);
         title_bar::init(cx);
         feedback::init(cx);
-        markdown_preview::init(cx);
         tabular_data_preview::init(cx);
         svg_preview::init(cx);
         onboarding::init(cx);
         settings_ui::init(cx);
-        keymap_editor::init(cx);
         edit_prediction::init(cx);
         inspector_ui::init(app_state.clone(), cx);
         json_schema_store::init(cx);

@@ -28,13 +28,6 @@ pub struct OpenZedUrl {
     pub url: Arc<str>,
 }
 
-/// Opens the keymap to either add a keybinding or change an existing one
-#[derive(PartialEq, Clone, Default, Action, JsonSchema, Serialize, Deserialize)]
-#[action(namespace = zed, no_json, no_register)]
-pub struct ChangeKeybinding {
-    pub action: String,
-}
-
 actions!(
     zed,
     [
@@ -56,9 +49,6 @@ actions!(
         /// Opens the user keymap file.
         #[action(deprecated_aliases = ["zed_actions::OpenKeymap"])]
         OpenKeymapFile,
-        /// Opens the keymap editor.
-        #[action(deprecated_aliases = ["zed_actions::OpenKeymapEditor"])]
-        OpenKeymap,
         /// Quits the application.
         Quit,
         /// Shows information about Zed.
@@ -247,9 +237,9 @@ pub mod workspace {
     actions!(
         workspace,
         [
-            #[action(deprecated_aliases = ["editor::CopyPath", "outline_panel::CopyPath", "project_panel::CopyPath"])]
+            #[action(deprecated_aliases = ["editor::CopyPath", "project_panel::CopyPath"])]
             CopyPath,
-            #[action(deprecated_aliases = ["editor::CopyRelativePath", "outline_panel::CopyRelativePath", "project_panel::CopyRelativePath"])]
+            #[action(deprecated_aliases = ["editor::CopyRelativePath", "project_panel::CopyRelativePath"])]
             CopyRelativePath,
             /// Opens the selected file with the system's default application.
             #[action(deprecated_aliases = ["project_panel::OpenWithSystem"])]
@@ -687,22 +677,6 @@ pub struct Rerun {
     pub task_id: Option<String>,
 }
 
-pub mod outline {
-    use std::sync::OnceLock;
-
-    use gpui::{AnyView, App, Window, actions};
-
-    actions!(
-        outline,
-        [
-            #[action(name = "Toggle")]
-            ToggleOutline
-        ]
-    );
-    /// A pointer to outline::toggle function, exposed here to sewer the breadcrumbs <-> outline dependency.
-    pub static TOGGLE_OUTLINE: OnceLock<fn(AnyView, &mut Window, &mut App)> = OnceLock::new();
-}
-
 actions!(
     zed_predict_onboarding,
     [
@@ -717,26 +691,7 @@ actions!(
         OpenGitIntegrationOnboarding
     ]
 );
-actions!(
-    call_hierarchy,
-    [ShowIncomingCalls, ShowOutgoingCalls, ToggleDirection]
-);
-
 pub mod preview {
-    pub mod markdown {
-        use gpui::actions;
-
-        actions!(
-            markdown,
-            [
-                /// Opens a markdown preview for the current file.
-                OpenPreview,
-                /// Opens a markdown preview in a split pane.
-                OpenPreviewToTheSide,
-            ]
-        );
-    }
-
     pub mod svg {
         use gpui::actions;
 
@@ -771,48 +726,6 @@ pub mod agents_sidebar {
         [
             /// Moves focus to the sidebar's search/filter editor.
             FocusSidebarFilter,
-        ]
-    );
-}
-
-pub mod notebook {
-    use gpui::actions;
-
-    actions!(
-        notebook,
-        [
-            /// Opens a Jupyter notebook file.
-            OpenNotebook,
-            /// Runs all cells in the notebook.
-            RunAll,
-            /// Runs the current cell and stays on it.
-            Run,
-            /// Runs the current cell and advances to the next cell.
-            RunAndAdvance,
-            /// Clears all cell outputs.
-            ClearOutputs,
-            /// Moves the current cell up.
-            MoveCellUp,
-            /// Moves the current cell down.
-            MoveCellDown,
-            /// Adds a new markdown cell.
-            AddMarkdownBlock,
-            /// Adds a new code cell.
-            AddCodeBlock,
-            /// Deletes the current cell.
-            DeleteCell,
-            /// Restarts the kernel.
-            RestartKernel,
-            /// Interrupts the current execution.
-            InterruptKernel,
-            /// Move down in cells.
-            NotebookMoveDown,
-            /// Move up in cells.
-            NotebookMoveUp,
-            /// Enters the current cell's editor (edit mode).
-            EnterEditMode,
-            /// Exits the cell editor and returns to cell command mode.
-            EnterCommandMode,
         ]
     );
 }

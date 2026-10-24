@@ -1760,7 +1760,7 @@ mod tests {
             .unindent(),
             Some(
                 &r#"{
-                      "formatter": "prettier",
+                      "formatter": "auto",
                       "format_on_save": "on"
                   }"#
                 .unindent(),
@@ -1781,7 +1781,7 @@ mod tests {
             Some(
                 &r#"{
                     "formatter": [
-                        "prettier",
+                        "auto",
                         {
                             "language_server": "eslint"
                         }
@@ -1876,7 +1876,7 @@ mod tests {
             .unindent(),
             Some(
                 &r#"{
-                    "formatter": "prettier",
+                    "formatter": "auto",
                     "format_on_save": "on",
                     "languages": {
                         "Rust": {

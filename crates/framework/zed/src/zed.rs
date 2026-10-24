@@ -50,7 +50,6 @@ use migrate::{MigrationBanner, MigrationEvent, MigrationNotification, MigrationT
 use migrator::migrate_keymap;
 use onboarding::multibuffer_hint::MultibufferHint;
 pub use open_listener::*;
-use outline_panel::OutlinePanel;
 use paths::{local_settings_file_relative_path, local_tasks_file_relative_path};
 use project::{
     DisableAiSettings,
@@ -782,7 +781,6 @@ fn show_software_emulation_warning_if_needed(
 fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<anyhow::Result<()>> {
     cx.spawn_in(window, async move |workspace_handle, cx| {
         let project_panel = ProjectPanel::load(workspace_handle.clone(), cx.clone());
-        let outline_panel = OutlinePanel::load(workspace_handle.clone(), cx.clone());
         let terminal_panel = TerminalPanel::load(workspace_handle.clone(), cx.clone());
 
         async fn add_panel_when_ready(
@@ -802,7 +800,6 @@ fn initialize_panels(window: &mut Window, cx: &mut Context<Workspace>) -> Task<a
 
         futures::join!(
             add_panel_when_ready(project_panel, workspace_handle.clone(), cx.clone()),
-            add_panel_when_ready(outline_panel, workspace_handle.clone(), cx.clone()),
             add_panel_when_ready(terminal_panel, workspace_handle.clone(), cx.clone()),
             initialize_agent_panel(workspace_handle.clone(), cx.clone()).map(|r| r.log_err()),
         );
@@ -1253,14 +1250,6 @@ fn register_actions(
              window: &mut Window,
              cx: &mut Context<Workspace>| {
                 workspace.toggle_panel_focus::<ProjectPanel>(window, cx);
-            },
-        )
-        .register_action(
-            |workspace: &mut Workspace,
-             _: &outline_panel::ToggleFocus,
-             window: &mut Window,
-             cx: &mut Context<Workspace>| {
-                workspace.toggle_panel_focus::<OutlinePanel>(window, cx);
             },
         )
         .register_action(
@@ -2319,8 +2308,6 @@ fn reload_keymaps(cx: &mut App, mut user_key_bindings: Vec<KeyBinding>) {
         "New Window",
         workspace::NewWindow,
     )]);
-    // todo: nicer api here?
-    keymap_editor::KeymapEventChannel::trigger_keymap_changed(cx);
 }
 
 pub fn load_default_keymap(cx: &mut App) {
@@ -5601,7 +5588,6 @@ mod tests {
                 "assistant2",
                 "auto_update",
                 "buffer_search",
-                "call_hierarchy",
                 "cli",
                 "collab",
                 "command_palette",
@@ -5614,28 +5600,20 @@ mod tests {
                 "file_finder",
                 "git",
                 "git_onboarding",
-                "go_to_line",
                 "icon_theme_selector",
                 "image_viewer",
                 "journal",
-                "keymap_editor",
-                "keystroke_input",
                 "welcome",
                 "markdown",
                 "menu",
                 "multi_workspace",
-                "notebook",
                 "onboarding",
-                "outline",
-                "outline_panel",
                 "pane",
                 "picker",
                 "project_panel",
                 "project_search",
-                "project_symbols",
                 "projects",
                 "recent_projects",
-                "repl",
                 "search",
                 "settings_editor",
                 "settings_profile_selector",
@@ -6227,7 +6205,6 @@ mod tests {
             editor::init(cx);
             title_bar::init(cx);
             project_panel::init(cx);
-            outline_panel::init(cx);
             terminal_view::init(cx);
             image_viewer::init(cx);
             language_model::init(cx);
@@ -6247,8 +6224,6 @@ mod tests {
                 cx,
             );
 
-            repl::init(app_state.fs.clone(), cx);
-            repl::notebook::init(cx);
             tasks_ui::init(cx);
             initialize_workspace(app_state.clone(), cx);
             search::init(cx);

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, num::NonZeroU32};
 
-use collections::{HashMap, HashSet};
+use collections::HashMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use settings_macros::{MergeFrom, with_fallible_options};
@@ -480,12 +480,6 @@ pub struct LanguageSettingsContent {
     ///
     /// Default: auto
     pub formatter: Option<FormatterList>,
-    /// Zed's Prettier integration settings.
-    /// Allows to enable/disable formatting with Prettier
-    /// and configure default Prettier, used when no project-level Prettier installation is found.
-    ///
-    /// Default: off
-    pub prettier: Option<PrettierSettingsContent>,
     /// Whether to automatically close JSX tags.
     pub jsx_tag_auto_close: Option<JsxTagAutoCloseSettingsContent>,
     /// Whether to use language servers to provide code intelligence.
@@ -877,28 +871,6 @@ pub enum WordsCompletionMode {
     Disabled,
 }
 
-/// Allows to enable/disable formatting with Prettier
-/// and configure default Prettier, used when no project-level Prettier installation is found.
-/// Prettier formatting is disabled by default.
-#[with_fallible_options]
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, MergeFrom)]
-pub struct PrettierSettingsContent {
-    /// Enables or disables formatting with Prettier for a given language.
-    pub allowed: Option<bool>,
-
-    /// Forces Prettier integration to use a specific parser name when formatting files with the language.
-    pub parser: Option<String>,
-
-    /// Forces Prettier integration to use specific plugins when formatting files with the language.
-    /// The default Prettier will be installed with these plugins.
-    pub plugins: Option<HashSet<String>>,
-
-    /// Default Prettier options, in the format as in package.json section for Prettier.
-    /// If project installs Prettier via its package.json, these options will be ignored.
-    #[serde(flatten)]
-    pub options: Option<HashMap<String, serde_json::Value>>,
-}
-
 /// TODO: this should just be a bool
 /// Controls the behavior of formatting files when they are saved.
 #[derive(
@@ -992,17 +964,14 @@ impl AsRef<[Formatter]> for FormatterList {
 }
 
 /// Controls which formatter should be used when formatting code. If there are multiple formatters, they are executed in the order of declaration.
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema, MergeFrom)]
+#[derive(Clone, Default, Debug, Serialize, PartialEq, Eq, JsonSchema, MergeFrom)]
 #[serde(rename_all = "snake_case")]
 pub enum Formatter {
-    /// Format files using Zed's Prettier integration (if applicable),
-    /// or falling back to formatting via language server.
+    /// Format files using the language server.
     #[default]
     Auto,
     /// Do not format code.
     None,
-    /// Format code using Zed's Prettier integration.
-    Prettier,
     /// Format code using an external command.
     External {
         /// The external program to run.
@@ -1015,6 +984,58 @@ pub enum Formatter {
     /// Format code using a language server.
     #[serde(untagged)]
     LanguageServer(LanguageServerFormatterSpecifier),
+}
+
+/// Deserialization-only mirror of [`Formatter`] that still accepts the retired
+/// `Prettier` variant.
+///
+/// Prettier formatting was removed, so settings written by older Zed versions
+/// may still contain `"formatter": "prettier"`. Rather than failing to
+/// deserialize those settings, map the value to [`Formatter::Auto`], which is
+/// the behavior Prettier used to fall back to when it was not applicable.
+///
+/// Serialization always goes through [`Formatter`] and therefore only ever
+/// emits canonical values; `"prettier"` is never written back out.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FormatterContent {
+    Auto,
+    None,
+    Prettier,
+    External {
+        command: String,
+        arguments: Option<Vec<String>>,
+    },
+    CodeAction(String),
+    #[serde(untagged)]
+    LanguageServer(LanguageServerFormatterSpecifier),
+}
+
+impl From<FormatterContent> for Formatter {
+    fn from(value: FormatterContent) -> Self {
+        match value {
+            FormatterContent::Auto | FormatterContent::Prettier => Self::Auto,
+            FormatterContent::None => Self::None,
+            FormatterContent::External {
+                command,
+                arguments,
+            } => Self::External {
+                command,
+                arguments,
+            },
+            FormatterContent::CodeAction(code_action) => Self::CodeAction(code_action),
+            FormatterContent::LanguageServer(specifier) => Self::LanguageServer(specifier),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Formatter {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        FormatterContent::deserialize(deserializer).map(Self::from)
+    }
 }
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq, JsonSchema, MergeFrom)]
@@ -1231,18 +1252,17 @@ mod test {
                 LanguageServerFormatterSpecifier::Current
             )]))
         );
-        let raw = "{\"formatter\": [{\"language_server\": {\"name\": null}}, \"language_server\", \"prettier\"]}";
+        let raw = "{\"formatter\": [{\"language_server\": {\"name\": null}}, \"language_server\"]}";
         let settings: LanguageSettingsContent = serde_json::from_str(raw).unwrap();
         assert_eq!(
             settings.formatter,
             Some(FormatterList::Vec(vec![
                 Formatter::LanguageServer(LanguageServerFormatterSpecifier::Current),
-                Formatter::LanguageServer(LanguageServerFormatterSpecifier::Current),
-                Formatter::Prettier
+                Formatter::LanguageServer(LanguageServerFormatterSpecifier::Current)
             ]))
         );
 
-        let raw = "{\"formatter\": [{\"language_server\": {\"name\": \"ruff\"}}, \"prettier\"]}";
+        let raw = "{\"formatter\": [{\"language_server\": {\"name\": \"ruff\"}}, \"language_server\"]}";
         let settings: LanguageSettingsContent = serde_json::from_str(raw).unwrap();
         assert_eq!(
             settings.formatter,
@@ -1250,13 +1270,72 @@ mod test {
                 Formatter::LanguageServer(LanguageServerFormatterSpecifier::Specific {
                     name: "ruff".to_string()
                 }),
-                Formatter::Prettier
+                Formatter::LanguageServer(LanguageServerFormatterSpecifier::Current)
             ]))
         );
 
         assert_eq!(
             serde_json::to_string(&LanguageServerFormatterSpecifier::Current).unwrap(),
             "\"language_server\"",
+        );
+    }
+
+    #[test]
+    fn test_formatter_deserialization_of_retired_prettier_value() {
+        // Settings written before the Prettier integration was removed still
+        // contain `"formatter": "prettier"`; they must keep loading and map to
+        // the language-server-backed `Auto` formatter.
+        let raw_prettier = "{\"formatter\": \"prettier\"}";
+        let settings: LanguageSettingsContent = serde_json::from_str(raw_prettier).unwrap();
+        assert_eq!(
+            settings.formatter,
+            Some(FormatterList::Single(Formatter::Auto))
+        );
+
+        let raw_prettier_list =
+            "{\"formatter\": [\"prettier\", \"language_server\", {\"language_server\": {\"name\": \"ruff\"}}]}";
+        let settings: LanguageSettingsContent = serde_json::from_str(raw_prettier_list).unwrap();
+        assert_eq!(
+            settings.formatter,
+            Some(FormatterList::Vec(vec![
+                Formatter::Auto,
+                Formatter::LanguageServer(LanguageServerFormatterSpecifier::Current),
+                Formatter::LanguageServer(LanguageServerFormatterSpecifier::Specific {
+                    name: "ruff".to_string()
+                })
+            ]))
+        );
+
+        // Serialization only ever emits canonical values, so a settings
+        // round-trip cannot resurrect the retired `"prettier"` spelling.
+        let prettier_settings: LanguageSettingsContent =
+            serde_json::from_str(raw_prettier).unwrap();
+        assert_eq!(
+            serde_json::to_string(&prettier_settings.formatter.unwrap()).unwrap(),
+            "\"auto\"",
+            "a prettier-valued setting must serialize back as auto"
+        );
+        assert_eq!(
+            serde_json::to_string(&FormatterList::Single(Formatter::Auto)).unwrap(),
+            "\"auto\""
+        );
+
+        // Existing spellings are unaffected.
+        let raw_auto = "{\"formatter\": \"auto\"}";
+        let settings: LanguageSettingsContent = serde_json::from_str(raw_auto).unwrap();
+        assert_eq!(
+            settings.formatter,
+            Some(FormatterList::Single(Formatter::Auto))
+        );
+
+        let raw_external = "{\"formatter\": {\"external\": {\"command\": \"rustfmt\", \"arguments\": [\"--edition\", \"2021\"]}}}";
+        let settings: LanguageSettingsContent = serde_json::from_str(raw_external).unwrap();
+        assert_eq!(
+            settings.formatter,
+            Some(FormatterList::Single(Formatter::External {
+                command: "rustfmt".to_string(),
+                arguments: Some(vec!["--edition".to_string(), "2021".to_string()])
+            }))
         );
     }
 
@@ -1530,27 +1609,6 @@ mod test {
                 ConfiguredLanguageServer::new("typescript-language-server"),
                 ConfiguredLanguageServer::new(REST_OF_LANGUAGE_SERVERS),
             ]
-        );
-    }
-
-    #[test]
-    fn test_prettier_options() {
-        let raw_prettier = r#"{"allowed": false, "tabWidth": 4, "semi": false}"#;
-        let result = serde_json::from_str::<PrettierSettingsContent>(raw_prettier)
-            .expect("Failed to parse prettier options");
-        assert!(
-            result
-                .options
-                .as_ref()
-                .expect("options were flattened")
-                .contains_key("semi")
-        );
-        assert!(
-            result
-                .options
-                .as_ref()
-                .expect("options were flattened")
-                .contains_key("tabWidth")
         );
     }
 }
