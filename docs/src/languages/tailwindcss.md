@@ -68,7 +68,7 @@ The `tailwindcss-intellisense-css` language server serves as an alternative to t
 
 ### Prettier Plugin
 
-Zed supports Prettier out of the box, which means that if you have the [Tailwind CSS Prettier plugin](https://github.com/tailwindlabs/prettier-plugin-tailwindcss) installed, adding it to your Prettier configuration will make it work automatically:
+If you format with an external [Prettier](https://prettier.io/) formatter, install the [Tailwind CSS Prettier plugin](https://github.com/tailwindlabs/prettier-plugin-tailwindcss) and add it to your Prettier configuration:
 
 ```json
 // .prettierrc

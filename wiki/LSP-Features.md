@@ -1,6 +1,6 @@
-# LSP Features（语言服务器 / 诊断 / 大纲 / 调用层次）
+# LSP Features（语言服务器 / 诊断 / 调用层次）
 
-语言智能的调度中枢是 `project` 里的 [`LspStore`](../crates/project/src/lsp_store.rs)（[lsp_store.rs:4488](../crates/project/src/lsp_store.rs)）：它管理所有语言服务器进程，并把"补全/悬停/跳转/格式化/代码操作"等统一成对 LSP 协议的请求。UI 侧散落在 [`diagnostics`](../crates/diagnostics)、[`outline`](../crates/outline)、[`call_hierarchy`](../crates/call_hierarchy)、[`project_symbols`](../crates/project_symbols) 等 crate。协议基础类型来自外部 `lsp` crate（`lsp_types`），封装在 [`crates/lsp`](../crates/lsp)。语言如何绑定到服务器见 [Language-and-Project.md](Language-and-Project.md)。
+语言智能的调度中枢是 `project` 里的 [`LspStore`](../crates/project/src/lsp_store.rs)（[lsp_store.rs:4488](../crates/project/src/lsp_store.rs)）：它管理所有语言服务器进程，并把"补全/悬停/跳转/格式化/代码操作"等统一成对 LSP 协议的请求。UI 侧散落在 [`diagnostics`](../crates/diagnostics)、[`call_hierarchy`](../crates/call_hierarchy)、[`project_symbols`](../crates/project_symbols) 等 crate。协议基础类型来自外部 `lsp` crate（`lsp_types`），封装在 [`crates/lsp`](../crates/lsp)。语言如何绑定到服务器见 [Language-and-Project.md](Language-and-Project.md)。
 
 ## 1. 分层职责
 
@@ -16,7 +16,6 @@
 | 状态栏指示 | `DiagnosticIndicator` | [`items.rs:18`](../crates/diagnostics/src/items.rs) | 底部栏错误/警告计数 |
 | 内联呈现 | `DiagnosticRenderer` | [`diagnostic_renderer.rs:20`](../crates/diagnostics/src/diagnostic_renderer.rs) | 把诊断作为 Editor block 画在报错行下 |
 | 诊断编辑视图 | `buffer_diagnostics` | [`buffer_diagnostics.rs`](../crates/diagnostics/src/buffer_diagnostics.rs) | 诊断列表 Item（`register` L256、`toggle_warnings` L644） |
-| 大纲 | `OutlineView` | [`outline.rs:115`](../crates/outline/src/outline.rs) | 符号树（Tree-sitter + LSP documentSymbol） |
 
 ## 2. LspStore：请求的统一出口
 
@@ -47,9 +46,9 @@ LSP 主动 `publishDiagnostics` 推送诊断，`LspStore` 汇总成 `DiagnosticS
 - **状态栏**：`DiagnosticIndicator`（items.rs:18）在底部显示计数并一键跳到下一条。
 - **列表视图**：`buffer_diagnostics.rs` 的 `register`（L256）把它作为 `Item` 挂进 Pane，`toggle_warnings`（L644）过滤严重级，`editor()`(L670)/`summary()`(L675) 供 UI 取数。`ToolbarControls`（toolbar_controls.rs:12）是过滤工具条。`diagnostics.rs:69` 的 `init` 注册这些组件。
 
-## 4. 大纲（Outline）与符号
+## 4. 大纲（Outline）与符号（已移除）
 
-`OutlineView`（outline.rs:115）展示当前 buffer 的符号树，数据来自**双轨**：优先 LSP `documentSymbol`，回退到 Tree-sitter 查询（见 [Language-and-Project.md](Language-and-Project.md)）。它本质是一个 [Picker](Picker-and-Commands.md) 风格的导航面板，点符号即跳位。跨文件符号搜索在 [`project_symbols`](../crates/project_symbols)（走 LSP `workspace/symbol`）。
+> ⚠️ 已移除（Batch 1–2c）：`outline`（符号树面板）与 `outline_panel` 已从本 fork 删除。符号数据仍由 `language::Buffer` 提供，跨文件符号搜索在 [`project_symbols`](../crates/project_symbols)（走 LSP `workspace/symbol`）。
 
 ## 5. 调用层次 / 高亮等命令
 
@@ -75,7 +74,6 @@ LSP 主动 `publishDiagnostics` 推送诊断，`LspStore` 汇总成 `DiagnosticS
 | `DiagnosticSummary` | `lsp_store.rs:15967` | 诊断统计 |
 | `DiagnosticRenderer` | `diagnostics/src/diagnostic_renderer.rs:20` | 内联诊断块 |
 | `DiagnosticIndicator` | `diagnostics/src/items.rs:18` | 状态栏指示 |
-| `OutlineView` | `outline/src/outline.rs:115` | 符号大纲 |
 | `CallHierarchyItem` | `project/src/lsp_command.rs:334` | 调用层次节点 |
 
 ## 8. 与其他页面的关系

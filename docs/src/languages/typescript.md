@@ -36,19 +36,6 @@ Configure language servers in Settings ({#kb zed::OpenSettings}) under Languages
 }
 ```
 
-Prettier will also be used for TypeScript files by default. To disable this, configure in Settings ({#kb zed::OpenSettings}) under Languages > TypeScript, or add to your settings file:
-
-```json [settings]
-{
-  "languages": {
-    "TypeScript": {
-      "prettier": { "allowed": false }
-    }
-    //...
-  }
-}
-```
-
 ## Using the Tailwind CSS Language Server with TypeScript
 
 To get all the features (autocomplete, linting, etc.) from the [Tailwind CSS language server](https://github.com/tailwindlabs/tailwindcss-intellisense/tree/HEAD/packages/tailwindcss-language-server#readme) in vanilla TypeScript files (`.ts`), you can customize the `classRegex` field under it in your `settings.json`:

@@ -4732,25 +4732,6 @@ Example command to set the title: `echo -e "\e]2;New Title\007";`
 - Setting: `path_hyperlink_timeout_ms`
 - Default: `1`
 
-## REPL
-
-- Description: Repl settings.
-- Setting: `repl`
-- Default:
-
-```json [settings]
-{
-  "repl": {
-    // Maximum number of columns to keep in REPL's scrollback buffer.
-    // Clamped with [20, 512] range.
-    "max_columns": 128,
-    // Maximum number of lines to keep in REPL's scrollback buffer.
-    // Clamped with [4, 256] range.
-    "max_lines": 32
-  }
-}
-```
-
 ## Theme
 
 - Description: The theme setting can be specified in two forms - either as the name of a theme or as an object containing the `mode`, `dark`, and `light` themes for the Zed UI.
@@ -5366,34 +5347,6 @@ Visit [AI Quick Start](../ai/quick-start.md) under the AI section to learn more 
 - `button`: Whether to show the collaboration panel button in the status bar
 - `dock`: Where to dock the collaboration panel. Can be `left` or `right`
 - `default_width`: Default width of the collaboration panel
-
-## Outline Panel
-
-- Description: Customize outline Panel
-- Setting: `outline_panel`
-- Default:
-
-```json [settings]
-{
-  "outline_panel": {
-    "button": true,
-    "default_width": 300,
-    "dock": "left",
-    "file_icons": true,
-    "folder_indicator": "icon",
-    "indent_size": 20,
-    "auto_reveal_entries": true,
-    "auto_fold_dirs": true,
-    "indent_guides": {
-      "show": "always"
-    },
-    "scrollbar": {
-      "show": null
-    },
-    "multi_buffer_hide_symbols": false
-  }
-}
-```
 
 ## Calls
 

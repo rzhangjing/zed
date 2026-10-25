@@ -119,7 +119,6 @@ To disable this behavior use:
 
   // Individual status bar icons can be hidden:
   // "project_panel": {"button": false },
-  // "outline_panel": {"button": false },
   // "collaboration_panel": {"button": false },
 
   // "agent": {"button": false },
@@ -567,29 +566,6 @@ See [Zed AI Documentation](./ai/overview.md) for additional non-visual AI settin
 ```
 
 See [Terminal settings](./reference/all-settings.md#terminal) for additional non-visual customization options.
-
-### Other Panels
-
-```json [settings]
-  // Outline Panel
-  "outline_panel": {
-    "button": true,               // Show/hide status bar icon
-    "default_width": 300,         // Default width of the outline panel
-    "dock": "left",               // Where to dock: left, right
-    "file_icons": true,           // Show/hide file_icons
-    "folder_indicator": "icon",   // Dir glyph: icon, chevron, both
-    "indent_size": 20,            // Indentation for nested items (pixels)
-    "indent_guides": {
-      "show": "always"            // Show indent guides (always, never)
-    },
-    "auto_reveal_entries": true,  // Show file in panel when activating its buffer
-    "auto_fold_dirs": true,       // Fold dirs with single subdir
-    "scrollbar": {                // Project panel scrollbar settings
-      "show": null                // Show/hide: (auto, system, always, never)
-    },
-    "multi_buffer_hide_symbols": false  // Hide symbols in multi-buffer views (show only files)
-  }
-```
 
 ## Collaboration Panels
 

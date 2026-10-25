@@ -13,5 +13,4 @@ Report issues to: [https://github.com/JuliaEditorSupport/zed-julia/issues](https
 
 <!--
 TBD: Document Julia Installation
-TBD: Julia REPL Setup instructions
 -->

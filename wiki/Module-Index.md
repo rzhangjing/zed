@@ -20,6 +20,8 @@
 > 🎨 **第十五批**：[CLI&Packaging](CLI-and-Packaging-Deep-Dive.md) · [Selectors&Themes](Selectors-and-Themes-Misc-Deep-Dive.md)
 > 🧪 **第十六批**：[Tooling&Evals&Benchmarks](Tooling-Evals-Benchmarks-Deep-Dive.md)
 
+> ⚠️ **已移除（Batch 1–2c）**：`outline` / `outline_panel` / `markdown_preview` / `prettier` / `repl` / `keymap_editor` 已从本 fork 删除，故下方索引不再列出这些 crate。`markdown` 渲染库与 `image_viewer` 等预览 Item 仍保留。
+
 ## 1. 应用入口与打包
 | Crate | 职责 | 覆盖 |
 |---|---|---|
@@ -108,11 +110,9 @@
 | `lsp_locations` | 定义/引用跳转位置面板 | 🔧 [LSP-Features](LSP-Features.md) |
 | `language_selector` | 切换语言 picker | **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `language_tools` | 语法树/高亮树/LSP 日志/key context 调试视图 | **📘[Deep](Language-Tooling-Deep-Dive.md)** |
-| `outline` / `outline_panel` | 符号大纲 | ✅ [LSP-Features](LSP-Features.md) |
 | `diagnostics` | 诊断侧栏/内联块渲染 | **📘[Deep](Diagnostics-Deep-Dive.md)** |
 | `call_hierarchy` | 调用层次视图 | ✅ [LSP-Features](LSP-Features.md) / **📘[Deep](Panels-Deep-Dive.md)** |
 | `project_symbols` | 跨工作区符号搜索 | ✅ [LSP-Features](LSP-Features.md) / **📘[Deep](Picker-Family-Deep-Dive.md)** |
-| `prettier` | Prettier 格式化桥 | ⏳ |
 | `language_onboarding` | 语言服务器安装引导 | ⏳ |
 
 ## 7. 项目 / 文件
@@ -219,7 +219,6 @@
 | `feature_flags` / `feature_flags_macros` | 特性开关 | 🔧 [Agent-and-AI](Agent-and-AI.md) |
 | `encoding_selector` / `line_ending_selector` | 编码/换行选择 | **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
 | `toolchain_selector` | 语言工具链选择 | **📘[Deep](Selectors-and-Themes-Misc-Deep-Dive.md)** |
-| `keymap_editor` | 键位映射编辑器（冲突检测） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
 | `which_key` | which-key 键位提示浮层（`WhichKeyModal`、`PendingKeystrokesIndicator`） | **📘[Deep](Keymap-and-Navigation-Deep-Dive.md)** |
 
 > ⚠️ 已移除 · 历史：扩展（extensions）子系统——`extension` / `extension_api` / `extension_host` / `extension_cli` / `extensions_ui`（Wasm 宿主、扩展 ABI、扩展市场 UI）——已从本 fork 整体移除，故本索引不再列该族 crate，原先的 Extension-System / Extension-Deep-Dive / Extension-Host-Deep-Dive 三页亦已删除。
@@ -227,13 +226,12 @@
 ## 17. 预览 / 可视化 Item
 | Crate | 职责 | 覆盖 |
 |---|---|---|
-| `repl` | Jupyter 式内核/会话（`ReplStore`/`KernelSpecification`） | ✅ [Tasks-and-Tooling](Tasks-and-Tooling.md) |
-| `markdown` / `markdown_preview` | Markdown 渲染与实时预览 | ✅ [Markdown-and-Preview](Markdown-and-Preview.md) / **📘[Deep](Markdown-Deep-Dive.md)** / **📘[Deep](Misc-Preview-Items-Deep-Dive.md)** |
+| `markdown` | Markdown 渲染 | ✅ [Markdown-and-Preview](Markdown-and-Preview.md) / **📘[Deep](Markdown-Deep-Dive.md)** |
 | `mermaid_render` | Mermaid 图渲染 | 🔧 [Markdown-and-Preview](Markdown-and-Preview.md) |
 | `image_viewer` | 图片查看 Item（缩放/持久） | **📘[Deep](Misc-Preview-Items-Deep-Dive.md)** |
 | `svg_preview` | SVG 预览 | ⏳ |
 | `tabular_data_preview` | 表格数据预览（CSV/JSON） | ⏳ |
-| `html_to_markdown` | HTML→Markdown 转换（Agent 网页抓取 / REPL HTML 输出） | ⏳ |
+| `html_to_markdown` | HTML→Markdown 转换（Agent 网页抓取） | ⏳ |
 
 ## 18. 基础设施 / 数据 / 网络
 | Crate | 职责 | 覆盖 |

@@ -112,7 +112,6 @@ If you chose the JetBrains keymap during onboarding, most of your shortcuts shou
 
 | Action                 | IntelliJ    | Zed (JetBrains keymap)   |
 | ---------------------- | ----------- | ------------------------ |
-| File Structure         | `Cmd + F12` | `Cmd + F12` (outline)    |
 | Navigate to Next Error | `F2`        | `F2`                     |
 | Run                    | `Ctrl + R`  | `Ctrl + Alt + R` (tasks) |
 | Stop                   | `Cmd + F2`  | `Ctrl + F2`              |
@@ -127,9 +126,9 @@ If you chose the JetBrains keymap during onboarding, most of your shortcuts shou
 ### How to Customize Keybindings
 
 - Open the Command Palette (`Cmd+Shift+A` or `Shift Shift`)
-- Run {#action zed::OpenKeymap}
+- Run {#action zed::OpenKeymapFile}
 
-This opens a list of all available bindings. You can override individual shortcuts or remove conflicts.
+This opens your keymap file, where you can override individual shortcuts or remove conflicts.
 
 Zed also supports key sequences (multi-key shortcuts).
 
@@ -234,7 +233,6 @@ IntelliJ organizes auxiliary views into numbered tool windows (Project = 1, Term
 | -------------------- | -------------- | --------------------------- |
 | Project (1)          | Project Panel  | `Cmd + 1`                   |
 | Terminal (Alt+F12)   | Terminal Panel | `Alt + F12`                 |
-| Structure (7)        | Outline Panel  | `Cmd + 7`                   |
 | Problems (6)         | Diagnostics    | `Cmd + 6`                   |
 
 Zed has three dock positions: left, bottom, and right. Panels can be moved between docks by dragging or through settings.

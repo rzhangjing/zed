@@ -75,7 +75,7 @@ graph TB
 
 - `struct ProjectSymbolsDelegate`(41) —— `impl PickerDelegate`(110)；对 `project.symbols(cx, query)` 异步取 `SymbolsResponse`，展开为符号树条目（含文件路径图标、Kinds），选中跳 `Editor` 对应 `Anchor`。
 - 复用 `fuzzy_nucleo::match_strings` 做二次过滤（本地缓存符号）。
-- 与 outline 面板共享 `language::Symbol`/`FileSymbols` 模型（见 [Language-Deep-Dive.md](Language-Deep-Dive.md)）。
+- 与 `language::Buffer` 共享 `language::Symbol`/`FileSymbols` 模型（见 [Language-Deep-Dive.md](Language-Deep-Dive.md)）。
 
 ## 6. 一次"打开文件"调用链
 
@@ -92,7 +92,7 @@ graph TB
 
 ## 7. 集成 / 相关页
 
-- 消费者：命令面板 `command_palette`、`outline`、`theme_selector`、`file_finder`、`project_symbols`、`search` 等 30+ 面板皆依赖 `picker`。
+- 消费者：命令面板 `command_palette`、`theme_selector`、`file_finder`、`project_symbols`、`search` 等 30+ 面板皆依赖 `picker`。
 - 深页：[Search-Deep-Dive.md](Search-Deep-Dive.md)、[Editor-Deep-Dive.md](Editor-Deep-Dive.md)、[Project-Deep-Dive.md](Project-Deep-Dive.md)、[Project-Panel-and-FS.md](Project-Panel-and-FS.md)、[Panels-Deep-Dive.md](Panels-Deep-Dive.md)、[Data-Structures.md](Data-Structures.md)
 - 概览：[Picker-and-Commands.md](Picker-and-Commands.md)
 - 导航：[Home](Home) · [Module-Index](Module-Index)

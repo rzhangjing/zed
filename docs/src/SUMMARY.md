@@ -18,13 +18,11 @@
   - [Multibuffers](./multibuffers.md)
 - [Finding & Navigating](./finding-navigating.md)
   - [Command Palette](./command-palette.md)
-  - [Outline Panel](./outline-panel.md)
   - [Project Panel](./project-panel.md)
   - [Tab Switcher](./tab-switcher.md)
 - [Running & Testing](./running-testing.md)
   - [Terminal](./terminal.md)
   - [Tasks](./tasks.md)
-  - [REPL](./repl.md)
 - [Modelines](./modelines.md)
 
 # Collaboration (removed in this fork)

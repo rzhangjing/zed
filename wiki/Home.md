@@ -47,9 +47,9 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Workspace-Deep-Dive（Workspace/Pane/Dock/Item 契约/持久化）](Workspace-Deep-Dive.md)
 - [Terminal-Deep-Dive（PTY/Alacritty 适配/TerminalElement 渲染）](Terminal-Deep-Dive.md)
 - [Agent-Deep-Dive（NativeAgent/Thread/31 tool/AcpThread/LanguageModel）](Agent-Deep-Dive.md)
-- [Markdown-Deep-Dive（parser/markdown.rs 渲染/preview 面板）](Markdown-Deep-Dive.md)
+- [Markdown-Deep-Dive（parser/markdown.rs 渲染）](Markdown-Deep-Dive.md)
 - [Collab-Deep-Dive（历史：Client/call Room/collab 服务器/channel/collab_ui）](Collab-Deep-Dive.md)
-- [Panels-Deep-Dive（project_panel/outline_panel/call_hierarchy）](Panels-Deep-Dive.md)
+- [Panels-Deep-Dive（project_panel/call_hierarchy）](Panels-Deep-Dive.md)
 - [Search-Deep-Dive（BufferSearchBar/ProjectSearch/TextFinder/registrar）](Search-Deep-Dive.md)
 - [Edit-Prediction-Deep-Dive（EditPredictionStore/Delegate 双抽象/zeta・fim・ollama/context）](Edit-Prediction-Deep-Dive.md)
 - [GPUI-Platform-Backends-Deep-Dive（Platform/PlatformWindow 抽象 + macOS・Windows・Linux・wgpu・Web 后端）](GPUI-Platform-Backends-Deep-Dive.md)
@@ -68,8 +68,8 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Diff-Engines-Deep-Dive（buffer_diff 增量快照+hunk 坐标映射+DiffOperations stage/streaming_diff 字符行级流式差分）](Diff-Engines-Deep-Dive.md)
 - [Language-Tooling-Deep-Dive（languages 内置语言注册/language_tools 语法树·高亮树·LSP日志·key context 调试视图）](Language-Tooling-Deep-Dive.md)
 - [Edit-Prediction-UI-CLI-Deep-Dive（types 契约/context BM25·gitlog 检索/ui 按钮·评分弹窗/cli 离线评测）](Edit-Prediction-UI-CLI-Deep-Dive.md)
-- [Misc-Preview-Items-Deep-Dive（markdown_preview 双向同步/image_viewer 缩放持久/component_preview 预览簿）](Misc-Preview-Items-Deep-Dive.md)
-- [Keymap-and-Navigation-Deep-Dive（keymap_editor 可视改键+冲突检测/which_key 键位提示/file_finder 模糊导航）](Keymap-and-Navigation-Deep-Dive.md)
+- [Misc-Preview-Items-Deep-Dive（image_viewer 缩放持久/component_preview 预览簿）](Misc-Preview-Items-Deep-Dive.md)
+- [Keymap-and-Navigation-Deep-Dive（which_key 键位提示/file_finder 模糊导航）](Keymap-and-Navigation-Deep-Dive.md)
 - [Copilot-Stack-Deep-Dive（copilot LSP server+编辑预测 provider/copilot_chat OAuth+模型清单+流式/copilot_ui 登录）](Copilot-Stack-Deep-Dive.md)
 - [CLI-and-Packaging-Deep-Dive（cli CliRequest/IPC 握手/Bundle 装配/install_cli 脚本安装）](CLI-and-Packaging-Deep-Dive.md)
 - [Selectors-and-Themes-Misc-Deep-Dive（theme 注册/外观/图标主题 + language·encoding·line_ending·toolchain·settings_profile·theme 选择器 + file_icons）](Selectors-and-Themes-Misc-Deep-Dive.md)
@@ -88,11 +88,11 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Editing-Deep-Dive（多光标 / 撤销 / 片段 / 多缓冲）](Editing-Deep-Dive.md)
 - [Data-Structures（sum_tree / rope / diff 底座）](Data-Structures.md)
 - [Search（缓冲查找 / 全局搜索 / 替换）](Search.md)
-- [Markdown-and-Preview（解析 / 渲染 / 实时预览）](Markdown-and-Preview.md)
+- [Markdown-and-Preview（解析 / 渲染）](Markdown-and-Preview.md)
 
 ### 语言与项目
 - [Language & Project（LSP / worktree / 语言检测）](Language-and-Project.md)
-- [LSP-Features（语言服务器 / 诊断 / 大纲 / 调用层次）](LSP-Features.md)
+- [LSP-Features（语言服务器 / 诊断 / 调用层次）](LSP-Features.md)
 - [Project-Panel-and-FS（文件系统 / Worktree / 项目树）](Project-Panel-and-FS.md)
 - [Terminal（PTY / Alacritty / GPUI 渲染）](Terminal.md)
 
@@ -113,7 +113,7 @@ Cargo workspace 根为 [`Cargo.toml`](../Cargo.toml)：`members` 显式列出各
 - [Settings-and-Themes（分层设置 / 主题注册）](Settings-and-Themes.md)
 
 ### 高级特性
-- [Tasks-and-Tooling（任务运行 / REPL / 日志 / 剖析）](Tasks-and-Tooling.md)
+- [Tasks-and-Tooling（任务运行 / 日志 / 剖析）](Tasks-and-Tooling.md)
 
 ### 构建与平台
 - [Building on Windows（MSVC 构建 / spectre 裁剪）](Building-on-Windows.md)

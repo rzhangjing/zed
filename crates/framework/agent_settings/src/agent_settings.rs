@@ -35,7 +35,6 @@ pub const COMPACTION_PROMPT: &str = include_str!("prompts/compaction_prompt.txt"
 pub struct PanelLayout {
     pub(crate) agent_dock: Option<DockPosition>,
     pub(crate) project_panel_dock: Option<DockSide>,
-    pub(crate) outline_panel_dock: Option<DockSide>,
     pub(crate) collaboration_panel_dock: Option<DockPosition>,
 }
 
@@ -43,14 +42,12 @@ impl PanelLayout {
     const AGENT: Self = Self {
         agent_dock: Some(DockPosition::Left),
         project_panel_dock: Some(DockSide::Right),
-        outline_panel_dock: Some(DockSide::Right),
         collaboration_panel_dock: Some(DockPosition::Right),
     };
 
     const EDITOR: Self = Self {
         agent_dock: Some(DockPosition::Right),
         project_panel_dock: Some(DockSide::Left),
-        outline_panel_dock: Some(DockSide::Left),
         collaboration_panel_dock: Some(DockPosition::Left),
     };
 
@@ -66,7 +63,6 @@ impl PanelLayout {
         Self {
             agent_dock: content.agent.as_ref().and_then(|a| a.dock),
             project_panel_dock: content.project_panel.as_ref().and_then(|p| p.dock),
-            outline_panel_dock: content.outline_panel.as_ref().and_then(|p| p.dock),
             collaboration_panel_dock: content.collaboration_panel.as_ref().and_then(|p| p.dock),
         }
     }
@@ -74,7 +70,6 @@ impl PanelLayout {
     fn write_to(&self, settings: &mut SettingsContent) {
         settings.agent.get_or_insert_default().dock = self.agent_dock;
         settings.project_panel.get_or_insert_default().dock = self.project_panel_dock;
-        settings.outline_panel.get_or_insert_default().dock = self.outline_panel_dock;
         settings.collaboration_panel.get_or_insert_default().dock = self.collaboration_panel_dock;
     }
 
@@ -84,9 +79,6 @@ impl PanelLayout {
         }
         if self.project_panel_dock != current_merged.project_panel_dock {
             settings.project_panel.get_or_insert_default().dock = self.project_panel_dock;
-        }
-        if self.outline_panel_dock != current_merged.outline_panel_dock {
-            settings.outline_panel.get_or_insert_default().dock = self.outline_panel_dock;
         }
         if self.collaboration_panel_dock != current_merged.collaboration_panel_dock {
             settings.collaboration_panel.get_or_insert_default().dock =
@@ -100,9 +92,6 @@ impl PanelLayout {
         }
         if user_layout.project_panel_dock.is_none() {
             settings.project_panel.get_or_insert_default().dock = self.project_panel_dock;
-        }
-        if user_layout.outline_panel_dock.is_none() {
-            settings.outline_panel.get_or_insert_default().dock = self.outline_panel_dock;
         }
         if user_layout.collaboration_panel_dock.is_none() {
             settings.collaboration_panel.get_or_insert_default().dock =
@@ -1715,7 +1704,6 @@ mod tests {
         };
         assert_eq!(user_layout.agent_dock, Some(DockPosition::Left));
         assert_eq!(user_layout.project_panel_dock, None);
-        assert_eq!(user_layout.outline_panel_dock, None);
         assert_eq!(user_layout.collaboration_panel_dock, None);
 
         // User sets a combination that doesn't match either preset:
@@ -1770,7 +1758,6 @@ mod tests {
             original_user_layout.project_panel_dock,
             Some(DockSide::Right)
         );
-        assert_eq!(original_user_layout.outline_panel_dock, None);
 
         // Switch to the agent layout. This overwrites the user settings.
         SettingsStore::update_global(cx, |store, cx| {
@@ -1799,7 +1786,6 @@ mod tests {
             restored_user_layout.project_panel_dock,
             Some(DockSide::Right)
         );
-        assert_eq!(restored_user_layout.outline_panel_dock, None);
     }
 
     #[gpui::test]
@@ -1863,8 +1849,6 @@ mod tests {
 
             assert_eq!(user_layout.agent_dock, Some(DockPosition::Left));
             assert_eq!(user_layout.project_panel_dock, Some(DockSide::Right));
-            // Other fields weren't in user settings and didn't need changing.
-            assert_eq!(user_layout.outline_panel_dock, None);
 
             // And the merged result should now match agent.
             let layout = AgentSettings::get_layout(cx);
@@ -1932,7 +1916,6 @@ mod tests {
 
             assert_eq!(user_layout.agent_dock, Some(DockPosition::Right));
             assert_eq!(user_layout.project_panel_dock, Some(DockSide::Right));
-            assert_eq!(user_layout.outline_panel_dock, Some(DockSide::Left));
             assert_eq!(
                 user_layout.collaboration_panel_dock,
                 Some(DockPosition::Left)

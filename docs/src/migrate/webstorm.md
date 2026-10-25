@@ -76,7 +76,6 @@ Once inside a project:
 
 - Use {#kb:jetbrains file_finder::Toggle} to jump between files quickly (like WebStorm's "Recent Files")
 - Use {#kb:jetbrains command_palette::Toggle} to open the Command Palette (like WebStorm's "Search Everywhere")
-- Use {#kb:jetbrains outline::Toggle} to browse symbols in the current file (like WebStorm's "File Structure")
 
 Open buffers appear as tabs across the top. The Project Panel shows your file tree. Toggle it with {#kb:jetbrains project_panel::ToggleFocus} (just like WebStorm's Project tool window).
 
@@ -111,7 +110,6 @@ If you chose the JetBrains keymap during onboarding, most of your shortcuts shou
 
 | Action                 | WebStorm    | Zed (JetBrains keymap)   |
 | ---------------------- | ----------- | ------------------------ |
-| File Structure         | `Cmd + F12` | `Cmd + F12` (outline)    |
 | Navigate to Next Error | `F2`        | `F2`                     |
 | Run                    | `Ctrl + R`  | `Ctrl + Alt + R` (tasks) |
 | Stop                   | `Cmd + F2`  | `Ctrl + F2`              |
@@ -126,9 +124,9 @@ If you chose the JetBrains keymap during onboarding, most of your shortcuts shou
 ### How to Customize Keybindings
 
 - Open the Command Palette ({#kb:jetbrains command_palette::Toggle})
-- Run {#action zed::OpenKeymap}
+- Run {#action zed::OpenKeymapFile}
 
-This opens a list of all available bindings. You can override individual shortcuts or remove conflicts.
+This opens your keymap file, where you can override individual shortcuts or remove conflicts.
 
 Zed also supports key sequences (multi-key shortcuts).
 
@@ -158,7 +156,7 @@ Zed uses the Language Server Protocol (LSP) for code intelligence. For JavaScrip
 - **vtsls** (default) — Fast TypeScript language server with excellent performance
 - **typescript-language-server** — The standard TypeScript LSP implementation
 - **ESLint** — Linting integration
-- **Prettier** — Code formatting (built-in)
+- **Prettier** — Code formatting through an external formatter
 
 The TypeScript LSP experience is well-supported. You get accurate completions, type checking, go-to-definition, and find-references. The experience is comparable to VS Code, which uses the same underlying TypeScript services.
 
@@ -172,7 +170,7 @@ Where you might notice differences:
 
 - Use {#kb:jetbrains editor::ToggleCodeActions} for available code actions—the list will vary by language server
 - Ensure your `tsconfig.json` is properly configured so the language server understands your project structure
-- Use Prettier for consistent formatting (it's enabled by default for JS/TS)
+- Use an external formatter such as Prettier for consistent formatting; Zed has no built-in formatter
 - For code inspection similar to WebStorm's "Inspect Code," check the Diagnostics panel ({#kb:jetbrains diagnostics::Deploy})—ESLint and TypeScript together catch many of the same issues
 
 ### No Project Model
@@ -239,7 +237,6 @@ WebStorm organizes auxiliary views into numbered tool windows. Zed uses a simila
 | -------------------- | -------------- | ------------------------------------------ |
 | Project              | Project Panel  | {#kb:jetbrains project_panel::ToggleFocus} |
 | Terminal             | Terminal Panel | {#kb:jetbrains terminal_panel::Toggle}     |
-| Structure            | Outline Panel  | {#kb:jetbrains outline_panel::ToggleFocus} |
 | Problems             | Diagnostics    | {#kb:jetbrains diagnostics::Deploy}        |
 
 Zed has three dock positions: left, bottom, and right. Panels can be moved between docks by dragging or through settings.
@@ -274,7 +271,7 @@ Several features that require plugins in WebStorm are built into Zed:
 - Built-in terminal
 - Task runner
 - LSP-based code intelligence
-- Prettier formatting
+- External formatters and linters (Prettier, ESLint)
 - ESLint integration
 
 ### What's Not in Zed

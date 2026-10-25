@@ -42,16 +42,6 @@ Search across all files with {#kb pane::DeploySearch}. Results appear in a [mult
 
 Jump to where a symbol is defined with {#kb editor::GoToDefinition} (or `Cmd+Click` / `Ctrl+Click`). If there are multiple definitions, they open in a multibuffer.
 
-## Go to Symbol {#go-to-symbol}
-
-- Use {#kb outline::Toggle} to open an outline of symbols in the active file
-
-## Outline Panel {#outline-panel}
-
-The Outline Panel ({#kb outline_panel::ToggleFocus}) shows a persistent tree view of symbols in the current file. It's especially useful with [multibuffers](./multibuffers.md) for navigating search results or diagnostics.
-
-[Learn more about the Outline Panel →](./outline-panel.md)
-
 ## Tab Switcher {#tab-switcher}
 
 Quickly switch between open tabs with {#kb tab_switcher::Toggle}. Tabs are sorted by recent use—keep holding Ctrl and press Tab to cycle through them.
@@ -67,13 +57,10 @@ Quickly switch between open tabs with {#kb tab_switcher::Toggle}. Tabs are sorte
 | Project search    | {#kb pane::DeploySearch}         |
 | Go to definition  | {#kb editor::GoToDefinition}     |
 | Find references   | {#kb editor::FindAllReferences}  |
-| Symbol in file    | {#kb outline::Toggle}            |
-| Outline Panel     | {#kb outline_panel::ToggleFocus} |
 | Tab Switcher      | {#kb tab_switcher::Toggle}       |
 
 ## See Also {#see-also}
 
 - [Command Palette](./command-palette.md) — Full command palette documentation
 - [Multibuffers](./multibuffers.md) — Edit multiple files simultaneously
-- [Outline Panel](./outline-panel.md) — Symbol tree view
 - [Tab Switcher](./tab-switcher.md) — Switch between open files

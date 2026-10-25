@@ -12,7 +12,7 @@ description: "Configure HTML language support in Zed, including language servers
 
 ## Formatting
 
-By default Zed uses [Prettier](https://prettier.io/) for formatting HTML.
+By default Zed formats HTML with the `vscode-html-language-server` language server.
 
 Configure formatting in Settings ({#kb zed::OpenSettings}) under Languages > HTML, or add to your settings file:
 
@@ -26,14 +26,19 @@ Configure formatting in Settings ({#kb zed::OpenSettings}) under Languages > HTM
 
 You can still trigger formatting manually with {#kb editor::Format} or by opening the [command palette](..//getting-started.md#command-palette) ({#kb command_palette::Toggle}) and selecting "Format Document".
 
-### LSP Formatting
+### External Formatting
 
-To use the `vscode-html-language-server` language server auto-formatting instead of Prettier, configure the formatter in Settings ({#kb zed::OpenSettings}) under Languages > HTML, or add to your settings file:
+To use an external formatter such as [Prettier](https://prettier.io/) instead, configure it in Settings ({#kb zed::OpenSettings}) under Languages > HTML, or add to your settings file:
 
 ```json [settings]
   "languages": {
     "HTML": {
-      "formatter": "language_server",
+      "formatter": {
+        "external": {
+          "command": "prettier",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      },
     }
   }
 ```

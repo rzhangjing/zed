@@ -156,7 +156,6 @@ The following VS Code settings are automatically imported when you use **Import 
 | `http.proxy`               | `proxy`                                                      |
 | `npm.packageManager`       | `node.npm_path`                                              |
 | `telemetry.telemetryLevel` | `telemetry.metrics`, `telemetry.diagnostics`                 |
-| `outline.icons`            | `outline_panel.file_icons`, `outline_panel.folder_indicator` |
 | `chat.agent.enabled`       | `agent.enabled`                                              |
 | `mcp`                      | `context_servers`                                            |
 
@@ -240,9 +239,9 @@ Here’s a quick reference for where keybindings match and where they differ.
 To edit your keybindings:
 
 - Open the command palette (`Cmd+Shift+P`)
-- Run {#action zed::OpenKeymap}
+- Run {#action zed::OpenKeymapFile}
 
-This opens a list of all available bindings. You can override individual shortcuts, remove conflicts, or build a layout that works better for your setup.
+This opens your keymap file, where you can override individual shortcuts, remove conflicts, or build a layout that works better for your setup.
 
 Zed also supports chords (multi-key sequences) like `Cmd+K Cmd+C`, like VS Code does.
 

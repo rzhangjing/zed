@@ -299,7 +299,7 @@ Zed provides support for code formatting and linting to maintain consistent code
 
 ### Configuring Formatters
 
-Zed supports both built-in and external formatters. See [`formatter`](./reference/all-settings.md#formatter) docs for more. You can configure formatters globally or per-language in your `settings.json`:
+Zed formats through language servers and external formatters. See [`formatter`](./reference/all-settings.md#formatter) docs for more. You can configure formatters globally or per-language in your `settings.json`:
 
 ```json [settings]
 "languages": {
@@ -371,8 +371,6 @@ this works depends on the configured formatter:
 - **Language server**: Sends an LSP range formatting request for each selection. This provides the
   most precise selection-only formatting, and is only available when the configured language server
   advertises range-formatting support.
-- **Prettier**: Uses Prettier's built-in range formatting to format the encompassing range of all selections. Any
-  resulting edits that fall outside the selected ranges are discarded, so only the selected code is modified.
 - **External commands**: External command formatters do not support range formatting and are skipped when formatting
   selections.
 - **Code action formatters**: Code actions operate on the whole buffer, so they do not enable

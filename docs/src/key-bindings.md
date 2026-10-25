@@ -24,17 +24,6 @@ We currently support:
 
 This setting can also be changed via the command palette through the {#action zed::ToggleBaseKeymapSelector} action.
 
-
-## Keymap Editor
-
-You can access the keymap editor through the {#kb zed::OpenKeymap} action or by running {#action zed::OpenKeymap} action from the command palette. You can easily add or change a keybind for an action with the `Change Keybinding` or `Add Keybinding` button on the command palette's left bottom corner.
-
-In there, you can see all of the existing actions in Zed as well as the associated keybindings set to them by default.
-
-You can also customize them right from there, either by clicking on the pencil icon that appears when you hover over a particular action, by double-clicking on the action row, or by pressing the `enter` key.
-
-Anything that you end up doing on the keymap editor also gets reflected on the `keymap.json` file.
-
 ## User Keymaps
 
 The keymap file is stored in the following locations for each platform:
@@ -101,7 +90,7 @@ A few examples:
 ```json [keymap]
 {
   "bindings": {
-    "cmd-k cmd-s": "zed::OpenKeymap", // matches ⌘-k then ⌘-s
+    "cmd-k cmd-s": "zed::OpenKeymapFile", // matches ⌘-k then ⌘-s
     "space e": "editor::ShowCompletions", // type space then e
     "ç": "editor::ShowCompletions", // matches ⌥-c
     "shift shift": "file_finder::Toggle" // matches pressing and releasing shift twice

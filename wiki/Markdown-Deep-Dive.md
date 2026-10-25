@@ -1,6 +1,8 @@
-# Deep Reference: markdown & markdown_preview
+# Deep Reference: markdown
 
-> 参考手册级：`crates/markdown`（**可复用的 Markdown 渲染视图**，被 agent/outline_preview/onboarding 等广泛嵌入；`markdown.rs` 272KB）与 `crates/markdown_preview`（**编辑器内的预览面板 `Item`**）。管线：**源文本 → pulldown-cmark → 事件/标签流 → 解析块 → GPUI `Element` 绘制**。
+> 参考手册级：`crates/markdown`（**可复用的 Markdown 渲染视图**，被 agent/onboarding/hover 文档等广泛嵌入；`markdown.rs` 272KB）。管线：**源文本 → pulldown-cmark → 事件/标签流 → 解析块 → GPUI `Element` 绘制**。
+
+> ⚠️ 已移除（Batch 1–2c）：`crates/markdown_preview`（编辑器内预览面板 `Item`）已删除，第 4 节仅保留移除说明。
 
 ## 1. `crates/markdown` 解析层 [`parser.rs`](../crates/markdown/src/parser.rs)(71KB)
 基于第三方 `pulldown-cmark`，把 `&str` 解析为带标签的事件流（SAX 式），再归约成块树：
@@ -34,14 +36,9 @@
 | [selection.rs](../crates/markdown/src/selection.rs) | 选区/命中测试（跨块鼠标拖选） |
 `gpui_util`、`theme` 提供样式来源。→ [Settings-and-Themes.md](Settings-and-Themes.md)。
 
-## 4. `crates/markdown_preview`：编辑器预览面板
-| 类型 | 位置 | 角色 |
-|---|---|---|
-| `struct MarkdownPreviewView` | [markdown_preview_view.rs:66](../crates/markdown_preview/src/markdown_preview_view.rs) | `Item`（`impl Item` L1608）：可 dock 的预览 tab，内嵌 `Markdown` + 可选同步 `Editor` |
-| `enum MarkdownPreviewMode` | [L85](../crates/markdown_preview/src/markdown_preview_view.rs) | `SingleBuffer`｜`Split`（编辑/预览分栏，滚动同步） |
-| `enum MarkdownPreviewEvent` | [L119](../crates/markdown_preview/src/markdown_preview_view.rs) | `ChangedMode`/`SavedAs`/`OpenedPreview`/`ClosedPreview` |
-| `struct MarkdownPreviewSettings` | [markdown_preview_settings.rs:6](../crates/markdown_preview/src/markdown_preview_settings.rs) | 主题/字号 |
-动作（markdown_preview.rs）：`TogglePreview`/`Open`/`Follow`/`ScrollCursorToTop`。打开时向 `Workspace` 注册为 `Item`（[Workspace-Deep-Dive.md](Workspace-Deep-Dive.md)），监听 `BufferEvent::Reparsed/Modified` 重渲染。
+## 4. `crates/markdown_preview`：编辑器预览面板（已移除）
+
+> ⚠️ 已移除（Batch 1–2c）：`markdown_preview` crate（`MarkdownPreviewView`/`MarkdownPreviewMode`/`MarkdownPreviewEvent`/`MarkdownPreviewSettings`、`TogglePreview` 等动作）已从本 fork 删除。本页其余部分只描述保留的 `crates/markdown` 渲染库。
 
 ## 5. 渲染管线
 ```mermaid

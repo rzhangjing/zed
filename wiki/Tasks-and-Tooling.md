@@ -1,6 +1,8 @@
-# Tasks & Tooling（任务运行 / REPL / 日志 / 性能剖析）
+# Tasks & Tooling（任务运行 / 日志 / 性能剖析）
 
-本页收录四个"工具型"子系统：**外部任务运行**（[`task`](../crates/task) + `project::TaskStore` + [`tasks_ui`](../crates/tasks_ui)）、**REPL / 内核**（[`repl`](../crates/repl)）、**日记**（[`journal`](../crates/journal)）、**性能剖析器**（[`miniprofiler_ui`](../crates/miniprofiler_ui)）。
+本页收录三个"工具型"子系统：**外部任务运行**（[`task`](../crates/task) + `project::TaskStore` + [`tasks_ui`](../crates/tasks_ui)）、**日记**（[`journal`](../crates/journal)）、**性能剖析器**（[`miniprofiler_ui`](../crates/miniprofiler_ui)）。
+
+> ⚠️ 已移除（Batch 1–2c）：原 REPL / 内核子系统（`repl` crate，Jupyter 式交互执行）已从本 fork 删除，第 2 节仅保留移除说明。
 
 ## 1. Tasks（在终端里跑构建/脚本）
 
@@ -30,23 +32,13 @@ graph TB
 
 `TaskStore`（Local/Remote 两态，`local` L162 / `remote` L183）把模板按 `TaskSourceKind`（用户输入 / worktree 的 `.zed/task.json` / 全局 task.json / 语言 / LSP）聚合，`task_context_for_location`（L205）解析出当前文件/工作目录来填变量；协作时 `shared`/`unshared`（L247/259）同步任务清单。`RevealStrategy`/`HideStrategy`（L103/116）控制任务面板何时显隐。
 
-## 2. REPL / 内核（交互式代码执行）
+## 2. REPL / 内核（已移除）
 
-[`repl`](../crates/repl) 提供 Jupyter 式"选中代码→发送到内核→就地显示结果"。
-
-| 类型 | 位置 | 职责 |
-|---|---|---|
-| `ReplStore` | [`repl_store.rs:27`](../crates/repl/src/repl_store.rs) | 各 buffer 关联的运行时会话 |
-| `KernelSpecification` | [`kernels/mod.rs:246`](../crates/repl/src/kernels/mod.rs) | 一个可用内核（Python/R…）的定义 |
-| `KernelStatus` | [`kernels/mod.rs:678`](../crates/repl/src/kernels/mod.rs) | 未启动/启动中/就绪/忙碌 |
-| `ReplSessionsPage` | [`repl_sessions_ui.rs:173`](../crates/repl/src/repl_sessions_ui.rs) | 会话管理页（列出运行中内核） |
-| `ReplSettings` | [`repl_settings.rs:5`](../crates/repl/src/repl_settings.rs) | 相关设置 |
-
-内核通过 Jupyter **Messaging（ZMQ）** 协议与语言运行时通信（`kernels/` 目录封装）。选代码 → 找/启 `ReplStore` 里对应 buffer 的内核 → `execute_request` → 流式收回 `stdout`/`display_data` 作为 Editor 内联 block。
+> ⚠️ 已移除（Batch 1–2c）：`repl` crate（`ReplStore`/`KernelSpecification`/`KernelStatus`/`ReplSessionsPage`/`ReplSettings`，Jupyter ZMQ 内核通信与内联结果 block）已删除。交互式执行请使用终端（[Terminal.md](Terminal.md)）。
 
 ## 3. Journal（每日/每周日志）
 
-[`journal`](../crates/journal) 提供一键打开"今天/本周"笔记文件：`new_journal_entry`（[journal.rs:57](../crates/journal/src/journal.rs)）按 `JournalSettings`（L24：路径模板、周期 daily/weekly、扩展名）在指定目录创建/打开对应 `.md`，并作为普通 `Editor` Item 呈现（因此天然支持 Markdown 预览，见 [Markdown-and-Preview.md](Markdown-and-Preview.md)）。`init`（L46）注册 Action。
+[`journal`](../crates/journal) 提供一键打开"今天/本周"笔记文件：`new_journal_entry`（[journal.rs:57](../crates/journal/src/journal.rs)）按 `JournalSettings`（L24：路径模板、周期 daily/weekly、扩展名）在指定目录创建/打开对应 `.md`，并作为普通 `Editor` Item 呈现（见 [Markdown-and-Preview.md](Markdown-and-Preview.md)）。`init`（L46）注册 Action。
 
 ## 4. Miniprofiler（内置性能剖析）
 
@@ -63,13 +55,10 @@ graph TB
 | `enum TaskStore` | `project/src/task_store.rs:26` | 任务存储（Local/Remote） |
 | `Inventory` / `TaskContexts` | `project/src/task_inventory.rs:43/173` | 任务清单 / 上下文 |
 | `VsCodeTaskFile` | `task/src/vscode_format.rs:142` | 导入 VSCode 任务 |
-| `ReplStore` | `repl/src/repl_store.rs:27` | REPL 会话存储 |
-| `KernelSpecification` / `KernelStatus` | `repl/src/kernels/mod.rs:246/678` | 内核定义 / 状态 |
 | `new_journal_entry` | `journal/src/journal.rs:57` | 打开当日笔记 |
 | `ProfilerWindow` | `miniprofiler_ui/src/miniprofiler_ui.rs:186` | 性能时间线窗口 |
 
 ## 6. 与其他页面的关系
 - 任务在终端 tab 执行：[Terminal.md](Terminal.md)。
-- REPL 结果内联 block 依赖编辑器：[Editing-Deep-Dive.md](Editing-Deep-Dive.md)。
 - 任务选择弹窗是一个 Picker：[Picker-and-Commands.md](Picker-and-Commands.md)。
 - 剖析器基于 GPUI profiler：[GPUI-Internals.md](GPUI-Internals.md)。

@@ -1645,7 +1645,7 @@ fn editor_page() -> SettingsPage {
         ]
     }
 
-    fn multibuffer_section() -> [SettingsPageItem; 7] {
+    fn multibuffer_section() -> [SettingsPageItem; 6] {
         [
             SettingsPageItem::SectionHeader("Multibuffer"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -1684,29 +1684,6 @@ fn editor_page() -> SettingsPage {
                     pick: |settings_content| settings_content.editor.excerpt_context_lines.as_ref(),
                     write: |settings_content, value, _| {
                         settings_content.editor.excerpt_context_lines = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Expand Outlines With Depth",
-                description: "Default depth to expand outline items in the current file.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.expand_outlines_with_depth"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()
-                            .and_then(|outline_panel| {
-                                outline_panel.expand_outlines_with_depth.as_ref()
-                            })
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .expand_outlines_with_depth = value;
                     },
                 }),
                 metadata: None,
@@ -5205,219 +5182,6 @@ fn panels_page() -> SettingsPage {
         ]
     }
 
-    fn outline_panel_section() -> [SettingsPageItem; 11] {
-        [
-            SettingsPageItem::SectionHeader("Outline Panel"),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Outline Panel Button",
-                description: "Show the outline panel button in the status bar.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.button"),
-                    pick: |settings_content| {
-                        settings_content.outline_panel.as_ref()?.button.as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .button = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Outline Panel Dock",
-                description: "Where to dock the outline panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.dock"),
-                    pick: |settings_content| settings_content.outline_panel.as_ref()?.dock.as_ref(),
-                    write: |settings_content, value, _| {
-                        settings_content.outline_panel.get_or_insert_default().dock = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Outline Panel Default Width",
-                description: "Default width of the outline panel in pixels.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.default_width"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .default_width
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .default_width = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "File Icons",
-                description: "Show file icons in the outline panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.file_icons"),
-                    pick: |settings_content| {
-                        settings_content.outline_panel.as_ref()?.file_icons.as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .file_icons = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Folder Indicator",
-                description: "What to show for directories in the outline panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.folder_indicator"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .folder_indicator
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .folder_indicator = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Indent Size",
-                description: "Amount of indentation for nested items.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.indent_size"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .indent_size
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .indent_size = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Auto Reveal Entries",
-                description: "Whether to reveal when a corresponding outline entry becomes active.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.auto_reveal_entries"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .auto_reveal_entries
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .auto_reveal_entries = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Auto Fold Directories",
-                description: "Whether to fold directories automatically when a directory contains only one subdirectory.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.auto_fold_dirs"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .auto_fold_dirs
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .auto_fold_dirs = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                files: USER,
-                title: "Show Indent Guides",
-                description: "When to show indent guides in the outline panel.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.indent_guides.show"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .indent_guides
-                            .as_ref()?
-                            .show
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .indent_guides
-                            .get_or_insert_default()
-                            .show = value;
-                    },
-                }),
-                metadata: None,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Hide Symbols in Multi-Buffers",
-                description: "Whether to hide symbols, excerpts and search matches in the outline panel when a multi-buffer view is active.",
-                field: Box::new(SettingField {
-                    json_path: Some("outline_panel.multi_buffer_hide_symbols"),
-                    pick: |settings_content| {
-                        settings_content
-                            .outline_panel
-                            .as_ref()?
-                            .multi_buffer_hide_symbols
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .outline_panel
-                            .get_or_insert_default()
-                            .multi_buffer_hide_symbols = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-        ]
-    }
-
     fn collaboration_panel_section() -> [SettingsPageItem; 4] {
         [
             SettingsPageItem::SectionHeader("Collaboration Panel"),
@@ -5622,7 +5386,6 @@ fn panels_page() -> SettingsPage {
         items: concat_sections![
             project_panel_section(),
             terminal_panel_section(),
-            outline_panel_section(),
             collaboration_panel_section(),
             agent_panel_section(),
         ],
@@ -8302,7 +8065,7 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
         ]
     }
 
-    fn global_only_miscellaneous_sub_section() -> [SettingsPageItem; 4] {
+    fn global_only_miscellaneous_sub_section() -> [SettingsPageItem; 2] {
         [
             SettingsPageItem::SettingItem(SettingItem {
                 title: "Image Viewer",
@@ -8321,85 +8084,6 @@ fn language_settings_data() -> Box<[SettingsPageItem]> {
                 }),
                 metadata: None,
                 files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Open Markdown Files in Preview",
-                description: "Whether to automatically open Markdown files in the preview.",
-                field: Box::new(SettingField {
-                    json_path: Some("markdown_preview.open_markdown_files_in_preview"),
-                    pick: |settings_content| {
-                        settings_content
-                            .markdown_preview
-                            .as_ref()?
-                            .open_markdown_files_in_preview
-                            .as_ref()
-                    },
-                    write: |settings_content, value, _| {
-                        settings_content
-                            .markdown_preview
-                            .get_or_insert_default()
-                            .open_markdown_files_in_preview = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::DynamicItem(DynamicItem {
-                discriminant: SettingItem {
-                    files: USER,
-                    title: "Limit Markdown Preview Width",
-                    description: "Whether to constrain the markdown preview content to a maximum width, centering it when the pane is wider, for optimal readability.",
-                    field: Box::new(SettingField::<bool> {
-                        json_path: Some("markdown_preview.limit_content_width"),
-                        pick: |settings_content| {
-                            settings_content
-                                .markdown_preview
-                                .as_ref()?
-                                .limit_content_width
-                                .as_ref()
-                        },
-                        write: |settings_content, value, _| {
-                            settings_content
-                                .markdown_preview
-                                .get_or_insert_default()
-                                .limit_content_width = value;
-                        },
-                    }),
-                    metadata: None,
-                },
-                pick_discriminant: |settings_content| {
-                    let enabled = settings_content
-                        .markdown_preview
-                        .as_ref()?
-                        .limit_content_width
-                        .unwrap_or(true);
-                    Some(if enabled { 1 } else { 0 })
-                },
-                fields: vec![
-                    vec![],
-                    vec![SettingItem {
-                        files: USER,
-                        title: "Max Width",
-                        description: "Maximum content width in pixels. Content will be centered when the pane is wider than this value.",
-                        field: Box::new(SettingField {
-                            json_path: Some("markdown_preview.max_width"),
-                            pick: |settings_content| {
-                                settings_content
-                                    .markdown_preview
-                                    .as_ref()?
-                                    .max_width
-                                    .as_ref()
-                            },
-                            write: |settings_content, value, _| {
-                                settings_content
-                                    .markdown_preview
-                                    .get_or_insert_default()
-                                    .max_width = value;
-                            },
-                        }),
-                        metadata: None,
-                    }],
-                ],
             }),
             SettingsPageItem::SettingItem(SettingItem {
                 title: "Drop Size Target",

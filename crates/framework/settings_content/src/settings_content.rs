@@ -240,8 +240,6 @@ pub struct SettingsContent {
 
     pub language_models: Option<AllLanguageModelSettingsContent>,
 
-    pub outline_panel: Option<OutlinePanelSettingsContent>,
-
     pub project_panel: Option<ProjectPanelSettingsContent>,
 
     /// Configuration for Node-related features
@@ -354,7 +352,7 @@ fallible_options::flattened_deserialize!(SettingsContent {
         file_finder, tabs, tab_bar, status_bar, preview_tabs, agent,
         agent_servers, audio, auto_update, base_keymap, collaboration_panel, diagnostics,
         global_lsp_settings, image_viewer, markdown_preview, hide_mouse,
-        journal, log, line_indicator_format, language_models, outline_panel, project_panel,
+        journal, log, line_indicator_format, language_models, project_panel,
         node, proxy, reduce_motion, session, telemetry, terminal,
         title_bar, calls, modeline_lines, feature_flags,
         instrumentation,
@@ -733,64 +731,6 @@ pub enum HourFormat {
     Hour24,
 }
 
-#[with_fallible_options]
-#[derive(Clone, Default, Serialize, Deserialize, JsonSchema, MergeFrom, Debug, PartialEq)]
-pub struct OutlinePanelSettingsContent {
-    /// Whether to show the outline panel button in the status bar.
-    ///
-    /// Default: true
-    pub button: Option<bool>,
-    /// Customize default width (in pixels) taken by outline panel
-    ///
-    /// Default: 240
-    pub default_width: Option<PixelSetting>,
-    /// The position of outline panel
-    ///
-    /// Default: right (Agentic layout), left (Classic layout)
-    pub dock: Option<DockSide>,
-    /// Whether to show file icons in the outline panel.
-    ///
-    /// Default: true
-    pub file_icons: Option<bool>,
-    /// What to show for directories in the outline panel.
-    ///
-    /// Default: icon
-    pub folder_indicator: Option<FolderIndicator>,
-    /// Amount of indentation (in pixels) for nested items.
-    ///
-    /// Default: 20
-    pub indent_size: Option<PixelSetting>,
-    /// Whether to reveal it in the outline panel automatically,
-    /// when a corresponding project entry becomes active.
-    /// Gitignored entries are never auto revealed.
-    ///
-    /// Default: true
-    pub auto_reveal_entries: Option<bool>,
-    /// Whether to fold directories automatically
-    /// when directory has only one directory inside.
-    ///
-    /// Default: true
-    pub auto_fold_dirs: Option<bool>,
-    /// Settings related to indent guides in the outline panel.
-    pub indent_guides: Option<IndentGuidesSettingsContent>,
-    /// Scrollbar-related settings
-    pub scrollbar: Option<ScrollbarSettingsContent>,
-    /// Default depth to expand outline items in the current file.
-    /// The default depth to which outline entries are expanded on reveal.
-    /// - Set to 0 to collapse all items that have children
-    /// - Set to 1 or higher to collapse items at that depth or deeper
-    ///
-    /// Default: 100
-    pub expand_outlines_with_depth: Option<usize>,
-    /// Whether to hide symbols, excerpts and search matches in the outline panel
-    /// when a multi-buffer view (e.g. a diff or search results) is active,
-    /// showing only files and directories.
-    /// Does not affect single-file views.
-    ///
-    /// Default: false
-    pub multi_buffer_hide_symbols: Option<bool>,
-}
-
 #[derive(
     Clone,
     Copy,
@@ -862,21 +802,6 @@ pub struct MarkdownPreviewSettingsContent {
     /// The theme to use for the markdown preview.
     /// Falls back to the main editor theme if unset.
     pub theme: Option<ThemeSelection>,
-    /// Whether to automatically open Markdown files in the preview.
-    ///
-    /// Default: false
-    pub open_markdown_files_in_preview: Option<bool>,
-    /// Whether to limit the width of the rendered markdown content. When
-    /// enabled, content is constrained to `max_width` and centered
-    /// horizontally within the preview pane, for optimal readability.
-    ///
-    /// Default: true
-    pub limit_content_width: Option<bool>,
-    /// The maximum width, in pixels, of the rendered markdown content when
-    /// `limit_content_width` is enabled.
-    ///
-    /// Default: 800
-    pub max_width: Option<PixelSetting>,
 }
 
 /// The settings for the image viewer.

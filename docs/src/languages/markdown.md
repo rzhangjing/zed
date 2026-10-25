@@ -28,7 +28,7 @@ def fib(n):
 
 ### Format
 
-Zed supports using Prettier to automatically re-format Markdown documents. You can trigger this manually via the {#action editor::Format} action or via the {#kb editor::Format} keyboard shortcut. Alternately, you can enable format on save.
+Zed doesn't bundle a Markdown formatter. Configure an external formatter such as [Prettier](https://prettier.io/), then trigger formatting manually via the {#action editor::Format} action or the {#kb editor::Format} keyboard shortcut. Alternately, you can enable format on save.
 
 Configure formatting in Settings ({#kb zed::OpenSettings}) under Languages > Markdown, or add to your settings file:
 

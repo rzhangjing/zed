@@ -30,7 +30,7 @@
 > `Project` 本身是**门面**：几乎每个方法都委托到某个 `Entity<XxxStore>`；子 store 各自 `EventEmitter`，`Project::Event`(L337) 再转发。
 
 ## 2. `Project::Event`（[project.rs:337](../crates/project/src/project.rs)）
-`LanguageServerAdded(id,name,worktree_id)`、`SupplementaryLanguageServerAdded`、`LanguageServerStopped`、`LanguageServerEdited{local,remote}`、`BuildInitialLspPullDiffsFinished`、`SearchStarted`/`SearchFinished`、`FsWatcherEvent`、`ExplainDiagnostics`/`ResolveCodeAction`、`LanguageServerUnresponsive`、`DiskBasedDiagnosticsStarted/Finished`、`LanguageServerLog`、`OpenBufferByProjectId`、`Toast`、`PrettierDidFormat`、`RestartLanguageServers`… （editor/project_panel 订阅以刷新）。
+`LanguageServerAdded(id,name,worktree_id)`、`SupplementaryLanguageServerAdded`、`LanguageServerStopped`、`LanguageServerEdited{local,remote}`、`BuildInitialLspPullDiffsFinished`、`SearchStarted`/`SearchFinished`、`FsWatcherEvent`、`ExplainDiagnostics`/`ResolveCodeAction`、`LanguageServerUnresponsive`、`DiskBasedDiagnosticsStarted/Finished`、`LanguageServerLog`、`OpenBufferByProjectId`、`Toast`、`RestartLanguageServers`… （editor/project_panel 订阅以刷新）。
 
 ## 3. Buffer / LSP 门面方法（真实锚点）
 | 方法 | 位置 | 委托 |
@@ -39,7 +39,7 @@
 | `open_buffer(remote_id,worktree_id,path,cx)` | [L3268](../crates/project/src/project.rs) | worktree→File→Buffer |
 | `open_buffer_for_entry` / `open_unstaged_diff` / `open_conflict_lists` | project.rs | diff/冲突视图 |
 | `search(query,...)` / `search_in_project` | [L4811](../crates/project/src/project.rs) | project_search.rs（见 §6） |
-| `update_buffer` / `save_buffer` / `buffer_store` | project.rs | 编辑/保存（触发 LSP didSave、prettier、format） |
+| `update_buffer` / `save_buffer` / `buffer_store` | project.rs | 编辑/保存（触发 LSP didSave、format） |
 | LSP 请求：`completions`/`code_actions`/`hover`/`definition`/`references`/`rename`/`format`/`inlay_hints`/`signature_help`/`document_symbols` | project.rs → lsp_command.rs(216KB) | 每个是一个 `trait LspRequest`/`typed_lsp_request` |
 
 ## 4. `LspStore`（[lsp_store.rs](../crates/project/src/lsp_store.rs)，683KB）
@@ -71,7 +71,6 @@ pub enum Worktree {
 | 任务 | [task_store.rs](../crates/project/src/task_store.rs)/[task_inventory.rs](../crates/project/src/task_inventory.rs) | `TaskStore`(enum)、`TaskTemplates` |
 | agent | [agent_server_store.rs](../crates/project/src/agent_server_store.rs)(85KB)/[agent_registry_store.rs](../crates/project/src/agent_registry_store.rs) | ACP agent。→ [Agent-and-AI.md](Agent-and-AI.md) |
 | context server | [context_server_store.rs](../crates/project/src/context_server_store.rs)(75KB) | MCP servers。→ [Agent-and-AI.md](Agent-and-AI.md) |
-| prettier | [prettier_store.rs](../crates/project/src/prettier_store.rs) | JS/TS 格式化。 |
 | manifest | [manifest_tree.rs](../crates/project/src/manifest_tree.rs) | 包/Cargo/package.json 树 |
 | terminals | [terminals.rs](../crates/project/src/terminals.rs) | shell 环境注入 |
 | toolchain | [toolchain_store.rs](../crates/project/src/toolchain_store.rs) | 运行时选择 |

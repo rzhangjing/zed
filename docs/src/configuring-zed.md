@@ -50,7 +50,7 @@ Project settings take precedence over user settings for that project only.
 // .zed/settings.json
 {
   "tab_size": 2,
-  "formatter": "prettier",
+  "formatter": "auto",
   "format_on_save": "on"
 }
 ```

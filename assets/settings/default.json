@@ -116,15 +116,6 @@
     "font_family": null,
     // The font family for code blocks in the markdown preview. Falls back to the editor font family if unset.
     "code_font_family": null,
-    // Whether to automatically open Markdown files in the preview.
-    "open_markdown_files_in_preview": false,
-    // Whether to limit the width of the rendered markdown content. When
-    // enabled, content is constrained to `max_width` and centered
-    // horizontally within the preview pane.
-    "limit_content_width": true,
-    // The maximum width, in pixels, of the rendered markdown content when
-    // limit_content_width is enabled.
-    "max_width": 800,
   },
   // Determines the modifier to be used to add multiple cursors with the mouse. The open hover link mouse gestures will adapt such that it do not conflict with the multicursor modifier.
   //
@@ -957,70 +948,6 @@
       // Whether to automatically open files dropped from external sources.
       "on_drop": true,
     },
-  },
-  "outline_panel": {
-    // Whether to show the outline panel button in the status bar
-    "button": true,
-    // Default width of the outline panel.
-    "default_width": 300,
-    // Where to dock the outline panel. Can be 'left' or 'right'.
-    "dock": "right",
-    // Whether to show file icons in the outline panel.
-    "file_icons": true,
-    // What to show for directories in the outline panel.
-    //
-    // 1. A folder icon:
-    //   "icon"
-    // 2. A disclosure chevron:
-    //   "chevron"
-    // 3. A disclosure chevron followed by a folder icon:
-    //   "both"
-    "folder_indicator": "icon",
-    // Amount of indentation for nested items.
-    "indent_size": 20,
-    // Whether to reveal it in the outline panel automatically,
-    // when a corresponding outline entry becomes active.
-    // Gitignored entries are never auto revealed.
-    "auto_reveal_entries": true,
-    // Whether to fold directories automatically
-    // when a directory has only one directory inside.
-    "auto_fold_dirs": true,
-    // Settings related to indent guides in the outline panel.
-    "indent_guides": {
-      // When to show indent guides in the outline panel.
-      // This setting can take two values:
-      //
-      // 1. Always show indent guides:
-      //    "always"
-      // 2. Never show indent guides:
-      //    "never"
-      "show": "always",
-    },
-    // Scrollbar-related settings
-    "scrollbar": {
-      // When to show the scrollbar in the project panel.
-      // This setting can take five values:
-      //
-      // 1. null (default): Inherit editor settings
-      // 2. Show the scrollbar if there's important information or
-      //    follow the system's configured behavior (default):
-      //   "auto"
-      // 3. Match the system's configured behavior:
-      //    "system"
-      // 4. Always show the scrollbar:
-      //    "always"
-      // 5. Never show the scrollbar:
-      //    "never"
-      "show": null,
-    },
-    // Default depth to expand outline items in the current file.
-    // Set to 0 to collapse all items that have children, 1 or higher to collapse items at that depth or deeper.
-    "expand_outlines_with_depth": 100,
-    // Whether to hide symbols, excerpts and search matches in the outline panel
-    // when a multi-buffer view (e.g. a diff or search results) is active,
-    // showing only files and directories.
-    // Does not affect single-file views.
-    "multi_buffer_hide_symbols": false,
   },
   "collaboration_panel": {
     // Whether to show the collaboration panel button in the status bar.
@@ -2068,20 +1995,9 @@
   "languages": {
     "C": {
       "use_on_type_format": false,
-      "prettier": {
-        "allowed": false,
-      },
     },
     "C++": {
       "use_on_type_format": false,
-      "prettier": {
-        "allowed": false,
-      },
-    },
-    "CSS": {
-      "prettier": {
-        "allowed": true,
-      },
     },
     "Diff": {
       "show_edit_predictions": false,
@@ -2097,19 +2013,6 @@
     },
     "JavaScript": {
       "language_servers": ["!typescript-language-server", "vtsls", "..."],
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "JSON": {
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "JSONC": {
-      "prettier": {
-        "allowed": true,
-      },
     },
     "Markdown": {
       "use_on_type_format": false,
@@ -2118,9 +2021,6 @@
       "soft_wrap": "editor_width",
       "completions": {
         "words": "disabled",
-      },
-      "prettier": {
-        "allowed": true,
       },
     },
     "Plain Text": {
@@ -2146,20 +2046,9 @@
     },
     "TSX": {
       "language_servers": ["!typescript-language-server", "vtsls", "..."],
-      "prettier": {
-        "allowed": true,
-      },
     },
     "TypeScript": {
       "language_servers": ["!typescript-language-server", "vtsls", "..."],
-      "prettier": {
-        "allowed": true,
-      },
-    },
-    "YAML": {
-      "prettier": {
-        "allowed": true,
-      },
     },
   },
   // Different settings for specific language models.

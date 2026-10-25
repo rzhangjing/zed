@@ -22,7 +22,7 @@ graph TB
     subgraph L4[编辑与 UI 面板层]
         EDITOR[editor]
         WS[workspace]
-        PANELS[project_panel / command_palette / outline / search ...]
+        PANELS[project_panel / command_palette / search ...]
         PICKER[picker / menu / breadcrumbs]
     end
     subgraph L3[语言与项目核心]
@@ -83,7 +83,7 @@ graph TB
 |---|---|
 | `editor` | 核心编辑器控件（详见 [Editor.md](Editor.md)） |
 | `workspace` | 窗口/面板/项目树容器，`AppState`、`Pane` |
-| `project_panel` / `outline` / `search` / `command_palette` / `file_finder` / `project_symbols` / `breadcrumbs` / `tab_switcher` / `title_bar` / `notifications` | 各类面板与全局 UI |
+| `project_panel` / `search` / `command_palette` / `file_finder` / `project_symbols` / `breadcrumbs` / `tab_switcher` / `title_bar` / `notifications` | 各类面板与全局 UI |
 | `picker` | 模糊选择器基类（command_palette/file_finder 的公共底座） |
 
 ### L5 特性层
