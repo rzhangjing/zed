@@ -1,0 +1,33 @@
+# Member of the Zed workspace: both `ew-ordpack` and `ew-ordpack-derive` are
+# listed under `members` in the repository root `Cargo.toml`. A workspace member
+# cannot declare its own `[workspace]` table (the root's `resolver = "2"`, member
+# list and release profile apply), so those tables were dropped when this crate
+# was flattened into `crates/fundamental/ew-ordpack`.
+[package]
+name = "ew-ordpack"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+description = "OrdPack: schema-driven binary serialization with zero field metadata on the wire"
+license = "MIT OR Apache-2.0"
+keywords = ["serialization", "binary", "no_std", "encoding"]
+categories = ["encoding"]
+
+[dependencies]
+ew-ordpack-derive = { version = "0.1.0", path = "ew-ordpack-derive", optional = true }
+
+[dev-dependencies]
+bincode = { version = "2", features = ["derive"] }
+
+[features]
+default = ["std", "derive"]
+std = ["alloc"]
+alloc = []
+derive = ["dep:ew-ordpack-derive"]
+unchecked = []
+
+# The upstream crate also carried `[profile.release] lto = "thin"` and
+# `codegen-units = 1` for `cargo run --release --example bench`. Workspace
+# members cannot carry profile tables; the root `Cargo.toml` already sets
+# exactly those values in `[profile.release]` (`lto = "thin"`,
+# `codegen-units = 1`), so benchmark numbers are unchanged.

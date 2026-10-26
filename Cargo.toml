@@ -367,6 +367,18 @@ members = [
     "crates/dameng/dm-dpi",
     "crates/dameng/dm-pool",
     "crates/dameng/dm-query",
+
+    #
+    # fundamental (基础库)
+    #
+    # `ew-ordpack`: schema-driven binary serialization, copied in whole from
+    # `E:\Rust\ew-ordpack`, which was its own workspace. Both the facade crate
+    # and its proc-macro crate have to be members: the derive crate would
+    # otherwise be adopted by a nested `[workspace]` root and resolve its
+    # dependencies against that manifest instead of this one.
+    #
+    "crates/fundamental/ew-ordpack",
+    "crates/fundamental/ew-ordpack/ew-ordpack-derive",
 ]
 default-members = ["crates/framework/zed"]
 
@@ -441,6 +453,8 @@ editor = { path = "crates/framework/editor" }
 env_var = { path = "crates/framework/env_var" }
 etw_tracing = { path = "crates/framework/etw_tracing" }
 eval_utils = { path = "crates/framework/eval_utils" }
+ew-ordpack = { path = "crates/fundamental/ew-ordpack" }
+ew-ordpack-derive = { path = "crates/fundamental/ew-ordpack/ew-ordpack-derive" }
 feature_flags = { path = "crates/framework/feature_flags" }
 feature_flags_macros = { path = "crates/framework/feature_flags_macros" }
 feedback = { path = "crates/framework/feedback" }
