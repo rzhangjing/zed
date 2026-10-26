@@ -1607,38 +1607,15 @@ pub fn range_from_lsp(range: lsp::Range) -> Range<Unclipped<PointUtf16>> {
     start..end
 }
 
-#[doc(hidden)]
+// The grammar assets live in `crates/framework/grammars/src`, which outlives
+// the crate package; this module loads them for tests and `test-support`
+// consumers.
 #[cfg(any(test, feature = "test-support"))]
-pub fn rust_lang() -> Arc<Language> {
-    test_language("rust", tree_sitter_rust::LANGUAGE.into())
-}
+mod test_grammars;
 
 #[doc(hidden)]
 #[cfg(any(test, feature = "test-support"))]
-pub fn json_lang() -> Arc<Language> {
-    test_language("json", tree_sitter_json::LANGUAGE.into())
-}
-
-#[doc(hidden)]
-#[cfg(any(test, feature = "test-support"))]
-pub fn markdown_lang() -> Arc<Language> {
-    test_language("markdown", tree_sitter_md::LANGUAGE.into())
-}
-
-#[doc(hidden)]
-#[cfg(any(test, feature = "test-support"))]
-pub fn language(name: &str, grammar: tree_sitter::Language) -> Arc<Language> {
-    test_language(name, grammar)
-}
-
-#[cfg(any(test, feature = "test-support"))]
-fn test_language(name: &str, grammar: tree_sitter::Language) -> Arc<Language> {
-    Arc::new(
-        Language::new(grammars::load_config(name), Some(grammar))
-            .with_queries(grammars::load_queries(name))
-            .unwrap_or_else(|error| panic!("could not parse queries for language {name}: {error}")),
-    )
-}
+pub use test_grammars::{json_lang, language, markdown_lang, rust_lang};
 
 #[cfg(test)]
 mod tests {
