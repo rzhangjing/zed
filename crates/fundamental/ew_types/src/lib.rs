@@ -1,4 +1,4 @@
-//! ew-types 库入口。CLI 与 MCP 共用同一套提取与渲染逻辑。
+//! ew_types 库入口。CLI 与 MCP 共用同一套提取与渲染逻辑。
 
 pub mod api;
 pub mod check;

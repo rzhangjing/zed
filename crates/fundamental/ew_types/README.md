@@ -16,19 +16,19 @@
 ## 快速开始
 
 ```bash
-# 在仓库根执行（本工作区里包名是 `ew-types`，目录是 crates/fundamental/ew-types）
-cargo build -p ew-types --release
+# 在仓库根执行（本工作区里包名是 `ew_types`，目录是 crates/fundamental/ew_types）
+cargo build -p ew_types --release
 # 或者先跑一遍测试，确认环境正常
-cargo test -p ew-types
+cargo test -p ew_types
 ```
 
 > **路径里有中文时**（如 `E:\Rust\标准规范`），Windows 上 msys2 的 ld 处理不了非 ASCII 路径，把产物目录指到纯英文路径即可：
-> `$env:CARGO_TARGET_DIR='E:\Rust\target-types'; cargo build -p ew-types --offline`
+> `$env:CARGO_TARGET_DIR='E:\Rust\target-types'; cargo build -p ew_types --offline`
 
 拿仓库自带的 demo 试：
 
 ```bash
-cargo run -p ew-types -- --root crates/fundamental/ew-types/demo ls
+cargo run -p ew_types -- --root crates/fundamental/ew_types/demo ls
 ```
 
 ```
@@ -41,7 +41,7 @@ Order | struct | domain::order | 订单。下单时冻结商品价格，创建�
 ```
 
 ```bash
-cargo run -p ew-types -- --root crates/fundamental/ew-types/demo get OrderStatus
+cargo run -p ew_types -- --root crates/fundamental/ew_types/demo get OrderStatus
 ```
 
 ```json
@@ -99,7 +99,7 @@ cargo run -p ew-types -- --root crates/fundamental/ew-types/demo get OrderStatus
 }
 ```
 
-> 本仓内没装 `ew-types` 时，把 `command` 换成 `cargo`、`args` 换成 `["run", "-p", "ew-types", "--", "mcp", "--root", "crates/fundamental/ew-types/demo"]` 即可。
+> 本仓内没装 `ew-types` 时，把 `command` 换成 `cargo`、`args` 换成 `["run", "-p", "ew_types", "--", "mcp", "--root", "crates/fundamental/ew_types/demo"]` 即可。
 
 模型会看到五个工具：`ls`、`get`、`search`、`refs`、`check`。它自己决定查什么，只把需要的类型卡拉进上下文。
 
@@ -108,13 +108,13 @@ cargo run -p ew-types -- --root crates/fundamental/ew-types/demo get OrderStatus
 任何能跑命令的 agent 都能用：
 
 ```bash
-cargo run -p ew-types -- --root crates/fundamental/ew-types/demo get Order | jq '.fields[] | {name, unit, range, default}'
+cargo run -p ew_types -- --root crates/fundamental/ew_types/demo get Order | jq '.fields[] | {name, unit, range, default}'
 ```
 
 ### 方式三：全量注入（≤50 个类型）
 
 ```bash
-cargo run -p ew-types -- --root crates/fundamental/ew-types/demo ls --format compact > /tmp/type-index.txt
+cargo run -p ew_types -- --root crates/fundamental/ew_types/demo ls --format compact > /tmp/type-index.txt
 ```
 
 把索引放进 system 消息，取卡仍然走工具。
@@ -124,11 +124,11 @@ cargo run -p ew-types -- --root crates/fundamental/ew-types/demo ls --format com
 ```yaml
 - name: 类型注释合规
   run: |
-    cargo install --path crates/fundamental/ew-types --locked
+    cargo install --path crates/fundamental/ew_types --locked
     ew-types check --root . --json > ew-types-report.json
 ```
 
-> 在本仓内请用 `-p ew-types`，不必安装：`cargo run -p ew-types -- check --root crates/fundamental/ew-types/demo --json`。
+> 在本仓内请用 `-p ew_types`，不必安装：`cargo run -p ew_types -- check --root crates/fundamental/ew_types/demo --json`。
 
 `check` 有错误时退出码为 1，直接把不合规的注释挡在合入前。
 
@@ -161,7 +161,7 @@ cargo run -p ew-types -- --root crates/fundamental/ew-types/demo ls --format com
 ## 目录
 
 ```
-crates/fundamental/ew-types/
+crates/fundamental/ew_types/
 ├── src/
 │   ├── main.rs       CLI 入口
 │   ├── extract.rs    syn 解析：类型、字段、derive、构造器

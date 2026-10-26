@@ -1,4 +1,4 @@
-//! Micro-benchmarks for `ew-ordpack`.
+//! Micro-benchmarks for `ew_ordpack`.
 //!
 //! ```text
 //! cargo run --release --example bench
@@ -489,7 +489,7 @@ fn main() {
         entries: map.clone(),
     };
 
-    println!("ew-ordpack micro-benchmarks (encode = to_slice, no allocation)");
+    println!("ew_ordpack micro-benchmarks (encode = to_slice, no allocation)");
     println!("{}", "-".repeat(100));
 
     let mut bench = Bench::default();

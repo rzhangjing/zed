@@ -1,4 +1,4 @@
-# ew-operate-record
+# ew_operate_record
 
 嵌入宿主程序内部的**用户操作记录中间件**。只做一件事：
 
@@ -19,7 +19,7 @@
 
 ```toml
 [dependencies]
-ew-operate-record = "0.2"
+ew_operate_record = "0.2"
 ```
 
 ```rust

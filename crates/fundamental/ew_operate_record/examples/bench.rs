@@ -7,7 +7,7 @@ use ew_operate_record::{OperationLog, Options, Query, Recorder};
 const TOTAL: usize = 20_000;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let directory = std::env::temp_dir().join("ew-operate-record-bench");
+    let directory = std::env::temp_dir().join("ew_operate_record_bench");
     let _ = std::fs::remove_dir_all(&directory);
     std::fs::create_dir_all(&directory)?;
     let database = directory.join("bench.db");

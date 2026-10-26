@@ -1,4 +1,4 @@
-//! # ew-ordpack
+//! # ew_ordpack
 //!
 //! Schema-driven binary serialization with **zero field metadata on the wire**.
 //!

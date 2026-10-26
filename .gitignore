@@ -236,9 +236,9 @@ test_a2.md
 !crates/octos/platform-skills/**/docs/*.md
 # Crate-level developer documentation (SDK contracts, protocol specs)
 !crates/octos/octos-plugin/docs/*.md
-!crates/fundamental/ew-ordpack/docs/*.md
-!crates/fundamental/ew-operate-record/docs/*.md
-!crates/fundamental/ew-types/docs/*.md
+!crates/fundamental/ew_ordpack/docs/*.md
+!crates/fundamental/ew_operate_record/docs/*.md
+!crates/fundamental/ew_types/docs/*.md
 # Crate test fixtures (sample reports, fake API payloads)
 !crates/octos/app-skills/**/tests/fixtures/*.md
 # Harness M4.4 compat-gate fixture (SKILL.md + manifest.json must be tracked)

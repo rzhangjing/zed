@@ -132,8 +132,8 @@ ew-types get User
 ```yaml
 - name: 类型注释合规
   run: |
-    cargo build --release --manifest-path ew-types/Cargo.toml
-    ./ew-types/target/release/ew-types check --root . --json > ew-types-report.json
+    cargo build --release --manifest-path crates/fundamental/ew_types/Cargo.toml
+    ./target/release/ew-types check --root . --json > ew-types-report.json
 - name: 上传报告
   if: always()
   uses: actions/upload-artifact@v4
@@ -147,8 +147,8 @@ ew-types get User
 ```yaml
 ew-types-check:
   script:
-    - cargo build --release --manifest-path ew-types/Cargo.toml
-    - ./ew-types/target/release/ew-types check --root . --json > ew-types-report.json
+    - cargo build --release --manifest-path crates/fundamental/ew_types/Cargo.toml
+    - ./target/release/ew-types check --root . --json > ew-types-report.json
   artifacts:
     when: always
     paths: [ew-types-report.json]

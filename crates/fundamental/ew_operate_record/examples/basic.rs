@@ -4,7 +4,7 @@ use ew_operate_record::{OperationLog, Query, Recorder};
 use time::format_description::well_known::Rfc3339;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let directory = std::env::temp_dir().join("ew-operate-record-example");
+    let directory = std::env::temp_dir().join("ew_operate_record_example");
     std::fs::create_dir_all(&directory)?;
     let database = directory.join("operations.db");
     let _ = std::fs::remove_file(&database);

@@ -1,4 +1,4 @@
-# ew-ordpack 用户手册
+# ew_ordpack 用户手册
 
 > 版本：0.1.0  
 > 适用：Rust 1.77+（`std` 默认开启；支持 `no_std` + `alloc`）  
@@ -28,7 +28,7 @@
 
 ## 1. 它是什么
 
-**ew-ordpack** 是一个 schema 驱动的二进制序列化库：
+**ew_ordpack** 是一个 schema 驱动的二进制序列化库：
 
 - 线格式里**不写字段名、不写字段 ID**，结构体只带一个 **2 字节的字段个数**；
 - 字段按**声明顺序**排列，解码完全依赖类型定义；
@@ -46,10 +46,10 @@
 
 ```toml
 [dependencies]
-ew-ordpack = { path = "../ew-ordpack" }
+ew_ordpack = { path = "../ew_ordpack" }
 ```
 
-发布后可写 `ew-ordpack = "0.1"`。
+发布后可写 `ew_ordpack = "0.1"`。
 
 ### Feature 一览
 
@@ -62,7 +62,7 @@ ew-ordpack = { path = "../ew-ordpack" }
 
 ```toml
 # no_std + alloc
-ew-ordpack = { path = "../ew-ordpack", default-features = false, features = ["alloc", "derive"] }
+ew_ordpack = { path = "../ew_ordpack", default-features = false, features = ["alloc", "derive"] }
 ```
 
 ---
@@ -569,7 +569,7 @@ struct Header { magic: u32, version: u16 }
 ## 13. no_std 使用
 
 ```toml
-ew-ordpack = { path = "../ew-ordpack", default-features = false, features = ["alloc", "derive"] }
+ew_ordpack = { path = "../ew_ordpack", default-features = false, features = ["alloc", "derive"] }
 ```
 
 - 纯 `core`（无 `Vec`/`String`）：`features = ["derive"]`；

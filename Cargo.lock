@@ -6824,7 +6824,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ew-operate-record"
+name = "ew_operate_record"
 version = "0.2.0"
 dependencies = [
  "rusqlite",
@@ -6834,15 +6834,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "ew-ordpack"
+name = "ew_ordpack"
 version = "0.1.0"
 dependencies = [
  "bincode 2.0.1",
- "ew-ordpack-derive",
+ "ew_ordpack_derive",
 ]
 
 [[package]]
-name = "ew-ordpack-derive"
+name = "ew_ordpack_derive"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
@@ -6851,7 +6851,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ew-types"
+name = "ew_types"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",

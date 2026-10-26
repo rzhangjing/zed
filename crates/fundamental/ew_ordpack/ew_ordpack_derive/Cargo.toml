@@ -1,9 +1,9 @@
 [package]
-name = "ew-ordpack-derive"
+name = "ew_ordpack_derive"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
-description = "Derive macros for ew-ordpack"
+description = "Derive macros for ew_ordpack"
 license = "MIT OR Apache-2.0"
 
 [lib]

@@ -1,4 +1,4 @@
-# ew-ordpack 设计方案 v0.1
+# ew_ordpack 设计方案 v0.1
 
 > 目标：一个**编译期 schema 驱动**的二进制序列化框架。线格式里**不存任何字段名/字段 ID**，
 > 结构体只带一个**字段个数**，其余全部依赖类型定义中的**声明顺序**。
@@ -445,9 +445,9 @@ v1 只做 `from_slice` + `to_slice`/`to_vec`；流式放 v2。
 ### 6.1 crate 划分
 
 ```
-ew-ordpack/                # facade：to_vec/from_slice + 常用类型 impl
-ew-ordpack-core/           # 无 derive 的核心：trait、Encoder/Decoder、Error
-ew-ordpack-derive/         # proc-macro：#[derive(Encode, Decode)]
+ew_ordpack/                # facade：to_vec/from_slice + 常用类型 impl
+ew_ordpack_core/           # 无 derive 的核心：trait、Encoder/Decoder、Error
+ew_ordpack_derive/         # proc-macro：#[derive(Encode, Decode)]
 ```
 
 v1 也可以先做成单 crate + `derive` feature，稳定后再拆。

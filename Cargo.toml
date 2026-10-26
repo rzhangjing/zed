@@ -371,33 +371,33 @@ members = [
     #
     # fundamental (基础库)
     #
-    # `ew-ordpack`: schema-driven binary serialization, copied in whole from
+    # `ew_ordpack`: schema-driven binary serialization, copied in whole from
     # `E:\Rust\ew-ordpack`, which was its own workspace. Both the facade crate
     # and its proc-macro crate have to be members: the derive crate would
     # otherwise be adopted by a nested `[workspace]` root and resolve its
     # dependencies against that manifest instead of this one.
     #
-    "crates/fundamental/ew-ordpack",
-    "crates/fundamental/ew-ordpack/ew-ordpack-derive",
+    "crates/fundamental/ew_ordpack",
+    "crates/fundamental/ew_ordpack/ew_ordpack_derive",
     #
-    # `ew-operate-record`: user-operation logging over SQLite, copied in whole
+    # `ew_operate_record`: user-operation logging over SQLite, copied in whole
     # from `E:\Rust\ew-operate-record`, which was its own workspace. The
     # `[profile.release]` it carried (`lto = "thin"`, `codegen-units = 1`) is
     # dropped on the way in: a member cannot set profiles, and this root already
     # uses thin LTO with one codegen unit for release.
     #
-    "crates/fundamental/ew-operate-record",
+    "crates/fundamental/ew_operate_record",
     #
-    # `ew-types`: Rust type cards for LLM consumption, copied in whole from
+    # `ew_types`: Rust type cards for LLM consumption, copied in whole from
     # `E:\Rust\标准规范\types`, which was its own workspace. Its empty
     # `[workspace]` table and `[profile.release]` (`strip = true`, `lto = true`)
     # are dropped on the way in: a member cannot set profiles, and the root
     # release profile (`debug = "limited"`, `lto = "thin"`, `codegen-units = 1`)
-    # is the one that applies. The package is renamed `ew-types`, while its lib
-    # and bin targets keep the name `types`. `demo/` carries its own
-    # `[workspace]` root and is `exclude`d below so cargo cannot adopt it.
+    # is the one that applies. The package is named `ew_types`; its lib target
+    # is also `ew_types` and its bin target stays `ew-types`. `demo/` carries its
+    # own `[workspace]` root and is `exclude`d below so cargo cannot adopt it.
     #
-    "crates/fundamental/ew-types",
+    "crates/fundamental/ew_types",
 ]
 default-members = ["crates/framework/zed"]
 
@@ -408,14 +408,14 @@ default-members = ["crates/framework/zed"]
 # both trees keeps cargo from adopting them as members of this workspace, which
 # would make every `workspace = true` key in their manifests resolve against this
 # file instead (and fail: this file has no `description` and no topcoat table).
-# `crates/fundamental/ew-types/demo` is a standalone `[workspace]` root that ships
-# with ew-types (a demo crate for the extractor); excluding it keeps cargo from
+# `crates/fundamental/ew_types/demo` is a standalone `[workspace]` root that ships
+# with ew_types (a demo crate for the extractor); excluding it keeps cargo from
 # trying to make it a member while leaving its contents untouched.
 exclude = [
     "vendor/octocrab",
     "crates/admin",
     "crates/topcoat",
-    "crates/fundamental/ew-types/demo",
+    "crates/fundamental/ew_types/demo",
 ]
 
 [workspace.package]
@@ -480,10 +480,10 @@ editor = { path = "crates/framework/editor" }
 env_var = { path = "crates/framework/env_var" }
 etw_tracing = { path = "crates/framework/etw_tracing" }
 eval_utils = { path = "crates/framework/eval_utils" }
-ew-ordpack = { path = "crates/fundamental/ew-ordpack" }
-ew-ordpack-derive = { path = "crates/fundamental/ew-ordpack/ew-ordpack-derive" }
-ew-operate-record = { path = "crates/fundamental/ew-operate-record" }
-ew-types = { path = "crates/fundamental/ew-types" }
+ew_ordpack = { path = "crates/fundamental/ew_ordpack" }
+ew_ordpack_derive = { path = "crates/fundamental/ew_ordpack/ew_ordpack_derive" }
+ew_operate_record = { path = "crates/fundamental/ew_operate_record" }
+ew_types = { path = "crates/fundamental/ew_types" }
 feature_flags = { path = "crates/framework/feature_flags" }
 feature_flags_macros = { path = "crates/framework/feature_flags_macros" }
 feedback = { path = "crates/framework/feedback" }

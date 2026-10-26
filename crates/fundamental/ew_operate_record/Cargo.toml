@@ -1,5 +1,5 @@
 [package]
-name = "ew-operate-record"
+name = "ew_operate_record"
 version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"

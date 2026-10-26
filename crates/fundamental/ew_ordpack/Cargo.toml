@@ -1,10 +1,10 @@
-# Member of the Zed workspace: both `ew-ordpack` and `ew-ordpack-derive` are
+# Member of the Zed workspace: both `ew_ordpack` and `ew_ordpack_derive` are
 # listed under `members` in the repository root `Cargo.toml`. A workspace member
 # cannot declare its own `[workspace]` table (the root's `resolver = "2"`, member
 # list and release profile apply), so those tables were dropped when this crate
-# was flattened into `crates/fundamental/ew-ordpack`.
+# was flattened into `crates/fundamental/ew_ordpack`.
 [package]
-name = "ew-ordpack"
+name = "ew_ordpack"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.77"
@@ -14,7 +14,7 @@ keywords = ["serialization", "binary", "no_std", "encoding"]
 categories = ["encoding"]
 
 [dependencies]
-ew-ordpack-derive = { version = "0.1.0", path = "ew-ordpack-derive", optional = true }
+ew_ordpack_derive = { version = "0.1.0", path = "ew_ordpack_derive", optional = true }
 
 [dev-dependencies]
 bincode = { version = "2", features = ["derive"] }
@@ -23,7 +23,7 @@ bincode = { version = "2", features = ["derive"] }
 default = ["std", "derive"]
 std = ["alloc"]
 alloc = []
-derive = ["dep:ew-ordpack-derive"]
+derive = ["dep:ew_ordpack_derive"]
 unchecked = []
 
 # The upstream crate also carried `[profile.release] lto = "thin"` and

@@ -1,4 +1,4 @@
-//! Derive macros for `ew-ordpack`.
+//! Derive macros for `ew_ordpack`.
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
@@ -75,7 +75,7 @@ fn parse_container_attrs(attrs: &[Attribute]) -> syn::Result<ContainerAttrs> {
                 out.compat = true;
                 Ok(())
             } else {
-                Err(meta.error("unknown ew-ordpack container attribute"))
+                Err(meta.error("unknown ew_ordpack container attribute"))
             }
         })?;
     }
@@ -114,7 +114,7 @@ fn parse_field_attrs(attrs: &[Attribute]) -> syn::Result<FieldAttrs> {
             } else if meta.path.is_ident("transparent") || meta.path.is_ident("packed") {
                 Err(meta.error("type-level attribute used on a field"))
             } else {
-                Err(meta.error("unknown ew-ordpack field attribute"))
+                Err(meta.error("unknown ew_ordpack field attribute"))
             }
         })?;
     }
@@ -138,7 +138,7 @@ fn parse_variant_attrs(attrs: &[Attribute]) -> syn::Result<VariantAttrs> {
                 out.rename = Some(s.value());
                 Ok(())
             } else {
-                Err(meta.error("unknown ew-ordpack variant attribute"))
+                Err(meta.error("unknown ew_ordpack variant attribute"))
             }
         })?;
     }
