@@ -1,0 +1,20 @@
+[package]
+name = "ew-operate-record"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Embedded user-operation logging middleware: record what users do into SQLite."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["audit", "operation-log", "middleware", "sqlite"]
+categories = ["database"]
+
+[dependencies]
+rusqlite = { version = "0.40", features = ["bundled"] }
+thiserror = "2"
+time = { version = "0.3", features = ["formatting"] }
+
+[dev-dependencies]
+rusqlite = { version = "0.40", features = ["bundled"] }
+tempfile = "3"
+time = { version = "0.3", features = ["formatting"] }

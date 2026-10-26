@@ -6824,6 +6824,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ew-operate-record"
+version = "0.2.0"
+dependencies = [
+ "rusqlite",
+ "tempfile",
+ "thiserror 2.0.21",
+ "time",
+]
+
+[[package]]
 name = "ew-ordpack"
 version = "0.1.0"
 dependencies = [

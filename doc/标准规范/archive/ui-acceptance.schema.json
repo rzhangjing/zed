@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schema/ui-acceptance.schema.json",
+  "title": "UI 界面合规性验收结果",
+  "description": "对应《UI界面合规性验收规范》v1.0 §8.2 的输出契约。用于校验大模型输出的验收结果，禁止额外顶层字段。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "meta", "coverage", "findings", "unknowns", "score", "verdict", "verdictReason"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "platform", "screens", "statesCovered", "materials"],
+      "properties": {
+        "project": { "type": "string", "minLength": 1 },
+        "platform": {
+          "type": "string",
+          "enum": ["web", "ios", "android", "harmony", "miniprogram", "desktop", "tv", "unknown"]
+        },
+        "designSystem": { "type": ["string", "null"] },
+        "locale": { "type": ["string", "null"] },
+        "screens": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "statesCovered": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["default", "hover", "focus", "pressed", "disabled", "loading", "empty", "error", "timeout", "partial", "extreme", "dark", "largeText"]
+          },
+          "uniqueItems": true
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "ref"],
+            "properties": {
+              "type": { "type": "string", "enum": ["screenshot", "video", "code", "url", "design", "text"] },
+              "ref": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "profile": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "wcag": { "type": "string", "enum": ["2.2-A", "2.2-AA", "2.2-AAA"] },
+            "gb37668": { "type": "string", "enum": ["一级", "二级", "三级"] },
+            "legal": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "applicable", "evaluated", "na", "unknown", "rate"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "applicable": { "type": "integer", "minimum": 0 },
+        "evaluated": { "type": "integer", "minimum": 0 },
+        "na": { "type": "integer", "minimum": 0 },
+        "unknown": { "type": "integer", "minimum": 0 },
+        "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "criticalRate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "checkId", "severity", "title", "screen", "location", "state", "expected", "actual", "evidence", "standardRef", "impact", "remediation", "confidence", "needsHumanReview"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^F-[0-9]{3}$" },
+          "checkId": {
+            "type": "string",
+            "pattern": "^[A-H]-[0-9]{2}$",
+            "description": "必须取自规范 §5 检查表，禁止自造"
+          },
+          "severity": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 30 },
+          "screen": { "type": "string", "minLength": 1 },
+          "location": { "type": "string", "minLength": 1 },
+          "state": {
+            "type": "string",
+            "enum": ["default", "hover", "focus", "pressed", "disabled", "loading", "empty", "error", "timeout", "partial", "extreme", "dark", "largeText"]
+          },
+          "expected": { "type": "string", "minLength": 1 },
+          "actual": { "type": "string", "minLength": 1 },
+          "evidence": { "type": "string", "minLength": 1 },
+          "measured": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "value": { "type": ["number", "string"] },
+              "unit": { "type": "string" },
+              "threshold": { "type": ["number", "string"] }
+            }
+          },
+          "standardRef": {
+            "type": "string",
+            "minLength": 1,
+            "description": "格式：标准号 + 条款号，如 WCAG 2.2 SC 1.4.3"
+          },
+          "impact": { "type": "string", "minLength": 1 },
+          "remediation": {
+            "type": "string",
+            "minLength": 1,
+            "description": "必须含具体数值或具体替代方案"
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "needsHumanReview": { "type": "boolean" }
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["checkId", "screen", "reason", "requiredMaterial"],
+        "properties": {
+          "checkId": { "type": "string", "pattern": "^[A-H]-[0-9]{2}$" },
+          "screen": { "type": "string" },
+          "reason": { "type": "string", "minLength": 1 },
+          "requiredMaterial": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deductions", "total", "bySeverity", "byDimension"],
+      "properties": {
+        "deductions": { "type": "number", "minimum": 0 },
+        "total": { "type": "number", "minimum": 0, "maximum": 100 },
+        "bySeverity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["P0", "P1", "P2", "P3"],
+          "properties": {
+            "P0": { "type": "integer", "minimum": 0 },
+            "P1": { "type": "integer", "minimum": 0 },
+            "P2": { "type": "integer", "minimum": 0 },
+            "P3": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "byDimension": {
+          "type": "object",
+          "propertyNames": { "enum": ["A", "B", "C", "D", "E", "F", "G", "H"] },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["applicable", "failed", "rate"],
+            "properties": {
+              "applicable": { "type": "integer", "minimum": 0 },
+              "failed": { "type": "integer", "minimum": 0 },
+              "rate": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "conditional", "fail", "indeterminate"]
+    },
+    "verdictReason": { "type": "string", "minLength": 1 },
+    "topRisks": { "type": "array", "items": { "type": "string" } },
+    "nextActions": { "type": "array", "items": { "type": "string" } }
+  }
+}

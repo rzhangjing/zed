@@ -379,6 +379,14 @@ members = [
     #
     "crates/fundamental/ew-ordpack",
     "crates/fundamental/ew-ordpack/ew-ordpack-derive",
+    #
+    # `ew-operate-record`: user-operation logging over SQLite, copied in whole
+    # from `E:\Rust\ew-operate-record`, which was its own workspace. The
+    # `[profile.release]` it carried (`lto = "thin"`, `codegen-units = 1`) is
+    # dropped on the way in: a member cannot set profiles, and this root already
+    # uses thin LTO with one codegen unit for release.
+    #
+    "crates/fundamental/ew-operate-record",
 ]
 default-members = ["crates/framework/zed"]
 
@@ -455,6 +463,7 @@ etw_tracing = { path = "crates/framework/etw_tracing" }
 eval_utils = { path = "crates/framework/eval_utils" }
 ew-ordpack = { path = "crates/fundamental/ew-ordpack" }
 ew-ordpack-derive = { path = "crates/fundamental/ew-ordpack/ew-ordpack-derive" }
+ew-operate-record = { path = "crates/fundamental/ew-operate-record" }
 feature_flags = { path = "crates/framework/feature_flags" }
 feature_flags_macros = { path = "crates/framework/feature_flags_macros" }
 feedback = { path = "crates/framework/feedback" }
