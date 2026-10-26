@@ -1,0 +1,26 @@
+[package]
+name = "ew-types"
+version = "0.1.0"
+edition = "2021"
+description = "把 Rust 结构与枚举定义变成大模型可直接消费的类型卡"
+license = "MIT"
+
+# 包名与 bin 名统一为 `ew-types`，构建产物是 `ew-types.exe`。Cargo 规定 lib
+# target 名不能带连字符，所以 lib 名取等价的 `ew_types` —— 也就是 Rust 代码里
+# 引用本库时写的 `use ew_types::api::…`。
+# 本 crate 原先独立放在 `E:\Rust\标准规范\types` 工作区，包名、lib 与 bin 三处
+# 都叫旧名；迁到 `crates/fundamental` 下时一并改名。
+[lib]
+name = "ew_types"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ew-types"
+path = "src/main.rs"
+
+[dependencies]
+syn = { version = "2", features = ["full", "extra-traits", "parsing", "printing"] }
+quote = "1"
+proc-macro2 = { version = "1", features = ["span-locations"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }

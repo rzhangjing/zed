@@ -1,0 +1,50 @@
+{
+  "name": "OrderStatus",
+  "kind": "enum",
+  "path": "domain::order",
+  "doc": "订单状态。",
+  "variants": [
+    {
+      "name": "Pending",
+      "doc": "已创建，等待支付。"
+    },
+    {
+      "name": "Paid",
+      "doc": "已支付，等待发货。"
+    },
+    {
+      "name": "Shipped",
+      "doc": "已发货，运输中。"
+    },
+    {
+      "name": "Cancelled",
+      "doc": "已取消。原因记在订单备注。"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "Pending",
+      "to": "Paid",
+      "via": "支付成功"
+    },
+    {
+      "from": "Paid",
+      "to": "Shipped",
+      "via": "仓库发货"
+    },
+    {
+      "from": "Pending",
+      "to": "Cancelled",
+      "via": "用户取消或超时未支付"
+    }
+  ],
+  "derives": [
+    "Debug",
+    "Clone",
+    "Copy",
+    "PartialEq",
+    "Eq",
+    "Hash"
+  ],
+  "src": "src/domain/order.rs:79"
+}

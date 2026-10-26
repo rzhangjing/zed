@@ -387,6 +387,17 @@ members = [
     # uses thin LTO with one codegen unit for release.
     #
     "crates/fundamental/ew-operate-record",
+    #
+    # `ew-types`: Rust type cards for LLM consumption, copied in whole from
+    # `E:\Rust\标准规范\types`, which was its own workspace. Its empty
+    # `[workspace]` table and `[profile.release]` (`strip = true`, `lto = true`)
+    # are dropped on the way in: a member cannot set profiles, and the root
+    # release profile (`debug = "limited"`, `lto = "thin"`, `codegen-units = 1`)
+    # is the one that applies. The package is renamed `ew-types`, while its lib
+    # and bin targets keep the name `types`. `demo/` carries its own
+    # `[workspace]` root and is `exclude`d below so cargo cannot adopt it.
+    #
+    "crates/fundamental/ew-types",
 ]
 default-members = ["crates/framework/zed"]
 
@@ -397,7 +408,15 @@ default-members = ["crates/framework/zed"]
 # both trees keeps cargo from adopting them as members of this workspace, which
 # would make every `workspace = true` key in their manifests resolve against this
 # file instead (and fail: this file has no `description` and no topcoat table).
-exclude = ["vendor/octocrab", "crates/admin", "crates/topcoat"]
+# `crates/fundamental/ew-types/demo` is a standalone `[workspace]` root that ships
+# with ew-types (a demo crate for the extractor); excluding it keeps cargo from
+# trying to make it a member while leaving its contents untouched.
+exclude = [
+    "vendor/octocrab",
+    "crates/admin",
+    "crates/topcoat",
+    "crates/fundamental/ew-types/demo",
+]
 
 [workspace.package]
 publish = false
@@ -464,6 +483,7 @@ eval_utils = { path = "crates/framework/eval_utils" }
 ew-ordpack = { path = "crates/fundamental/ew-ordpack" }
 ew-ordpack-derive = { path = "crates/fundamental/ew-ordpack/ew-ordpack-derive" }
 ew-operate-record = { path = "crates/fundamental/ew-operate-record" }
+ew-types = { path = "crates/fundamental/ew-types" }
 feature_flags = { path = "crates/framework/feature_flags" }
 feature_flags_macros = { path = "crates/framework/feature_flags_macros" }
 feedback = { path = "crates/framework/feedback" }

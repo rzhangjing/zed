@@ -1,0 +1,87 @@
+{
+  "name": "Order",
+  "kind": "struct",
+  "path": "domain::order",
+  "doc": "订单。下单时冻结商品价格，创建后不再变更。",
+  "invariants": [
+    "`items` 非空",
+    "`total` 的币种与每个 `items` 项一致"
+  ],
+  "fields": [
+    {
+      "name": "id",
+      "type": "OrderId",
+      "doc": "订单标识。单位：—。范围：26 字符。默认值：无。非空。",
+      "meaning": "订单标识",
+      "unit": null,
+      "range": "26 字符",
+      "default": "无",
+      "nullable": false
+    },
+    {
+      "name": "buyer",
+      "type": "UserId",
+      "doc": "下单用户。单位：—。范围：—。默认值：无。非空。",
+      "meaning": "下单用户",
+      "unit": null,
+      "range": null,
+      "default": "无",
+      "nullable": false
+    },
+    {
+      "name": "items",
+      "type": "Vec<LineItem>",
+      "doc": "商品明细。单位：—。范围：非空。默认值：无。保持下单顺序。",
+      "meaning": "商品明细",
+      "unit": null,
+      "range": "非空",
+      "default": "无",
+      "nullable": false,
+      "note": "保持下单顺序"
+    },
+    {
+      "name": "status",
+      "type": "OrderStatus",
+      "doc": "当前状态。单位：—。范围：见 [`OrderStatus`]。默认值：Pending。",
+      "meaning": "当前状态",
+      "unit": null,
+      "range": "见 [`OrderStatus`]",
+      "default": "Pending",
+      "nullable": false
+    },
+    {
+      "name": "total",
+      "type": "Money",
+      "doc": "应付总额。单位：分。范围：≥ 1。默认值：无。两位小数。",
+      "meaning": "应付总额",
+      "unit": "分",
+      "range": "≥ 1",
+      "precision": "两位小数",
+      "default": "无",
+      "nullable": false
+    },
+    {
+      "name": "created_at",
+      "type": "SystemTime",
+      "doc": "创建时间。单位：UTC。范围：≤ 当前时刻。默认值：创建时刻。非空。",
+      "meaning": "创建时间",
+      "unit": "UTC",
+      "range": "≤ 当前时刻",
+      "default": "创建时刻",
+      "nullable": false
+    }
+  ],
+  "ctor": {
+    "name": "try_new",
+    "sig": "(id, items, total) -> Result<Order, OrderError>",
+    "checks": [
+      "`items` 为空时返回 [`OrderError::EmptyItems`]",
+      "明细币种与总额不一致时返回 [`OrderError::CurrencyMismatch`]"
+    ]
+  },
+  "derives": [
+    "Debug",
+    "Clone"
+  ],
+  "src": "src/domain/order.rs:121"
+}

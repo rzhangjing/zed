@@ -1,0 +1,93 @@
+{
+  "count": 11,
+  "types": [
+    {
+      "doc": "币种。",
+      "kind": "enum",
+      "name": "Currency",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:10",
+      "variants": 2
+    },
+    {
+      "doc": "订单明细行。下单时冻结单价，后续改价不影响已生成的订单。",
+      "fields": 3,
+      "kind": "struct",
+      "name": "LineItem",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:63"
+    },
+    {
+      "doc": "金额。以最小货币单位记账，不做浮点运算。",
+      "fields": 2,
+      "kind": "struct",
+      "name": "Money",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:19"
+    },
+    {
+      "doc": "订单。下单时冻结商品价格，创建后不再变更。",
+      "fields": 6,
+      "kind": "struct",
+      "name": "Order",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:121"
+    },
+    {
+      "doc": "订单构造错误。",
+      "kind": "enum",
+      "name": "OrderError",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:92",
+      "variants": 2
+    },
+    {
+      "doc": "订单标识。26 位、按时间有序，全局唯一。",
+      "fields": 1,
+      "kind": "newtype",
+      "name": "OrderId",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:35"
+    },
+    {
+      "doc": "订单状态。",
+      "kind": "enum",
+      "name": "OrderStatus",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:79",
+      "variants": 4
+    },
+    {
+      "doc": "列表加载状态。每种状态只携带属于它的数据，非法组合无法构造。",
+      "kind": "enum",
+      "name": "Load",
+      "path": "domain::user",
+      "src": "src/domain/user.rs:50",
+      "variants": 5
+    },
+    {
+      "doc": "用户角色。",
+      "kind": "enum",
+      "name": "Role",
+      "path": "domain::user",
+      "src": "src/domain/user.rs:28",
+      "variants": 3
+    },
+    {
+      "doc": "用户档案。",
+      "fields": 3,
+      "kind": "struct",
+      "name": "User",
+      "path": "domain::user",
+      "src": "src/domain/user.rs:39"
+    },
+    {
+      "doc": "用户标识。26 位，全局唯一。",
+      "fields": 1,
+      "kind": "newtype",
+      "name": "UserId",
+      "path": "domain::user",
+      "src": "src/domain/user.rs:7"
+    }
+  ]
+}
