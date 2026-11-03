@@ -1,0 +1,9 @@
+{
+  "id": "dsh-companion",
+  "name": "DSH Companion",
+  "version": "0.1.0",
+  "minAppVersion": "1.13.1",
+  "description": "把本库的图谱索引推送给 DSH，并在 DSH 里打开当前笔记与选区。只读：从不修改任何笔记。",
+  "author": "DSH",
+  "isDesktopOnly": false
+}

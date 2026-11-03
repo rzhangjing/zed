@@ -1,0 +1,90 @@
+{
+  "id": "REQ-0137",
+  "title": "导出订单时按筛选条件生成 CSV",
+  "type": "feature",
+  "domain": "订单中心/订单列表",
+  "reporter": "张三（客服）",
+  "background": "客服每天手工复制订单到表格，单次约 40 分钟，易错且无法追溯。",
+  "goal": [
+    {
+      "metric": "单次导出耗时",
+      "current": "40 分钟（人工）",
+      "target": "P95 5 分钟",
+      "source": "客服周报 + 埋点"
+    }
+  ],
+  "scenarios": [
+    "客服在售后处理时，导出近 30 天指定状态的订单"
+  ],
+  "functional": [
+    { "id": "FR-1", "text": "支持按时间范围、状态筛选" },
+    { "id": "FR-2", "text": "导出 CSV，含订单号、金额、状态、创建时间" },
+    { "id": "FR-3", "text": "超过 10 万行时提示缩小范围" }
+  ],
+  "nonfunctional": {
+    "performance": "10 万行以内 ≤30 秒（P95，生产环境）",
+    "security": "仅本人可见订单；导出行为记审计日志",
+    "retention": "导出文件存 7 天后自动清理"
+  },
+  "acceptance": [
+    {
+      "id": "AC-1",
+      "kind": "normal",
+      "given": "客服已登录并选中近 30 天订单",
+      "when": "点击导出",
+      "then": "P95 5 分钟内下载到 CSV，行数与筛选结果一致"
+    },
+    {
+      "id": "AC-2",
+      "kind": "boundary",
+      "given": "筛选结果为 0 条",
+      "when": "点击导出",
+      "then": "提示无数据，不生成空文件"
+    },
+    {
+      "id": "AC-3",
+      "kind": "exception",
+      "given": "客服无该订单所属门店权限",
+      "when": "点击导出",
+      "then": "返回 403，body.code=ORD-02-001，结果不含无权限订单"
+    },
+    {
+      "id": "AC-4",
+      "kind": "boundary",
+      "given": "筛选结果超过 10 万行",
+      "when": "点击导出",
+      "then": "提示缩小范围，不启动导出任务"
+    }
+  ],
+  "out_of_scope": [
+    "不做定时导出",
+    "不做邮件推送",
+    "不做 Excel 格式"
+  ],
+  "deps": [
+    "报表服务导出队列扩容（当前上限 5 万行）"
+  ],
+  "risks": [
+    "大文件下载中断，弱网下可能失败"
+  ],
+  "related": [],
+  "open_questions": [
+    {
+      "question": "是否需要断点续传",
+      "status": "accepted",
+      "answer": "本期不做，记入风险"
+    }
+  ],
+  "priority": {
+    "level": 2,
+    "rationale": "客服每周重复劳动 4 小时，直接影响售后响应时效"
+  },
+  "estimate": {
+    "optimistic": 2,
+    "pessimistic": 4,
+    "uncertainty": "导出队列扩容排期未定"
+  },
+  "dedup": "none",
+  "version": "0.1",
+  "baseline": false
+}

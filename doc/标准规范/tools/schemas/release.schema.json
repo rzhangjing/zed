@@ -1,0 +1,103 @@
+{
+  "title": "Release",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "window",
+    "items",
+    "artifact",
+    "rollback",
+    "canary",
+    "observability",
+    "approvals"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^REL-[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "kind": {
+      "enum": [
+        "normal",
+        "emergency",
+        "config",
+        "migration"
+      ]
+    },
+    "window": {
+      "type": "string",
+      "minLength": 5
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": [
+        "name",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "required": [
+        "target",
+        "minutes",
+        "drill_at"
+      ],
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "minutes": {
+          "type": "integer",
+          "maximum": 15
+        },
+        "drill_at": {
+          "type": "string"
+        },
+        "script": {
+          "type": "string"
+        }
+      }
+    },
+    "canary": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "integer"
+      }
+    },
+    "observability": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "risk": {
+      "type": "string"
+    }
+  }
+}

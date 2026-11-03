@@ -1,0 +1,99 @@
+{
+  "title": "TestCase",
+  "type": "object",
+  "required": [
+    "id",
+    "links",
+    "layer",
+    "kind",
+    "priority",
+    "preconditions",
+    "steps",
+    "expected",
+    "automation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TST-[0-9]{4}-[0-9]{2}$"
+    },
+    "links": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "layer": {
+      "enum": [
+        "unit",
+        "integration",
+        "contract",
+        "e2e"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "normal",
+        "boundary",
+        "exception"
+      ]
+    },
+    "priority": {
+      "enum": [
+        "P0",
+        "P1",
+        "P2"
+      ]
+    },
+    "preconditions": {
+      "type": "string",
+      "minLength": 5
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 3
+      }
+    },
+    "expected": {
+      "type": "string",
+      "minLength": 3
+    },
+    "automation": {
+      "enum": [
+        "auto",
+        "todo",
+        "manual"
+      ]
+    },
+    "manual_reason": {
+      "type": "string"
+    },
+    "defect": {
+      "type": "string",
+      "pattern": "^BUG-[0-9]{4}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "automation": {
+            "const": "manual"
+          }
+        },
+        "required": [
+          "automation"
+        ]
+      },
+      "then": {
+        "required": [
+          "manual_reason"
+        ]
+      }
+    }
+  ]
+}

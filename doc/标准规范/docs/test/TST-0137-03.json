@@ -1,0 +1,15 @@
+{
+  "id": "TST-0137-03",
+  "links": ["AC-3"],
+  "layer": "integration",
+  "kind": "exception",
+  "priority": "P0",
+  "preconditions": "门店 B 的客服账号，存在门店 A 的订单",
+  "steps": [
+    "使用门店 B 账号登录",
+    "构造包含门店 A 订单的筛选条件",
+    "点击导出"
+  ],
+  "expected": "返回 403，body.code=ORD-02-001，导出结果不含门店 A 订单",
+  "automation": "auto"
+}

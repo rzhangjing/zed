@@ -1,5 +1,5 @@
 {
-  "count": 11,
+  "count": 13,
   "types": [
     {
       "doc": "币种。",
@@ -50,12 +50,28 @@
       "src": "src/domain/order.rs:35"
     },
     {
+      "doc": "订单构造结果。",
+      "fields": 1,
+      "kind": "alias",
+      "name": "OrderResult",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:212"
+    },
+    {
       "doc": "订单状态。",
       "kind": "enum",
       "name": "OrderStatus",
       "path": "domain::order",
       "src": "src/domain/order.rs:79",
       "variants": 4
+    },
+    {
+      "doc": "支付状态。",
+      "kind": "enum",
+      "name": "PaymentState",
+      "path": "domain::order",
+      "src": "src/domain/order.rs:193",
+      "variants": 5
     },
     {
       "doc": "列表加载状态。每种状态只携带属于它的数据，非法组合无法构造。",

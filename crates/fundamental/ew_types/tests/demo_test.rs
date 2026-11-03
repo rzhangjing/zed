@@ -93,6 +93,75 @@ fn detects_newtype() {
 }
 
 #[test]
+fn parses_branch_transitions_and_alias() {
+    let r = extract_all(&demo_root());
+
+    let state = r
+        .cards
+        .iter()
+        .find(|c| c.name == "PaymentState")
+        .expect("应有 PaymentState");
+    assert_eq!(state.kind, "enum");
+    assert_eq!(state.transitions.len(), 4);
+    assert_eq!(
+        state
+            .transitions
+            .iter()
+            .filter(|t| t.from == "Created")
+            .count(),
+        2,
+        "Created 应有两条出边：Authorized 与 Failed"
+    );
+    assert!(
+        state
+            .transitions
+            .iter()
+            .any(|t| t.from == "Created" && t.to == "Failed")
+    );
+
+    let failed = state
+        .variants
+        .iter()
+        .find(|v| v.name == "Failed")
+        .expect("应有 Failed 变体");
+    assert_eq!(failed.payload.len(), 2);
+    let reason = &failed.payload[0];
+    assert_eq!(reason.unit, None);
+    assert_eq!(reason.range.as_deref(), Some("[1, 200] 字符"));
+    assert_eq!(reason.default.as_deref(), Some("无"));
+    assert!(reason.missing.is_empty());
+    assert!(!reason.nullable);
+
+    let retryable = &failed.payload[1];
+    assert_eq!(retryable.default.as_deref(), Some("false"));
+    assert_eq!(retryable.range, None);
+    assert!(!retryable.nullable);
+
+    let alias = r
+        .cards
+        .iter()
+        .find(|c| c.name == "OrderResult")
+        .expect("应有 OrderResult 别名");
+    assert_eq!(alias.kind, "alias");
+    assert_eq!(alias.generics, vec!["T".to_string()]);
+    assert_eq!(alias.fields.len(), 1);
+    assert_eq!(alias.fields[0].name, "target");
+    assert_eq!(alias.fields[0].ty, "Result<T, OrderError>");
+
+    let report = check(&r.cards);
+    assert_eq!(
+        report.errors(),
+        0,
+        "别名不应触发 FD-01，实际违规：{:?}",
+        report
+            .violations
+            .iter()
+            .map(|v| format!("{} {} {}", v.rule, v.target, v.message))
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn compliant_demo_has_no_errors() {
     let r = extract_all(&demo_root());
     let report = check(&r.cards);

@@ -12,7 +12,7 @@ fn is_false(b: &bool) -> bool {
 pub struct Card {
     /// 类型名，不含路径。
     pub name: String,
-    /// `struct` / `enum` / `alias`。
+    /// `struct` / `newtype` / `enum` / `alias`。
     pub kind: String,
     /// 模块路径，如 `domain::order`。
     pub path: String,
@@ -104,7 +104,7 @@ pub struct Ctor {
     pub name: String,
     /// 参数与返回值，如 `(id, items) -> Result<Order, OrderError>`。
     pub sig: String,
-    /// 构造时校验的内容，取自 `# 错误` 段与不变量。
+    /// 构造时校验的内容，取自构造方法的 `# 错误` 段。
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub checks: Vec<String>,
 }

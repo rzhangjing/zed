@@ -47,9 +47,9 @@ pub fn check(cards: &[Card]) -> Report {
             });
         }
 
-        // 缺字段注释只报一次，不叠加三个段缺失；newtype 的内层字段由类型注释说明
+        // 缺字段注释只报一次，不叠加三个段缺失；newtype/alias 的合成字段由类型注释说明
         for f in &card.fields {
-            if card.kind == "newtype" {
+            if card.kind == "newtype" || card.kind == "alias" {
                 break;
             }
             let target = format!("{}.{}", card.name, f.name);

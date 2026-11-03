@@ -1,0 +1,8 @@
+{
+  "layers": {
+    "ui": 0,
+    "app": 1,
+    "domain": 2,
+    "infra": 3
+  }
+}

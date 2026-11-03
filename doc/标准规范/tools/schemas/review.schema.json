@@ -1,0 +1,99 @@
+{
+  "title": "Review",
+  "type": "object",
+  "required": [
+    "target_id",
+    "reviewer",
+    "material_version",
+    "verdict",
+    "comments"
+  ],
+  "properties": {
+    "target_id": {
+      "type": "string"
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "material_version": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "conditional",
+        "reject"
+      ]
+    },
+    "comments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "level",
+          "text",
+          "evidence"
+        ],
+        "properties": {
+          "level": {
+            "enum": [
+              "must",
+              "should",
+              "nit"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 5
+          },
+          "rule": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}-[0-9]+\\.[0-9]+$"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 3
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved",
+              "waived"
+            ]
+          },
+          "owner": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "must_open": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "pass"
+          }
+        },
+        "required": [
+          "verdict"
+        ]
+      },
+      "then": {
+        "properties": {
+          "must_open": {
+            "const": 0
+          }
+        },
+        "required": [
+          "must_open"
+        ]
+      }
+    }
+  ]
+}

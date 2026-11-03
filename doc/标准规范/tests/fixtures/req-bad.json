@@ -1,0 +1,42 @@
+{
+  "id": "REQ-0999",
+  "title": "订单相关功能优化完善处理",
+  "type": "improve",
+  "domain": "订单中心",
+  "reporter": "李四",
+  "background": "这个需求是为了优化整体的一个订单相关的一些体验，提升用户在使用过程中的一些感受，让整个流程更加顺畅自然，同时兼顾一下性能和稳定性方面的问题，具体细节后面再对齐。",
+  "goal": [],
+  "scenarios": ["用户使用"],
+  "functional": [
+    { "id": "FR-1", "text": "优化一下" }
+  ],
+  "nonfunctional": {
+    "performance": "快",
+    "security": "无",
+    "retention": "无"
+  },
+  "acceptance": [
+    {
+      "id": "AC-1",
+      "kind": "normal",
+      "given": "用户登录",
+      "when": "点一下",
+      "then": "加载很快，体验友好流畅"
+    }
+  ],
+  "out_of_scope": ["无"],
+  "deps": [],
+  "risks": [],
+  "open_questions": [],
+  "priority": {
+    "level": 1,
+    "rationale": "很重要"
+  },
+  "estimate": {
+    "optimistic": 5,
+    "pessimistic": 12
+  },
+  "dedup": "none",
+  "version": "0.1",
+  "baseline": false
+}

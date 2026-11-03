@@ -181,3 +181,32 @@ impl Order {
         self.status
     }
 }
+
+/// 支付状态。
+///
+/// # 流转
+/// - Created -> Authorized：授权成功
+/// - Created -> Failed：授权失败
+/// - Authorized -> Captured：扣款成功
+/// - Authorized -> Voided：授权撤销
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaymentState {
+    /// 已创建，等待授权。
+    Created,
+    /// 已授权，等待扣款。
+    Authorized,
+    /// 已扣款。
+    Captured,
+    /// 已撤销。
+    Voided,
+    /// 授权失败。
+    Failed {
+        /// 失败原因@@单位：—@@范围：[1, 200] 字符@@默认值：无@@非空。
+        reason: String,
+        /// 是否可重试@@单位：—@@范围：—@@默认值：false@@可空：非空。
+        retryable: bool,
+    },
+}
+
+/// 订单构造结果。
+pub type OrderResult<T> = Result<T, OrderError>;

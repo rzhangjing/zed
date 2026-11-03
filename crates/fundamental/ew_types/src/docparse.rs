@@ -1,7 +1,9 @@
 //! 注释解析：把 `///` 文本按规范句式拆成结构化字段。
 //!
-//! 规范要求字段注释固定五段：
-//! `{含义}。单位：{单位}。范围：{范围}。默认值：{默认值}。{精度}。{可空说明}。`
+//! 规范要求字段注释固定五段，段间用 `@@` 分隔：
+//! `{含义}@@单位：{单位}@@范围：{范围}@@默认值：{默认值}@@{精度}@@{可空说明}。`
+//!
+//! 迁移期也接受旧的 `。` 分段写法。
 //!
 //! 解析不出来就是"未声明"，用 `Option::None` 表达，绝不猜。
 
@@ -230,7 +232,17 @@ pub fn parse_field_doc(text: &str) -> FieldParts {
     let mut note: Vec<String> = Vec::new();
     let mut tail = false;
 
-    for seg in text.split('。') {
+    let mut segments: Vec<&str> = if text.contains("@@") {
+        text.split("@@").collect()
+    } else {
+        text.split('。').collect()
+    };
+    if let Some(pos) = segments.len().checked_sub(1) {
+        let last = segments[pos];
+        segments[pos] = last.trim_end_matches('。').trim();
+    }
+
+    for seg in segments {
         let seg = seg.trim();
         if seg.is_empty() {
             continue;
@@ -255,6 +267,11 @@ pub fn parse_field_doc(text: &str) -> FieldParts {
         }
         if let Some(v) = strip_key(seg, &["精度：", "精度:"]) {
             parts.precision = non_empty(v);
+            tail = true;
+            continue;
+        }
+        if let Some(v) = strip_key(seg, &["可空：", "可空:"]) {
+            parts.nullable = v.contains("可为空") || v.contains("为空表示");
             tail = true;
             continue;
         }

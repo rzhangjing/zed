@@ -1,0 +1,15 @@
+{
+  "id": "TST-0137-02",
+  "links": ["AC-2"],
+  "layer": "integration",
+  "kind": "boundary",
+  "priority": "P1",
+  "preconditions": "门店 A 客服账号，筛选条件命中 0 条订单",
+  "steps": [
+    "选择近 1 天范围",
+    "选择不存在的状态组合",
+    "点击导出"
+  ],
+  "expected": "提示“无数据”，不生成文件下载链接，任务不进入队列",
+  "automation": "auto"
+}

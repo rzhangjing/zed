@@ -1,0 +1,18 @@
+{
+  "id": "PROP-0042",
+  "target": "prompt:AGT-REQ/clarify",
+  "level": "L1",
+  "problem": [
+    "最近 5 次澄清漏问“不做什么”，导致 2 次范围蔓延（REQ-0151、REQ-0163）"
+  ],
+  "change": "在澄清模板中固定加入第 5 类问题，并在自检报告中检查该字段非空",
+  "expected_gain": "范围蔓延类返工减少",
+  "risk": "澄清耗时略增，单次预算可能吃紧",
+  "rollback": "恢复 v1.3 提示词（开关 prompt.req.clarify=v1.3）",
+  "eval": {
+    "samples": 60,
+    "before": 0.88,
+    "after": 0.91,
+    "severe_errors": 0
+  }
+}

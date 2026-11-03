@@ -1,0 +1,20 @@
+{
+  "id": "REL-1.8.0",
+  "kind": "normal",
+  "window": "2026-10-27 22:00–23:00",
+  "items": ["REQ-0137", "BUG-0042"],
+  "artifact": {
+    "name": "app-1.8.0",
+    "sha256": "9f2c1d4e7a8b3c5d6e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"
+  },
+  "rollback": {
+    "target": "app-1.7.4",
+    "minutes": 15,
+    "drill_at": "2026-10-20",
+    "script": "migrations/rollback_0137.sql"
+  },
+  "canary": [1, 10, 50, 100],
+  "observability": ["5xx 率", "P95 延迟", "导出成功率", "下单成功率"],
+  "approvals": ["发布负责人"],
+  "risk": "队列积压可能拉高导出延迟"
+}

@@ -1,0 +1,9 @@
+diff --git a/src/export/job.rs b/src/export/job.rs
+--- a/src/export/job.rs
++++ b/src/export/job.rs
+@@ -10,0 +10,5 @@
++pub fn build_csv(rows: &[Row]) -> String {
++    let mut out = String::new();
++    for row in rows {
++        out.push_str(&row.to_csv_line());
++    }

@@ -1,0 +1,33 @@
+{
+  "task_id": "TSK-0521",
+  "goal": "实现导出任务入队与任务状态查询接口",
+  "done": [
+    "POST /orders/export 入队与参数校验",
+    "GET /orders/export/{job_id} 状态查询"
+  ],
+  "todo": [
+    "队列消费与文件生成",
+    "超时重试与失败置 failed",
+    "存储配额清理任务"
+  ],
+  "artifacts": [
+    "src/export/job.rs",
+    "src/export/api.rs",
+    "docs/design/DES-0137.md"
+  ],
+  "verification": [
+    {
+      "command": "cargo test export::job",
+      "result": "pass",
+      "output_ref": "logs/tsk-0521-test.log"
+    }
+  ],
+  "risks": [
+    "队列积压时导出延迟上升，需观察 P95"
+  ],
+  "next_action": "补队列消费与重试，完成后交给测试 agent 写用例",
+  "spec_versions": [
+    "STD-COD-30 v1.0.0",
+    "STD-DES-20 v1.0.0"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "path": "/orders/export/{job_id}",
+  "method": "get",
+  "status": 403,
+  "body": {
+    "code": "ORD-02-001",
+    "message": "无权访问该门店的订单"
+  }
+}

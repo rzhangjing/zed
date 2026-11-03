@@ -1,0 +1,11 @@
+{
+  "path": "/orders/export/{job_id}",
+  "method": "get",
+  "status": 200,
+  "body": {
+    "status": "done",
+    "row_count": 198,
+    "url": "https://files.example.com/export/0137.csv",
+    "expires_at": "2026-11-03T22:00:00Z"
+  }
+}

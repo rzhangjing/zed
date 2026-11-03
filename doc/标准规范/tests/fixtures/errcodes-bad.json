@@ -1,0 +1,7 @@
+{
+  "codes": [
+    { "code": "ORD-01-001", "name": "INVALID_RANGE", "class": "01" },
+    { "code": "ORD-06-001", "name": "INVALID_RANGE", "class": "06" },
+    { "code": "ord-02-1", "name": "FORBIDDEN_STORE", "class": "02" }
+  ]
+}

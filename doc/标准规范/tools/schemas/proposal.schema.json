@@ -1,0 +1,104 @@
+{
+  "title": "EvolutionProposal",
+  "type": "object",
+  "required": [
+    "id",
+    "target",
+    "level",
+    "problem",
+    "change",
+    "expected_gain",
+    "risk",
+    "rollback",
+    "eval"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^PROP-[0-9]{4}$"
+    },
+    "target": {
+      "type": "string"
+    },
+    "level": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ]
+    },
+    "problem": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "change": {
+      "type": "string",
+      "minLength": 20
+    },
+    "expected_gain": {
+      "type": "string",
+      "minLength": 5
+    },
+    "risk": {
+      "type": "string",
+      "minLength": 5
+    },
+    "rollback": {
+      "type": "string",
+      "minLength": 5
+    },
+    "eval": {
+      "type": "object",
+      "required": [
+        "samples",
+        "before",
+        "after",
+        "severe_errors"
+      ],
+      "properties": {
+        "samples": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "before": {
+          "type": "number"
+        },
+        "after": {
+          "type": "number"
+        },
+        "severe_errors": {
+          "type": "integer",
+          "maximum": 0
+        }
+      }
+    },
+    "approved_by": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "level": {
+            "enum": [
+              "L2",
+              "L3"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "then": {
+        "required": [
+          "approved_by"
+        ]
+      }
+    }
+  ]
+}

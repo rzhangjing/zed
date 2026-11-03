@@ -37,7 +37,7 @@ LineItem | struct | domain::order | 订单明细行。下单时冻结单价，�
 Money | struct | domain::order | 金额。以最小货币单位记账，不做浮点运算。 | src/domain/order.rs:19
 Order | struct | domain::order | 订单。下单时冻结商品价格，创建后不再变更。 | src/domain/order.rs:121
 …
-共 11 个类型
+共 13 个类型
 ```
 
 ```bash
@@ -150,7 +150,7 @@ cargo run -p ew_types -- --root crates/fundamental/ew_types/demo ls --format com
 ## 工作原理
 
 1. 用 `syn` 解析 `src/**/*.rs`，拿 struct / enum / type alias 与 `#[doc]` 注释
-2. 按《Rust 结构与枚举定义规范》的五段句式拆字段注释：`含义。单位：…。范围：…。默认值：…`
+2. 按《Rust 结构与枚举定义规范》拆字段注释：`含义@@单位：…@@范围：…@@默认值：…`；新代码用 `@@`，旧注释的 `。` 仍兼容
 3. `# 不变量`、`# 流转`、`# 错误`、`# 示例` 各自解析成结构化数组
 4. 输出 JSON（或 compact），直接交给模型
 
@@ -175,7 +175,7 @@ crates/fundamental/ew_types/
 ├── docs/
 │   ├── card-format.md        卡片格式详解
 │   └── integration.md        接入指南与提示词
-├── demo/                     示例 crate（11 个类型，全部合规）
+├── demo/                     示例 crate（13 个类型，新类型用 @@，旧类型保留 。）
 │   ├── src/domain/order.rs
 │   ├── src/domain/user.rs
 │   ├── bad/                  故意不合规，用于演示 check

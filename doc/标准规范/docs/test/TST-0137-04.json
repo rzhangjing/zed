@@ -1,0 +1,14 @@
+{
+  "id": "TST-0137-04",
+  "links": ["AC-4"],
+  "layer": "integration",
+  "kind": "boundary",
+  "priority": "P1",
+  "preconditions": "门店 A 存在 100001 笔订单",
+  "steps": [
+    "选择全部时间范围",
+    "点击导出"
+  ],
+  "expected": "返回 400，提示“超过 10 万行，请缩小范围”，队列无新任务",
+  "automation": "auto"
+}

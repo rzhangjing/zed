@@ -1,0 +1,8 @@
+{
+  "agent": "AGT-REQ",
+  "version": "1.4.0",
+  "samples": 60,
+  "pass_rate": 0.91,
+  "baseline_pass_rate": 0.88,
+  "severe_errors": 0
+}

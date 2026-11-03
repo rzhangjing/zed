@@ -1,0 +1,20 @@
+{
+  "tools": {
+    "req.search": { "level": "read" }
+  },
+  "agents": [
+    {
+      "id": "agent-req",
+      "name": "需求 agent",
+      "owner": "",
+      "version": "1.4.0",
+      "inputs": ["工单"],
+      "tools": ["req.search", "req.delete_all"],
+      "outputs": ["需求卡"],
+      "forbidden": [],
+      "refusal": [],
+      "escalation": [],
+      "budget": { "minutes": 0, "tool_calls": 30, "tokens": 60000 }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "TST-0137-01",
+  "links": ["AC-1", "REQ-0137"],
+  "layer": "integration",
+  "kind": "normal",
+  "priority": "P0",
+  "preconditions": "门店 A 的客服账号，存在近 30 天 200 笔订单",
+  "steps": [
+    "选择近 30 天范围",
+    "选择状态=已完成",
+    "点击导出",
+    "等待任务完成并下载"
+  ],
+  "expected": "下载到 CSV，行数=198（已完成订单数），列含订单号/金额/状态/创建时间",
+  "automation": "auto"
+}

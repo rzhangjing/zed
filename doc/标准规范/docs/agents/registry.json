@@ -1,0 +1,35 @@
+{
+  "tools": {
+    "req.search": { "level": "read" },
+    "req.read": { "level": "read" },
+    "req.write_draft": { "level": "local" }
+  },
+  "agents": [
+    {
+      "id": "AGT-REQ",
+      "name": "需求 agent",
+      "owner": "产品负责人",
+      "version": "1.4.0",
+      "inputs": ["工单", "需求库", "术语表"],
+      "tools": ["req.search", "req.read", "req.write_draft"],
+      "outputs": ["需求卡", "澄清清单", "自检报告"],
+      "forbidden": ["直接改基线需求", "代填指标"],
+      "refusal": ["用户价值无法描述", "词表外概念"],
+      "escalation": ["2 轮澄清未收敛", "需拆但未确认"],
+      "budget": { "minutes": 15, "tool_calls": 30, "tokens": 60000 }
+    },
+    {
+      "id": "AGT-REV",
+      "name": "评审 agent",
+      "owner": "研发负责人",
+      "version": "1.1.0",
+      "inputs": ["PR diff", "需求卡", "设计说明"],
+      "tools": ["req.read"],
+      "outputs": ["评审意见"],
+      "forbidden": ["批准合并", "以个人偏好下结论"],
+      "refusal": ["缺少需求或设计上下文"],
+      "escalation": ["业务取舍争议"],
+      "budget": { "minutes": 20, "tool_calls": 30, "tokens": 40000 }
+    }
+  ]
+}

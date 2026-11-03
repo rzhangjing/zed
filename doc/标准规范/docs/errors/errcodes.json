@@ -1,0 +1,9 @@
+{
+  "codes": [
+    { "code": "ORD-01-001", "name": "INVALID_RANGE", "class": "01", "summary": "时间范围非法或超出允许值" },
+    { "code": "ORD-02-001", "name": "FORBIDDEN_STORE", "class": "02", "summary": "无权访问该门店的订单" },
+    { "code": "ORD-03-001", "name": "JOB_STATE_CONFLICT", "class": "03", "summary": "任务状态不允许该操作" },
+    { "code": "ORD-04-001", "name": "QUEUE_UNAVAILABLE", "class": "04", "summary": "导出队列不可用" },
+    { "code": "ORD-05-001", "name": "STORAGE_WRITE_FAILED", "class": "05", "summary": "文件写入失败" }
+  ]
+}

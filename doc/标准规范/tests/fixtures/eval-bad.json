@@ -1,0 +1,8 @@
+{
+  "agent": "AGT-COD",
+  "version": "0.9.0",
+  "samples": 40,
+  "pass_rate": 0.72,
+  "baseline_pass_rate": 0.80,
+  "severe_errors": 2
+}

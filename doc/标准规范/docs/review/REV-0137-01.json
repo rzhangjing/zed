@@ -1,0 +1,23 @@
+{
+  "target_id": "REQ-0137",
+  "reviewer": "AGT-REV 评审 agent",
+  "material_version": "0.1",
+  "verdict": "pass",
+  "must_open": 0,
+  "comments": [
+    {
+      "level": "should",
+      "text": "AC-1 建议补弱网场景的导出失败提示",
+      "rule": "REQ-3.19",
+      "evidence": "docs/req/REQ-0137.json:41-46",
+      "status": "open",
+      "owner": "张三"
+    },
+    {
+      "level": "nit",
+      "text": "风险描述可补触发条件（弱网丢包率）",
+      "evidence": "docs/req/REQ-0137.json:83",
+      "status": "open"
+    }
+  ]
+}

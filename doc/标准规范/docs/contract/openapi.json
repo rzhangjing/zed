@@ -1,0 +1,43 @@
+{
+  "openapi": "3.0.0",
+  "info": { "title": "订单导出", "version": "1.8.0" },
+  "paths": {
+    "/orders/export/{job_id}": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["status", "row_count"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": { "enum": ["queued", "running", "done", "failed"] },
+                    "row_count": { "type": "integer", "minimum": 0 },
+                    "url": { "type": "string" },
+                    "expires_at": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["code", "message"],
+                  "properties": {
+                    "code": { "type": "string", "pattern": "^[A-Z]{3}-0[1-5]-[0-9]{3}$" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

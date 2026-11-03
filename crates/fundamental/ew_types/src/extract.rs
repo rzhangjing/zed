@@ -261,7 +261,7 @@ fn fields_of<'a>(iter: impl Iterator<Item = &'a syn::Field>) -> Vec<Field> {
             .as_ref()
             .map(|i| i.to_string())
             .unwrap_or_else(|| idx.to_string());
-        let raw = doc_lines(&f.attrs).join("。");
+        let raw = doc_lines(&f.attrs).join("@@");
         let parts = parse_field_doc(&raw);
         let mut missing = Vec::new();
         if !parts.has_unit {

@@ -1,0 +1,13 @@
+{
+  "task_id": "TSK-9999",
+  "goal": "假绿样例：声称通过但没有证据",
+  "done": ["改了代码"],
+  "todo": [],
+  "artifacts": ["src/export/job.rs"],
+  "verification": [
+    { "command": "cargo test export::job", "result": "pass" }
+  ],
+  "risks": [],
+  "next_action": "交给评审",
+  "spec_versions": ["STD-COD-30 v1.0.0"]
+}
