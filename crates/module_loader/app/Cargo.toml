@@ -1,0 +1,15 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+default-run = "app"
+
+[dependencies]
+container = { path = "../container" }
+interfaces = { path = "../interfaces" }
+module-db = { path = "../module-db" }
+module-user = { path = "../module-user" }
+module-order = { path = "../module-order" }
+loader = { path = "../loader" }
+async-trait = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }

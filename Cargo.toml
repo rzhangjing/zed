@@ -416,6 +416,7 @@ exclude = [
     "crates/admin",
     "crates/topcoat",
     "crates/fundamental/ew_types/demo",
+    "crates/module_loader",
 ]
 
 [workspace.package]

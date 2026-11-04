@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  模块加载清单：主程序据此决定加载哪些模块、以何顺序、是否启用。
+  属性：
+    name     模块名（与 app 中 ModuleRegistry 登记的工厂 key 对应）
+    path     模块相对路径（对应 workspace 内的 crate 目录）
+    enabled  是否加载，默认 true
+    order    同级（无依赖约束时）装配顺序，越小越先，默认 0
+  子元素：（已移除 provides/depends）
+-->
+<modules>
+  <module name="db" path="module-db" order="0"/>
+
+  <module name="user" path="module-user" order="10"/>
+
+  <module name="order" path="module-order" order="20"/>
+
+  <!-- 关闭的模块会被跳过，不进入容器 -->
+  <module name="metrics" path="module-metrics" enabled="false">
+    <provides>Metrics</provides>
+  </module>
+</modules>

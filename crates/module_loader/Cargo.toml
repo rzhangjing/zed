@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "container",
+    "interfaces",
+    "module-db",
+    "module-user",
+    "module-order",
+    "loader",
+    "app",
+]
+resolver = "2"
