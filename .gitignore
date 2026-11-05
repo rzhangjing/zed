@@ -264,3 +264,13 @@ tsconfig.tsbuildinfo
 # `git add -A` here otherwise sweeps hundreds of artifact files — and any
 # workspace dirs the soaks `git init` — into a commit.
 /scratchpad/
+
+# Tailwind CLI binaries for the admin demo: 107 MB each, above GitHub's
+# 100 MB file limit, so they are never committed. `tools/fetch-tailwind.ps1`
+# fetches the pinned release into the versioned cache (that directory stays in
+# git through its `.gitkeep` only), and `tools/admin-tw-cache/` is a local
+# leftover copy of the same binary.
+tools/topcoat-cache/tailwind/*.exe
+tools/topcoat-cache/tailwind/*.download
+tools/topcoat-cache/tailwind/*.lock
+tools/admin-tw-cache/

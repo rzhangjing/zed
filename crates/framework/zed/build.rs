@@ -95,29 +95,109 @@ fn main() {
             let conpty_dll_target = target_dir.join("conpty.dll");
             let open_console_target = target_dir.join("OpenConsole.exe");
 
-            let conpty_url = "https://github.com/microsoft/terminal/releases/download/v1.24.10621.0/Microsoft.Windows.Console.ConPTY.1.24.260303001.nupkg";
-            let nupkg_path = out_dir.join("conpty.nupkg.zip");
-            let extract_dir = out_dir.join("conpty");
+            // `conpty.dll` and `OpenConsole.exe` are runtime files: they only
+            // have to sit next to the built executable. When both are already
+            // there, this build has nothing to fetch and must not touch the
+            // network at all -- a stalled github.com request has held a build
+            // on this machine for twenty minutes.
+            //
+            // Assumption: the pinned `conpty_url` below is the only source of
+            // these two files, so whatever this script last copied into
+            // `target/<profile>` still matches the pin. Bumping the version
+            // edits this script and reruns it, but the files already on disk
+            // then have to be deleted by hand to pick up the new release. That
+            // is the deliberate trade-off: never re-download a binary that is
+            // already in place.
+            let conpty_staged =
+                is_usable_file(&conpty_dll_target) && is_usable_file(&open_console_target);
 
-            let download_script = format!(
-                "$ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '{}' -OutFile '{}'",
-                conpty_url,
-                nupkg_path.display()
-            );
+            if !conpty_staged {
+                let conpty_url = "https://github.com/microsoft/terminal/releases/download/v1.24.10621.0/Microsoft.Windows.Console.ConPTY.1.24.260303001.nupkg";
+                let nupkg_name = format!(
+                    "{}.zip",
+                    conpty_url.rsplit('/').next().unwrap_or("conpty.nupkg")
+                );
+                let extract_dir = out_dir.join("conpty");
 
-            let download_result = Command::new("powershell")
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    &download_script,
-                ])
-                .output();
+                // Keep the archive in `<target>/conpty-cache`, beside the
+                // profile directory, instead of in this build's `OUT_DIR`: a
+                // second profile, a `cargo clean -p zed` or a deleted
+                // `conpty.dll` then restages ConPTY without a download.
+                let nupkg_cache_dir = target_dir
+                    .parent()
+                    .unwrap_or(target_dir)
+                    .join("conpty-cache");
+                let cached_nupkg = nupkg_cache_dir.join(&nupkg_name);
 
-            match download_result {
-                Ok(output) if output.status.success() => {
-                    println!("Downloaded conpty nupkg successfully");
+                // Watch the cache directory only once it exists: naming an
+                // absent path would rerun this script on every build.
+                if nupkg_cache_dir.is_dir() {
+                    println!("cargo:rerun-if-changed={}", nupkg_cache_dir.display());
+                }
 
+                // A cached archive is reused as it is. Without one, download
+                // into this build's `OUT_DIR` again: a failed attempt leaves a
+                // partial file there, which must not pass for an archive.
+                let cached_nupkg_hit = is_usable_file(&cached_nupkg);
+                let nupkg_path = if cached_nupkg_hit {
+                    cached_nupkg.clone()
+                } else {
+                    out_dir.join("conpty.nupkg.zip")
+                };
+                let mut have_archive = cached_nupkg_hit;
+
+                if !have_archive {
+                    let download_script = format!(
+                        "$ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '{}' -OutFile '{}'",
+                        conpty_url,
+                        nupkg_path.display()
+                    );
+
+                    let download_result = Command::new("powershell")
+                        .args([
+                            "-NoProfile",
+                            "-NonInteractive",
+                            "-Command",
+                            &download_script,
+                        ])
+                        .output();
+
+                    match download_result {
+                        Ok(output) if output.status.success() => {
+                            println!("Downloaded conpty nupkg successfully");
+                            have_archive = true;
+
+                            // Best effort: a failure to cache the archive only
+                            // costs a download on a later build.
+                            let cached = std::fs::create_dir_all(&nupkg_cache_dir)
+                                .and_then(|()| std::fs::copy(&nupkg_path, &cached_nupkg));
+                            if let Err(e) = cached {
+                                println!(
+                                    "cargo::warning=Failed to cache conpty nupkg at {}: {}",
+                                    cached_nupkg.display(),
+                                    e
+                                );
+                            }
+                        }
+                        Ok(output) => {
+                            println!(
+                                "cargo::warning=Failed to download conpty nupkg: {}",
+                                String::from_utf8_lossy(&output.stderr)
+                            );
+                        }
+                        Err(e) => {
+                            println!(
+                                "cargo::warning=Failed to run PowerShell for download: {}",
+                                e
+                            );
+                        }
+                    }
+                }
+
+                // Extract only what is actually available: a failed download
+                // leaves nothing to unpack, and keeps the warning above as the
+                // only report.
+                if have_archive {
                     let extract_script = format!(
                         "$ProgressPreference = 'SilentlyContinue'; Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
                         nupkg_path.display(),
@@ -182,18 +262,6 @@ fn main() {
                         }
                     }
                 }
-                Ok(output) => {
-                    println!(
-                        "cargo::warning=Failed to download conpty nupkg: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    );
-                }
-                Err(e) => {
-                    println!(
-                        "cargo::warning=Failed to run PowerShell for download: {}",
-                        e
-                    );
-                }
             }
         }
 
@@ -208,6 +276,12 @@ fn main() {
 
     #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     prepare_app_icon_x11();
+}
+
+/// Whether `path` is a file with content, that is, a file a previous build
+/// finished writing. Used to decide that ConPTY needs no download.
+fn is_usable_file(path: &std::path::Path) -> bool {
+    std::fs::metadata(path).is_ok_and(|metadata| metadata.is_file() && metadata.len() > 0)
 }
 
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]

@@ -14,7 +14,9 @@
 //!
 //! `out-dir` defaults to `assets` next to `binary`, which is where
 //! `AssetBundle::load` looks (`<exe dir>/assets`). Remote assets (fonts, icons)
-//! are downloaded into the shared Topcoat cache on first use.
+//! are read from a cache, by default `tools/topcoat-cache/asset` in this
+//! checkout (see [`resolve_cache_dir`]) and only downloaded when the cache
+//! lacks them.
 
 use std::{
     path::{Path, PathBuf},
@@ -47,11 +49,11 @@ fn main() {
 
     // The bundler reuses downloads (fonts, icons) from a cache. Cargo's build
     // scripts derive it from `OUT_DIR`; this tool runs outside cargo, so it
-    // names the same `<target>/topcoat/cache/asset` directory explicitly.
-    // `ADMIN_ASSETS_CACHE` overrides it.
-    let cache_dir = std::env::var_os("ADMIN_ASSETS_CACHE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| default_cache_dir(&binary));
+    // falls back to the versioned `tools/topcoat-cache/asset`, then to the
+    // `<target>/topcoat/cache/asset` directory it historically used.
+    // `ADMIN_ASSETS_CACHE` overrides all of them.
+    let cache_dir = resolve_cache_dir(&binary);
+    println!("assets cache: {}", cache_dir.display());
 
     let config = topcoat_asset::BundlerConfig::new().cache_dir(cache_dir);
     let bundler = topcoat_asset::Bundler::new(&config);
@@ -62,6 +64,39 @@ fn main() {
             exit(1);
         }
     }
+}
+
+/// The asset cache to bundle from, in order:
+///
+/// 1. `ADMIN_ASSETS_CACHE`, the explicit override.
+/// 2. `tools/topcoat-cache/asset` in this checkout, the versioned cache
+///    `tools/admin-bundle.ps1` exports as well. This tool runs outside cargo,
+///    so there is no `CARGO_MANIFEST_DIR` to resolve it against: the directory
+///    is found by walking up from the working directory, then from the
+///    binary's directory (a `zed.exe` under `<repo>/target/debug` finds it too).
+/// 3. `<target>/topcoat/cache/asset`, Topcoat's per-target cache, which is what
+///    earlier builds used.
+fn resolve_cache_dir(binary: &Path) -> PathBuf {
+    if let Some(dir) = std::env::var_os("ADMIN_ASSETS_CACHE") {
+        return PathBuf::from(dir);
+    }
+    let from_cwd = std::env::current_dir()
+        .ok()
+        .and_then(|dir| find_tools_cache(&dir));
+    let from_binary = binary.parent().and_then(find_tools_cache);
+    from_cwd
+        .or(from_binary)
+        .unwrap_or_else(|| default_cache_dir(binary))
+}
+
+/// `tools/topcoat-cache/asset` of the checkout containing `start`, found by
+/// walking up to the filesystem root.
+fn find_tools_cache(start: &Path) -> Option<PathBuf> {
+    let relative = Path::new("tools").join("topcoat-cache").join("asset");
+    start
+        .ancestors()
+        .map(|dir| dir.join(&relative))
+        .find(|candidate| candidate.is_dir())
 }
 
 /// `<target>/topcoat/cache/asset`, derived from a binary in `<target>/<profile>`.

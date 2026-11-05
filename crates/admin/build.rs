@@ -19,13 +19,19 @@
 //! 1. `ADMIN_TAILWIND_CLI`: the path (or bare `PATH` command name) of a Tailwind
 //!    CLI executable. Relative paths resolve against this package's root. This
 //!    is the switch to use on a machine without network access.
-//! 2. `<target>/topcoat/cache/tailwind/tailwindcss-<version>-<platform>`, the
+//! 2. `tools/topcoat-cache/tailwind/tailwindcss-<version>-<platform>`, the
+//!    versioned cache in this checkout, for example
+//!    `tools\topcoat-cache\tailwind\tailwindcss-4.3.2-windows-x64.exe`. It is
+//!    what `tools/fetch-tailwind.ps1` fills and what the tools read by default.
+//!    The binary itself is not committed: at 107.27 MiB it is above GitHub's
+//!    100 MB per-file limit.
+//! 3. `<target>/topcoat/cache/tailwind/tailwindcss-<version>-<platform>`, the
 //!    shared cache Topcoat downloads into, for example
 //!    `target\topcoat\cache\tailwind\tailwindcss-4.3.2-windows-x64.exe`.
 //!    Topcoat reuses a cached release without any network access.
-//! 3. `<target>/admin-tw-cache/tailwindcss-*`, a hand-kept copy of the same
+//! 4. `<target>/admin-tw-cache/tailwindcss-*`, a hand-kept copy of the same
 //!    binary (it is not part of the repository).
-//! 4. Otherwise Topcoat downloads the pinned release from GitHub. When
+//! 5. Otherwise Topcoat downloads the pinned release from GitHub. When
 //!    `CARGO_NET_OFFLINE` is set, the download is skipped immediately instead
 //!    of waiting for a connect timeout.
 //!
@@ -34,10 +40,18 @@
 //!
 //! ## Providing the Iconify set offline
 //!
-//! Topcoat caches `@iconify-json/lucide` at
-//! `<target>/topcoat/cache/iconify/lucide.json`. Put a real Iconify JSON file
-//! there to stage real icons offline. If it is missing and cannot be
-//! downloaded, this script writes a placeholder set so the crate still
+//! The set is looked up in this order:
+//!
+//! 1. `tools/topcoat-cache/iconify/lucide.json`, the versioned cache in this
+//!    checkout. The set files are small enough to be committed, so an offline
+//!    build stages real icons with no network access, and they survive
+//!    `cargo clean`.
+//! 2. `<target>/topcoat/cache/iconify/lucide.json`, the shared cache Topcoat
+//!    downloads into. Topcoat reuses a cached set without any network access.
+//! 3. Otherwise Topcoat downloads `@iconify-json/lucide` from jsDelivr.
+//!
+//! When no real set can be obtained (nothing cached and no network, or the
+//! download fails), this script writes a placeholder set so the crate still
 //! compiles (see [`write_placeholder_set`]).
 //!
 //! ## Degradation without either artefact
@@ -59,6 +73,17 @@ use std::{
 
 /// Environment variable naming an existing Tailwind CLI executable.
 const TAILWIND_CLI_ENV: &str = "ADMIN_TAILWIND_CLI";
+
+/// The versioned cache this checkout keeps under `tools/`, relative to the
+/// package root. Only the small files are committed; the Tailwind CLI is
+/// fetched by `tools/fetch-tailwind.ps1` because GitHub rejects files over
+/// 100 MB.
+const TOOLS_CACHE: &str = "../../tools/topcoat-cache";
+
+/// The Iconify sets in the versioned cache under `tools/`, relative to the
+/// package root. Unlike the Tailwind CLI these are small, so the set files are
+/// committed and an offline build stages real icons from them.
+const TOOLS_ICONIFY_CACHE: &str = "../../tools/topcoat-cache/iconify";
 
 /// The Iconify set staged for the `iconify_icon!` macros in this crate.
 const ICON_SET: &str = "lucide";
@@ -82,6 +107,22 @@ fn main() {
 fn rerun_directives() {
     println!("cargo:rerun-if-env-changed={TAILWIND_CLI_ENV}");
     println!("cargo:rerun-if-env-changed=CARGO_NET_OFFLINE");
+
+    // `tools/fetch-tailwind.ps1` adds the CLI to the versioned cache after this
+    // script first ran. Name the directory rather than the file: the directory
+    // exists in the checkout (it holds `.gitkeep`), so fetching the binary
+    // reruns this script, while naming the absent file would rerun it on every
+    // build.
+    if let Some(dir) = tools_tailwind_dir().filter(|dir| dir.is_dir()) {
+        println!("cargo:rerun-if-changed={}", dir.display());
+    }
+
+    // The committed Iconify cache exists in the checkout too, so naming its
+    // directory lets a replaced set file rerun this script without rerunning it
+    // on every build.
+    if let Some(dir) = tools_iconify_dir().filter(|dir| dir.is_dir()) {
+        println!("cargo:rerun-if-changed={}", dir.display());
+    }
 
     // The Tailwind class scan and the icon-name scan read the whole package,
     // not only `build.rs`. Extend this list if new scanned inputs are added.
@@ -113,6 +154,9 @@ fn render_tailwind() {
     if env::var_os(TAILWIND_CLI_ENV).is_some_and(|value| !value.is_empty()) {
         config = config.executable_env(TAILWIND_CLI_ENV);
         have_cli = true;
+    } else if let Some(path) = tools_tailwind_cli() {
+        config = config.executable(path);
+        have_cli = true;
     } else if let Some(path) = cached_tailwind_cli() {
         config = config.executable(path);
         have_cli = true;
@@ -140,26 +184,63 @@ fn render_tailwind() {
 /// lets the warning name the file it expected.
 fn cached_tailwind_cli() -> Option<PathBuf> {
     let target = target_dir()?;
-    let dirs = [
+    pick_tailwind_cli(&[
         target.join("topcoat").join("cache").join("tailwind"),
         target.join("admin-tw-cache"),
-    ];
-    let preferred = format!("tailwindcss-{}-", topcoat::tailwind::DEFAULT_VERSION);
+    ])
+}
 
+/// The Tailwind CLI staged in the versioned `tools/topcoat-cache/tailwind`
+/// directory, when `tools/fetch-tailwind.ps1` has run or a copy was put there
+/// by hand. Naming it exactly like Topcoat's own cache entries keeps a single
+/// version pin for both.
+fn tools_tailwind_cli() -> Option<PathBuf> {
+    pick_tailwind_cli(&[tools_tailwind_dir()?])
+}
+
+/// `<repo>/tools/topcoat-cache/tailwind`, resolved from `CARGO_MANIFEST_DIR` so
+/// the checkout can live anywhere.
+fn tools_tailwind_dir() -> Option<PathBuf> {
+    let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR")?);
+    Some(manifest_dir.join(TOOLS_CACHE).join("tailwind"))
+}
+
+/// `<repo>/tools/topcoat-cache/iconify`, resolved from `CARGO_MANIFEST_DIR` so
+/// the checkout can live anywhere.
+fn tools_iconify_dir() -> Option<PathBuf> {
+    let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR")?);
+    Some(manifest_dir.join(TOOLS_ICONIFY_CACHE))
+}
+
+/// Whether the versioned cache under `tools/` holds the set. Staging that file
+/// needs no network access, so it is preferred over the shared cache and the
+/// download.
+fn tools_iconify_set_present() -> bool {
+    tools_iconify_dir().is_some_and(|dir| dir.join(format!("{ICON_SET}.json")).is_file())
+}
+
+/// The best Tailwind CLI found in `dirs`, in order: a pinned-version build
+/// first, then whatever else is there.
+fn pick_tailwind_cli(dirs: &[PathBuf]) -> Option<PathBuf> {
     let mut fallback = None;
     for dir in dirs {
-        for path in executables_in(&dir) {
-            let matches_version = path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| name.starts_with(&preferred));
-            if matches_version {
+        for path in executables_in(dir) {
+            if matches_pinned_version(&path) {
                 return Some(path);
             }
             fallback.get_or_insert(path);
         }
     }
     fallback
+}
+
+/// Whether `path`'s file name carries the pinned version, like
+/// `tailwindcss-4.3.2-windows-x64.exe`.
+fn matches_pinned_version(path: &Path) -> bool {
+    let preferred = format!("tailwindcss-{}-", topcoat::tailwind::DEFAULT_VERSION);
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with(&preferred))
 }
 
 /// The files in `dir` that look like a downloaded Tailwind CLI, sorted.
@@ -205,7 +286,10 @@ fn stage_icons() {
         .join(topcoat::icon::iconify::STAGE_DIR)
         .join(format!("{ICON_SET}.json"));
     let cache = iconify_cache_path();
-    let has_cache = cache.as_deref().is_some_and(Path::exists);
+    // A committed set under `tools/` counts as a cache: it can be staged
+    // offline, so it must not take the placeholder path below.
+    let from_tools = tools_iconify_set_present();
+    let has_cache = from_tools || cache.as_deref().is_some_and(Path::exists);
 
     // A placeholder from an earlier build must not be mistaken for a cached
     // set: Topcoat reuses any existing file. Drop it as soon as real data can
@@ -242,10 +326,20 @@ fn stage_icons() {
         return;
     }
 
-    if let Err(error) = topcoat::icon::iconify::BuildConfig::new()
-        .icon_set(ICON_SET)
-        .stage()
-    {
+    // Prefer the committed set under `tools/`: it is the file the tools in
+    // this checkout read, it survives `cargo clean`, and staging it needs no
+    // network access. Only a present file switches the cache, so a checkout
+    // without it keeps the previous behaviour: the shared cache, then the
+    // download.
+    let config = if from_tools {
+        topcoat::icon::iconify::BuildConfig::new()
+            .icon_set(ICON_SET)
+            .cache_dir(TOOLS_ICONIFY_CACHE)
+    } else {
+        topcoat::icon::iconify::BuildConfig::new().icon_set(ICON_SET)
+    };
+
+    if let Err(error) = config.stage() {
         let names = referenced_icons();
         if let Err(write_error) = write_placeholder_set(&staged, &names) {
             println!(
