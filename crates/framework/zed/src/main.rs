@@ -31,7 +31,7 @@ use gpui::{
 use gpui_platform;
 
 use gpui_tokio::Tokio;
-use language::LanguageRegistry;
+use language::{Language, LanguageConfig, LanguageMatcher, LanguageName, LanguageRegistry};
 use onboarding::{FIRST_OPEN, show_onboarding_view};
 use prompt_store::PromptBuilder;
 use reqwest_client::ReqwestClient;
@@ -485,6 +485,30 @@ fn main() {
         let mut languages = LanguageRegistry::new(cx.background_executor().clone());
         languages.set_language_server_download_dir(paths::languages_dir().clone());
         let languages = Arc::new(languages);
+        // This fork has no extension host and no native language bundle, so the
+        // registry starts out with only `Plain Text`. Two UI paths look languages
+        // up by name: `regex` in the find bar and `Markdown` in the agent message
+        // editor. Register grammar-less, hidden stand-ins so those lookups
+        // succeed, without changing file-type detection (an empty matcher matches
+        // nothing) or the language pickers (`hidden: true`).
+        for name in ["Markdown", "regex"] {
+            if languages
+                .language_names()
+                .iter()
+                .any(|language_name| language_name.to_proto() == name)
+            {
+                continue;
+            }
+            languages.add(Arc::new(Language::new(
+                LanguageConfig {
+                    name: LanguageName::new_static(name),
+                    hidden: true,
+                    matcher: Arc::new(LanguageMatcher::default()),
+                    ..Default::default()
+                },
+                None,
+            )));
+        }
         let (mut tx, rx) = watch::channel(None);
         cx.observe_global::<SettingsStore>(move |cx| {
             let settings = &ProjectSettings::get_global(cx).node;
