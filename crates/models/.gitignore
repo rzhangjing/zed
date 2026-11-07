@@ -1,0 +1,4 @@
+# Build artifacts and the crate-local vendored Burn tree.
+/target/
+/vendor/
+/artifacts/

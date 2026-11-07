@@ -69,6 +69,8 @@ actions!(
         OpenPlot,
         /// Opens the admin demo runner window: process control and log.
         OpenAdminDemo,
+        /// Opens the model test window: build/train/test the `crates/models` demo.
+        OpenModelTest,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.

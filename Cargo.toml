@@ -417,6 +417,11 @@ exclude = [
     "crates/topcoat",
     "crates/fundamental/ew_types/demo",
     "crates/module_loader",
+    # Burn demo: its own workspace root with a crate-local `vendor/`
+    # (`crates/models/.cargo/config.toml`). Excluding it keeps cargo from
+    # adopting it as a member, which would force this workspace's
+    # crates-io `vendor/` source replacement onto its Burn dependencies.
+    "crates/models",
 ]
 
 [workspace.package]

@@ -1,0 +1,40 @@
+[package]
+name = "models"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Burn CNN + Transformer demo: 8x8 synthetic image classification"
+
+[lib]
+name = "models"
+path = "src/lib.rs"
+
+[[bin]]
+name = "models"
+path = "src/main.rs"
+
+[dependencies]
+# Burn 0.22 core stack, no GPU backends. `tensor` is not a burn 0.22 feature
+# (it was removed/renamed); `store` gates `burn::store` (recorders).
+burn = { version = "0.22", default-features = false, features = [
+    "std",
+    "train",
+    "dataset",
+    "autodiff",
+    "vision",
+    "store",
+    "ndarray",
+] }
+# CPU backend: pure Rust (ndarray + matrixmultiply), no GPU/runtime deps.
+# Registered through burn's `ndarray` feature: `Device::ndarray()`.
+burn-ndarray = "0.22"
+serde = { version = "1", features = ["derive"] }
+rand = "0.8"
+clap = { version = "4", features = ["derive"] }
+
+[profile.dev]
+# Keep the demo usable under `cargo run` while dependencies stay optimized.
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

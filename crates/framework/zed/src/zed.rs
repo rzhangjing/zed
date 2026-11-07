@@ -9,6 +9,9 @@ pub mod edit_prediction_registry;
 #[cfg(target_os = "macos")]
 pub(crate) mod mac_only_instance;
 mod migrate;
+/// The model test window: build, train and test the `crates/models` Burn demo,
+/// opened from `Help > Model Test`.
+pub mod model_test;
 #[cfg(target_os = "macos")]
 pub(crate) mod move_to_applications;
 mod open_listener;
@@ -319,6 +322,9 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &zed_actions::OpenAdminDemo, cx| {
         admin_demo::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenModelTest, cx| {
+        model_test::open(cx);
     });
 
     // The Octos kernel is started here, as a library inside this process rather
@@ -349,6 +355,13 @@ pub fn init(cx: &mut App) {
     // reason as the two above: whether the demo really serves in this process is
     // what is being checked, and clicking through `Help` is not part of it.
     admin_demo::init(cx);
+
+    // The model test window is opened from `Help > Model Test`; this is only its
+    // startup override (`ZED_MODELTEST_OPEN`), and a no-op otherwise. Same reason
+    // as the two above: whether the `crates/models` child really builds and
+    // trains is what is being checked, and clicking through `Help` is not part of
+    // it. `ZED_MODELTEST_RUN` / `ZED_MODELTEST_EPOCHS` make such a check scriptable.
+    model_test::init(cx);
 
     // Same startup override shape as `ZED_ABOUT_OPEN` above and `ZED_DAMENG_OPEN`
     // in `dameng`: it exists because checking that the gallery's real window
