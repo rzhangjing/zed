@@ -32,6 +32,15 @@ serde = { version = "1", features = ["derive"] }
 rand = "0.8"
 clap = { version = "4", features = ["derive"] }
 
+# Pure-Rust clustering demos live in the root workspace's
+# `crates/fundamental/clustering` crate. Keeping the algorithms there and using
+# a path dependency here means the four third-party libraries are resolved once
+# at the repository root; this workspace does not carry a second set of direct
+# version requirements. `nightly-kmeans` is enabled because this workspace's
+# `.cargo/config.toml` opts into `RUSTC_BOOTSTRAP=1` for the nightly-only
+# `kmeans` 2.0.2 crate.
+clustering = { path = "../fundamental/clustering", features = ["nightly-kmeans"] }
+
 [profile.dev]
 # Keep the demo usable under `cargo run` while dependencies stay optimized.
 opt-level = 1

@@ -11,3 +11,11 @@ directory = "vendor"
 
 [net]
 offline = true
+
+[env]
+# `kmeans` 2.0.2 is published with `#![feature(portable_simd)]` and
+# `extern crate test` in its lib root, so it cannot build on a stable toolchain
+# as-is. This crate-local opt-in (it applies only to `crates/models` cargo
+# invocations) lets the installed stable 1.98 compiler accept that one
+# dependency; the demo's own code and every other dependency stay stable Rust.
+RUSTC_BOOTSTRAP = "1"

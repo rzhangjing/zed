@@ -39,8 +39,10 @@
 //! The status machine, the ring, the accuracy parser, the path derivation and the
 //! command lines are pure and are unit-tested below. `ZED_MODELTEST_OPEN=1` opens
 //! the window at startup (the menu path without the menu),
-//! `ZED_MODELTEST_RUN=train|test` presses the matching button once the window is
-//! up, and `ZED_MODELTEST_EPOCHS` overrides the epoch count for a scripted check.
+//! `ZED_MODELTEST_RUN=train|test|cluster` presses the matching button once the
+//! window is up, and `ZED_MODELTEST_EPOCHS` overrides the epoch count for a
+//! scripted check. For the cluster hook, `ZED_MODELTEST_ALGO` selects the
+//! algorithm (`all` by default).
 
 use std::{
     collections::VecDeque,
@@ -67,13 +69,21 @@ use ui::{Button, ButtonStyle, Color, Label, LabelSize, TintColor, prelude::*};
 /// `ZED_ADMIN_DEMO_OPEN`.
 pub const ENV_OPEN: &str = "ZED_MODELTEST_OPEN";
 
-/// `ZED_MODELTEST_RUN` — `train` or `test`; press that button as soon as the
-/// window opens.
+/// `ZED_MODELTEST_RUN` — `train`, `test` or `cluster`; press that button as soon
+/// as the window opens.
 ///
 /// A scripted-verification hook, like [`ENV_OPEN`]: it runs the button's own
 /// handler, so checking that a real training run reaches `Done` does not need a
 /// click. Off by default.
 pub const ENV_RUN: &str = "ZED_MODELTEST_RUN";
+
+/// `ZED_MODELTEST_ALGO` — the clustering algorithm used by `ZED_MODELTEST_RUN=cluster`.
+///
+/// Defaults to `all`, which runs the whole comparison table. Any value the
+/// `models cluster --algo` subcommand accepts works (`kmeans`, `linfa-kmeans`,
+/// `linfa-dbscan`, `linfa-optics`, `linfa-gmm`, `smartcore-kmeans`,
+/// `smartcore-dbscan`, `hdbscan`, `all`).
+pub const ENV_ALGO: &str = "ZED_MODELTEST_ALGO";
 
 /// `ZED_MODELTEST_EPOCHS` — the epoch count the window starts with.
 ///
@@ -87,6 +97,10 @@ pub const LOG_CAPACITY: usize = 500;
 /// The epoch count a fresh window starts with, and the seed every run passes.
 const DEFAULT_EPOCHS: usize = 3;
 const DEFAULT_SEED: u64 = 42;
+/// Points the cluster buttons pass to `models cluster --points`.
+const DEFAULT_CLUSTER_POINTS: usize = 600;
+/// Requested cluster count the cluster buttons pass to `models cluster --clusters`.
+const DEFAULT_CLUSTER_CLUSTERS: usize = 3;
 
 /// How long the `ZED_MODELTEST_RUN` hook waits after the window opens before
 /// pressing its button, so the window is mapped and the theme is up.
@@ -177,10 +191,10 @@ impl Status {
     /// The second line: what is happening, the accuracy, or the failure.
     pub fn detail(&self) -> Option<String> {
         match self {
-            Self::Idle => Some("ready: Build, Train or Test".to_owned()),
+            Self::Idle => Some("ready: Build, Train, Test or a clustering algorithm".to_owned()),
             Self::Building => Some("running cargo build --offline in crates/models".to_owned()),
             Self::Training => Some("running models train".to_owned()),
-            Self::Testing => Some("running models test".to_owned()),
+            Self::Testing => Some("running models test or cluster".to_owned()),
             Self::Done { acc: Some(acc) } => Some(format!("accuracy {acc:.2}%")),
             Self::Done { acc: None } => Some("finished".to_owned()),
             Self::Failed { reason } => Some(reason.clone()),
@@ -209,6 +223,8 @@ pub struct Buttons {
     pub build: bool,
     pub train: bool,
     pub test: bool,
+    /// The cluster test buttons (`K-Means`, `DBSCAN`, ..., `All`).
+    pub cluster: bool,
     pub stop: bool,
     pub clear_log: bool,
     pub copy_log: bool,
@@ -229,6 +245,7 @@ pub fn buttons_for(status: &Status, log_is_empty: bool) -> Buttons {
         build: idle,
         train: idle,
         test: idle,
+        cluster: idle,
         stop: busy,
         clear_log: log,
         copy_log: log,
@@ -288,37 +305,49 @@ impl LogRing {
     }
 }
 
-/// The three things the window can run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The jobs the window can run.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JobKind {
     Build,
     Train,
     Test,
+    /// `models cluster --algo <algo>`; `algo` is `all` for the comparison table.
+    Cluster { algo: String },
 }
 
 impl JobKind {
-    pub fn label(self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
             Self::Build => "build",
             Self::Train => "train",
             Self::Test => "test",
+            Self::Cluster { .. } => "cluster",
         }
     }
 
     /// The status the window shows while this job runs.
-    pub fn status(self) -> Status {
+    ///
+    /// Clustering reuses [`Status::Testing`]: it is another `models` subcommand
+    /// whose child is watched by the same state machine.
+    pub fn status(&self) -> Status {
         match self {
             Self::Build => Status::Building,
             Self::Train => Status::Training,
-            Self::Test => Status::Testing,
+            Self::Test | Self::Cluster { .. } => Status::Testing,
         }
     }
 
     /// Parses the `ZED_MODELTEST_RUN` value.
+    ///
+    /// `cluster` returns the `all` default; [`ModelTestView::new`] replaces it
+    /// with the `ZED_MODELTEST_ALGO` value when that variable is set.
     pub fn parse(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "train" => Some(Self::Train),
             "test" => Some(Self::Test),
+            "cluster" => Some(Self::Cluster {
+                algo: "all".to_owned(),
+            }),
             _ => None,
         }
     }
@@ -395,6 +424,25 @@ pub fn plan_for(kind: JobKind, epochs: usize, seed: u64) -> JobPlan {
             args: vec!["test".to_owned(), "--seed".to_owned(), seed.to_string()],
             cwd,
         },
+        JobKind::Cluster { algo } => {
+            let plan_kind = JobKind::Cluster { algo: algo.clone() };
+            JobPlan {
+                kind: plan_kind,
+                program: models_exe().display().to_string(),
+                args: vec![
+                    "cluster".to_owned(),
+                    "--algo".to_owned(),
+                    algo,
+                    "--points".to_owned(),
+                    DEFAULT_CLUSTER_POINTS.to_string(),
+                    "--clusters".to_owned(),
+                    DEFAULT_CLUSTER_CLUSTERS.to_string(),
+                    "--seed".to_owned(),
+                    seed.to_string(),
+                ],
+                cwd,
+            }
+        }
     }
 }
 
@@ -532,7 +580,7 @@ impl ModelTestState {
                 self.status = Status::Idle;
                 self.log("[model-test] build succeeded");
             }
-            JobKind::Train | JobKind::Test => {
+            JobKind::Train | JobKind::Test | JobKind::Cluster { .. } => {
                 let acc = self.last_acc.take();
                 self.status = Status::Done { acc };
                 match acc {
@@ -698,6 +746,7 @@ fn spawn_job(plan: JobPlan, events: mpsc::UnboundedSender<Event>) -> Result<Runn
 
     let supervisor = child.clone();
     let kind = plan.kind;
+    let supervisor_kind = kind.clone();
     std::thread::spawn(move || {
         let outcome = loop {
             let polled = {
@@ -721,7 +770,7 @@ fn spawn_job(plan: JobPlan, events: mpsc::UnboundedSender<Event>) -> Result<Runn
                     let _ = lock(&supervisor).take();
                     break Err(format!(
                         "could not wait for the {} process: {error}",
-                        kind.label()
+                        supervisor_kind.label()
                     ));
                 }
             }
@@ -770,11 +819,23 @@ impl ModelTestView {
             log::info!("[model-test] epoch count from {ENV_EPOCHS}: {epochs}");
         }
 
-        let auto_run = std::env::var(ENV_RUN)
+        let mut auto_run = std::env::var(ENV_RUN)
             .ok()
             .and_then(|value| JobKind::parse(&value));
         if auto_run.is_none() && std::env::var(ENV_RUN).is_ok() {
-            log::warn!("[model-test] ignoring {ENV_RUN}: expected `train` or `test`");
+            log::warn!(
+                "[model-test] ignoring {ENV_RUN}: expected `train`, `test` or `cluster`"
+            );
+        }
+        if let Some(JobKind::Cluster { algo }) = auto_run.as_mut() {
+            let requested = std::env::var(ENV_ALGO).unwrap_or_else(|_| "all".to_owned());
+            let requested = requested.trim();
+            if !requested.is_empty() {
+                *algo = requested.to_ascii_lowercase();
+            }
+            log::info!(
+                "[model-test] cluster algorithm from {ENV_ALGO}: {algo} (default `all`)"
+            );
         }
         if let Some(kind) = auto_run {
             log::info!("[model-test] auto-running {} ({ENV_RUN})", kind.label());
@@ -786,6 +847,7 @@ impl ModelTestView {
                             JobKind::Build => view.build(cx),
                             JobKind::Train => view.train(cx),
                             JobKind::Test => view.test(cx),
+                            JobKind::Cluster { algo } => view.cluster(&algo, cx),
                         });
                     }
                 });
@@ -830,6 +892,21 @@ impl ModelTestView {
         }
     }
 
+    /// One of the cluster buttons: `algo` is a `models cluster --algo` value.
+    fn cluster(&mut self, algo: &str, cx: &mut Context<Self>) {
+        if !self.state.buttons().cluster {
+            return;
+        }
+        let kind = JobKind::Cluster {
+            algo: algo.to_owned(),
+        };
+        if models_exe().is_file() {
+            self.start_job(kind, None, cx);
+        } else {
+            self.start_job(JobKind::Build, Some(kind), cx);
+        }
+    }
+
     /// Spawns `kind`; `then` is the job to run if this is an auto-build.
     fn start_job(&mut self, kind: JobKind, then: Option<JobKind>, cx: &mut Context<Self>) {
         // Defensive: one child at a time, whatever the buttons said.
@@ -844,7 +921,7 @@ impl ModelTestView {
             ));
         }
 
-        let plan = plan_for(kind, self.state.epochs, self.state.seed);
+        let plan = plan_for(kind.clone(), self.state.epochs, self.state.seed);
         let command_line = plan.command_line();
         let (events, mut events_rx) = mpsc::unbounded::<Event>();
         match spawn_job(plan, events) {
@@ -1026,6 +1103,30 @@ impl Render for ModelTestView {
             })
             .collect();
 
+        // The eight clustering buttons. `DBSCAN` is the linfa implementation and
+        // `smartcore` is smartcore's K-Means; the smartcore DBSCAN variant is
+        // still reachable through `All` and `models cluster --algo
+        // smartcore-dbscan`.
+        let cluster_buttons: Vec<gpui::AnyElement> = [
+            ("model-test-cluster-kmeans", "K-Means", "kmeans"),
+            ("model-test-cluster-linfa-kmeans", "linfa KMeans", "linfa-kmeans"),
+            ("model-test-cluster-dbscan", "DBSCAN", "linfa-dbscan"),
+            ("model-test-cluster-optics", "OPTICS", "linfa-optics"),
+            ("model-test-cluster-gmm", "GMM", "linfa-gmm"),
+            ("model-test-cluster-hdbscan", "HDBSCAN", "hdbscan"),
+            ("model-test-cluster-smartcore", "smartcore", "smartcore-kmeans"),
+            ("model-test-cluster-all", "All", "all"),
+        ]
+        .into_iter()
+        .map(|(id, label, algo)| {
+            Button::new(id, label)
+                .style(ButtonStyle::Outlined)
+                .disabled(busy)
+                .on_click(cx.listener(move |this, _, _, cx| this.cluster(algo, cx)))
+                .into_any_element()
+        })
+        .collect();
+
         v_flex()
             .id("model-test")
             .size_full()
@@ -1106,6 +1207,18 @@ impl Render for ModelTestView {
                     ),
             )
             .child(
+                h_flex()
+                    .gap_2()
+                    .flex_wrap()
+                    .items_center()
+                    .child(
+                        Label::new("clustering:")
+                            .size(LabelSize::Small)
+                            .color(Color::Muted),
+                    )
+                    .children(cluster_buttons),
+            )
+            .child(
                 Label::new(SharedString::from(format!(
                     "log: {line_count}/{LOG_CAPACITY} lines (newest last)"
                 )))
@@ -1128,7 +1241,8 @@ impl Render for ModelTestView {
             .child(
                 Label::new(SharedString::from(format!(
                     "Spawns {} with {} as the working directory; Zed does not link \
-                     Burn. Checkpoint: {}. Closing the window stops a running job.",
+                     Burn or the clustering crates. Checkpoint: {}. Closing the window \
+                     stops a running job.",
                     models_exe().display(),
                     models_dir().display(),
                     checkpoint_path().display()
@@ -1179,7 +1293,7 @@ fn show_window(cx: &mut App) {
         return;
     }
 
-    let window_size = size(px(860.), px(620.));
+    let window_size = size(px(1120.), px(680.));
     let opened = cx.open_window(
         WindowOptions {
             titlebar: Some(TitlebarOptions {
@@ -1271,6 +1385,19 @@ mod tests {
         assert_eq!(state.status.color(), Color::Error);
         assert!(!state.status.is_busy());
 
+        state.begin_job(
+            JobKind::Cluster {
+                algo: "linfa-dbscan".to_owned(),
+            },
+            "models.exe cluster --algo linfa-dbscan --points 600 --clusters 3 --seed 42",
+        );
+        assert_eq!(state.status, Status::Testing);
+        state.succeeded(JobKind::Cluster {
+            algo: "linfa-dbscan".to_owned(),
+        });
+        assert_eq!(state.status, Status::Done { acc: None });
+        assert_eq!(state.status.detail().as_deref(), Some("finished"));
+
         state.begin_job(JobKind::Test, "models test --seed 42");
         state.stopped(JobKind::Test);
         assert_eq!(state.status, Status::Idle);
@@ -1299,6 +1426,12 @@ mod tests {
                 .iter()
                 .any(|line| line.contains("failed: test failed"))
         );
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.contains("cluster in") && line.contains("linfa-dbscan"))
+        );
+        assert!(lines.iter().any(|line| line.contains("cluster done")));
         assert!(
             lines
                 .iter()
@@ -1353,6 +1486,7 @@ mod tests {
                 build: true,
                 train: true,
                 test: true,
+                cluster: true,
                 stop: false,
                 clear_log: false,
                 copy_log: false
@@ -1361,13 +1495,13 @@ mod tests {
 
         for busy in [Status::Building, Status::Training, Status::Testing] {
             let buttons = buttons_for(&busy, false);
-            assert!(!buttons.build && !buttons.train && !buttons.test);
+            assert!(!buttons.build && !buttons.train && !buttons.test && !buttons.cluster);
             assert!(buttons.stop);
             assert!(buttons.clear_log && buttons.copy_log);
         }
 
         let done = buttons_for(&Status::Done { acc: Some(90.0) }, true);
-        assert!(done.build && done.train && done.test && !done.stop);
+        assert!(done.build && done.train && done.test && done.cluster && !done.stop);
         assert!(!done.clear_log && !done.copy_log);
 
         let failed = buttons_for(
@@ -1376,7 +1510,7 @@ mod tests {
             },
             false,
         );
-        assert!(failed.build && failed.train && failed.test && !failed.stop);
+        assert!(failed.build && failed.train && failed.test && failed.cluster && !failed.stop);
         assert!(failed.clear_log && failed.copy_log);
     }
 
@@ -1436,12 +1570,46 @@ mod tests {
             build.args[3],
             models_dir().join("Cargo.toml").display().to_string()
         );
+
+        let cluster = plan_for(
+            JobKind::Cluster {
+                algo: "linfa-dbscan".to_owned(),
+            },
+            2,
+            42,
+        );
+        assert_eq!(cluster.program, models_exe().display().to_string());
+        assert_eq!(cluster.cwd, models_dir());
+        assert_eq!(
+            cluster.args,
+            vec![
+                "cluster",
+                "--algo",
+                "linfa-dbscan",
+                "--points",
+                "600",
+                "--clusters",
+                "3",
+                "--seed",
+                "42",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+        );
+        assert!(cluster.command_line().contains("cluster --algo linfa-dbscan"));
     }
 
     #[test]
-    fn the_run_hook_parses_only_the_two_expected_actions() {
+    fn the_run_hook_parses_the_three_expected_actions() {
         assert_eq!(JobKind::parse("train"), Some(JobKind::Train));
         assert_eq!(JobKind::parse(" TEST "), Some(JobKind::Test));
+        assert_eq!(
+            JobKind::parse(" CLUSTER "),
+            Some(JobKind::Cluster {
+                algo: "all".to_owned()
+            })
+        );
         assert_eq!(JobKind::parse("build"), None);
         assert_eq!(JobKind::parse(""), None);
     }

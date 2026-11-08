@@ -377,6 +377,7 @@ members = [
     # otherwise be adopted by a nested `[workspace]` root and resolve its
     # dependencies against that manifest instead of this one.
     #
+    "crates/fundamental/clustering",
     "crates/fundamental/ew_ordpack",
     "crates/fundamental/ew_ordpack/ew_ordpack_derive",
     #
@@ -887,6 +888,7 @@ futures-concurrency = "7.7.1"
 futures-lite = "2"
 globset = "0.4"
 handlebars = "4.3"
+hdbscan = "0.12.0"
 hdrhistogram = { version = "7", default-features = false }
 heapless = "0.9.2"
 heck = "0.5"
@@ -930,6 +932,12 @@ json_dotpath = "1.1"
 jsonschema = { version = "0.51", default-features = false }
 jupyter-protocol = "1.4.0"
 jupyter-websocket-client = "1.1.0"
+# Nightly-only upstream: 2.0.2 ships `#![feature(portable_simd)]` and
+# `extern crate test`. The `clustering` crate keeps it behind the
+# `nightly-kmeans` feature, so the pinned stable workspace gates do not compile
+# it; `crates/models` enables the feature and sets RUSTC_BOOTSTRAP=1 in its own
+# `.cargo/config.toml`.
+kmeans = "2.0.2"
 libc = "0.2"
 # Bumped from 0.30.1 by the Octos merge: Octos' `rusqlite 0.40` requires
 # `libsqlite3-sys ^0.38.1`, and both crates declare `links = "sqlite3"`, so only
@@ -938,6 +946,7 @@ libc = "0.2"
 # `use libsqlite3_sys::*` plus `sqlite3_exec`) exists in both versions, and the
 # `bundled` feature is unchanged.
 libsqlite3-sys = { version = "0.38.2", features = ["bundled"] }
+linfa-clustering = "0.8.1"
 linkify = "0.10.0"
 log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
 lru = "0.16"
@@ -1088,6 +1097,7 @@ shlex = "1.3.0"
 simplelog = "0.12.2"
 slotmap = "1.0.6"
 smallvec = { version = "1.6", features = ["union", "const_new"] }
+smartcore = "0.7.0"
 smol = "2.0"
 sqlformat = "0.2"
 stacksafe = "1.0"

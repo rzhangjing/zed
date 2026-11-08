@@ -1,0 +1,29 @@
+[package]
+name = "clustering"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Pure-Rust clustering demos: K-Means, DBSCAN, OPTICS, GMM and HDBSCAN"
+
+# A root-workspace member. The four clustering libraries are pinned once in the
+# root `[workspace.dependencies]`; `linfa` (the shared types/traits) and the
+# numeric stack are direct dependencies here because the demos use their public
+# APIs directly.
+[dependencies]
+hdbscan.workspace = true
+kmeans = { workspace = true, optional = true }
+linfa = "0.8"
+linfa-clustering.workspace = true
+smartcore.workspace = true
+ndarray = "0.16"
+rand = "0.8"
+
+[features]
+default = []
+# `kmeans` 2.0.2 is published with `#![feature(portable_simd)]` and
+# `extern crate test`, so it only builds with nightly features enabled. The
+# demo is available to consumers (notably the separate `crates/models`
+# workspace, which sets RUSTC_BOOTSTRAP=1 in its own .cargo/config.toml) but is
+# off for the default root-workspace gates, which use the pinned stable
+# toolchain. See README.md.
+nightly-kmeans = ["dep:kmeans"]

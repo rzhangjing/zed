@@ -1,8 +1,12 @@
-# crates/models — Burn CNN + Transformer 训练/测试 demo
+# crates/models — Burn CNN + Transformer 训练/测试 demo + 聚类 demo
 
 一个**独立的 cargo workspace**（根 `Cargo.toml` 的 `exclude` 中有 `"crates/models"`，不是根
 workspace 的 member，也不使用根 `workspace.dependencies`）。用 Burn 在纯 CPU 上训练一个
 「CNN 前端 + 1 层 Transformer 编码器」的 4 类 8×8 图像分类器，不需要下载任何数据集。
+
+聚类算法本身住在根 workspace 的 `crates/fundamental/clustering`（K-Means / DBSCAN /
+OPTICS / GMM / HDBSCAN 与轮廓系数），本 crate 通过 path 依赖调用它；`models cluster`
+子命令和 Model Test 窗口的聚类按钮都走这条路径。
 
 ## 结构
 
@@ -10,7 +14,7 @@ workspace 的 member，也不使用根 `workspace.dependencies`）。用 Burn �
 crates/models/
 ├── .cargo/config.toml     # 本 crate 自己的 vendored-sources（指向 ./vendor）+ offline
 ├── .gitignore             # /target/ /vendor/ /artifacts/
-├── Cargo.toml             # burn 0.22（core+train+dataset+autodiff+vision+store+ndarray）
+├── Cargo.toml             # burn 0.22（core+train+dataset+autodiff+vision+store+ndarray）+ clustering
 ├── Cargo.lock             # 离线解析用的锁文件（vendored 依赖与之一一对应）
 ├── artifacts/model.bpk    # train 产出的 checkpoint（gitignore）
 ├── vendor/                # 本 crate 专属的 vendored 依赖（gitignore，见下）
@@ -18,16 +22,20 @@ crates/models/
 │   ├── data.rs            # 确定性合成数据（4 类图案 + Box-Muller 噪声）
 │   ├── model.rs           # CnnTransformer + TrainStep 实现
 │   ├── train.rs           # 训练/评估循环、checkpoint 读写、混淆矩阵
+│   ├── cluster.rs         # 薄封装：re-export clustering，并实现 `models cluster`
 │   ├── lib.rs
-│   └── main.rs            # clap CLI：train / test
-└── tests/demo.rs          # 前向形状 / 数据确定性 / checkpoint 往返 / 单步训练
+│   └── main.rs            # clap CLI：train / test / cluster
+├── tests/demo.rs          # 前向形状 / 数据确定性 / checkpoint 往返 / 单步训练
+└── tests/cluster.rs       # 各算法簇数 / 轮廓 / 同 seed 稳定
 ```
 
 ## 依赖与离线
 
 - Burn **0.22.1**，后端 `burn-ndarray` **0.22.1**（NDArray CPU，纯 Rust，无 GPU/wgpu/CubeCL 后端依赖）。
+- 聚类库由根 workspace 的 `crates/fundamental/clustering` 统一解析；本 crate 不再直接声明
+  linfa/smartcore/hdbscan/kmeans 的版本。
 - 根 workspace 用 `vendor/` 做 crates-io 源替换，里面没有 Burn。因此本 crate 自带
-  `vendor/`（`cargo vendor` 生成，约 **856 MB / 751 个 crate**，含 Burn 全特性锁文件里的
+  `vendor/`（`cargo vendor` 生成，约 **862 MB / 773 个 crate**，含 Burn 全特性锁文件里的
   可选后端源码，但**不会参与编译**），并在 `.cargo/config.toml` 里做源替换：
 
   ```toml
@@ -39,6 +47,9 @@ crates/models/
 
   之后 `CARGO_NET_OFFLINE=true` 下 `cargo metadata/test/run` 全部可用。`vendor/`、`target/`、
   `artifacts/` 都已 gitignore，不入库。
+- `kmeans` 2.0.2 上游是 nightly-only（`#![feature(portable_simd)]`）。本 crate 的
+  `.cargo/config.toml` 通过 `[env] RUSTC_BOOTSTRAP = "1"` 让稳定的 1.98.1 编译它；
+  `clustering` 的 `nightly-kmeans` feature 由本 crate 打开，根 workspace 的默认门禁不编译它。
 - 重新生成 vendor（需要联网，例如 `Cargo.toml` 改版本后）：
 
   ```powershell
@@ -49,15 +60,21 @@ crates/models/
 
 ```powershell
 $env:CARGO_NET_OFFLINE='true'
-cargo test --offline                                # 6 个测试
+cargo test --offline                                # 10 个测试
 cargo run --offline -- train --epochs 2 --seed 42   # 训练并写出 artifacts/model.bpk
 cargo run --offline -- test                         # 加载 checkpoint，打印 accuracy + 混淆矩阵
+cargo run --offline -- cluster --algo all           # 8 个聚类算法对比表 + 每算法摘要
+cargo run --offline -- cluster --algo linfa-dbscan  # 单个算法
 cargo run --offline -- --help
 ```
 
 `train` 可调：`--epochs`（默认 3）、`--batch-size`（默认 32）、`--seed`（默认 42）、
 `--learning-rate`（默认 3e-3）、`--checkpoint`。`--seed` 同时决定合成数据和 Burn 设备 RNG
 （参数初始化），因此**同 seed 完全可复现**。
+
+`cluster` 可调：`--algo`（默认 `all`）、`--points`（默认 600）、`--clusters`（默认 3）、
+`--seed`（默认 42）。算法名：`kmeans`、`linfa-kmeans`、`linfa-dbscan`、`linfa-optics`、
+`linfa-gmm`、`smartcore-kmeans`、`smartcore-dbscan`、`hdbscan`、`all`。
 
 ## 模型
 
