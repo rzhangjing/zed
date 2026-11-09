@@ -1,8 +1,6 @@
 /// The admin demo runner window, opened from `Help > Admin Demo`.
 pub mod admin_demo;
 mod app_menus;
-/// The cesiumrust globe window, opened from `Help > cesiumrust`.
-pub mod cesium;
 /// The Dameng (达梦) test-data window, opened from `Help > Dameng`.
 pub mod dameng;
 pub mod edit_prediction_registry;
@@ -311,9 +309,6 @@ pub fn init(cx: &mut App) {
     .on_action(|_: &zed_actions::OpenGpuiKitShowcase, cx| {
         open_gpui_kit_showcase(cx);
     })
-    .on_action(|_: &zed_actions::OpenCesiumrust, cx| {
-        cesium::open_cesiumrust(cx);
-    })
     .on_action(|_: &zed_actions::OpenOctos, cx| {
         octos::open(cx);
     })
@@ -338,10 +333,6 @@ pub fn init(cx: &mut App) {
     // ACP. `Help > Octos` runs the real `octos chat` CLI in the terminal panel
     // (`octos::open`), sharing the kernel's home. See `octos`.
     octos::init(cx);
-
-    // The cesiumrust globe window is opened from `Help > cesiumrust`; this is
-    // only its startup override (`ZED_CESIUMRUST_OPEN`), and a no-op otherwise.
-    cesium::init(cx);
 
     // The Dameng test window is opened from `Help > Dameng`; this is only its
     // startup override (`ZED_DAMENG_OPEN`), and a no-op otherwise. It exists
@@ -386,7 +377,7 @@ pub fn init(cx: &mut App) {
     }
 
     // The About window is opened from `Help > About`; this is only its startup
-    // override (`ZED_ABOUT_OPEN`), the same shape as `ZED_CESIUMRUST_OPEN` above
+    // override (`ZED_ABOUT_OPEN`), the same shape as `ZED_RUSTGIS_OPEN` above
     // and `ZED_OCTOS_OPEN_STATUS` in `octos`. It exists because verifying that
     // window's *chrome* — that it has a system title bar, a draggable caption
     // and a close button — means inspecting the real HWND, and clicking through
@@ -1719,7 +1710,7 @@ fn open_about_window(cx: &mut App) {
             titlebar: Some(TitlebarOptions {
                 title: Some("About Zed".into()),
                 // The system title bar, not a hidden one, for the same reason
-                // the gpui-kit, cesiumrust and Octos windows use one: this
+                // the gpui-kit, RustGIS and Octos windows use one: this
                 // window draws no window chrome of its own, so a transparent
                 // title bar (which is what hides the system one) left it with
                 // no close button and no draggable title area. Unconditional,
@@ -5825,70 +5816,6 @@ mod tests {
         assert_eq!(cx.read(|cx| cx.windows().len()), 1);
     }
 
-    /// The Help menu carries cesiumrust, and the item dispatches the action
-    /// `open_cesiumrust` is registered for.
-    #[gpui::test]
-    fn test_cesiumrust_menu_item(cx: &mut App) {
-        settings::init(cx);
-        release_channel::init(Version::new(0, 0, 0), cx);
-
-        let help = app_menus(cx)
-            .into_iter()
-            .find(|menu| menu.name == "Help")
-            .expect("the Help menu exists");
-        let action = help
-            .items
-            .into_iter()
-            .find_map(|item| match item {
-                MenuItem::Action { name, action, .. } if name == "cesiumrust" => Some(action),
-                _ => None,
-            })
-            .expect("the Help menu has a cesiumrust item");
-
-        assert_eq!(
-            action.name(),
-            <zed_actions::OpenCesiumrust as Action>::name_for_type()
-        );
-    }
-
-    /// Help > cesiumrust opens the globe in a window of its own, and a second
-    /// dispatch focuses that window rather than opening another.
-    ///
-    /// The window does no GPU work until its first paint, so this exercises the
-    /// action, the `on_action` registration and the window itself without
-    /// needing a render device.
-    #[gpui::test]
-    async fn test_cesiumrust_opens_one_window(cx: &mut TestAppContext) {
-        fn cesium_windows(cx: &mut TestAppContext) -> usize {
-            cx.read(|cx| {
-                cx.windows()
-                    .into_iter()
-                    .filter(|window| {
-                        window
-                            .downcast::<crate::zed::cesium::RendererView>()
-                            .is_some()
-                    })
-                    .count()
-            })
-        }
-        init_test(cx);
-        cx.update(init);
-
-        // Dispatched the way the menu item dispatches it, so this covers the
-        // `on_action` registration as well as the window itself.
-        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenCesiumrust));
-        cx.run_until_parked();
-
-        assert_eq!(cesium_windows(cx), 1);
-        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
-
-        cx.update(|cx| cx.dispatch_action(&zed_actions::OpenCesiumrust));
-        cx.run_until_parked();
-
-        assert_eq!(cesium_windows(cx), 1);
-        assert_eq!(cx.read(|cx| cx.windows().len()), 1);
-    }
-
     /// The Help menu carries Dameng, and the item dispatches the action
     /// `dameng::open` is registered for.
     #[gpui::test]
@@ -5918,7 +5845,7 @@ mod tests {
     /// Help > Dameng opens the test window, and a second dispatch focuses that
     /// window rather than opening another.
     ///
-    /// Like the cesiumrust window this does no work until it is used, so the
+    /// Like the RustGIS window this does no work until it is used, so the
     /// test covers the action, the `on_action` registration and the window
     /// itself — including its first paint, which is what would panic if the
     /// window used a global that tests do not register.

@@ -59,8 +59,6 @@ actions!(
         OpenLicenses,
         /// Opens the GPUI Kit component showcase in a window of its own.
         OpenGpuiKitShowcase,
-        /// Opens the cesiumrust 3D globe in a window of its own.
-        OpenCesiumrust,
         /// Opens the Octos chat in a terminal tab.
         OpenOctos,
         /// Opens the Dameng test-data configuration and test window.

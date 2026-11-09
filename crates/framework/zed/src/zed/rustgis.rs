@@ -11,9 +11,8 @@
 //! `MapEngine` owns a `rustgis_engine::Session`, which is not `Send`, and a 1200×800 frame takes
 //! tens of milliseconds. The engine therefore lives on its own thread
 //! (`rustgis_zed::spawn_engine`) and this window only sends it [`EngineCommand`]s and polls
-//! [`EngineEvent`]s every 16 ms; **no `Session` call ever runs on the UI thread**. That is the same
-//! shape as the cesiumrust window (`zed::cesium`), which also owns a renderer thread and only
-//! shows the newest frame.
+//! [`EngineEvent`]s every 16 ms; **no `Session` call ever runs on the UI thread**, and the window
+//! only ever shows the newest frame.
 //!
 //! ## Input
 //!
@@ -28,7 +27,7 @@
 //! `ZED_RUSTGIS_LOAD=<path.geojson>` adds a layer from that file once the engine is up. Both
 //! exist because verifying this window — that it opens, draws the sample project, and loads a
 //! file — means looking at it on the machine, and clicking through `Help` is not what such a
-//! check is testing. They mirror `ZED_CESIUMRUST_OPEN` / `ZED_MODELTEST_OPEN` / `ZED_DAMENG_OPEN`.
+//! check is testing. They mirror `ZED_MODELTEST_OPEN` / `ZED_DAMENG_OPEN` / `ZED_PLOT_OPEN`.
 
 use std::{
     sync::{Arc, mpsc::Sender},
@@ -465,7 +464,7 @@ fn load_file_in_background(commands: Sender<EngineCommand>, path: String) {
 ///
 /// GPUI's atlas stores image bytes as **BGRA** (see `gpui_wgpu`'s `swizzle_upload_data`), while
 /// `rustgis_zed::Frame` is straight RGBA, so red and blue are swapped here — once, in this one
-/// place. Same rule as `zed::cesium::frame_to_render_image`.
+/// place. `RenderImage` stores BGRA, so the swap is not optional.
 fn frame_to_render_image(frame: &rustgis_zed::Frame) -> Arc<RenderImage> {
     let mut bytes = frame.rgba.clone();
     for pixel in bytes.chunks_exact_mut(4) {

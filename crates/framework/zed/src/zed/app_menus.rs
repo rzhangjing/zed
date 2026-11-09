@@ -284,7 +284,6 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
                 MenuItem::action("View Dependency Licenses", zed_actions::OpenLicenses),
                 MenuItem::action("Show Welcome", onboarding::ShowWelcome),
                 MenuItem::action("gpui-kit", zed_actions::OpenGpuiKitShowcase),
-                MenuItem::action("cesiumrust", zed_actions::OpenCesiumrust),
                 MenuItem::action("Octos", zed_actions::OpenOctos),
                 MenuItem::action("Dameng", zed_actions::OpenDameng),
                 MenuItem::action("Plot", zed_actions::OpenPlot),

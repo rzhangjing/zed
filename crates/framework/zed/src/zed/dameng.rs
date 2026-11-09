@@ -1309,7 +1309,7 @@ fn show_window(cx: &mut App) {
 
 /// Opens the test window at startup when `ZED_DAMENG_OPEN` is set.
 ///
-/// The same escape hatch `ZED_OCTOS_OPEN_STATUS`, `ZED_CESIUMRUST_OPEN` and
+/// The same escape hatch `ZED_OCTOS_OPEN_STATUS`, `ZED_RUSTGIS_OPEN` and
 /// `ZED_ABOUT_OPEN` provide: a machine where the window matters has a way to open
 /// it without clicking through a menu.
 pub fn init(cx: &mut App) {
