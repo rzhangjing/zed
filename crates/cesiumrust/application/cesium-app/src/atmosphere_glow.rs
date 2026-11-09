@@ -99,7 +99,7 @@ fn fade_atmosphere_with_distance(
 ) {
     let fade = glow_fade(orbit.distance);
     for (shell, mat_handle) in &shells {
-        if let Some(mat) = materials.get_mut(mat_handle) {
+        if let Some(mut mat) = materials.get_mut(mat_handle) {
             mat.base_color = Color::srgba(0.40, 0.68, 1.0, shell.base_alpha * fade);
         }
     }

@@ -22,7 +22,7 @@ pub(crate) struct ToolbarRoot;
 
 /// 请求清空文档中所有已绘制图元。工具栏 "Clear" 按钮在回到 idle
 /// 之外额外广播此事件，由 [`clear_all_system`] 兑现为一次可撤销的删除。
-#[derive(Event, Clone, Copy, Debug)]
+#[derive(Message, Clone, Copy, Debug)]
 pub struct PlotClearAll;
 
 /// 标记工具栏里的 "Clear" 按钮，以便点击时除 [`PlotSetTool`] 外
@@ -103,7 +103,7 @@ pub fn plot_toolbar(mut commands: Commands, mut root_res: ResMut<PlotToolbarRoot
                 b.spawn((
                     Text::new(*label),
                     TextFont {
-                        font_size: 14.0,
+                        font_size: FontSize::Px(14.0),
                         ..default()
                     },
                     TextColor(Color::srgb(1.0, 1.0, 1.0)),
@@ -113,17 +113,17 @@ pub fn plot_toolbar(mut commands: Commands, mut root_res: ResMut<PlotToolbarRoot
     }
 }
 
-/// 每帧把工具栏根的 `TargetCamera` 绑到激活相机 —— 与面板的
+/// 每帧把工具栏根的 `UiTargetCamera` 绑到激活相机 —— 与面板的
 /// [`crate::panel::bind_panel_camera`] 同款的多相机 UI 不变量。
 ///
-/// 本应用同时存在 3D 透视与 2D 正交两台相机，未绑定 `TargetCamera` 的
+/// 本应用同时存在 3D 透视与 2D 正交两台相机，未绑定 `UiTargetCamera` 的
 /// UI 根会落到非激活相机上，导致工具栏在 3D/2D 切换或某些启动顺序下不显示
 /// （面板因已绑定而一直可见）。这里对工具栏根补上同样的绑定。
 pub(crate) fn bind_toolbar_camera(
     mut commands: Commands,
     ctx: Res<crate::resources::PlotViewCtx>,
     cams: Query<(Entity, &Camera, &Projection)>,
-    roots: Query<(Entity, Option<&TargetCamera>), With<ToolbarRoot>>,
+    roots: Query<(Entity, Option<&UiTargetCamera>), With<ToolbarRoot>>,
 ) {
     if roots.is_empty() {
         return;
@@ -133,7 +133,7 @@ pub(crate) fn bind_toolbar_camera(
     };
     for (e, bound) in roots.iter() {
         if bound.map(|t| t.0) != Some(active) {
-            commands.entity(e).insert(TargetCamera(active));
+            commands.entity(e).insert(UiTargetCamera(active));
         }
     }
 }
@@ -146,16 +146,16 @@ pub(crate) fn bind_toolbar_camera(
 /// - `tool_events`：向 FSM 发布所选工具的写出器。
 pub(crate) fn toolbar_click_system(
     interactions: Query<(&Interaction, &ToolButton, Option<&ClearButton>), Changed<Interaction>>,
-    mut tool_events: EventWriter<PlotSetTool>,
-    mut clear_events: EventWriter<PlotClearAll>,
+    mut tool_events: MessageWriter<PlotSetTool>,
+    mut clear_events: MessageWriter<PlotClearAll>,
 ) {
     for (interaction, button, clear) in interactions.iter() {
         if matches!(interaction, Interaction::Pressed) {
-            tool_events.send(PlotSetTool(button.0));
+            tool_events.write(PlotSetTool(button.0));
             // “Clear” 除切回 idle 外还广播一次清空：旧行为只发 Idle 不删图元，
             // 导致误画的超大图元无法从工具栏移除。
             if clear.is_some() {
-                clear_events.send(PlotClearAll);
+                clear_events.write(PlotClearAll);
             }
         }
     }
@@ -188,7 +188,7 @@ pub(crate) fn clear_all(
 
 /// 消费 [`PlotClearAll`] 事件，把工具栏 "Clear" 的点击兑现为 [`clear_all`]。
 pub(crate) fn clear_all_system(
-    mut clears: EventReader<PlotClearAll>,
+    mut clears: MessageReader<PlotClearAll>,
     mut plot_doc: ResMut<PlotDocument>,
     mut history: ResMut<PlotHistory>,
     mut selection: ResMut<PlotSelection>,

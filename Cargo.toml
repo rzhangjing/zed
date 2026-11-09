@@ -692,7 +692,7 @@ two-face = { version = "0.4.5", default-features = false, features = ["syntect-f
 # stays meaningful.
 #
 
-glam = { version = "0.29", features = ["serde"] }
+glam = { version = "0.32", features = ["serde"] }
 earcut = "0.4"
 serde-xml-rs = "0.6"
 assert_cmd = "2"
@@ -707,26 +707,47 @@ ureq = "2"
 # all that reaches the target). cesiumrust's own `main.rs` gets it because it
 # takes `DefaultPlugins` with Bevy's default features; the explicit list here
 # has to name it.
-bevy = { version = "0.15", default-features = false, features = [
+#
+# Bevy 0.19 splits what 0.15 shipped inside `bevy_render`/`bevy_pbr`/
+# `bevy_sprite`/`bevy_ui`/`bevy_gizmos` into `bevy_camera`, `bevy_mesh`,
+# `bevy_material`, `bevy_image`, `bevy_shader`, `bevy_light`,
+# `bevy_post_process` and the `*_render` crates. The list names the data crates
+# the cesiumrust source `use`s directly plus the render side of every pipeline
+# the viewer registers (3D/PBR, UI text, sprites, gizmos), otherwise the
+# plugins compile but never draw. `std` is explicit because
+# `default-features = false` no longer implies it (only `multi_threaded` does).
+bevy = { version = "0.19", default-features = false, features = [
     "bevy_asset",
+    "bevy_camera",
     "bevy_color",
     "bevy_core_pipeline",
     "bevy_gizmos",
+    "bevy_gizmos_render",
+    "bevy_image",
+    "bevy_light",
+    "bevy_log",
+    "bevy_material",
+    "bevy_mesh",
     "bevy_pbr",
     "bevy_picking",
+    "bevy_post_process",
     "bevy_render",
     "bevy_scene",
+    "bevy_shader",
     "bevy_sprite",
     "bevy_state",
     "bevy_text",
     "bevy_ui",
+    "bevy_ui_render",
     "bevy_window",
     "bevy_winit",
     "default_font",
     "multi_threaded",
     "png",
+    "std",
     "tonemapping_luts",
     "x11",
+    "zstd_rust",
 ] }
 
 # Internal cesiumrust crates.

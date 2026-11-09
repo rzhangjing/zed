@@ -55,17 +55,19 @@ publish = false
 # 1-ulp differences vs CesiumJS's standard IEEE-754 two-rounding arithmetic.
 # Bit-exact fidelity with the original CesiumJS Specs (the ground truth of the
 # verification plan) requires standard rounding. Do not re-enable fast-math.
-glam = { version = "0.29", features = ["serde"] }
+glam = { version = "0.32", features = ["serde"] }
 
 # Game engine / rendering
 # Default features disabled: audio (alsa-sys) and gilrs (libudev-sys) require
 # system libraries that may not be installed on headless build servers.
-bevy = { version = "0.15", default-features = false, features = [
-    "bevy_asset", "bevy_color", "bevy_core_pipeline", "bevy_gizmos",
-    "bevy_pbr", "bevy_picking", "bevy_render", "bevy_scene",
-    "bevy_sprite", "bevy_state", "bevy_text", "bevy_ui",
+bevy = { version = "0.19", default-features = false, features = [
+    "bevy_asset", "bevy_camera", "bevy_color", "bevy_core_pipeline",
+    "bevy_gizmos", "bevy_gizmos_render", "bevy_image", "bevy_light",
+    "bevy_log", "bevy_material", "bevy_mesh", "bevy_pbr", "bevy_picking",
+    "bevy_post_process", "bevy_render", "bevy_scene", "bevy_shader",
+    "bevy_sprite", "bevy_state", "bevy_text", "bevy_ui", "bevy_ui_render",
     "bevy_window", "bevy_winit", "default_font", "multi_threaded",
-    "png", "x11",
+    "png", "std", "tonemapping_luts", "x11", "zstd_rust",
 ] }
 
 # Serialization

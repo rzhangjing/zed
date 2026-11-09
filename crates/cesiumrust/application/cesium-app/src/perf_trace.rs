@@ -830,7 +830,7 @@ fn trace_sampler_system(
 /// 不要移除它。
 fn headless_exit_system(
     state: Res<TraceState>,
-    mut exit: EventWriter<AppExit>,
+    mut exit: MessageWriter<AppExit>,
 ) {
     if !state.cli.headless {
         return;
@@ -844,7 +844,7 @@ fn headless_exit_system(
                     elapsed.as_secs_f64(),
                     state.frame_counter
                 );
-                exit.send(AppExit::Success);
+                exit.write(AppExit::Success);
             }
         }
         None => {
@@ -853,7 +853,7 @@ fn headless_exit_system(
                     "[perf-trace] headless: reached {} frames, exiting",
                     state.cli.headless_frames
                 );
-                exit.send(AppExit::Success);
+                exit.write(AppExit::Success);
             }
         }
     }

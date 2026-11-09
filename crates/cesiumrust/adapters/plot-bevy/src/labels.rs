@@ -1,7 +1,7 @@
 //! 通过紧贴已投影地理锚点的 bevy_ui 文本渲染标签。
 //!
 //! 标签是唯一一个存活在 UI 而非渲染层里的叠加层图元：单个
-//! [`PlotUiRoot`] 节点拥有一个 [`TargetCamera`]，同步系统会将其重新指向当前
+//! [`PlotUiRoot`] 节点拥有一个 [`UiTargetCamera`]，同步系统会将其重新指向当前
 //! 激活的相机，而每个标签都是一个子节点，其绝对 `left` / `top`
 //! 跟踪其锚点的屏幕投影。因为投影来自用于度量网格的同一个 [`Camera`]，
 //! 标签会在 2D 与 3D 视图下都恰好位于其几何被绘制的位置（计划 §2 “同显”）。
@@ -17,7 +17,7 @@ use crate::resources::PlotLabel;
 pub struct PlotUiRoot;
 
 /// spawn 标绘 UI 根节点（一个满窗口、透明的容器）。只存在
-/// 一个；同步系统惰性地创建它，并使其 `TargetCamera`
+/// 一个；同步系统惰性地创建它，并使其 `UiTargetCamera`
 /// 指向当前激活的相机。
 pub fn spawn_ui_root(commands: &mut Commands) -> Entity {
     commands
@@ -89,11 +89,13 @@ pub fn spawn_label(
             },
             Text::new(geo.text.clone()),
             TextFont {
-                font_size: size_px,
+                font_size: FontSize::Px(size_px),
                 ..default()
             },
             TextColor(Color::srgba(rgba[0], rgba[1], rgba[2], rgba[3])),
+            // Bevy 0.16+ models parenting as a `ChildOf` component on the
+            // child; `EntityCommands::set_parent` no longer exists.
+            ChildOf(root),
         ))
-        .set_parent(root)
         .id()
 }

@@ -78,7 +78,7 @@ pub fn compute_segments(zoom: u32) -> u32 {
 /// 原始：`dynamic_globe.rs:1507-1513`。
 pub fn focal_pixels(windows: &Query<&Window>) -> f64 {
     let h = windows
-        .get_single()
+        .single()
         .map(|w| w.height() as f64)
         .unwrap_or(720.0);
     (h * 0.5) / ((CAMERA_FOV_Y as f64) * 0.5).tan()

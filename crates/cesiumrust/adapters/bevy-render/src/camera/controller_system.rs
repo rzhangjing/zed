@@ -25,8 +25,8 @@ pub fn camera_controller_system(
     mut cameras: Query<&mut CesiumCamera>,
     mut input_state: ResMut<CameraInputState>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut mouse_motion: EventReader<MouseMotion>,
-    mut scroll_events: EventReader<MouseWheel>,
+    mut mouse_motion: MessageReader<MouseMotion>,
+    mut scroll_events: MessageReader<MouseWheel>,
     windows: Query<&Window>,
 ) {
     // --- 跟踪鼠标按键状态 ---
@@ -56,7 +56,7 @@ pub fn camera_controller_system(
 
     // 用于 pixel→radian 焦距转换的窗口高度。
     let win_h = windows
-        .get_single()
+        .single()
         .map(|w| w.height() as f64)
         .unwrap_or(720.0);
 

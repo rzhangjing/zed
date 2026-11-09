@@ -78,7 +78,7 @@ pub fn camera_touch_system(
     mut cameras: Query<&mut CesiumCamera>,
     input_state: Res<CameraInputState>,
     mut touch_state: ResMut<TouchCameraState>,
-    mut touch_events: EventReader<TouchInput>,
+    mut touch_events: MessageReader<TouchInput>,
     time: Res<Time>,
     windows: Query<&Window>,
 ) {
@@ -154,7 +154,7 @@ pub fn camera_touch_system(
 
     // --- 5. 适配层边界的 pixel→world 缩放（镜像 controller_system）。 ---
     let win_h = windows
-        .get_single()
+        .single()
         .map(|w| w.height() as f64)
         .unwrap_or(720.0)
         .max(1.0);
@@ -246,7 +246,7 @@ mod tests {
     fn touch_app() -> (App, Entity) {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
-            .add_event::<TouchInput>()
+            .add_message::<TouchInput>()
             .init_resource::<CameraInputState>()
             .init_resource::<TouchCameraState>()
             .add_systems(Update, camera_touch_system)
@@ -273,8 +273,8 @@ mod tests {
     /// 向应用的事件队列发送一个 [`TouchInput`] 事件。
     fn send_touch(app: &mut App, phase: TouchPhase, id: u64, x: f32, y: f32) {
         app.world_mut()
-            .resource_mut::<Events<TouchInput>>()
-            .send(TouchInput {
+            .resource_mut::<Messages<TouchInput>>()
+            .write(TouchInput {
                 phase,
                 position: Vec2::new(x, y),
                 window: Entity::PLACEHOLDER,

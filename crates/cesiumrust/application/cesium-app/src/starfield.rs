@@ -97,7 +97,7 @@ fn make_star_sprite(images: &mut Assets<Image>) -> Handle<Image> {
         bevy::render::render_resource::TextureDimension::D2,
         data,
         bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
     img.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
         mag_filter: ImageFilterMode::Linear,
@@ -157,7 +157,7 @@ fn setup_starfield(
 
     let mut mesh = Mesh::new(
         bevy::render::mesh::PrimitiveTopology::TriangleList,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
     // 将所有星 quad 合并为单一 TriangleList mesh。
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);

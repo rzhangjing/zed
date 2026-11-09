@@ -33,8 +33,8 @@ impl Plugin for CesiumCameraPlugin {
             .init_resource::<ActiveMorph>()
             .init_resource::<TouchCameraState>()
             .init_resource::<CameraControlPort>()
-            .add_event::<FlyToRequest>()
-            .add_event::<FlightComplete>()
+            .add_message::<FlyToRequest>()
+            .add_message::<FlightComplete>()
             .add_systems(PreUpdate, camera_controller_system)
             // 双指触控 → 相机（无触控输入时惰性；在鼠标
             // 控制器之后、PostUpdate 的 Transform 写入之前运行）。

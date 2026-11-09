@@ -35,7 +35,7 @@
 
 use bevy::asset::AssetServer;
 use bevy::prelude::*;
-use bevy::render::render_resource::Shader;
+use bevy::shader::Shader;
 
 /// Bevy 的资产后端（[`AssetServer`]）是否存在。
 ///
@@ -93,7 +93,11 @@ pub fn try_load_internal_shader(
         return None;
     }
     let shader = Shader::from_wgsl(source, path);
-    app.world_mut()
+    // Bevy 0.19 returns `Result` here; a UUID asset id (what the embedded
+    // shader handles above are) can never fail this insert — only stale index
+    // generations can — so the error arm is unreachable for this call site.
+    let _ = app
+        .world_mut()
         .resource_mut::<Assets<Shader>>()
         .insert(handle.id(), shader);
     Some(handle)
@@ -112,7 +116,7 @@ mod tests {
         assert!(!asset_backend_available(&app));
         assert!(!shader_assets_available(&app));
 
-        let handle: Handle<Shader> = Handle::weak_from_u128(0xDEAD_BEEF);
+        let handle: Handle<Shader> = crate::uuid_handle(0xDEAD_BEEF);
         // 绝不能 panic；因为 Assets<Shader> 缺失而返回 None。
         let out = try_load_internal_shader(&mut app, handle, "// empty wgsl", "test.wgsl");
         assert!(out.is_none());

@@ -53,12 +53,12 @@ impl Plugin for CesiumPlotBridgePlugin {
             .init_resource::<crate::ui::PlotToolbarRoot>()
             .init_resource::<PanelRootEntity>()
             // 注册叠加层向外广播的事件流（悬停/选择变更、右键菜单、工具切换、绘制完成）。
-            .add_event::<PlotHoverChanged>()
-            .add_event::<PlotSelectionChanged>()
-            .add_event::<PlotContextMenu>()
-            .add_event::<PlotSetTool>()
-            .add_event::<PlotDrawFinished>()
-            .add_event::<PlotClearAll>()
+            .add_message::<PlotHoverChanged>()
+            .add_message::<PlotSelectionChanged>()
+            .add_message::<PlotContextMenu>()
+            .add_message::<PlotSetTool>()
+            .add_message::<PlotDrawFinished>()
+            .add_message::<PlotClearAll>()
             // Startup：构建工具栏与右侧属性面板的根实体。
             .add_systems(Startup, (plot_toolbar, panel_startup))
             // Update：每帧按序运行同步→拾取→交互→绘制预览→编辑→拖拽→

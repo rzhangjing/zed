@@ -48,7 +48,7 @@ impl CesiumCamera {
 }
 
 /// 请求将相机飞向一个制图目的地。
-#[derive(Event)]
+#[derive(Message)]
 pub struct FlyToRequest {
     /// 目标制图坐标（经/纬/高）。
     pub destination: cesium_geospatial::Cartographic,
@@ -57,7 +57,7 @@ pub struct FlyToRequest {
 }
 
 /// 相机飞行完成时发出。
-#[derive(Event)]
+#[derive(Message)]
 pub struct FlightComplete;
 
 /// 用于相机控制的鼠标与触控输入状态。

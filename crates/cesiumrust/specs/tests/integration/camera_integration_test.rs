@@ -66,14 +66,17 @@ fn test_fly_to_event_system() {
     let mut app = create_test_app();
     app.add_plugins(CesiumCameraPlugin);
 
-    let mut events = app.world_mut().resource_mut::<Events<FlyToRequest>>();
-    events.send(FlyToRequest {
+    let mut events = app.world_mut().resource_mut::<Messages<FlyToRequest>>();
+    events.write(FlyToRequest {
         destination: Cartographic::from_degrees(-75.0, 40.0, 1000.0),
         duration_secs: 2.0,
     });
 
-    let events = app.world().resource::<Events<FlyToRequest>>();
-    let mut reader = events.get_reader();
+    let events = app.world().resource::<Messages<FlyToRequest>>();
+    // Bevy 0.19: `Events::get_reader` is now `Messages::get_cursor` (the
+    // 0.17 `Event`/`Message` split). `get_cursor` still starts at the oldest
+    // retained message, which is what the old reader did.
+    let mut reader = events.get_cursor();
     let drained: Vec<_> = reader.read(events).collect();
     assert_eq!(drained.len(), 1);
     assert!((drained[0].destination.longitude - (-75.0_f64).to_radians()).abs() < 1e-10);

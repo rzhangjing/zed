@@ -13,7 +13,8 @@
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use bevy::render::render_resource::{AsBindGroup, Shader, ShaderRef, ShaderType};
+use bevy::render::render_resource::{AsBindGroup, ShaderType};
+use bevy::shader::{Shader, ShaderRef};
 use cesium_material::{Material as DomainMaterial, UniformValue};
 use cesium_shadow::{OceanConfig, OceanSurface};
 use std::collections::BTreeMap;
@@ -22,8 +23,10 @@ use std::collections::BTreeMap;
 ///
 /// 该 shader 通过 [`load_internal_asset!`] 编译进 crate，因此适配器无需外部
 /// `assets/` 目录即可工作（应用 crate 无需复制 `.wgsl` 文件）。
-pub const FABRIC_MATERIAL_SHADER_HANDLE: Handle<Shader> =
-    Handle::weak_from_u128(0x4641_4252_4943_4D41_5445_5249_414C);
+pub const FABRIC_MATERIAL_SHADER_HANDLE: Handle<Shader> = Handle::Uuid(
+    bevy::asset::uuid::Uuid::from_u128(0x4641_4252_4943_4D41_5445_5249_414C),
+    core::marker::PhantomData,
+);
 
 /// 程序化图案选择器。取值与 `shaders/fabric_material.wgsl` 中的 `kind` switch 相匹配。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -553,7 +556,7 @@ pub fn generate_water_normal_map(size: u32, ocean: &OceanSurface, tile_size_m: f
         bevy::render::render_resource::TextureDimension::D2,
         data,
         bevy::render::render_resource::TextureFormat::Rgba8Unorm,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     )
 }
 
@@ -588,7 +591,7 @@ pub fn generate_water_specular_map(size: u32, ocean: &OceanSurface, tile_size_m:
         bevy::render::render_resource::TextureDimension::D2,
         data,
         bevy::render::render_resource::TextureFormat::Rgba8Unorm,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     )
 }
 
@@ -831,7 +834,9 @@ mod tests {
             bevy::render::render_resource::TextureFormat::Rgba8Unorm
         );
         // 掩膜带 [0.6, 1.0] 使水面可见 → r >= ~153。
-        assert!(img.data.iter().step_by(4).all(|&r| r >= 150));
+        // Bevy 0.19 stores `Image::data` as `Option<Vec<u8>>`.
+        let data = img.data.as_deref().expect("CPU pixel data");
+        assert!(data.iter().step_by(4).all(|&r| r >= 150));
     }
 
     #[test]

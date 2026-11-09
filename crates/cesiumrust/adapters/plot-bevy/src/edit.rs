@@ -211,12 +211,12 @@ pub fn style_command(
 fn prune_selection(
     selection: &mut PlotSelection,
     doc: &Document,
-    events: &mut EventWriter<PlotSelectionChanged>,
+    events: &mut MessageWriter<PlotSelectionChanged>,
 ) {
     let before = selection.0.len();
     selection.0.retain(|id| doc.element(*id).is_some());
     if selection.0.len() != before {
-        events.send(PlotSelectionChanged {
+        events.write(PlotSelectionChanged {
             selected: selection.0.len() as u32,
         });
     }
@@ -236,7 +236,7 @@ pub fn edit_system(
     mut selection: ResMut<PlotSelection>,
     interaction: Res<PlotInteraction>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut selection_events: EventWriter<PlotSelectionChanged>,
+    mut selection_events: MessageWriter<PlotSelectionChanged>,
 ) {
     // 绘制激活时编辑热键属于绘制 FSM。
     if interaction.is_drawing() {
@@ -276,7 +276,7 @@ pub fn edit_system(
         let command = delete_commands(&plot_doc.doc, ids);
         commit(&mut plot_doc, &mut history, command);
         if selection.clear() {
-            selection_events.send(PlotSelectionChanged { selected: 0 });
+            selection_events.write(PlotSelectionChanged { selected: 0 });
         }
         return;
     }
@@ -287,7 +287,7 @@ pub fn edit_system(
         let new_ids = command.targets();
         commit(&mut plot_doc, &mut history, command);
         selection.0 = new_ids.into_iter().collect();
-        selection_events.send(PlotSelectionChanged {
+        selection_events.write(PlotSelectionChanged {
             selected: selection.0.len() as u32,
         });
         return;
@@ -341,7 +341,7 @@ pub fn drag_move_system(
     if interaction.is_drawing() {
         return;
     }
-    let cursor = windows.get_single().ok().and_then(|w| w.cursor_position());
+    let cursor = windows.single().ok().and_then(|w| w.cursor_position());
     let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
 
     if drag.active {

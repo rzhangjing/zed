@@ -149,7 +149,7 @@ pub fn shadow_update_system(
         return;
     }
 
-    if let Ok(light_transform) = directional_light_query.get_single() {
+    if let Ok(light_transform) = directional_light_query.single() {
         // 取平行光前向作为光传播方向，取负得到“指向光源”方向。
         let light_dir = DVec3::new(
             light_transform.forward().x as f64,
@@ -160,7 +160,7 @@ pub fn shadow_update_system(
         state.light_direction = -light_dir;
     }
 
-    if let Ok((_camera, cam_transform)) = camera_query.get_single() {
+    if let Ok((_camera, cam_transform)) = camera_query.single() {
         // 提取相机位置/前向/上方向（f32→f64）作为级联包围参考。
         let cam_pos = DVec3::new(
             cam_transform.translation().x as f64,

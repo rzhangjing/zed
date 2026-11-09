@@ -19,9 +19,9 @@ use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use bevy::render::view::RenderLayers;
+use bevy::camera::visibility::RenderLayers;
 
 use cesium_plot_bevy::{PlotInputCapture, PlotViewCtx, PlotViewMode};
 
@@ -116,7 +116,7 @@ struct ModeSegment {
 }
 
 /// 切换器外层胶囊容器的标记。也是一个 UI 根，因此它需要一个
-/// 显式的 [`TargetCamera`]（参见 [`sync_ui_target_camera]）。
+/// 显式的 [`UiTargetCamera`]（参见 [`sync_ui_target_camera]）。
 #[derive(Component)]
 struct ModeSwitchRoot;
 
@@ -312,19 +312,24 @@ fn build_mode_ui(mut commands: Commands) {
                 padding: UiRect::all(Val::Px(4.0)),
                 // 1px 边框必须在 `BorderColor` 绘制任何内容之前设好尺寸。
                 border: UiRect::all(Val::Px(1.0)),
+                // Bevy 0.19 moved `BorderRadius` off the entity and into
+                // `Node` (it is no longer a `Component`).
+                // 容器 42px 高度的一半 → 真正的胶囊形。
+                border_radius: BorderRadius::all(Val::Px(21.0)),
                 ..default()
             },
             BackgroundColor(SW_GLASS),
-            BorderColor(SW_GLASS_BORDER),
-            // 容器 42px 高度的一半 → 真正的胶囊形。
-            BorderRadius::all(Val::Px(21.0)),
-            BoxShadow {
-                color: Color::srgba(0.0, 0.0, 0.0, 0.45),
-                x_offset: Val::Px(0.0),
-                y_offset: Val::Px(4.0),
-                spread_radius: Val::Px(0.0),
-                blur_radius: Val::Px(12.0),
-            },
+            BorderColor::all(SW_GLASS_BORDER),
+            // Bevy 0.19 replaced the former `BoxShadow` fields with
+            // `BoxShadow(Vec<ShadowStyle>)`; `BoxShadow::new` takes the same
+            // five values this literal used to set.
+            BoxShadow::new(
+                Color::srgba(0.0, 0.0, 0.0, 0.45),
+                Val::Px(0.0),
+                Val::Px(4.0),
+                Val::Px(0.0),
+                Val::Px(12.0),
+            ),
             // 图层 2：共享 UI，3D 和 2D 相机都能看到。
             RenderLayers::layer(2),
             ModeSwitchRoot,
@@ -353,26 +358,26 @@ fn build_mode_ui(mut commands: Commands) {
         .spawn((
             Text::new(""),
             TextFont {
-                font_size: 16.0,
+                font_size: FontSize::Px(16.0),
                 ..default()
             },
             TextColor(Color::srgb(0.85, 0.9, 0.95)),
             RenderLayers::layer(2),
             CoordText,
-        ))
-        .set_parent(readout);
+            ChildOf(readout),
+        ));
     commands
         .spawn((
             Text::new(""),
             TextFont {
-                font_size: 16.0,
+                font_size: FontSize::Px(16.0),
                 ..default()
             },
             TextColor(Color::srgb(0.85, 0.9, 0.95)),
             RenderLayers::layer(2),
             LevelText,
-        ))
-        .set_parent(readout);
+            ChildOf(readout),
+        ));
 }
 
 /// 切换器的一个胶囊单元格：节点上是 `Button` + `Interaction`，其标签
@@ -388,7 +393,7 @@ fn spawn_mode_segment(commands: &mut Commands, parent: Entity, mode: MapMode) {
         .spawn((
             Text::new(title),
             TextFont {
-                font_size: 15.0,
+                font_size: FontSize::Px(15.0),
                 ..default()
             },
             TextColor(SW_IDLE_TEXT),
@@ -404,17 +409,19 @@ fn spawn_mode_segment(commands: &mut Commands, parent: Entity, mode: MapMode) {
                 height: Val::Px(32.0),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
+                // `BorderRadius` is a `Node` field in Bevy 0.19, not a
+                // component of its own.
+                border_radius: BorderRadius::all(Val::Px(16.0)),
                 ..default()
             },
             // 非激活单元格是透明的；外壳的玻璃会透出来。
             BackgroundColor(Color::NONE),
-            BorderRadius::all(Val::Px(16.0)),
             RenderLayers::layer(2),
             ModeSegment { mode, label },
         ))
         .id();
-    commands.entity(cell).set_parent(parent);
-    commands.entity(label).set_parent(cell);
+    commands.entity(cell).insert(ChildOf(parent));
+    commands.entity(label).insert(ChildOf(cell));
 }
 
 // ── 模式同步 / 切换 ──────────────────────────────────────────
@@ -439,9 +446,9 @@ fn sync_camera_by_mode(
 
 /// 将每个 UI 根钉到当前模式下实际激活的相机。
 ///
-/// bevy_ui 将一棵 UI 树绑定到一个相机：`TargetCamera`，否则回退到
+/// bevy_ui 将一棵 UI 树绑定到一个相机：`UiTargetCamera`，否则回退到
 /// `DefaultUiCamera` —— 而后者只有当世界只有一个相机时才能解析。
-/// `TargetCamera` 自己的文档也说明了这一点：*“如果世界只有一个
+/// `UiTargetCamera` 自己的文档也说明了这一点：*“如果世界只有一个
 /// 相机则是可选的，否则必需。”* 我们至少有两只（orbit + flat），
 /// 因此绑定是歧义的，会落在 query 恰好产出的那一只相机上。对
 /// **非激活**相机会剔除 `DefaultCameraView`，所以若那个选择恰好是本
@@ -460,12 +467,12 @@ type ModeCamsQuery<'w, 's> =
 type UiRootsQuery<'w, 's> =
     Query<'w, 's, Entity, Or<(With<ModeSwitchRoot>, With<ReadoutRoot>)>>;
 
-/// 根据当前地图模式将 UI 根的 [`TargetCamera`] 指向活动相机（2D 或 3D）。
+/// 根据当前地图模式将 UI 根的 [`UiTargetCamera`] 指向活动相机（2D 或 3D）。
 fn sync_ui_target_camera(
     mode: Res<MapMode>,
     cams: ModeCamsQuery,
     roots: UiRootsQuery,
-    bound: Query<&TargetCamera>,
+    bound: Query<&UiTargetCamera>,
     mut commands: Commands,
 ) {
     let two_d = matches!(*mode, MapMode::TwoD);
@@ -480,7 +487,7 @@ fn sync_ui_target_camera(
     for root in roots.iter() {
         let already = matches!(bound.get(root), Ok(t) if t.0 == active);
         if !already {
-            commands.entity(root).insert(TargetCamera(active));
+            commands.entity(root).insert(UiTargetCamera(active));
         }
     }
 }
@@ -569,12 +576,12 @@ fn map2d_pan_system(
         anchor.last = None;
         return;
     }
-    let Ok(win) = windows.get_single() else { return };
+    let Ok(win) = windows.single() else { return };
     // `cursor_position` 与 `viewport_to_world_2d` 共享同一空间（逻辑 px，左上
     // 原点），因此连续采样能干净地做差 —— 无 DPI 缩放、无轴翻转。
     // 这就是我们不再在此读取 `MouseMotion` 的原因。
     let Some(cursor) = win.cursor_position() else { return };
-    let Ok((cam, ct)) = read.get_single() else { return };
+    let Ok((cam, ct)) = read.single() else { return };
 
     // 拖拽的第一帧：记住抓取起始位置，暂不移动。
     let Some(prev) = anchor.last.replace(cursor) else {
@@ -594,7 +601,7 @@ fn map2d_pan_system(
     };
     let shift = w_prev - w_now;
 
-    if let Ok(mut mc) = write.get_single_mut() {
+    if let Ok(mut mc) = write.single_mut() {
         let mut center = mc.center + shift;
         center.x = wrap_x(center.x);
         center = clamp_center_y(center, mc.zoom, win.height());
@@ -605,7 +612,7 @@ fn map2d_pan_system(
 /// 滚轮向光标方向缩放：指针下的 Geographic 点在缩放步进中保持
 /// 固定（CesiumJS 风格的光标缩放）。
 fn map2d_zoom_system(
-    mut wheel: EventReader<MouseWheel>,
+    mut wheel: MessageReader<MouseWheel>,
     windows: Query<&Window>,
     mut cams: Query<(&Camera, &GlobalTransform, &mut Map2dCam), With<Map2dCamera>>,
     capture: Option<Res<PlotInputCapture>>,
@@ -623,9 +630,9 @@ fn map2d_zoom_system(
     if scroll == 0.0 {
         return;
     }
-    let Ok(win) = windows.get_single() else { return };
+    let Ok(win) = windows.single() else { return };
     let Some(cursor) = win.cursor_position() else { return };
-    let Ok((cam, ct, mut mc)) = cams.get_single_mut() else { return };
+    let Ok((cam, ct, mut mc)) = cams.single_mut() else { return };
 
     // 当前缩放下光标下的绝对 Geographic 世界点。
     let Ok(g) = cam.viewport_to_world_2d(ct, cursor) else {
@@ -678,11 +685,11 @@ fn sync_plot_view_ctx(
         MapMode::ThreeD => PlotViewMode::Globe,
         MapMode::TwoD => PlotViewMode::Flat,
     };
-    if let Ok(win) = windows.get_single() {
+    if let Ok(win) = windows.single() {
         ctx.screen_w = win.width();
         ctx.screen_h = win.height();
     }
-    if let Ok(mc) = cams.get_single() {
+    if let Ok(mc) = cams.single() {
         ctx.flat_zoom = mc.zoom;
     }
 }
@@ -710,12 +717,12 @@ fn update_readout(
         }
         return;
     }
-    let Ok(win) = windows.get_single() else { return };
-    let Ok((cam, ct)) = read.get_single() else { return };
+    let Ok(win) = windows.single() else { return };
+    let Ok((cam, ct)) = read.single() else { return };
 
     // 单个 `&mut Text` 查询（带 `Has<..>` 角色标签）避免了两个独立
     // `&mut Text` 查询会引发的 ECS 冲突。
-    let level = cams.get_single().ok().map(|mc| approx_zoom_level(mc.zoom));
+    let level = cams.single().ok().map(|mc| approx_zoom_level(mc.zoom));
     let lonlat = win.cursor_position().and_then(|cursor| {
         cam.viewport_to_world_2d(ct, cursor).ok().map(|world| {
             let lon = wrap_lon_deg(world.x.to_degrees());
@@ -987,11 +994,11 @@ fn update_map2d_tiles(
     }
 
     // 2. Read the viewport as a Geographic world rectangle.
-    let Ok(win) = windows.get_single() else { return };
+    let Ok(win) = windows.single() else { return };
     let (Ok(cam), Ok(ct), Ok(mc)) = (
-        cams.get_single().map(|c| c.0),
-        cams.get_single().map(|c| c.1),
-        cams.get_single().map(|c| c.2),
+        cams.single().map(|c| c.0),
+        cams.single().map(|c| c.1),
+        cams.single().map(|c| c.2),
     ) else {
         return;
     };
@@ -1106,7 +1113,7 @@ fn update_map2d_tiles(
     //    其图像 spawn 的单帧竞态）。
     for (tile, mat_handle, mut vis) in live.iter_mut() {
         if let Some(h) = tiler.cache.get(&tile.key) {
-            if let Some(m) = materials.get_mut(mat_handle) {
+            if let Some(mut m) = materials.get_mut(mat_handle) {
                 if m.base_color_texture.is_none() {
                     m.base_color_texture = Some(h.clone());
                 }
@@ -1377,7 +1384,7 @@ mod map2d_tests {
     /// “进入 2D 后切换器消失”的回归守卫。拥有两只相机时，UI 根必须
     /// 重新钉到当前 [`MapMode`] 下存活的那只相机，否则 bevy_ui 丢弃其
     /// `DefaultCameraView` 且整个控件停止绘制。在一个最小世界上驱动真正的
-    /// sync 系统，并检查根的 [`TargetCamera`] 跟随模式。
+    /// sync 系统，并检查根的 [`UiTargetCamera`] 跟随模式。
     #[test]
     fn ui_roots_follow_active_camera_in_each_mode() {
         let mut app = App::new();
@@ -1401,19 +1408,19 @@ mod map2d_tests {
 
         // 默认（ThreeD）：两个根都瞄准 orbit 相机。
         app.update();
-        assert_eq!(app.world().get::<TargetCamera>(switch_root).map(|t| t.0), Some(orbit));
-        assert_eq!(app.world().get::<TargetCamera>(readout_root).map(|t| t.0), Some(orbit));
+        assert_eq!(app.world().get::<UiTargetCamera>(switch_root).map(|t| t.0), Some(orbit));
+        assert_eq!(app.world().get::<UiTargetCamera>(readout_root).map(|t| t.0), Some(orbit));
 
         // 切到 2D：两个根必须重新指向 flat 相机 —— 正是旧构建丢失控件的
         // 那一刻。
         *app.world_mut().resource_mut::<MapMode>() = MapMode::TwoD;
         app.update();
-        assert_eq!(app.world().get::<TargetCamera>(switch_root).map(|t| t.0), Some(flat));
-        assert_eq!(app.world().get::<TargetCamera>(readout_root).map(|t| t.0), Some(flat));
+        assert_eq!(app.world().get::<UiTargetCamera>(switch_root).map(|t| t.0), Some(flat));
+        assert_eq!(app.world().get::<UiTargetCamera>(readout_root).map(|t| t.0), Some(flat));
 
         // 再切回 3D。
         *app.world_mut().resource_mut::<MapMode>() = MapMode::ThreeD;
         app.update();
-        assert_eq!(app.world().get::<TargetCamera>(switch_root).map(|t| t.0), Some(orbit));
+        assert_eq!(app.world().get::<UiTargetCamera>(switch_root).map(|t| t.0), Some(orbit));
     }
 }

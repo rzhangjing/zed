@@ -94,14 +94,14 @@ pub struct PlotClickGuard {
 const CLICK_DRAG_THRESHOLD_PX: f64 = 4.0;
 
 /// 悬停元素变化时发出（计划 §14）。
-#[derive(Event, Clone, Copy, Debug, PartialEq)]
+#[derive(Message, Clone, Copy, Debug, PartialEq)]
 pub struct PlotHoverChanged {
     /// 光标下的新命中（若有）。
     pub hit: Option<PickHit>,
 }
 
 /// 选择集变化时发出（计划 §14）。
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlotSelectionChanged {
     /// 新选择的尺寸。
     pub selected: u32,
@@ -110,7 +110,7 @@ pub struct PlotSelectionChanged {
 /// 右键点击时发出（计划 §16 M9 “右键菜单”）：UI / 应用拥有
 /// 实际菜单，这里只报告请求位置及其下方（若有）内容，
 /// 以便菜单可提供上下文动作。其他一切不变——桥接层只提出意图。
-#[derive(Event, Clone, Copy, Debug, PartialEq)]
+#[derive(Message, Clone, Copy, Debug, PartialEq)]
 pub struct PlotContextMenu {
     /// 光标下的元素，若右键命中了一个。
     pub target: Option<ElementId>,
@@ -345,19 +345,19 @@ pub fn pick_system(
     interaction: Res<crate::interaction::PlotInteraction>,
     mut hover: ResMut<PlotHover>,
     mut selection: ResMut<PlotSelection>,
-    mut hover_events: EventWriter<PlotHoverChanged>,
-    mut selection_events: EventWriter<PlotSelectionChanged>,
-    mut menu_events: EventWriter<PlotContextMenu>,
+    mut hover_events: MessageWriter<PlotHoverChanged>,
+    mut selection_events: MessageWriter<PlotSelectionChanged>,
+    mut menu_events: MessageWriter<PlotContextMenu>,
 ) {
     // 光标必须在窗口内；离开的光标清除悬停。
-    let cursor = match windows.get_single() {
+    let cursor = match windows.single() {
         Ok(w) => w.cursor_position().map(|c| [c.x as f64, c.y as f64]),
         Err(_) => None,
     };
     let Some(cursor) = cursor else {
         if hover.0.is_some() {
             hover.0 = None;
-            hover_events.send(PlotHoverChanged { hit: None });
+            hover_events.write(PlotHoverChanged { hit: None });
         }
         return;
     };
@@ -395,6 +395,9 @@ pub fn pick_system(
             }
         }
         Projection::Orthographic(_) => 0.0,
+        // Bevy 0.19 added `Projection::Custom`; see `interaction.rs` for why
+        // it maps to the flat (0 focal length) case here.
+        Projection::Custom(_) => 0.0,
     };
     let metrics = ViewMetrics {
         mode: ctx.mode,
@@ -448,7 +451,7 @@ pub fn pick_system(
 
     if best != hover.0 {
         hover.0 = best;
-        hover_events.send(PlotHoverChanged { hit: best });
+        hover_events.write(PlotHoverChanged { hit: best });
     }
 
     // 普通左键点击用命中元素替换选择集，或在点击空白时清除
@@ -472,7 +475,7 @@ pub fn pick_system(
                     None => selection.clear(),
                 };
                 if changed {
-                    selection_events.send(PlotSelectionChanged {
+                    selection_events.write(PlotSelectionChanged {
                         selected: selection.0.len() as u32,
                     });
                 }
@@ -483,7 +486,7 @@ pub fn pick_system(
     // 右键点击提出上下文菜单意图（M9）：报告命中（若有）
     // 和锚定位置；应用决定显示什么菜单（若有）。
     if mouse.just_pressed(MouseButton::Right) {
-        menu_events.send(PlotContextMenu {
+        menu_events.write(PlotContextMenu {
             target: best.map(|h| h.element),
             screen: Vec2::new(cursor[0] as f32, cursor[1] as f32),
         });

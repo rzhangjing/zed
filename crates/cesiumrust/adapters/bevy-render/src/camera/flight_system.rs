@@ -16,8 +16,8 @@ use crate::camera::components::{ActiveFlight, CesiumCamera, FlightComplete, FlyT
 pub fn camera_flight_system(
     mut cameras: Query<&mut CesiumCamera>,
     mut active_flight: ResMut<ActiveFlight>,
-    mut fly_requests: EventReader<FlyToRequest>,
-    mut flight_complete: EventWriter<FlightComplete>,
+    mut fly_requests: MessageReader<FlyToRequest>,
+    mut flight_complete: MessageWriter<FlightComplete>,
     time: Res<Time>,
 ) {
     let dt = time.delta_secs() as f64;
@@ -55,6 +55,6 @@ pub fn camera_flight_system(
     if is_done {
         // 飞行结束：清空活飞行并广播完成事件供其他系统响应。
         active_flight.flight = None;
-        flight_complete.send(FlightComplete);
+        flight_complete.write(FlightComplete);
     }
 }

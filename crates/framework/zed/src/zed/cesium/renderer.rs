@@ -81,8 +81,9 @@ use std::sync::mpsc::{Receiver, Sender, SyncSender, TrySendError, sync_channel};
 use bevy::app::ScheduleRunnerPlugin;
 use bevy::input::ButtonState;
 use bevy::input::mouse::{MouseButtonInput, MouseMotion, MouseScrollUnit, MouseWheel};
+use bevy::input::touch::TouchPhase;
 use bevy::prelude::*;
-use bevy::render::camera::RenderTarget;
+use bevy::camera::RenderTarget;
 use bevy::render::view::screenshot::{Screenshot, ScreenshotCaptured};
 use bevy::window::{CursorMoved, PrimaryWindow, WindowEvent, WindowRef};
 
@@ -348,7 +349,7 @@ fn build_app(tx: SyncSender<Frame>, input: Receiver<ViewerInput>, cache_root: Pa
             capture_frame,
         ),
     );
-    app.add_systems(PreUpdate, drain_input.after(bevy::input::InputSystem));
+    app.add_systems(PreUpdate, drain_input.in_set(DrainInputSet).after(bevy::input::InputSystems));
 
     // ── Making the viewer's own `bevy_ui` react to the pointer ───────────────
     //
@@ -390,21 +391,26 @@ fn build_app(tx: SyncSender<Frame>, input: Receiver<ViewerInput>, cache_root: Pa
         PreUpdate,
         (
             lend_cameras_to_ui_focus
-                .after(drain_input)
-                .before(bevy::ui::UiSystem::Focus),
-            reclaim_cameras_from_ui_focus.after(bevy::ui::UiSystem::Focus),
+                .after(DrainInputSet)
+                .before(bevy::ui::UiSystems::Focus),
+            reclaim_cameras_from_ui_focus.after(bevy::ui::UiSystems::Focus),
         ),
     );
 
     // The capture side of the `Screenshot` round trip. `Screenshot::image`
     // takes ownership of the trigger's image, whose `data` is the mapped
     // readback buffer.
-    app.add_observer(move |trigger: Trigger<ScreenshotCaptured>| {
-        let image = &trigger.event().0;
+    app.add_observer(move |trigger: On<ScreenshotCaptured>| {
+        let image = &trigger.event().image;
         let width = image.texture_descriptor.size.width;
         let height = image.texture_descriptor.size.height;
         let expected = (width as usize) * (height as usize) * 4;
-        if image.data.len() != expected {
+        // Bevy 0.19 made `Image::data` optional (a GPU-only image has no CPU
+        // copy); a screenshot readback always has one.
+        let Some(data) = image.data.as_deref() else {
+            return;
+        };
+        if data.len() != expected {
             // Bevy only read back a short buffer; drop the frame rather than
             // hand the window a mismatch it would have to defend against.
             return;
@@ -412,7 +418,7 @@ fn build_app(tx: SyncSender<Frame>, input: Receiver<ViewerInput>, cache_root: Pa
         let frame = Frame {
             width,
             height,
-            bytes: image.data.clone(),
+            bytes: data.to_vec(),
         };
         // Capacity 1: replace any frame the window has not picked up yet, and
         // never block the render thread on the UI.
@@ -438,7 +444,7 @@ fn build_app(tx: SyncSender<Frame>, input: Receiver<ViewerInput>, cache_root: Pa
 fn spawn_virtual_window(mut commands: Commands) {
     commands.spawn((
         Window {
-            resolution: (FRAME_WIDTH as f32, FRAME_HEIGHT as f32).into(),
+            resolution: (FRAME_WIDTH, FRAME_HEIGHT).into(),
             ..default()
         },
         PrimaryWindow,
@@ -482,6 +488,14 @@ fn force_msaa_off(mut commands: Commands, cameras: Query<(Entity, Option<&Msaa>)
 #[derive(Resource, Default)]
 struct LendedCameraTargets(Vec<(Entity, RenderTarget)>);
 
+/// Schedule marker for [`drain_input`].
+///
+/// Bevy 0.19 only accepts system *sets* (not bare system functions) as
+/// ordering anchors, so the systems that have to run before/after the input
+/// replay name this set instead of the function.
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+struct DrainInputSet;
+
 /// Give every offscreen camera a window target, for the one system that needs
 /// one. See the note at the registration site in [`build_app`] for why.
 ///
@@ -492,7 +506,7 @@ struct LendedCameraTargets(Vec<(Entity, RenderTarget)>);
 fn lend_cameras_to_ui_focus(
     mut lended: ResMut<LendedCameraTargets>,
     windows: Query<Entity, With<PrimaryWindow>>,
-    mut cameras: Query<(Entity, &mut Camera)>,
+    mut cameras: Query<(Entity, &mut RenderTarget)>,
 ) {
     lended.0.clear();
     // `RenderTarget::Window(WindowRef::Primary)` only normalizes to a window if
@@ -500,13 +514,15 @@ fn lend_cameras_to_ui_focus(
     // time this runs (`spawn_virtual_window` is a `Startup` system), but a
     // missing one turns the swap into a `HTCLIENT`-less camera rather than into
     // a panic.
-    if windows.get_single().is_err() {
+    if windows.single().is_err() {
         return;
     }
-    for (entity, mut camera) in &mut cameras {
-        if matches!(camera.target, RenderTarget::Image(_)) {
-            lended.0.push((entity, camera.target.clone()));
-            camera.bypass_change_detection().target = RenderTarget::Window(WindowRef::Primary);
+    for (entity, mut target) in &mut cameras {
+        // Bevy 0.19: the render target is its own component on the camera
+        // entity (`Camera` no longer carries `target`).
+        if matches!(&*target, RenderTarget::Image(_)) {
+            lended.0.push((entity, (*target).clone()));
+            *target.bypass_change_detection() = RenderTarget::Window(WindowRef::Primary);
         }
     }
 }
@@ -514,11 +530,11 @@ fn lend_cameras_to_ui_focus(
 /// Put the cameras back, exactly as [`lend_cameras_to_ui_focus`] found them.
 fn reclaim_cameras_from_ui_focus(
     mut lended: ResMut<LendedCameraTargets>,
-    mut cameras: Query<&mut Camera>,
+    mut cameras: Query<&mut RenderTarget>,
 ) {
     for (entity, target) in lended.0.drain(..) {
-        if let Ok(mut camera) = cameras.get_mut(entity) {
-            camera.bypass_change_detection().target = target;
+        if let Ok(mut render_target) = cameras.get_mut(entity) {
+            *render_target.bypass_change_detection() = target;
         }
     }
 }
@@ -533,14 +549,14 @@ fn drain_input(
     mut input: ResMut<ForwardedInput>,
     mut windows: Query<(Entity, &mut Window), With<PrimaryWindow>>,
     mut buttons: ResMut<ButtonInput<MouseButton>>,
-    mut window_events: EventWriter<WindowEvent>,
-    mut motion_events: EventWriter<MouseMotion>,
-    mut wheel_events: EventWriter<MouseWheel>,
+    mut window_events: MessageWriter<WindowEvent>,
+    mut motion_events: MessageWriter<MouseMotion>,
+    mut wheel_events: MessageWriter<MouseWheel>,
 ) {
     // Without the virtual window there is nothing to address input to, so the
     // queue is drained and dropped rather than left to grow. It cannot normally
     // be missing: `spawn_virtual_window` runs at startup.
-    let Ok((window, mut virtual_window)) = windows.get_single_mut() else {
+    let Ok((window, mut virtual_window)) = windows.single_mut() else {
         if let Ok(rx) = input.rx.lock() {
             while rx.try_recv().is_ok() {}
         }
@@ -560,7 +576,7 @@ fn drain_input(
                     if let Some(previous) = cursor {
                         // `orbit_camera` reads the standalone `MouseMotion`
                         // event; there is no `winit` to produce it.
-                        motion_events.send(MouseMotion {
+                        motion_events.write(MouseMotion {
                             delta: position - previous,
                         });
                     }
@@ -581,18 +597,21 @@ fn drain_input(
                     } else {
                         ButtonState::Released
                     };
-                    window_events.send(WindowEvent::MouseButtonInput(MouseButtonInput {
+                    window_events.write(WindowEvent::MouseButtonInput(MouseButtonInput {
                         button,
                         state,
                         window,
                     }));
                 }
                 ViewerInput::Wheel { lines } => {
-                    wheel_events.send(MouseWheel {
+                    wheel_events.write(MouseWheel {
                         unit: MouseScrollUnit::Line,
                         x: 0.0,
                         y: lines,
                         window,
+                        // Bevy 0.19 added a touch phase to `MouseWheel`;
+                        // a real mouse wheel is always a move.
+                        phase: TouchPhase::Moved,
                     });
                 }
             }
@@ -607,7 +626,7 @@ fn drain_input(
     // disabled here, so this is the only writer. `orbit_camera`'s left-drag
     // grab and `bevy_ui`'s hover/click both read it.
     virtual_window.set_physical_cursor_position(Some(position.as_dvec2()));
-    window_events.send(WindowEvent::CursorMoved(CursorMoved {
+    window_events.write(WindowEvent::CursorMoved(CursorMoved {
         window,
         position,
         // `None` on the first position, which is what `CursorMoved` means by an
@@ -620,14 +639,15 @@ fn drain_input(
 /// does not exist, which is what makes the windowed path unaffected.
 fn retarget_cameras_offscreen(
     target: Option<Res<HeadlessTarget>>,
-    mut cameras: Query<&mut Camera, With<Camera3d>>,
+    mut cameras: Query<&mut RenderTarget, With<Camera3d>>,
 ) {
     let Some(target) = target else {
         return;
     };
-    for mut camera in &mut cameras {
-        if !matches!(camera.target, RenderTarget::Image(_)) {
-            camera.target = RenderTarget::Image(target.image.clone());
+    for mut render_target in &mut cameras {
+        // Bevy 0.19: the render target is a separate required component.
+        if !matches!(&*render_target, RenderTarget::Image(_)) {
+            *render_target = RenderTarget::Image(target.image.clone().into());
         }
     }
 }

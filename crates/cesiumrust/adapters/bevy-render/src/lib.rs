@@ -51,12 +51,26 @@ pub use atmosphere::CesiumAtmospherePlugin;
 pub use shadow::{CesiumShadowPlugin, ShadowConfig, ShadowState, ShadowCaster};
 pub use pipeline::CesiumPipelinePlugin;
 
-use bevy::pbr::DirectionalLightShadowMap;
+use bevy::light::DirectionalLightShadowMap;
 
 use bevy::prelude::*;
 use cesium_geospatial::ellipsoid::Ellipsoid;
 use cesium_geospatial::geometry::{self, GeometryData, PrimitiveType, VertexFormat};
 use cesium_imagery::blending::PixelColor;
+
+/// 以一个 u128 铸造 UUID 资产 handle。
+///
+/// Bevy 0.19 移除了 `Handle::weak_from_u128`：UUID 资产 handle 现在只剩
+/// `Handle::Uuid` 变体（`Strong` 之外唯一的变体），需要调用方自己构造。
+/// 生产代码里的内嵌 shader 常量直接在 `const` 上下文里写该变体；本函数供
+/// 测试铸造“廉价、payload 无关”的 handle 使用。
+#[cfg(test)]
+pub(crate) fn uuid_handle<A: bevy::asset::Asset>(id: u128) -> Handle<A> {
+    Handle::Uuid(
+        bevy::asset::uuid::Uuid::from_u128(id),
+        core::marker::PhantomData,
+    )
+}
 
 /// 将 f64 GeometryData 转换为 Bevy Mesh（f32 精度边界）
 ///
@@ -108,7 +122,7 @@ pub fn geometry_to_mesh(geometry: &GeometryData, rtc_center: Option<glam::DVec3>
 
     let mut mesh = Mesh::new(
         topology,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
@@ -164,7 +178,7 @@ pub fn create_imagery_texture(width: u32, height: u32, rgba_data: Vec<u8>) -> Im
         bevy::render::render_resource::TextureDimension::D2,
         rgba_data,
         bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     )
 }
 
@@ -221,7 +235,7 @@ pub fn create_bounding_box_wireframe(
 
     let mut mesh = Mesh::new(
         bevy::render::mesh::PrimitiveTopology::LineList,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, corners);
     mesh.insert_indices(bevy::render::mesh::Indices::U32(indices));
@@ -272,7 +286,7 @@ pub fn create_bounding_sphere_wireframe(
 
     let mut mesh = Mesh::new(
         bevy::render::mesh::PrimitiveTopology::LineList,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_indices(bevy::render::mesh::Indices::U32(indices));
@@ -349,23 +363,25 @@ fn setup_lighting(mut commands: Commands, mode: Res<LightingMode>) {
     match *mode {
         LightingMode::FullAmbient => {
             // v0 基线：仅环境光，与 M4.1 之前像素一致。
-            commands.insert_resource(AmbientLight {
+            commands.insert_resource(GlobalAmbientLight {
                 color: Color::srgb(0.79, 0.94, 1.17),
                 brightness: 3800.0,
+                ..default()
             });
         }
         LightingMode::DayNight => {
             // 降低环境光，使方向光太阳主导昼侧。
-            commands.insert_resource(AmbientLight {
+            commands.insert_resource(GlobalAmbientLight {
                 color: Color::srgb(0.79, 0.94, 1.17),
                 brightness: 1200.0,
+                ..default()
             });
 
             // 带阴影贴图的方向光太阳。
             commands.spawn((
                 DirectionalLight {
                     illuminance: 10_000.0,
-                    shadows_enabled: true,
+                    shadow_maps_enabled: true,
                     ..default()
                 },
                 // 默认 transform；celestial_system 会逐帧为其定向。
@@ -465,10 +481,12 @@ mod tests {
         assert_eq!(image.width(), 2);
         assert_eq!(image.height(), 2);
         // 第一个像素应为红色 (255, 0, 0, 255)
-        assert_eq!(image.data[0], 255);
-        assert_eq!(image.data[1], 0);
-        assert_eq!(image.data[2], 0);
-        assert_eq!(image.data[3], 255);
+        // Bevy 0.19 stores `Image::data` as `Option<Vec<u8>>`.
+        let data = image.data.as_deref().expect("CPU pixel data");
+        assert_eq!(data[0], 255);
+        assert_eq!(data[1], 0);
+        assert_eq!(data[2], 0);
+        assert_eq!(data[3], 255);
     }
 
     #[test]

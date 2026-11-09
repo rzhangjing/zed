@@ -40,8 +40,8 @@ image.workspace = true
 
 [dev-dependencies]
 # Test-only: naga is the WGSL front end Bevy itself compiles with
-# (bevy_render -> naga 23.1), so driving it over `sky_atmosphere.wgsl` proves
-# the shader parses and type-checks on exactly the same parser the GPU path
-# uses -- the strongest headless evidence available without a device. It is
+# (bevy_render 0.19 -> naga 29.0), so driving it over `sky_atmosphere.wgsl`
+# proves the shader parses and type-checks on exactly the same parser the GPU
+# path uses -- the strongest headless evidence available without a device. It is
 # already in Cargo.lock as a transitive dependency, so this adds no new crate.
-naga = { version = "23.1", features = ["wgsl-in"] }
+naga = { version = "29.0", features = ["wgsl-in"] }

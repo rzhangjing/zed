@@ -14,8 +14,8 @@
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::view::RenderLayers;
+use bevy::asset::RenderAssetUsages;
+use bevy::camera::visibility::RenderLayers;
 use bevy::window::PrimaryWindow;
 
 use cesium_plot::geo::{flat_to_geo, GeoPoint};
@@ -45,11 +45,11 @@ pub enum PlotTool {
 }
 
 /// 请求工具切换（工具栏 / 热键发送这些；FSM 在下一帧开始时应用）。
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlotSetTool(pub PlotTool);
 
 /// 绘制提交（或放弃）时发出，以便 UI 响应。
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PlotDrawFinished {
     /// 提交元素的 id，或为 `None` 表示绘制被取消。
     pub committed: Option<ElementId>,
@@ -236,6 +236,10 @@ fn active_view<'q>(
             }
         }
         Projection::Orthographic(_) => 0.0,
+        // Bevy 0.19 added `Projection::Custom`. The overlay only ever runs
+        // against the app's perspective/orthographic cameras; a custom
+        // projection exposes no read-back fov, so treat it like the flat case.
+        Projection::Custom(_) => 0.0,
     };
     let metrics = ViewMetrics {
         mode: ctx.mode,
@@ -264,8 +268,8 @@ pub fn interaction_system(
     mut capture: ResMut<PlotInputCapture>,
     mut selection: ResMut<PlotSelection>,
     snap_res: Res<PlotSnap>,
-    mut tool_events: EventReader<PlotSetTool>,
-    mut done_events: EventWriter<PlotDrawFinished>,
+    mut tool_events: MessageReader<PlotSetTool>,
+    mut done_events: MessageWriter<PlotDrawFinished>,
     windows: Query<&Window, With<PrimaryWindow>>,
     cams: Query<(Entity, &Camera, &GlobalTransform, &Projection)>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -288,7 +292,7 @@ pub fn interaction_system(
     // 2. 取消 / 撤销顶点热键。
     if keys.just_pressed(KeyCode::Escape) && interaction.is_drawing() {
         interaction.cancel();
-        done_events.send(PlotDrawFinished { committed: None });
+        done_events.write(PlotDrawFinished { committed: None });
     }
     if keys.just_pressed(KeyCode::Backspace) {
         interaction.backspace();
@@ -303,7 +307,7 @@ pub fn interaction_system(
     let Some((_, cam, ct, _rot, _metrics)) = active_view(&cams, &ctx) else {
         return;
     };
-    let cursor = windows.get_single().ok().and_then(|w| w.cursor_position());
+    let cursor = windows.single().ok().and_then(|w| w.cursor_position());
 
     // 只有绘制中才到达此处，因此工具必定是 `Draw(kind)`。
     let kind = match interaction.tool {
@@ -319,13 +323,13 @@ pub fn interaction_system(
         let right_abort = mouse.just_pressed(MouseButton::Right);
         if let Some(g) = interaction.finish() {
             let id = commit_geometry(&mut plot_doc, &mut history, &mut selection, kind, g);
-            done_events.send(PlotDrawFinished {
+            done_events.write(PlotDrawFinished {
                 committed: Some(id),
             });
         } else if right_abort {
             // 右键且无法收尾（点不够）→ 取消，退出绘制工具。
             interaction.cancel();
-            done_events.send(PlotDrawFinished { committed: None });
+            done_events.write(PlotDrawFinished { committed: None });
         }
         return;
     }
@@ -346,7 +350,7 @@ pub fn interaction_system(
                 if let Some(g) = interaction.add_point(geo) {
                     // 固定点数类型自动完成 → 提交它。
                     let id = commit_geometry(&mut plot_doc, &mut history, &mut selection, kind, g);
-                    done_events.send(PlotDrawFinished {
+                    done_events.write(PlotDrawFinished {
                         committed: Some(id),
                     });
                 }
@@ -390,7 +394,7 @@ pub fn draw_preview_system(
 
     // 草稿顶点 + 到实时光标的橡皮筋尾段。
     let mut geos: Vec<GeoPoint> = interaction.draft.clone();
-    if let Some(pos) = windows.get_single().ok().and_then(|w| w.cursor_position()) {
+    if let Some(pos) = windows.single().ok().and_then(|w| w.cursor_position()) {
         if let Some(g) = screen_to_geo(cam, ct, ctx.mode, pos) {
             geos.push(g);
         }

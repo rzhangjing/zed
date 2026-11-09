@@ -8,7 +8,7 @@
 //! 可见性开关，以及已选元素的样式编辑器）可以 headless 单测，
 //! 与 M6 编辑桥接一致。Bevy UI 是薄壳：
 //!  * [`panel_startup`] 创建停靠根节点；
-//!  * [`bind_panel_camera`] 每帧保持其 `TargetCamera` 指向当前激活相机
+//!  * [`bind_panel_camera`] 每帧保持其 `UiTargetCamera` 指向当前激活相机
 //!    （多相机 UI 不变量——参见 labels 模块注释），
 //!    因此面板在 2D 和 3D 视图中都可见；
 //!  * [`panel_click_system`] 将按钮按下映射为其 [`PanelAction`]；
@@ -405,12 +405,12 @@ pub(crate) fn panel_startup(mut commands: Commands, mut root: ResMut<PanelRootEn
     root.root = Some(entity);
 }
 
-/// 每帧保持面板根的 `TargetCamera` 指向激活相机
+/// 每帧保持面板根的 `UiTargetCamera` 指向激活相机
 /// （多相机 UI 不变量）。只在绑定变化时写入，因此空闲
 /// 帧不会发出 change tick。
 ///
 /// # 参数
-/// - `commands`：写入 `TargetCamera` 的命令器。
+/// - `commands`：写入 `UiTargetCamera` 的命令器。
 /// - `ctx`：视图上下文（提供当前模式）。
 /// - `cams`：相机查询，用于解析激活相机。
 /// - `roots`：面板根实体及其当前绑定。
@@ -418,7 +418,7 @@ pub(crate) fn bind_panel_camera(
     mut commands: Commands,
     ctx: Res<crate::resources::PlotViewCtx>,
     cams: Query<(Entity, &Camera, &Projection)>,
-    roots: Query<(Entity, Option<&TargetCamera>), With<PanelRoot>>,
+    roots: Query<(Entity, Option<&UiTargetCamera>), With<PanelRoot>>,
 ) {
     if roots.is_empty() {
         return;
@@ -428,7 +428,7 @@ pub(crate) fn bind_panel_camera(
     };
     for (e, bound) in roots.iter() {
         if bound.map(|t| t.0) != Some(active) {
-            commands.entity(e).insert(TargetCamera(active));
+            commands.entity(e).insert(UiTargetCamera(active));
         }
     }
 }
@@ -475,7 +475,7 @@ pub(crate) fn panel_sync_system(
     *last = sig;
 
     let root = *root_ent;
-    commands.entity(root).despawn_descendants();
+    commands.entity(root).despawn_related::<Children>();
 
     // 快照渲染所需的一切（避免在持有文档引用时
     // 借用 `commands`）。先取不变数据再写入 UI 树。
@@ -643,7 +643,7 @@ fn label(text: String) -> (Text, TextFont, TextColor) {
     (
         Text::new(text),
         TextFont {
-            font_size: 12.0,
+            font_size: FontSize::Px(12.0),
             ..default()
         },
         TextColor(Color::srgb(0.9, 0.9, 0.95)),
@@ -694,7 +694,7 @@ fn button(action: PanelAction, text: &str) -> (
         BackgroundColor(Color::srgba(0.24, 0.34, 0.5, 1.0)),
         Text::new(text.to_string()),
         TextFont {
-            font_size: 12.0,
+            font_size: FontSize::Px(12.0),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),

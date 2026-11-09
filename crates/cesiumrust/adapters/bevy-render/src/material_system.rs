@@ -104,8 +104,12 @@ fn advance_animation(anim: &mut MaterialAnimationTime, delta_secs: f32) -> u32 {
 /// 绕过 `apply_fabric_materials` —— 的 Water 材质也会被纳入。
 #[derive(Resource, Default)]
 pub struct WaterMaterialHandles {
-    /// 当前帧缓存的水材质 handle 列表（逐帧写入动画 uniform 的目标）。
-    handles: Vec<Handle<FabricMaterial>>,
+    /// 当前帧缓存的水材质资产 id 列表（逐帧写入动画 uniform 的目标）。
+    ///
+    /// Bevy 0.19 removed `Handle::Weak`, and `Assets::iter()` yields
+    /// `AssetId`s, not handles, so the cache stores ids and looks the assets up
+    /// with `Assets::get_mut` (which accepts `impl Into<AssetId<A>>`).
+    handles: Vec<AssetId<FabricMaterial>>,
     /// 上次构建缓存时观察到的 `Assets<FabricMaterial>::len()`，用于判断是否需重建。
     known_len: usize,
 }
@@ -198,7 +202,7 @@ fn apply_fabric_materials(
         bevy::render::render_resource::TextureDimension::D2,
         vec![255u8, 255, 255, 255],
         bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
     let fallback_handle = images.add(fallback_img);
 
@@ -277,7 +281,7 @@ fn update_material_uniforms(
         water_handles.handles = materials
             .iter()
             .filter(|(_, m)| m.params.kind == FabricKind::Water as u32)
-            .map(|(id, _)| Handle::Weak(id))
+            .map(|(id, _)| id)
             .collect();
         water_handles.known_len = current_len;
     }
@@ -291,8 +295,8 @@ fn update_material_uniforms(
     // Ryan L4：对 WATER_FRAME_PERIOD 取模，使 `frame as f32` 在远超 2^24 的
     // f32 整数精度悬崖处仍保持精确。
     let phase = (frame_number % WATER_FRAME_PERIOD) as f32;
-    for handle in &water_handles.handles {
-        if let Some(material) = materials.get_mut(handle) {
+    for &handle in &water_handles.handles {
+        if let Some(mut material) = materials.get_mut(handle) {
             material.params.extra_c.z = phase;
         }
     }

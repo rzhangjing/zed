@@ -40,7 +40,7 @@ mod tests {
 
     fn handles(id: u128) -> GpuTileHandles {
         GpuTileHandles {
-            texture: Handle::weak_from_u128(id),
+            texture: crate::uuid_handle(id),
             mesh: None,
             material: None,
         }

@@ -1,7 +1,7 @@
 //! 相机更新系统：将领域相机状态同步到 Bevy 的 Transform 与 Projection。
 
+use bevy::camera::Projection;
 use bevy::prelude::*;
-use bevy::render::camera::Projection;
 
 use crate::camera::components::CesiumCamera;
 use crate::METERS_PER_RENDER_UNIT;
@@ -32,11 +32,17 @@ pub fn camera_update_system(
         match &cam.frustum {
             cesium_camera::Frustum::Perspective(f) => {
                 // 透视：直接搬运 fov 与宽高比，深度范围乘缩放。
+                let near = f.near as f32 * scale as f32;
                 *projection = Projection::Perspective(PerspectiveProjection {
                     fov: f.fov as f32,
                     aspect_ratio: f.aspect_ratio as f32,
-                    near: f.near as f32 * scale as f32,
+                    near,
                     far: f.far as f32 * scale as f32,
+                    // Bevy 0.19 added a custom-clipping-plane field; the
+                    // default (0, 0, -1, -near) describes a near plane at
+                    // `near` pointing away from the camera, i.e. the frustum
+                    // this system produced before the field existed.
+                    near_clip_plane: Vec4::new(0.0, 0.0, -1.0, -near),
                 });
             }
             cesium_camera::Frustum::Orthographic(f) => {

@@ -119,7 +119,7 @@ pub fn sky_system(
     let sun_elevation = sun_dir.z;
 
     // 以主相机前方作为视线方向；无相机时退化为看太阳。
-    let view_dir = if let Ok(cam_transform) = camera_query.get_single() {
+    let view_dir = if let Ok(cam_transform) = camera_query.single() {
         DVec3::new(
             cam_transform.forward().x as f64,
             cam_transform.forward().y as f64,
@@ -136,7 +136,7 @@ pub fn sky_system(
     // 移动时：在 `FIXED_TIME` 下时钟被冻结，所以这会在
     // 首帧之后稳定下来，基线捕获保持逐位可复现。
     if sky.dome {
-        if let Ok(dome_material) = dome_query.get_single() {
+        if let Ok(dome_material) = dome_query.single() {
             if let Some(materials) = materials.as_deref_mut() {
                 update_sun_direction(materials, &dome_material.0, lighting.sun_direction);
             }

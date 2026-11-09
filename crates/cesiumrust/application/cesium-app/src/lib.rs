@@ -102,7 +102,7 @@ struct AutoScreenshot {
 fn auto_screenshot_system(
     mut commands: Commands,
     mut shot: ResMut<AutoScreenshot>,
-    mut exit: EventWriter<AppExit>,
+    mut exit: MessageWriter<AppExit>,
     cameras: Query<(&Transform, &Projection), With<Camera>>,
 ) {
     shot.frame += 1;
@@ -124,12 +124,15 @@ fn auto_screenshot_system(
         // M3：在截图旁写入相机 pos/quat JSON。
         // Schema: {"pos":[x,y,z],"quat":[x,y,z,w],"fov_y":<deg>}
         // 这是 M2.4 回放保真度的参考基准（<1e-4 render unit）。
-        if let Ok((transform, projection)) = cameras.get_single() {
+        if let Ok((transform, projection)) = cameras.single() {
             let p = transform.translation;
             let q = transform.rotation;
             let fov_y_deg = match projection {
                 Projection::Perspective(pp) => pp.fov.to_degrees(),
-                Projection::Orthographic(_) => 0.0,
+                // Bevy 0.19 added `Projection::Custom`; the capture path only
+                // records a fov for the perspective camera, everything else
+                // (orthographic, custom) writes 0 like before.
+                Projection::Orthographic(_) | Projection::Custom(_) => 0.0,
             };
             let json = format!(
                 "{{\"pos\":[{:.6},{:.6},{:.6}],\"quat\":[{:.6},{:.6},{:.6},{:.6}],\"fov_y\":{:.4}}}",
@@ -148,7 +151,7 @@ fn auto_screenshot_system(
         }
     }
     if shot.frame == shot.at_frame + 30 {
-        exit.send(AppExit::Success);
+        exit.write(AppExit::Success);
     }
 }
 
@@ -178,7 +181,7 @@ fn fixed_camera_system(
     pose: Res<FixedCameraPose>,
     mut cameras: Query<(&mut Transform, &mut Projection), With<Camera>>,
 ) {
-    if let Ok((mut transform, mut projection)) = cameras.get_single_mut() {
+    if let Ok((mut transform, mut projection)) = cameras.single_mut() {
         transform.translation = pose.pos;
         transform.rotation = pose.quat;
         if let Some(fov_deg) = pose.fov_y {
@@ -214,7 +217,7 @@ struct BatchCapture {
 fn batch_capture_system(
     mut commands: Commands,
     mut batch: ResMut<BatchCapture>,
-    mut exit: EventWriter<AppExit>,
+    mut exit: MessageWriter<AppExit>,
     mut cameras: Query<(&mut Transform, &mut Projection), With<Camera>>,
 ) {
     batch.frame += 1;
@@ -223,7 +226,7 @@ fn batch_capture_system(
         let entry = batch.script[idx].clone();
 
         // 应用脚本化的相机位姿（本帧覆盖 orbit_camera）。
-        if let Ok((mut transform, mut projection)) = cameras.get_single_mut() {
+        if let Ok((mut transform, mut projection)) = cameras.single_mut() {
             transform.translation = Vec3::new(
                 entry.pos[0] as f32,
                 entry.pos[1] as f32,
@@ -299,7 +302,7 @@ fn batch_capture_system(
                 "[batch] all {} shots captured, exiting",
                 batch.script.len()
             );
-            exit.send(AppExit::Success);
+            exit.write(AppExit::Success);
         }
     }
 }
@@ -703,7 +706,9 @@ pub fn run() {
         app.add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "CesiumRust - 3D Globe Viewer".into(),
-                resolution: (1280.0_f32, 720.0_f32).into(),
+                // Bevy 0.19's `WindowResolution` only converts from integer
+                // pixel sizes (`(u32, u32)`), not `(f32, f32)`.
+                resolution: (1280_u32, 720_u32).into(),
                 ..default()
             }),
             ..default()

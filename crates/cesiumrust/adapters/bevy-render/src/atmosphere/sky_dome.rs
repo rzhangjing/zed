@@ -73,9 +73,9 @@ use bevy::pbr::{Material, MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::mesh::MeshVertexBufferLayoutRef;
 use bevy::render::render_resource::{
-    AsBindGroup, Face, RenderPipelineDescriptor, Shader, ShaderRef, ShaderType,
-    SpecializedMeshPipelineError,
+    AsBindGroup, Face, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
 };
+use bevy::shader::{Shader, ShaderRef};
 use cesium_atmosphere::scattering::AtmosphereParameters;
 
 use crate::resources::METERS_PER_RENDER_UNIT;
@@ -100,8 +100,10 @@ pub fn sky_dome_gate_enabled() -> bool {
 ///
 /// 该 u128 是 `"SKYDOMEATMOS\0\0"` 的 ASCII 字节，遵循
 /// `FABRIC_MATERIAL_SHADER_HANDLE` 约定。
-pub const SKY_ATMOSPHERE_SHADER_HANDLE: Handle<Shader> =
-    Handle::weak_from_u128(0x534B_5944_4F4D_4541_544D_4F53_0000);
+pub const SKY_ATMOSPHERE_SHADER_HANDLE: Handle<Shader> = Handle::Uuid(
+    bevy::asset::uuid::Uuid::from_u128(0x534B_5944_4F4D_4541_544D_4F53_0000),
+    core::marker::PhantomData,
+);
 
 /// dome 半径，以 render unit 计。
 ///
@@ -358,7 +360,7 @@ impl Material for SkyDomeMaterial {
     /// `MeshPipeline::specialize` 填好（bevy_pbr 0.15 `material.rs` L411 → L422），
     /// 所以只触及 primitive 状态。
     fn specialize(
-        _pipeline: &MaterialPipeline<Self>,
+        _pipeline: &MaterialPipeline,
         descriptor: &mut RenderPipelineDescriptor,
         _layout: &MeshVertexBufferLayoutRef,
         _key: MaterialPipelineKey<Self>,
@@ -446,7 +448,7 @@ pub fn update_sun_direction(
     handle: &Handle<SkyDomeMaterial>,
     sun_direction: Vec3,
 ) -> bool {
-    let Some(material) = materials.get_mut(handle) else {
+    let Some(mut material) = materials.get_mut(handle) else {
         return false;
     };
     let next = sun_direction.normalize_or_zero();
@@ -2309,7 +2311,7 @@ struct View {
     /// 分支有一个独立预言机，而非与自己比较。
     fn expected_clear_color(sun_direction: &Vec3, params: &AtmosphereParameters) -> Color {
         let sun_dir = dvec3_of(*sun_direction);
-        let view_dir = sun_dir; // 无头：`camera_query.get_single()` 失败
+        let view_dir = sun_dir; // 无头：`camera_query.single()` 失败
         let sky_color = compute_sky_color(view_dir, sun_dir, 1000.0, params);
         let horizon_glow = compute_horizon_glow(sun_dir.z);
         let r = (sky_color[0] as f32 * 0.3 + horizon_glow[0] as f32 * 0.3).clamp(0.0, 1.0);
@@ -2439,7 +2441,7 @@ struct View {
         // `shader_registry::shader_assets_available` 设门，而本测试必须
         // 复现 `RenderPlugin` 本会插入的东西。完全限定以
         // 免需要任何 trait 导入。
-        <App as bevy::asset::AssetApp>::init_asset::<bevy::render::render_resource::Shader>(
+        <App as bevy::asset::AssetApp>::init_asset::<bevy::shader::Shader>(
             &mut app,
         );
         // `Assets<Mesh>` 来自 `MeshPlugin`，同属渲染栈
@@ -2519,7 +2521,7 @@ struct View {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         app.add_plugins(AssetPlugin::default());
-        <App as bevy::asset::AssetApp>::init_asset::<bevy::render::render_resource::Shader>(
+        <App as bevy::asset::AssetApp>::init_asset::<bevy::shader::Shader>(
             &mut app,
         );
         <App as bevy::asset::AssetApp>::init_asset::<bevy::render::mesh::Mesh>(&mut app);

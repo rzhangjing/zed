@@ -470,7 +470,7 @@ pub fn camera_control_port_system(
     let commanded = port.control.generation() != port.last_gen;
     port.last_gen = port.control.generation();
 
-    let Ok(mut cesium_cam) = cameras.get_single_mut() else {
+    let Ok(mut cesium_cam) = cameras.single_mut() else {
         return;
     };
     if was_flying || still_flying || commanded {

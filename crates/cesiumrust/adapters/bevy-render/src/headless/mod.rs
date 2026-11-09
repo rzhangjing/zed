@@ -40,7 +40,7 @@
 //! [`save_to_disk`]: bevy::render::view::screenshot::save_to_disk
 
 use bevy::prelude::*;
-use bevy::render::camera::RenderTarget;
+use bevy::camera::RenderTarget;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
@@ -202,14 +202,16 @@ pub fn create_offscreen_target(world: &mut World, config: &HeadlessConfig) -> He
 /// 路径逐字节不变。
 pub fn retarget_cameras_to_offscreen(
     target: Option<Res<HeadlessTarget>>,
-    mut cameras: Query<&mut Camera, With<Camera3d>>,
+    mut cameras: Query<&mut RenderTarget, With<Camera3d>>,
 ) {
     let Some(target) = target else {
         return;
     };
-    for mut camera in &mut cameras {
-        if !matches!(camera.target, RenderTarget::Image(_)) {
-            camera.target = RenderTarget::Image(target.image.clone());
+    for mut render_target in &mut cameras {
+        // Bevy 0.19 moved `Camera::target` into a separate required
+        // `RenderTarget` component, so this mutates that component instead.
+        if !matches!(&*render_target, RenderTarget::Image(_)) {
+            *render_target = RenderTarget::Image(target.image.clone().into());
         }
     }
 }
@@ -322,8 +324,8 @@ fn headless_capture_tick(
         entity.observe(save_to_disk(path));
     }
     entity.observe(
-        |_trigger: Trigger<ScreenshotCaptured>, mut exit: EventWriter<AppExit>| {
-            exit.send(AppExit::Success);
+        |_trigger: On<ScreenshotCaptured>, mut exit: MessageWriter<AppExit>| {
+            exit.write(AppExit::Success);
         },
     );
     state.requested = true;
@@ -340,12 +342,20 @@ fn headless_capture_tick(
 /// features 只有 `png`+`jpeg`。这个 8 位色调映射的 PNG 仍是一个
 /// 对 v2 天空/水面/后处理栈忠实、可检查的基线
 /// （#45/#47）：它压缩超单位的辐亮度而非将其裁切。
-fn save_hdr_to_disk(path: PathBuf) -> impl FnMut(Trigger<ScreenshotCaptured>) {
-    move |trigger: Trigger<ScreenshotCaptured>| {
-        let img = &trigger.event().0;
+fn save_hdr_to_disk(path: PathBuf) -> impl FnMut(On<ScreenshotCaptured>) {
+    move |trigger: On<ScreenshotCaptured>| {
+        let img = &trigger.event().image;
         let w = img.texture_descriptor.size.width;
         let h = img.texture_descriptor.size.height;
-        match hdr_bytes_to_rgba8(&img.data, w, h) {
+        // Bevy 0.19 stores `Image::data` as `Option<Vec<u8>>`: an image that
+        // only ever lived on the GPU (or was created from a texture view) has
+        // no CPU copy. A screenshot readback always does, so this is a
+        // defensive branch rather than an expected path.
+        let Some(data) = img.data.as_deref() else {
+            error!("HDR headless screenshot: captured {w}x{h} Rgba16Float image has no CPU data");
+            return;
+        };
+        match hdr_bytes_to_rgba8(data, w, h) {
             Some(rgba) => {
                 if let Err(e) = rgba.save(&path) {
                     error!("HDR headless screenshot save failed at {path:?}: {e}");
@@ -353,7 +363,7 @@ fn save_hdr_to_disk(path: PathBuf) -> impl FnMut(Trigger<ScreenshotCaptured>) {
             }
             None => error!(
                 "HDR headless screenshot: readback buffer ({} bytes) does not match {w}x{h} Rgba16Float",
-                img.data.len()
+                data.len()
             ),
         }
     }
@@ -439,7 +449,7 @@ fn linear_to_srgb(c: f32) -> f32 {
 mod tests {
     use super::*;
     use bevy::core_pipeline::CorePipelinePlugin;
-    use bevy::render::texture::ImagePlugin;
+    use bevy::image::ImagePlugin;
     use bevy::render::RenderPlugin;
     use std::sync::{Arc, Mutex};
 
@@ -462,6 +472,13 @@ mod tests {
             })
             .add_plugins(RenderPlugin::default())
             .add_plugins(ImagePlugin::default())
+            // Bevy 0.19 splits mesh asset storage (`MeshPlugin`, which calls
+            // `init_asset::<Mesh>` and so registers `Messages<AssetEvent<Mesh>>`)
+            // from the render-side `MeshRenderAssetPlugin`. `DefaultPlugins`
+            // adds both; this minimal app has to name `MeshPlugin` or the
+            // `ExtractSchedule` `RenderMesh` extractor panics with
+            // "Message not initialized".
+            .add_plugins(bevy::mesh::MeshPlugin)
             .add_plugins(CorePipelinePlugin);
 
         app.insert_resource(ClearColor(clear));
@@ -475,13 +492,15 @@ mod tests {
         };
 
         // 相机渲染进离屏目标；根本没有窗口。
+        // Bevy 0.19: `Camera` no longer carries `target`; the render target is
+        // its own (required) component on the camera entity.
         app.world_mut().spawn((
             Camera3d::default(),
             Camera {
-                target: RenderTarget::Image(target.image.clone()),
                 clear_color: ClearColorConfig::Custom(clear),
                 ..default()
             },
+            RenderTarget::Image(target.image.clone().into()),
         ));
 
         // `App::run()` 在帧循环之前调用这些；用 `app.update()` 手动驱动
@@ -506,8 +525,8 @@ mod tests {
         let captured: Arc<Mutex<Option<Image>>> = Arc::new(Mutex::new(None));
         let sink = captured.clone();
         app.world_mut().add_observer(
-            move |trigger: Trigger<ScreenshotCaptured>| {
-                *sink.lock().unwrap() = Some(trigger.event().0.clone());
+            move |trigger: On<ScreenshotCaptured>| {
+                *sink.lock().unwrap() = Some(trigger.event().image.clone());
             },
         );
 
@@ -530,11 +549,13 @@ mod tests {
         let img = captured.lock().unwrap().clone().expect("captured image");
         let desc = &img.texture_descriptor;
         assert_eq!((desc.size.width, desc.size.height), (W, H));
-        assert_eq!(img.data.len(), (W * H * 4) as usize);
+        // Bevy 0.19: `Image::data` is `Option<Vec<u8>>`.
+        let data = img.data.as_deref().expect("captured image keeps CPU data");
+        assert_eq!(data.len(), (W * H * 4) as usize);
 
-        let first = &img.data[0..4];
+        let first = &data[0..4];
         assert_ne!(first, &[0, 0, 0, 0], "readback is all-zero (clear missed GPU)");
-        for px in img.data.as_chunks::<4>().0 {
+        for px in data.as_chunks::<4>().0 {
             assert_eq!(
                 px.as_slice(),
                 first,
@@ -602,7 +623,7 @@ mod tests {
         app.update();
         assert!(
             matches!(
-                app.world().get::<Camera>(cam).unwrap().target,
+                app.world().get::<RenderTarget>(cam).unwrap(),
                 RenderTarget::Window(_)
             ),
             "camera must stay windowed when headless is inactive"
@@ -625,7 +646,7 @@ mod tests {
             .expect("target image registered");
         assert_eq!(img.texture_descriptor.format, TextureFormat::Rgba8UnormSrgb);
         // LDR RGBA8 = 4 字节/像素。
-        assert_eq!(img.data.len(), (W * H * 4) as usize);
+        assert_eq!(img.data.as_deref().expect("CPU pixel data").len(), (W * H * 4) as usize);
     }
 
     /// HDR 选择性开启：`with_hdr(true)` 选择 Rgba16Float（8 字节/像素），即
@@ -644,7 +665,7 @@ mod tests {
             .expect("target image registered");
         assert_eq!(img.texture_descriptor.format, TextureFormat::Rgba16Float);
         // 半浮点 RGBA = 8 字节/像素。
-        assert_eq!(img.data.len(), (W * H * 8) as usize);
+        assert_eq!(img.data.as_deref().expect("CPU pixel data").len(), (W * H * 8) as usize);
     }
 
     /// `CESIUM_HEADLESS_HDR` 环境读取器：真值 token 启用 HDR，其余一切

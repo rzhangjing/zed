@@ -113,9 +113,10 @@ pub fn make_clamped_image(
         bevy::render::render_resource::TextureDimension::D2,
         data[..base_len].to_vec(),
         bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
-        bevy::render::render_asset::RenderAssetUsages::default(),
+        bevy::asset::RenderAssetUsages::default(),
     );
-    img.data = data;
+    // Bevy 0.19 stores `Image::data` as `Option<Vec<u8>>`.
+    img.data = Some(data);
     img.texture_descriptor.mip_level_count = levels;
     img.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
         mag_filter: ImageFilterMode::Linear,

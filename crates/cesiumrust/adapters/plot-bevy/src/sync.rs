@@ -21,9 +21,9 @@ use std::collections::{BTreeSet, HashMap};
 use bevy::prelude::*;
 use bevy::pbr::StandardMaterial;
 use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::view::RenderLayers;
-use bevy::ui::TargetCamera;
+use bevy::asset::RenderAssetUsages;
+use bevy::camera::visibility::RenderLayers;
+use bevy::ui::UiTargetCamera;
 
 use cesium_plot::geo::GeoPoint;
 use cesium_plot::geom::tessellate::triangulate_holes;
@@ -137,7 +137,7 @@ pub fn sync_visuals(
     mut transforms: Query<&mut Transform, With<PlotVisual>>,
     mut nodes: Query<&mut Node, With<PlotLabel>>,
     roots: Query<Entity, With<PlotUiRoot>>,
-    bound: Query<&TargetCamera>,
+    bound: Query<&UiTargetCamera>,
     selection: Option<Res<PlotSelection>>,
 ) {
     // 1. 激活相机 + 投影度量。优先选择投影匹配模式的 `is_active` 相机
@@ -178,6 +178,10 @@ pub fn sync_visuals(
             }
         }
         Projection::Orthographic(_) => 0.0,
+        // Bevy 0.19 added `Projection::Custom`; the overlay cameras are only
+        // ever perspective or orthographic, and a custom projection has no
+        // fov to read back, so treat it as the flat case (see interaction.rs).
+        Projection::Custom(_) => 0.0,
     };
     let metrics = ViewMetrics {
         mode: ctx.mode,
@@ -355,7 +359,7 @@ pub fn sync_visuals(
                 }
                 if let Some(r) = root {
                     if root_bound != Some(active) {
-                        commands.entity(r).insert(TargetCamera(active));
+                        commands.entity(r).insert(UiTargetCamera(active));
                         root_bound = Some(active);
                     }
                     update_label(
@@ -596,8 +600,8 @@ fn update_polyline(
         entry.mesh_handle = Some(handle);
         entry.mat = Some(mat);
     } else if let Some(h) = entry.mesh_handle.clone() {
-        if let Some(m) = meshes.get_mut(&h) {
-            write_ribbon(m, &pos, &idx);
+        if let Some(mut m) = meshes.get_mut(&h) {
+            write_ribbon(&mut m, &pos, &idx);
         }
     }
 }
@@ -831,8 +835,8 @@ fn update_face(
         entry.outline_handle = Some(handle);
         entry.outline_mat = Some(mat);
     } else if let Some(h) = entry.outline_handle.clone() {
-        if let Some(m) = meshes.get_mut(&h) {
-            write_ribbon(m, &pos, &idx);
+        if let Some(mut m) = meshes.get_mut(&h) {
+            write_ribbon(&mut m, &pos, &idx);
         }
     }
 }

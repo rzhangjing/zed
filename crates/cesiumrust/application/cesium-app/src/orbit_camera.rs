@@ -24,7 +24,7 @@
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
-use bevy::render::view::RenderLayers;
+use bevy::camera::visibility::RenderLayers;
 use cesium_interaction::{
     compute_flight_duration, select_flight_easing, CameraFlight, InertiaController, InertiaSample,
     InertiaState, INERTIA_MAX_CLICK_TIME_THRESHOLD,
@@ -272,7 +272,7 @@ pub struct OrbitFlightState {
 ///
 /// 发送此事件以触发一次大圆航线飞行，其时长与缓动由领域的
 /// [`compute_flight_duration`] 和 [`select_flight_easing`] 自动导出。
-#[derive(Event)]
+#[derive(Message)]
 pub struct OrbitFlyToRequest {
     /// ECEF 米下的目标位置。
     pub destination_ecef: DVec3,
@@ -480,7 +480,7 @@ impl Plugin for OrbitCameraPlugin {
             .init_resource::<OrbitTilt>()
             .init_resource::<OrbitZoomDrag>()
             .init_resource::<CameraGesture>()
-            .add_event::<OrbitFlyToRequest>()
+            .add_message::<OrbitFlyToRequest>()
             .add_systems(Startup, spawn_orbit_camera)
             .add_systems(
                 Update,
@@ -907,8 +907,8 @@ fn apply_tilt_drag(
 fn orbit_camera_system(
     mut state: ResMut<OrbitState>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut motion_events: EventReader<MouseMotion>,
-    mut wheel_events: EventReader<MouseWheel>,
+    mut motion_events: MessageReader<MouseMotion>,
+    mut wheel_events: MessageReader<MouseWheel>,
     time: Res<Time>,
     mut query: Query<&mut Transform, With<OrbitCamera>>,
     windows: Query<&Window>,
@@ -943,7 +943,7 @@ fn orbit_camera_system(
     // 位移必须在这里消费 —— 下面所有分支都会 `motion_events.clear()` 排空队列。
     let pressed = mouse_buttons.pressed(MouseButton::Left);
     let zoom_dragging = !pressed && mouse_buttons.pressed(ZOOM_DRAG_BUTTON);
-    let win = windows.get_single().ok();
+    let win = windows.single().ok();
     let win_h = win.map(|w| w.height()).unwrap_or(720.0);
     let cursor_y = win.and_then(|w| w.cursor_position()).map(|p| p.y);
     // 按下瞬间锚定「高于地表的距离」与光标纵坐标；松开 = 本次拖拽结束，
@@ -1019,7 +1019,7 @@ fn orbit_camera_system(
         // 尚不可查询那些帧的回退存活。两者都在下游拓宽到 f64。
         let bevy_ray = win.and_then(|w| {
             cameras
-                .get_single()
+                .single()
                 .ok()
                 .and_then(|(cam, ct)| cursor_ray_bevy(cam, ct, w))
         });
@@ -1143,7 +1143,7 @@ fn orbit_camera_system(
     // （CesiumJS `tilt3DOnEllipsoid`）。左键「抓地」旋转、滚轮/右键缩放都
     // 已在上面消费完本帧输入，因此这里再改位姿不会与它们打架。
     let win_size = windows
-        .get_single()
+        .single()
         .map(|w| (f64::from(w.width()), f64::from(w.height())))
         .unwrap_or((1280.0, 720.0));
     apply_tilt_drag(
@@ -1160,7 +1160,7 @@ fn orbit_camera_system(
     // 路径（与 arcball 前的基线字节相同）。倾斜多出来的旋转（相机不再注视
     // 地心那部分）挂在 [`OrbitTilt::aim`] 上；`tilt.engaged == false` 时
     // 完全不触碰朝向，因此无倾斜输入的路径逐字节不变。
-    if let Ok(mut transform) = query.get_single_mut() {
+    if let Ok(mut transform) = query.single_mut() {
         *transform = if arcball.engaged {
             transform_from_arcball(arcball.orientation.as_quat(), state.distance, state.target)
         } else {
@@ -1199,7 +1199,7 @@ fn orbit_inertia_system(
     // 用于弧度↔像素边界转换的窗口高度（领域 InertiaController 在像素
     // 空间滑行，参见 `inertia_pixel_scale`）。
     let win_h = windows
-        .get_single()
+        .single()
         .map(|w| w.height())
         .unwrap_or(720.0);
 
@@ -1271,7 +1271,7 @@ fn orbit_inertia_system(
                     let (h, p) = orbit_from_orientation(arcball.orientation);
                     state.heading = h;
                     state.pitch = p;
-                    if let Ok(mut transform) = query.get_single_mut() {
+                    if let Ok(mut transform) = query.single_mut() {
                         *transform = transform_from_arcball(
                             arcball.orientation.as_quat(),
                             state.distance,
@@ -1281,7 +1281,7 @@ fn orbit_inertia_system(
                 } else {
                     state.heading += d_heading;
                     state.pitch = (state.pitch + d_pitch).clamp(-1.5, 1.5);
-                    if let Ok(mut transform) = query.get_single_mut() {
+                    if let Ok(mut transform) = query.single_mut() {
                         *transform = compute_camera_transform(&state);
                     }
                 }
@@ -1458,7 +1458,7 @@ fn orbit_flight_system(
     mut state: ResMut<OrbitState>,
     time: Res<Time>,
     mut query: Query<&mut Transform, With<OrbitCamera>>,
-    mut fly_requests: EventReader<OrbitFlyToRequest>,
+    mut fly_requests: MessageReader<OrbitFlyToRequest>,
     mut arcball: ResMut<Arcball>,
 ) {
     // 处理新的 fly-to 请求。一次 fly-to 将控制权交回确定性的北向上球面
@@ -1482,7 +1482,7 @@ fn orbit_flight_system(
         state.pitch = pitch.clamp(-1.5, 1.5);
         state.distance = distance;
         state.target_distance = distance;
-        if let Ok(mut transform) = query.get_single_mut() {
+        if let Ok(mut transform) = query.single_mut() {
             *transform = compute_camera_transform(&state);
         }
     }
@@ -1930,9 +1930,9 @@ mod tests {
         for &(heading, pitch, distance) in &scripted {
             let mut app = App::new();
             app.add_plugins(MinimalPlugins)
-                .add_event::<MouseMotion>()
-                .add_event::<MouseWheel>()
-                .add_event::<OrbitFlyToRequest>()
+                .add_message::<MouseMotion>()
+                .add_message::<MouseWheel>()
+                .add_message::<OrbitFlyToRequest>()
                 .init_resource::<ButtonInput<MouseButton>>()
                 .init_resource::<OrbitInertiaState>()
                 .init_resource::<OrbitFlightState>()
@@ -2010,9 +2010,9 @@ mod tests {
         fn drag_app() -> App {
             let mut app = App::new();
             app.add_plugins(MinimalPlugins)
-                .add_event::<MouseMotion>()
-                .add_event::<MouseWheel>()
-                .add_event::<OrbitFlyToRequest>()
+                .add_message::<MouseMotion>()
+                .add_message::<MouseWheel>()
+                .add_message::<OrbitFlyToRequest>()
                 .init_resource::<ButtonInput<MouseButton>>()
                 .init_resource::<OrbitInertiaState>()
                 .init_resource::<OrbitFlightState>()
@@ -2050,8 +2050,8 @@ mod tests {
                     .press(ZOOM_DRAG_BUTTON);
                 for _ in 0..frames {
                     app.world_mut()
-                        .resource_mut::<Events<MouseMotion>>()
-                        .send(MouseMotion {
+                        .resource_mut::<Messages<MouseMotion>>()
+                        .write(MouseMotion {
                             delta: Vec2::new(0.0, dy),
                         });
                     app.update();
@@ -2130,9 +2130,9 @@ mod tests {
     fn right_drag_marks_camera_gesture() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
-            .add_event::<MouseMotion>()
-            .add_event::<MouseWheel>()
-            .add_event::<OrbitFlyToRequest>()
+            .add_message::<MouseMotion>()
+            .add_message::<MouseWheel>()
+            .add_message::<OrbitFlyToRequest>()
             .init_resource::<ButtonInput<MouseButton>>()
             .init_resource::<OrbitInertiaState>()
             .init_resource::<OrbitFlightState>()
@@ -2159,8 +2159,8 @@ mod tests {
             .resource_mut::<ButtonInput<MouseButton>>()
             .press(ZOOM_DRAG_BUTTON);
         app.world_mut()
-            .resource_mut::<Events<MouseMotion>>()
-            .send(MouseMotion {
+            .resource_mut::<Messages<MouseMotion>>()
+            .write(MouseMotion {
                 delta: Vec2::new(0.0, -72.0),
             });
         app.update();
@@ -2514,9 +2514,9 @@ mod tests {
     fn middle_drag_end_to_end_tilts_camera() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
-            .add_event::<MouseMotion>()
-            .add_event::<MouseWheel>()
-            .add_event::<OrbitFlyToRequest>()
+            .add_message::<MouseMotion>()
+            .add_message::<MouseWheel>()
+            .add_message::<OrbitFlyToRequest>()
             .init_resource::<ButtonInput<MouseButton>>()
             .init_resource::<OrbitInertiaState>()
             .init_resource::<OrbitFlightState>()
@@ -2549,8 +2549,8 @@ mod tests {
             .resource_mut::<ButtonInput<MouseButton>>()
             .press(TILT_DRAG_BUTTON);
         app.world_mut()
-            .resource_mut::<Events<MouseMotion>>()
-            .send(MouseMotion {
+            .resource_mut::<Messages<MouseMotion>>()
+            .write(MouseMotion {
                 delta: Vec2::new(0.0, -72.0),
             });
         app.update();

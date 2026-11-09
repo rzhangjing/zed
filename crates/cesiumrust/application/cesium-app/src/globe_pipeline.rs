@@ -563,7 +563,7 @@ pub(crate) fn run(
             mgr.effective_tex.insert(key, tex_handle.clone());
             mgr.effective_uv.insert(key, [0.0, 0.0, 1.0, 1.0]);
             if let Some(mat_handle) = mgr.gpu_materials.get(&key) {
-                if let Some(mat) = materials.get_mut(mat_handle) {
+                if let Some(mut mat) = materials.get_mut(mat_handle) {
                     mat.base_color_texture = Some(tex_handle);
                     mat.base_color = Color::WHITE;
                 }
@@ -1087,8 +1087,8 @@ pub(crate) fn run_base_sphere_composite(
             base_sphere::make_clamped_image(images, chain, COMPOSITE_SIZE, COMPOSITE_SIZE, levels);
         // 找到底球实体材质，换上合成影像作为基础色纹理。
         mgr.composite_texture = Some(handle.clone());
-        if let Ok(mat) = sphere.get_single() {
-            if let Some(m) = materials.get_mut(&mat.0) {
+        if let Ok(mat) = sphere.single() {
+            if let Some(mut m) = materials.get_mut(&mat.0) {
                 m.base_color = Color::WHITE;
                 m.base_color_texture = Some(handle);
             }
@@ -1120,7 +1120,11 @@ pub(crate) fn run_base_sphere_composite(
                 let w = img.texture_descriptor.size.width;
                 let h = img.texture_descriptor.size.height;
                 // 无纹理的基根瓦片：用海洋纯色块占位。
-                base_sphere::box_downsample(&img.data[..(w * h * 4) as usize], w, COMPOSITE_TILE)
+                // Bevy 0.19 made `Image::data` optional; a tile we uploaded
+                // ourselves always keeps its CPU copy.
+                let data = img.data.as_deref().unwrap_or(&[]);
+                let len = ((w * h * 4) as usize).min(data.len());
+                base_sphere::box_downsample(&data[..len], w, COMPOSITE_TILE)
             })
             .unwrap_or_else(base_sphere::ocean_block);
         blocks.push((k.0, k.1, block));
