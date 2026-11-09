@@ -1,0 +1,49 @@
+[package]
+name = "rustgis_zed"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Adapter between Zed and the RustGIS library layers (L0-L5): headless map engine, rendering and command dispatch"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+# This crate is the only bridge between Zed and `crates/rustgis`. Zed itself depends on this
+# crate alone (never on a `rustgis-*` layer), so the layering of the copied tree stays intact.
+#
+# Every dependency below is a path dependency into the excluded `crates/rustgis` workspace. Those
+# crates are verbatim upstream (see `upstream.sha256`); nothing here may change them.
+#
+# `rustgis-ui-egui` (L6) is deliberately absent: it is the only layer that pulls egui/wgpu/winit,
+# and Zed draws the map itself from the RGBA buffer `MapEngine::render_rgba` returns.
+#
+# Grown in stages, one `cargo check -p rustgis_zed` per stage (see `README.md`):
+# stage 1 = L0 geom, L1 data, L2 map/tiles, L3 render, L4 engine;
+# stage 2 = L2 analysis and keychain; stage 3 = L3 plugins and geolibre; stage 4 = L5 assistant.
+# Every crate of the copied tree is linked, so nothing in its dependency graph is left unbuilt.
+[dependencies]
+# L0-L2
+rustgis-geom = { path = "../rustgis/crates/geom" }
+rustgis-data = { path = "../rustgis/crates/data" }
+rustgis-map = { path = "../rustgis/crates/map" }
+rustgis-tiles = { path = "../rustgis/crates/tiles" }
+# L2 geoprocessing tools and the OS secret store.
+rustgis-analysis = { path = "../rustgis/crates/analysis" }
+rustgis-keychain = { path = "../rustgis/crates/keychain" }
+# L3
+rustgis-render = { path = "../rustgis/crates/render" }
+rustgis-plugins = { path = "../rustgis/crates/plugins" }
+rustgis-geolibre = { path = "../rustgis/crates/geolibre" }
+# L4 (reaches L2 `analysis` and L3 `plugins` in turn)
+rustgis-engine = { path = "../rustgis/crates/engine" }
+# L5
+rustgis-assistant = { path = "../rustgis/crates/assistant" }
+
+# tiny-skia's `Pixmap` is the renderer's output type, so it is part of this crate's public API.
+tiny-skia = "0.12"
+serde_json = { version = "1" }
+log = "0.4"
+# Frames become `image::RgbaImage`/PNG for hosts (and for the headless proof) that do not want to
+# know about `tiny-skia` at all.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }

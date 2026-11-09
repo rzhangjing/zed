@@ -290,6 +290,7 @@ pub fn app_menus(cx: &mut App) -> Vec<Menu> {
                 MenuItem::action("Plot", zed_actions::OpenPlot),
                 MenuItem::action("Admin Demo", zed_actions::OpenAdminDemo),
                 MenuItem::action("Model Test", zed_actions::OpenModelTest),
+                MenuItem::action("RustGIS", zed_actions::OpenRustGis),
                 MenuItem::separator(),
                 MenuItem::action("File Bug Report...", zed_actions::feedback::FileBugReport),
                 MenuItem::action("Request Feature...", zed_actions::feedback::RequestFeature),

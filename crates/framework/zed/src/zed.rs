@@ -21,6 +21,9 @@ mod octos;
 /// `Help > Plot`.
 pub mod plot;
 mod quick_action_bar;
+/// The RustGIS map window, opened from `Help > RustGIS`: the upstream RustGIS
+/// layers (`crates/rustgis`, untouched) drawn through the `rustgis_zed` adapter.
+pub mod rustgis;
 #[cfg(all(target_os = "macos", feature = "visual-tests"))]
 pub mod visual_tests;
 #[cfg(target_os = "windows")]
@@ -325,6 +328,9 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &zed_actions::OpenModelTest, cx| {
         model_test::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenRustGis, cx| {
+        rustgis::open(cx);
     });
 
     // The Octos kernel is started here, as a library inside this process rather
@@ -362,6 +368,13 @@ pub fn init(cx: &mut App) {
     // trains is what is being checked, and clicking through `Help` is not part of
     // it. `ZED_MODELTEST_RUN` / `ZED_MODELTEST_EPOCHS` make such a check scriptable.
     model_test::init(cx);
+
+    // The RustGIS map window is opened from `Help > RustGIS`; this is only its
+    // startup override (`ZED_RUSTGIS_OPEN`), and a no-op otherwise. Same reason as
+    // the windows above: whether the map really draws the sample project in this
+    // process is what is being checked, and clicking through `Help` is not part of
+    // it. `ZED_RUSTGIS_LOAD` adds a GeoJSON layer for a scripted check.
+    rustgis::init(cx);
 
     // Same startup override shape as `ZED_ABOUT_OPEN` above and `ZED_DAMENG_OPEN`
     // in `dameng`: it exists because checking that the gallery's real window

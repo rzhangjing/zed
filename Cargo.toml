@@ -407,6 +407,18 @@ members = [
     # own `[workspace]` root and is `exclude`d below so cargo cannot adopt it.
     #
     "crates/fundamental/ew_types",
+    #
+    # RustGIS (路线 A：库式集成)
+    #
+    # `crates/rustgis` is a verbatim copy of RustGIS 0.6.0 and keeps its own
+    # `[workspace]` root: every crate under it inherits `version`/`edition`/
+    # `license`/`rust-version` and `[workspace.lints]` from that manifest, and
+    # it is `exclude`d below so cargo never adopts those crates here. Only
+    # `crates/rustgis-zed` is a member: it is the thin adapter crate that Zed
+    # depends on, and it reaches the RustGIS layers through path dependencies
+    # into the excluded tree (same shape as `crates/admin` above).
+    #
+    "crates/rustgis-zed",
 ]
 default-members = ["crates/framework/zed"]
 
@@ -431,6 +443,17 @@ exclude = [
     # pulls `cubecl-cpu -> cubecl-llvm -> liblzma-sys` (which conflicts with
     # `zip -> xz2 -> lzma-sys` over `links = "lzma"`).
     "tools/cubecl-patch",
+    # Published `toasty-driver-sqlite 0.11.0` with its `rusqlite` requirement moved
+    # from 0.40 to 0.41, so `crates/admin`'s `toasty` no longer drags a second
+    # `libsqlite3-sys` (which `links = "sqlite3"` forbids) into the graph.
+    "tools/toasty-sqlite-patch",
+    # RustGIS 0.6.0, copied in whole and kept byte-identical (see
+    # `crates/rustgis-zed/upstream.sha256`). It is its own workspace root with
+    # `resolver = "3"`, `edition = "2024"`, `rust-version = "1.90"` and
+    # `[workspace.lints]`, so its crates must resolve their `workspace = true`
+    # keys against that manifest instead of this one. `crates/rustgis-zed` is
+    # the only member that reaches into it.
+    "crates/rustgis",
 ]
 
 [workspace.package]
@@ -985,13 +1008,13 @@ jupyter-websocket-client = "1.1.0"
 # `nightly-kmeans` feature, so the pinned stable workspace never compiles it.
 kmeans = "2.0.2"
 libc = "0.2"
-# Bumped from 0.30.1 by the Octos merge: Octos' `rusqlite 0.40` requires
-# `libsqlite3-sys ^0.38.1`, and both crates declare `links = "sqlite3"`, so only
-# one version may be in the graph. `sqlez` (the only consumer here) still
-# compiles against 0.38.2 — every SQLite identifier it uses (45 of them, via
-# `use libsqlite3_sys::*` plus `sqlite3_exec`) exists in both versions, and the
-# `bundled` feature is unchanged.
-libsqlite3-sys = { version = "0.38.2", features = ["bundled"] }
+# Bumped from 0.30.1 by the Octos merge, then to 0.39 for RustGIS 0.6.0:
+# RustGIS pins `rusqlite 0.41`, which requires `libsqlite3-sys ^0.39`, and both
+# crates declare `links = "sqlite3"`, so only one version may be in the graph.
+# `sqlez` (Zed's only direct consumer) compiles against 0.39 unchanged — every
+# SQLite identifier it uses (45 of them, via `use libsqlite3_sys::*` plus
+# `sqlite3_exec`) exists there too, and the `bundled` feature is unchanged.
+libsqlite3-sys = { version = "0.39.1", features = ["bundled"] }
 linfa-clustering = "0.8.1"
 linkify = "0.10.0"
 log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
@@ -1298,9 +1321,14 @@ htmd = "0.5"
 
 # Storage, search and data
 redb = "2"
-# Keep the fleet ledger's checked u64/usize conversions on the 0.40 bindings.
-# This dependency requires Rust 1.88 or newer; the workspace MSRV is still stale.
-rusqlite = { version = "0.40.1", features = ["bundled", "fallible_uint"] }
+# Shared with RustGIS 0.6.0 (`crates/rustgis`), which pins `rusqlite 0.41` +
+# `libsqlite3-sys 0.39`; `links = "sqlite3"` allows only one of each in the
+# graph, so this workspace moved to the same versions. The Octos fleet ledger
+# keeps `fallible_uint`, whose checked u64/usize conversions are unchanged.
+rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
+# The RustGIS adapter layer (map/render/engine + L0–L5). Zed depends only on
+# this crate, never on a `rustgis-*` layer directly.
+rustgis_zed = { path = "crates/rustgis-zed" }
 bincode = "1"
 hnsw_rs = "0.3"
 gix = { version = "0.79", default-features = false, features = ["max-performance-safe", "revision", "blob-diff"] }
@@ -1481,6 +1509,14 @@ burn-candle = { path = "tools/stubs/burn-candle" }
 # the `cubecl` core crates (`cubecl-core`, `-runtime`, `-std`, `-ir`, ...) are
 # untouched. See `tools/cubecl-patch/`.
 cubecl = { path = "tools/cubecl-patch" }
+# `toasty-driver-sqlite 0.11.0` (reached from `crates/admin` through `toasty 0.11`)
+# is the last consumer of `rusqlite 0.40` in this graph, and `libsqlite3-sys`
+# declares `links = "sqlite3"`, which allows only one version: RustGIS 0.6.0
+# (`crates/rustgis`) pins `rusqlite 0.41` / `libsqlite3-sys 0.39`. The patched
+# copy is the published crate with `[dependencies.rusqlite] 0.40 -> 0.41` and
+# nothing else; its rusqlite surface is unchanged between the two versions.
+# See `tools/toasty-sqlite-patch/`. Drop this when upstream releases on 0.41.
+toasty-driver-sqlite = { path = "tools/toasty-sqlite-patch" }
 
 [profile.dev]
 split-debuginfo = "unpacked"

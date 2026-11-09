@@ -1,0 +1,74 @@
+name: Python tests
+
+# The `rustgis` Python package built and tested on each runner in `os` (a JSON list): Linux on
+# every supported Python, other platforms on the newest. For the Python package workflow and
+# CI on label.
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: Runners to test on, as a JSON list
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Pythons
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.include.outputs.include }}
+    steps:
+      - id: include
+        env:
+          OS: ${{ inputs.os }}
+        run: |
+          echo "include=$(jq -c 'map(if . == "ubuntu-latest" then ("3.12", "3.13", "3.14") as $p | {os: ., python: $p} else {os: ., python: "3.14"} end)' <<<"$OS")" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.include) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          # Only main saves the cache (see test-rust.yml).
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python }}
+      # rustgis.qt's tests need Qt WebEngine: one Linux job installs it (a large download) and
+      # fails, rather than skips them, when it can't be imported.
+      - name: Install Qt system libraries
+        if: runner.os == 'Linux' && matrix.python == '3.12'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libegl1 libxkbcommon0 libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libasound2t64
+          echo "RUSTGIS_TEST_QT=1" >> "$GITHUB_ENV"
+      # Inject stores only in this test build; distributed wheels keep default features.
+      - name: Build and install
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          # pyogrio, which geopandas needs, has no Windows ARM64 wheel and won't build without GDAL.
+          extras="test"
+          if [ "$RUNNER_OS $RUNNER_ARCH" != "Windows ARM64" ]; then extras="$extras,geopandas"; fi
+          if [ "${RUSTGIS_TEST_QT:-}" = "1" ]; then extras="$extras,qt"; fi
+          python -m pip install "./apps/rustgis-python[$extras]" --config-settings="build-args=--features test-stores"
+      - name: Test
+        working-directory: apps/rustgis-python
+        run: python -m pytest -q

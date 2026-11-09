@@ -1,0 +1,63 @@
+name: Rust tests
+
+# The workspace's tests and layering check on each runner in `os` (a JSON list), for CI and CI on
+# label, and the release build of the apps as well for the nightly run.
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: Runners to test on, as a JSON list
+        required: true
+        type: string
+      release-build:
+        description: Also build the apps in release mode (slow, so nightly and `ci:full` only)
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # RUSTFLAGS replaces the `rustflags` in .cargo/config.toml, so Windows repeats the static C
+    # runtime the release builds link.
+    env:
+      RUSTFLAGS: ${{ startsWith(matrix.os, 'windows') && '-D warnings -C target-feature=+crt-static' || '-D warnings' }}
+      # Line tables, not full debug info: backtraces keep their files and lines, and the test
+      # builds compile, link and cache faster (Windows is slow to write the debug info).
+      CARGO_PROFILE_DEV_DEBUG: line-tables-only
+      # At the dev profile's opt-level 1, safe code in rustgis-render corrupts the heap on Windows
+      # ARM64, and only at that level: a compiler bug, it seems (#1222).
+      CARGO_PROFILE_DEV_OPT_LEVEL: ${{ matrix.os == 'windows-11-arm' && '2' || '1' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          # Pull requests restore main's cache but don't save their own: saving takes minutes on
+          # Windows, and pull request caches crowd main's out of the repository's cache space. A
+          # run with the release build (the nightly, `ci:full`) restores it too and saves nothing:
+          # its own cache would hold the release build as well, and one used once a night is
+          # evicted before the next.
+          save-if: ${{ github.ref == 'refs/heads/main' && !inputs.release-build }}
+      - name: Tests
+        run: cargo test --workspace --locked
+      - name: Layering check
+        run: cargo xtask layers
+      - name: Build release apps
+        if: inputs.release-build
+        run: cargo build --release --locked -p rustgis -p rustgis-cli

@@ -10,11 +10,14 @@ keywords = ["audit", "operation-log", "middleware", "sqlite"]
 categories = ["database"]
 
 [dependencies]
-rusqlite = { version = "0.40", features = ["bundled"] }
+# Kept in step with the workspace's `rusqlite` (0.41): `libsqlite3-sys` declares
+# `links = "sqlite3"`, so a second, differently-versioned rusqlite anywhere in
+# the graph is a hard error. RustGIS 0.6.0 (`crates/rustgis`) pins 0.41.
+rusqlite = { version = "0.41", features = ["bundled"] }
 thiserror = "2"
 time = { version = "0.3", features = ["formatting"] }
 
 [dev-dependencies]
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting"] }

@@ -203,6 +203,12 @@ release_channel.workspace = true
 reqwest.workspace = true
 reqwest_client.workspace = true
 rope.workspace = true
+# The RustGIS adapter (`src/zed/rustgis.rs`, `Help > RustGIS`). This is the **only**
+# edge from Zed to RustGIS: the map, renderer and command engine behind it are the
+# upstream layers copied into `crates/rustgis`, which `rustgis_zed` reaches by path.
+# `rustgis-ui-egui` (L6: egui/wgpu/winit) is deliberately not part of it — the window
+# draws the RGBA buffer itself.
+rustgis_zed.workspace = true
 sandbox.workspace = true
 search.workspace = true
 serde.workspace = true

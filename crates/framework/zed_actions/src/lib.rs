@@ -71,6 +71,8 @@ actions!(
         OpenAdminDemo,
         /// Opens the model test window: build/train/test the `crates/models` demo.
         OpenModelTest,
+        /// Opens the RustGIS map window: the RustGIS library layers, drawn in process.
+        OpenRustGis,
         /// Opens the Zed status page.
         OpenStatusPage,
         /// Opens the Zed merch store.
