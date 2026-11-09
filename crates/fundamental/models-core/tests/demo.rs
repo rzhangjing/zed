@@ -1,20 +1,35 @@
-//! Integration tests for the Burn demo.
+//! Integration tests for the Burn demo library.
 //!
-//! All four tests run on the pure-Rust CPU backend and stay well under a second
-//! each once the crate is compiled:
+//! All tests run on the pure-Rust CPU backend and stay well under a second each
+//! once the crate is compiled:
 //!
 //! 1. `forward_shape` — the model maps `[2, 1, 8, 8]` to `[2, 4]`.
 //! 2. `synthetic_data_is_deterministic` — same seed, same bytes; different seed, different data.
 //! 3. `checkpoint_round_trip_preserves_parameters` — save/load reproduces the record exactly.
 //! 4. `single_training_step` — one `TrainStep` forward/backward/optimize cycle runs.
+//! 5. `cancelled_training_returns_immediately` — a pre-set token stops before any work.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 use burn::optim::AdamConfig;
 use burn::prelude::*;
 use burn::train::TrainStep;
 
-use models::data::{self, Dataset};
-use models::model::CnnTransformer;
-use models::train::{batch, image_tensor, inference_device, label_tensor, training_device};
+use models_core::data::{self, Dataset};
+use models_core::model::CnnTransformer;
+use models_core::train::{
+    DEFAULT_CHECKPOINT, TrainArgs, batch, image_tensor, inference_device, label_tensor,
+    training_device, train,
+};
+
+fn tmp_dir() -> PathBuf {
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
+    std::fs::create_dir_all(&dir).expect("create target tmp dir");
+    dir
+}
 
 fn fixed_images(device: &Device) -> Tensor<4> {
     let pixels: Vec<f32> = (0..2 * data::CHANNELS * data::IMAGE_SIZE * data::IMAGE_SIZE)
@@ -82,9 +97,17 @@ fn synthetic_data_is_deterministic() {
 fn checkpoint_round_trip_preserves_parameters() {
     let device = inference_device();
     let model = CnnTransformer::new(&device);
-    let dir = std::env::temp_dir();
-    let original = dir.join(format!("models-roundtrip-original-{}.bpk", std::process::id()));
-    let reloaded = dir.join(format!("models-roundtrip-reloaded-{}.bpk", std::process::id()));
+    // The workspace's own `target/` tmp dir, never the repository tree or the
+    // system temp directory.
+    let dir = tmp_dir();
+    let original = dir.join(format!(
+        "models-core-roundtrip-original-{}.bpk",
+        std::process::id()
+    ));
+    let reloaded = dir.join(format!(
+        "models-core-roundtrip-reloaded-{}.bpk",
+        std::process::id()
+    ));
 
     model.clone().into_record().save(&original).expect("save");
     let loaded = CnnTransformer::new(&device)
@@ -129,7 +152,7 @@ fn single_training_step() {
     let images = slice_images(&dataset, &device, 0, 8);
     let labels = label_tensor(&dataset, &device).slice([0..8]);
 
-    let output = model.step(models::Batch {
+    let output = model.step(models_core::Batch {
         images,
         targets: labels,
     });
@@ -140,7 +163,7 @@ fn single_training_step() {
     let mut optim = AdamConfig::new().init();
     model = model.optimize(&mut optim, 3e-3.into(), output.grads);
 
-    let eval = models::train::evaluate(&model, &dataset, &device, 64);
+    let eval = models_core::train::evaluate_dataset(&model, &dataset, &device, 64);
     assert_eq!(eval.samples, dataset.len());
     assert!((0.0..=1.0).contains(&eval.accuracy));
     let total: usize = eval.confusion.iter().flatten().sum();
@@ -155,11 +178,54 @@ fn batch_helper_covers_every_sample_once() {
     assert_eq!(covered, dataset.len());
     assert!(ranges.iter().all(|(start, end)| start < end));
 
-    // Unused here, but this keeps `batch` covered from the tests that build tensors.
     let device = inference_device();
     let images = image_tensor(&dataset, &device);
     let labels = label_tensor(&dataset, &device);
     let first = batch(&images, &labels, ranges[0].0, ranges[0].1);
     assert_eq!(first.images.dims(), [32, 1, 8, 8]);
     assert_eq!(first.targets.dims(), [32]);
+}
+
+#[test]
+fn cancelled_training_returns_immediately() {
+    let cancel = AtomicBool::new(true);
+    let mut lines = Vec::new();
+    let args = TrainArgs::new(2, 32, 42, 3e-3, DEFAULT_CHECKPOINT);
+    let error = train(&args, &mut |line| lines.push(line.to_owned()), &cancel)
+        .expect_err("a pre-set token must cancel before training starts");
+    assert!(error.is_cancelled());
+    assert!(lines.is_empty(), "cancelled before the first progress line");
+}
+
+#[test]
+fn cancelling_mid_training_stops_before_the_checkpoint() {
+    let dir = tmp_dir();
+    let checkpoint = dir.join(format!("models-core-cancel-{}.bpk", std::process::id()));
+    let _ = std::fs::remove_file(&checkpoint);
+
+    let cancel = Arc::new(AtomicBool::new(false));
+    let worker_cancel = cancel.clone();
+    let worker_checkpoint = checkpoint.clone();
+    let worker = std::thread::spawn(move || {
+        let args = TrainArgs::new(100, 32, 42, 3e-3, worker_checkpoint);
+        let mut lines = Vec::new();
+        let result = train(&args, &mut |line| lines.push(line.to_owned()), &worker_cancel);
+        (result, lines)
+    });
+
+    // Let the worker enter training, then flip the token from this thread.
+    std::thread::sleep(Duration::from_millis(150));
+    cancel.store(true, Ordering::SeqCst);
+
+    let (result, lines) = worker.join().expect("training thread panicked");
+    let error = result.expect_err("a cancelled run must return Err");
+    assert!(error.is_cancelled(), "{error}");
+    assert!(
+        !checkpoint.exists(),
+        "a cancelled run must not write a checkpoint"
+    );
+    assert!(
+        lines.iter().any(|line| line.contains("parameters")),
+        "the run must have started before it was cancelled"
+    );
 }

@@ -378,6 +378,14 @@ members = [
     # dependencies against that manifest instead of this one.
     #
     "crates/fundamental/clustering",
+    # The Burn CNN + Transformer demo as a library (`models_core`): the business
+    # logic behind the `crates/models` CLI and the in-process Model Test window
+    # (`crates/framework/zed/src/zed/model_test.rs`).
+    "crates/fundamental/models-core",
+    # The `models` CLI (`train` / `test` / `cluster`) over `models_core`. It used
+    # to be an excluded, self-contained workspace with its own lock and vendor;
+    # it is now an ordinary member so the repository has a single dependency graph.
+    "crates/models",
     "crates/fundamental/ew_ordpack",
     "crates/fundamental/ew_ordpack/ew_ordpack_derive",
     #
@@ -418,11 +426,11 @@ exclude = [
     "crates/topcoat",
     "crates/fundamental/ew_types/demo",
     "crates/module_loader",
-    # Burn demo: its own workspace root with a crate-local `vendor/`
-    # (`crates/models/.cargo/config.toml`). Excluding it keeps cargo from
-    # adopting it as a member, which would force this workspace's
-    # crates-io `vendor/` source replacement onto its Burn dependencies.
-    "crates/models",
+    # Patched copy of `cubecl 0.11.3` with its optional GPU/LLVM backends
+    # removed; used through `[patch.crates-io]` below so the resolver never
+    # pulls `cubecl-cpu -> cubecl-llvm -> liblzma-sys` (which conflicts with
+    # `zip -> xz2 -> lzma-sys` over `links = "lzma"`).
+    "tools/cubecl-patch",
 ]
 
 [workspace.package]
@@ -465,6 +473,12 @@ client = { path = "crates/framework/client" }
 # `clock`, and a workspace cannot hold two packages with one name. The key stays
 # `clock`, so every `clock.workspace = true` dependent is unaffected.
 clock = { path = "crates/framework/clock", package = "zed-clock" }
+# The clustering library is also a direct dependency of `models_core`; the Model
+# Test window reaches it in-process through that crate instead of spawning the
+# `models` binary. `nightly-kmeans` stays off for the whole workspace: the pinned
+# stable toolchain would reject `kmeans 2.0.2`, so the `kmeans` algorithm reports
+# itself as unavailable unless a nightly toolchain (or RUSTC_BOOTSTRAP) is used.
+clustering = { path = "crates/fundamental/clustering" }
 collections = { path = "crates/framework/collections", version = "0.1.0" }
 command_palette = { path = "crates/framework/command_palette" }
 command_palette_hooks = { path = "crates/framework/command_palette_hooks" }
@@ -534,6 +548,10 @@ menu = { path = "crates/framework/menu" }
 mermaid_render = { path = "crates/framework/mermaid_render" }
 migrator = { path = "crates/framework/migrator" }
 miniprofiler_ui = { path = "crates/framework/miniprofiler_ui" }
+# Burn CNN + Transformer demo, in-process: the Model Test window calls
+# `models_core::train/evaluate/run_cluster` on a background executor instead of
+# spawning `models.exe`. The `crates/models` member is a thin CLI over this crate.
+models_core = { path = "crates/fundamental/models-core" }
 multi_buffer = { path = "crates/framework/multi_buffer" }
 net = { path = "crates/framework/net" }
 node_runtime = { path = "crates/framework/node_runtime" }
@@ -830,6 +848,15 @@ bitflags = "2.6.0"
 block = "0.1"
 block2 = "0.6"
 brush-parser = "0.3"
+# Burn 0.22 core stack for `models_core` (the in-process Model Test demo).
+# Defaults are off so a member can pick exactly the CPU-only feature set:
+# `models-core` enables std/train/dataset/autodiff/vision/store/ndarray, which
+# keeps every GPU backend (wgpu/cuda/rocm/metal) out of the build. The crates are
+# vendored under the root `vendor/` directory.
+burn = { version = "0.22", default-features = false }
+# NdArray CPU backend. Its defaults (std + simd + multi-threads) are what the
+# demo is developed and tested against.
+burn-ndarray = "0.22"
 bytes = "1.0"
 cargo_metadata = "0.19"
 cbindgen = { version = "0.28.0", default-features = false }
@@ -934,9 +961,7 @@ jupyter-protocol = "1.4.0"
 jupyter-websocket-client = "1.1.0"
 # Nightly-only upstream: 2.0.2 ships `#![feature(portable_simd)]` and
 # `extern crate test`. The `clustering` crate keeps it behind the
-# `nightly-kmeans` feature, so the pinned stable workspace gates do not compile
-# it; `crates/models` enables the feature and sets RUSTC_BOOTSTRAP=1 in its own
-# `.cargo/config.toml`.
+# `nightly-kmeans` feature, so the pinned stable workspace never compiles it.
 kmeans = "2.0.2"
 libc = "0.2"
 # Bumped from 0.30.1 by the Octos merge: Octos' `rusqlite 0.40` requires
@@ -959,6 +984,10 @@ minidumper = "0.11"
 moka = { version = "0.12.10", features = ["sync"] }
 nanoid = "0.4"
 nbformat = "1.2.0"
+# The numeric array type shared by `clustering` / linfa (`0.16`). `models_core`
+# names it directly at the same version linfa uses; `burn-ndarray` pulls
+# `0.17` separately, which the root lock already carried.
+ndarray = "0.16"
 nix = "0.30"
 # Used by gpui-kit's gpui-component to watch theme files. Pinned to the same
 # release candidate `crates/framework/fs` uses so the `[patch.crates-io]` entry below
@@ -1415,6 +1444,22 @@ windows-capture = { git = "https://github.com/zed-industries/windows-capture.git
 calloop = { git = "https://github.com/zed-industries/calloop" }
 notify = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
 notify-types = { git = "https://github.com/zed-industries/notify", rev = "d842f16b2716bd60f09caf3ae3a894237ab38f54" }
+# Burn 0.22's optional GPU/backends are never enabled here (`models_core` only
+# turns on `std/train/dataset/autodiff/vision/store/ndarray`), but Cargo still
+# resolves optional dependencies into `Cargo.lock`. `burn-tch` would drag in
+# `torch-sys`/`tch` (libtorch downloaded at build time) and pin `libc ^0.2.189`;
+# `burn-candle` would drag in the Candle tree. Both are replaced by empty,
+# dependency-free stubs under `tools/stubs/` so the lock stays small and
+# reproducible. See those crates' `src/lib.rs` for the rationale.
+burn-tch = { path = "tools/stubs/burn-tch" }
+burn-candle = { path = "tools/stubs/burn-candle" }
+# Keeps `cubecl`'s optional backends (cpu/llvm, cuda, hip, metal, wgpu) out of
+# the resolver: `cubecl-cpu -> cubecl-llvm -> liblzma-sys` collides with
+# `zip -> xz2 -> lzma-sys` (both declare `links = "lzma"`). The patch only
+# removes `[dependencies.cubecl-*]` blocks and empties the matching features;
+# the `cubecl` core crates (`cubecl-core`, `-runtime`, `-std`, `-ir`, ...) are
+# untouched. See `tools/cubecl-patch/`.
+cubecl = { path = "tools/cubecl-patch" }
 
 [profile.dev]
 split-debuginfo = "unpacked"

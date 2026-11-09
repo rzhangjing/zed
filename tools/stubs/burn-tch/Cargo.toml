@@ -1,0 +1,19 @@
+[package]
+name = "burn-tch"
+version = "0.22.1"
+edition = "2021"
+publish = false
+description = "Empty stub for the deprecated Burn LibTorch backend (replaces crates.io burn-tch)."
+
+# Upstream burn-tch's feature names, kept so weak dependency features such as
+# `burn-tch?/std` and `burn-tch?/tracing` declared by `burn-dispatch` still
+# validate. They are all no-ops: the backend is never enabled or compiled.
+[features]
+default = ["std"]
+std = []
+tracing = []
+doc = []
+
+[lib]
+name = "burn_tch"
+path = "src/lib.rs"

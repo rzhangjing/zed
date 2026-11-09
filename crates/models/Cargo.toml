@@ -3,7 +3,7 @@ name = "models"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "Burn CNN + Transformer demo: 8x8 synthetic image classification"
+description = "Burn CNN + Transformer demo CLI (train / test / cluster) over models_core"
 
 [lib]
 name = "models"
@@ -14,36 +14,15 @@ name = "models"
 path = "src/main.rs"
 
 [dependencies]
-# Burn 0.22 core stack, no GPU backends. `tensor` is not a burn 0.22 feature
-# (it was removed/renamed); `store` gates `burn::store` (recorders).
-burn = { version = "0.22", default-features = false, features = [
-    "std",
-    "train",
-    "dataset",
-    "autodiff",
-    "vision",
-    "store",
-    "ndarray",
-] }
-# CPU backend: pure Rust (ndarray + matrixmultiply), no GPU/runtime deps.
-# Registered through burn's `ndarray` feature: `Device::ndarray()`.
-burn-ndarray = "0.22"
-serde = { version = "1", features = ["derive"] }
-rand = "0.8"
-clap = { version = "4", features = ["derive"] }
-
-# Pure-Rust clustering demos live in the root workspace's
-# `crates/fundamental/clustering` crate. Keeping the algorithms there and using
-# a path dependency here means the four third-party libraries are resolved once
-# at the repository root; this workspace does not carry a second set of direct
-# version requirements. `nightly-kmeans` is enabled because this workspace's
-# `.cargo/config.toml` opts into `RUSTC_BOOTSTRAP=1` for the nightly-only
-# `kmeans` 2.0.2 crate.
-clustering = { path = "../fundamental/clustering", features = ["nightly-kmeans"] }
-
-[profile.dev]
-# Keep the demo usable under `cargo run` while dependencies stay optimized.
-opt-level = 1
-
-[profile.dev.package."*"]
-opt-level = 3
+# All of the demo's logic (model, data, training loop, checkpoints and the
+# clustering bridge) lives in the root member `crates/fundamental/models-core`,
+# which is also what the Model Test window calls in-process. This crate is only
+# the CLI shell.
+#
+# `nightly-kmeans` stays off: the workspace builds with the pinned stable
+# toolchain, so `kmeans 2.0.2` cannot be compiled. `models cluster --algo kmeans`
+# therefore reports itself as unavailable, exactly like the Model Test window's
+# K-Means button. Everything else (the other seven clustering algorithms, Burn
+# training and evaluation) is unaffected.
+models_core.workspace = true
+clap.workspace = true

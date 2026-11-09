@@ -1,55 +1,48 @@
-//! `Help > Model Test`: build, train and test the `crates/models` Burn demo from
-//! a window, and watch the child process's own output while it runs.
+//! `Help > Model Test`: train, evaluate and cluster the Burn demo **in process**
+//! from a window, and watch its own progress while it runs.
 //!
-//! `crates/models` is a **separate** cargo workspace (Burn 0.22.1 + ndarray, its
-//! own `vendor/`, `artifacts/` and `target/`) with a CLI: `models train --epochs N
-//! --seed S` and `models test`, writing and reading `artifacts/model.bpk`. This
-//! module is a supervisor for that binary and nothing else: Zed never links Burn,
-//! and the dependency tree of `zed` does not change.
+//! The demo's implementation is the root-workspace crate `models_core`
+//! (`crates/fundamental/models-core`): the same library the separate
+//! `crates/models` workspace's CLI is a thin wrapper over. Zed now links Burn
+//! through that crate instead of spawning `models.exe`.
 //!
 //! ## Lifecycle
 //!
-//! `Build` / `Train` / `Test` spawn a child with `std::process::Command` and
-//! return immediately. Two reader threads pump the child's stdout and stderr,
-//! line by line, into an unbounded channel; a supervisor thread polls the child
-//! with `try_wait` (never holding the handle across a wait) and reports the exit
-//! status once both pipes have reached EOF. The window drains the channel on
-//! GPUI's executor, so no pipe read and no `wait` ever runs on the UI thread.
+//! `Train` / `Test` / each clustering button start an async task with
+//! `cx.background_spawn`; **no Burn call ever runs on the UI thread**. The task
+//! calls `models_core::train`, `models_core::evaluate` or
+//! `models_core::run_cluster` with a progress closure that forwards every line
+//! to an unbounded channel, and a `Stop`-visible cancellation token. The window
+//! drains the channel on GPUI's executor and appends the lines to [`LogRing`].
 //!
-//! `Train` / `Test` auto-build first when
-//! `crates/models/target/debug/models.exe` is missing: the window switches to
-//! [`Status::Building`], runs
-//! `cargo build --offline --manifest-path crates/models/Cargo.toml` **with
-//! `crates/models` as the working directory** (that is where the crate's
-//! vendored-sources `.cargo/config.toml`, `artifacts/` and `target/` resolve
-//! from), and starts the requested job only if the build succeeded.
-//!
-//! `Stop` kills the child through the shared handle; closing the window does the
-//! same in `Drop`, so a closed window never leaves a training run behind.
+//! `Stop` flips the `Arc<AtomicBool>` the training loop checks before every
+//! epoch and every mini-batch (and the clustering loop checks between
+//! algorithms); closing the window does the same in `Drop`.
 //!
 //! ## The log
 //!
-//! The newest [`LOG_CAPACITY`] lines of the child's two streams plus this
-//! module's own lifecycle lines. Every line is also written through `log::info!`
-//! / `log::error!` with a `[model-test]` prefix, so the same sequence is in
-//! `Zed.log`.
+//! The newest [`LOG_CAPACITY`] lines of progress plus this module's own
+//! lifecycle lines. Every line is also written through `log::info!` /
+//! `log::error!` with a `[model-test]` prefix, so the same sequence is in
+//! `Zed.log` when the build writes one.
 //!
 //! ## Verified shapes
 //!
-//! The status machine, the ring, the accuracy parser, the path derivation and the
-//! command lines are pure and are unit-tested below. `ZED_MODELTEST_OPEN=1` opens
-//! the window at startup (the menu path without the menu),
-//! `ZED_MODELTEST_RUN=train|test|cluster` presses the matching button once the
-//! window is up, and `ZED_MODELTEST_EPOCHS` overrides the epoch count for a
-//! scripted check. For the cluster hook, `ZED_MODELTEST_ALGO` selects the
+//! The status machine, the ring, the accuracy parser, the path derivation and
+//! the job descriptions are pure and are unit-tested below.
+//! `ZED_MODELTEST_OPEN=1` opens the window at startup (the menu path without the
+//! menu), `ZED_MODELTEST_RUN=train|test|cluster` presses the matching button
+//! once the window is up, and `ZED_MODELTEST_EPOCHS` overrides the epoch count
+//! for a scripted check. For the cluster hook, `ZED_MODELTEST_ALGO` selects the
 //! algorithm (`all` by default).
 
 use std::{
     collections::VecDeque,
-    io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Child, Command, ExitStatus, Stdio},
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -73,14 +66,14 @@ pub const ENV_OPEN: &str = "ZED_MODELTEST_OPEN";
 /// as the window opens.
 ///
 /// A scripted-verification hook, like [`ENV_OPEN`]: it runs the button's own
-/// handler, so checking that a real training run reaches `Done` does not need a
-/// click. Off by default.
+/// handler, so checking that a real in-process training run reaches `Done` does
+/// not need a click. Off by default.
 pub const ENV_RUN: &str = "ZED_MODELTEST_RUN";
 
 /// `ZED_MODELTEST_ALGO` — the clustering algorithm used by `ZED_MODELTEST_RUN=cluster`.
 ///
-/// Defaults to `all`, which runs the whole comparison table. Any value the
-/// `models cluster --algo` subcommand accepts works (`kmeans`, `linfa-kmeans`,
+/// Defaults to `all`, which runs the whole comparison table. Any value
+/// `models_core::run_cluster` accepts works (`kmeans`, `linfa-kmeans`,
 /// `linfa-dbscan`, `linfa-optics`, `linfa-gmm`, `smartcore-kmeans`,
 /// `smartcore-dbscan`, `hdbscan`, `all`).
 pub const ENV_ALGO: &str = "ZED_MODELTEST_ALGO";
@@ -97,38 +90,23 @@ pub const LOG_CAPACITY: usize = 500;
 /// The epoch count a fresh window starts with, and the seed every run passes.
 const DEFAULT_EPOCHS: usize = 3;
 const DEFAULT_SEED: u64 = 42;
-/// Points the cluster buttons pass to `models cluster --points`.
+/// Mini-batch size and Adam learning rate the window passes to `train`.
+const DEFAULT_BATCH_SIZE: usize = 32;
+const DEFAULT_LEARNING_RATE: f64 = 3e-3;
+/// Points the cluster buttons pass to `run_cluster`.
 const DEFAULT_CLUSTER_POINTS: usize = 600;
-/// Requested cluster count the cluster buttons pass to `models cluster --clusters`.
+/// Requested cluster count the cluster buttons pass to `run_cluster`.
 const DEFAULT_CLUSTER_CLUSTERS: usize = 3;
 
 /// How long the `ZED_MODELTEST_RUN` hook waits after the window opens before
 /// pressing its button, so the window is mapped and the theme is up.
 const AUTO_START_DELAY: Duration = Duration::from_millis(400);
 
-/// How often the supervisor thread polls the child for its exit status.
-///
-/// `try_wait` instead of `wait` is what lets `Stop` take the handle and kill
-/// without waiting on a process that is still running.
-const EXIT_POLL_INTERVAL: Duration = Duration::from_millis(25);
-
-/// How many stderr lines a failure message quotes.
-const STDERR_TAIL: usize = 3;
-
-/// How long one quoted stderr line may be, so a compiler dump does not turn the
-/// failure label into a wall of text.
-const STDERR_LINE_LIMIT: usize = 220;
-
-/// `CREATE_NO_WINDOW`: `cargo` and `models` are console-subsystem programs, and
-/// a GUI process spawning them would otherwise flash a console window.
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
 /// The repository root: `crates/framework/zed` three levels up.
 ///
 /// `env!("CARGO_MANIFEST_DIR")` is fixed at compile time and is the path this
-/// checkout was built from, which is the checkout whose `crates/models` the
-/// window is meant to drive.
+/// checkout was built from, which is the checkout whose `crates/models`
+/// artifacts the window shares with the CLI.
 pub fn repo_root() -> PathBuf {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     manifest_dir
@@ -138,38 +116,28 @@ pub fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// `crates/models`: the separate workspace the window supervises.
-pub fn models_dir() -> PathBuf {
-    repo_root().join("crates").join("models")
-}
-
-/// `crates/models/target/debug/models.exe` (`.exe` only where the platform has
-/// that suffix).
-pub fn models_exe() -> PathBuf {
-    models_dir()
-        .join("target")
-        .join("debug")
-        .join(format!("models{}", std::env::consts::EXE_SUFFIX))
-}
-
-/// `crates/models/artifacts/model.bpk`, for the footer.
+/// `crates/models/artifacts/model.bpk`: the checkpoint the CLI and this window
+/// both read and write.
 pub fn checkpoint_path() -> PathBuf {
-    models_dir().join("artifacts").join("model.bpk")
+    repo_root()
+        .join("crates")
+        .join("models")
+        .join("artifacts")
+        .join("model.bpk")
 }
 
 /// What the window is showing.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Status {
-    /// Nothing is running; `Build`, `Train` and `Test` are available.
+    /// Nothing is running; `Train`, `Test` and the clustering buttons are
+    /// available.
     Idle,
-    /// `cargo build` is running because `models.exe` was missing.
-    Building,
-    /// `models train` is running.
+    /// `models_core::train` is running on a background executor.
     Training,
-    /// `models test` is running.
+    /// `models_core::evaluate` or `models_core::run_cluster` is running.
     Testing,
-    /// The last train/test run succeeded. `acc` is the percentage the run last
-    /// reported, when a line could be parsed.
+    /// The last run succeeded. `acc` is the percentage the run last reported,
+    /// when a line could be parsed.
     Done { acc: Option<f32> },
     /// The last start (or the last run) failed; nothing is running.
     Failed { reason: String },
@@ -180,7 +148,6 @@ impl Status {
     pub fn summary(&self) -> &'static str {
         match self {
             Self::Idle => "Idle",
-            Self::Building => "Building",
             Self::Training => "Training",
             Self::Testing => "Testing",
             Self::Done { .. } => "Done",
@@ -191,10 +158,13 @@ impl Status {
     /// The second line: what is happening, the accuracy, or the failure.
     pub fn detail(&self) -> Option<String> {
         match self {
-            Self::Idle => Some("ready: Build, Train, Test or a clustering algorithm".to_owned()),
-            Self::Building => Some("running cargo build --offline in crates/models".to_owned()),
-            Self::Training => Some("running models train".to_owned()),
-            Self::Testing => Some("running models test or cluster".to_owned()),
+            Self::Idle => Some("ready: Train, Test or a clustering algorithm".to_owned()),
+            Self::Training => {
+                Some("training models_core in process (background executor)".to_owned())
+            }
+            Self::Testing => {
+                Some("running models_core evaluation/clustering in process".to_owned())
+            }
             Self::Done { acc: Some(acc) } => Some(format!("accuracy {acc:.2}%")),
             Self::Done { acc: None } => Some("finished".to_owned()),
             Self::Failed { reason } => Some(reason.clone()),
@@ -205,22 +175,21 @@ impl Status {
     pub fn color(&self) -> Color {
         match self {
             Self::Idle => Color::Muted,
-            Self::Building | Self::Training | Self::Testing => Color::Warning,
+            Self::Training | Self::Testing => Color::Warning,
             Self::Done { .. } => Color::Success,
             Self::Failed { .. } => Color::Error,
         }
     }
 
-    /// Whether a child process belongs to this status.
+    /// Whether a background job belongs to this status.
     pub fn is_busy(&self) -> bool {
-        matches!(self, Self::Building | Self::Training | Self::Testing)
+        matches!(self, Self::Training | Self::Testing)
     }
 }
 
 /// Which buttons are enabled for a status (and a non-empty log).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Buttons {
-    pub build: bool,
     pub train: bool,
     pub test: bool,
     /// The cluster test buttons (`K-Means`, `DBSCAN`, ..., `All`).
@@ -242,7 +211,6 @@ pub fn buttons_for(status: &Status, log_is_empty: bool) -> Buttons {
     let busy = status.is_busy();
     let log = !log_is_empty;
     Buttons {
-        build: idle,
         train: idle,
         test: idle,
         cluster: idle,
@@ -308,17 +276,15 @@ impl LogRing {
 /// The jobs the window can run.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum JobKind {
-    Build,
     Train,
     Test,
-    /// `models cluster --algo <algo>`; `algo` is `all` for the comparison table.
+    /// `models_core::run_cluster`; `algo` is `all` for the comparison table.
     Cluster { algo: String },
 }
 
 impl JobKind {
     pub fn label(&self) -> &'static str {
         match self {
-            Self::Build => "build",
             Self::Train => "train",
             Self::Test => "test",
             Self::Cluster { .. } => "cluster",
@@ -327,13 +293,31 @@ impl JobKind {
 
     /// The status the window shows while this job runs.
     ///
-    /// Clustering reuses [`Status::Testing`]: it is another `models` subcommand
-    /// whose child is watched by the same state machine.
+    /// Clustering reuses [`Status::Testing`]: it is another models job whose
+    /// progress is watched by the same state machine.
     pub fn status(&self) -> Status {
         match self {
-            Self::Build => Status::Building,
             Self::Train => Status::Training,
             Self::Test | Self::Cluster { .. } => Status::Testing,
+        }
+    }
+
+    /// The in-process call this job makes, for the log and the window footer.
+    pub fn description(&self, epochs: usize, seed: u64) -> String {
+        match self {
+            Self::Train => format!(
+                "models_core::train(epochs={epochs}, batch_size={DEFAULT_BATCH_SIZE}, \
+                 seed={seed}, checkpoint={})",
+                checkpoint_path().display()
+            ),
+            Self::Test => format!(
+                "models_core::evaluate(seed={seed}, checkpoint={})",
+                checkpoint_path().display()
+            ),
+            Self::Cluster { algo } => format!(
+                "models_core::run_cluster(algo={algo}, points={DEFAULT_CLUSTER_POINTS}, \
+                 clusters={DEFAULT_CLUSTER_CLUSTERS}, seed={seed})"
+            ),
         }
     }
 
@@ -349,115 +333,6 @@ impl JobKind {
                 algo: "all".to_owned(),
             }),
             _ => None,
-        }
-    }
-}
-
-/// One fully resolved child invocation.
-#[derive(Clone, Debug)]
-pub struct JobPlan {
-    pub kind: JobKind,
-    pub program: String,
-    pub args: Vec<String>,
-    /// Always `crates/models`: the crate's `.cargo/config.toml`, `vendor/`,
-    /// `artifacts/` and `target/` are all relative to it, so both the build and
-    /// the binary have to start there.
-    pub cwd: PathBuf,
-}
-
-impl JobPlan {
-    /// The command as one line, for the log and for failure messages.
-    pub fn command_line(&self) -> String {
-        let mut line = quote(&self.program);
-        for arg in &self.args {
-            line.push(' ');
-            line.push_str(&quote(arg));
-        }
-        line
-    }
-}
-
-fn quote(word: &str) -> String {
-    if word.contains(' ') || word.contains('\t') {
-        format!("\"{word}\"")
-    } else {
-        word.to_owned()
-    }
-}
-
-/// The command for `kind`: the debug `models.exe` for train/test, `cargo build
-/// --offline` for the build.
-///
-/// The manifest path is passed explicitly *and* the working directory is
-/// `crates/models`, which is what makes the crate's vendored sources apply: its
-/// `.cargo/config.toml` is found from the working directory, and `--offline`
-/// keeps the build off the network.
-pub fn plan_for(kind: JobKind, epochs: usize, seed: u64) -> JobPlan {
-    let cwd = models_dir();
-    match kind {
-        JobKind::Build => JobPlan {
-            kind,
-            program: "cargo".to_owned(),
-            args: vec![
-                "build".to_owned(),
-                "--offline".to_owned(),
-                "--manifest-path".to_owned(),
-                cwd.join("Cargo.toml").display().to_string(),
-            ],
-            cwd,
-        },
-        JobKind::Train => JobPlan {
-            kind,
-            program: models_exe().display().to_string(),
-            args: vec![
-                "train".to_owned(),
-                "--epochs".to_owned(),
-                epochs.to_string(),
-                "--seed".to_owned(),
-                seed.to_string(),
-            ],
-            cwd,
-        },
-        JobKind::Test => JobPlan {
-            kind,
-            program: models_exe().display().to_string(),
-            args: vec!["test".to_owned(), "--seed".to_owned(), seed.to_string()],
-            cwd,
-        },
-        JobKind::Cluster { algo } => {
-            let plan_kind = JobKind::Cluster { algo: algo.clone() };
-            JobPlan {
-                kind: plan_kind,
-                program: models_exe().display().to_string(),
-                args: vec![
-                    "cluster".to_owned(),
-                    "--algo".to_owned(),
-                    algo,
-                    "--points".to_owned(),
-                    DEFAULT_CLUSTER_POINTS.to_string(),
-                    "--clusters".to_owned(),
-                    DEFAULT_CLUSTER_CLUSTERS.to_string(),
-                    "--seed".to_owned(),
-                    seed.to_string(),
-                ],
-                cwd,
-            }
-        }
-    }
-}
-
-/// Which of the child's streams a line came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Stream {
-    Stdout,
-    Stderr,
-}
-
-impl Stream {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Stdout => "stdout",
-            Self::Stderr => "stderr",
         }
     }
 }
@@ -499,9 +374,7 @@ pub struct ModelTestState {
     pub seed: u64,
     /// The last accuracy seen in the running job's output.
     last_acc: Option<f32>,
-    /// The newest stderr lines, quoted by a failure message.
-    stderr_tail: VecDeque<String>,
-    /// The command of the current (or last) job, quoted by a failure message.
+    /// The call of the current (or last) job, quoted by the footer and failure.
     last_command: String,
 }
 
@@ -513,7 +386,6 @@ impl ModelTestState {
             epochs,
             seed,
             last_acc: None,
-            stderr_tail: VecDeque::new(),
             last_command: String::new(),
         }
     }
@@ -536,38 +408,24 @@ impl ModelTestState {
         self.log.push(line);
     }
 
-    /// A job was accepted: the child is spawned and its command is recorded.
+    /// A job was accepted: the background task starts and its call is recorded.
     pub fn begin_job(&mut self, kind: JobKind, command_line: &str) {
         self.status = kind.status();
         self.last_acc = None;
-        self.stderr_tail.clear();
         self.last_command = command_line.to_owned();
         self.log(format!(
-            "[model-test] {} in {}: {}",
-            kind.label(),
-            models_dir().display(),
-            command_line
+            "[model-test] {} in process: {command_line}",
+            kind.label()
         ));
     }
 
-    /// One line of child output: into the ring, and through the accuracy parser.
-    pub fn observe_line(&mut self, stream: Stream, line: &str) {
+    /// One progress line: into the ring, and through the accuracy parser.
+    pub fn observe_line(&mut self, line: &str) {
         let line = line.trim_end();
         if line.is_empty() {
             return;
         }
-        let displayed = match stream {
-            Stream::Stdout => line.to_owned(),
-            Stream::Stderr => format!("stderr: {line}"),
-        };
-        self.log(displayed);
-
-        if stream == Stream::Stderr {
-            while self.stderr_tail.len() >= STDERR_TAIL {
-                self.stderr_tail.pop_front();
-            }
-            self.stderr_tail.push_back(clip(line));
-        }
+        self.log(line.to_owned());
         if let Some(accuracy) = accuracy_percent(line) {
             self.last_acc = Some(accuracy);
         }
@@ -575,22 +433,14 @@ impl ModelTestState {
 
     /// The last job succeeded.
     pub fn succeeded(&mut self, kind: JobKind) {
-        match kind {
-            JobKind::Build => {
-                self.status = Status::Idle;
-                self.log("[model-test] build succeeded");
-            }
-            JobKind::Train | JobKind::Test | JobKind::Cluster { .. } => {
-                let acc = self.last_acc.take();
-                self.status = Status::Done { acc };
-                match acc {
-                    Some(acc) => self.log(format!(
-                        "[model-test] {} done: accuracy {acc:.2}%",
-                        kind.label()
-                    )),
-                    None => self.log(format!("[model-test] {} done", kind.label())),
-                }
-            }
+        let acc = self.last_acc.take();
+        self.status = Status::Done { acc };
+        match acc {
+            Some(acc) => self.log(format!(
+                "[model-test] {} done: accuracy {acc:.2}%",
+                kind.label()
+            )),
+            None => self.log(format!("[model-test] {} done", kind.label())),
         }
     }
 
@@ -601,27 +451,18 @@ impl ModelTestState {
         self.status = Status::Failed { reason };
     }
 
-    /// `Stop` killed the running job.
+    /// `Stop` cancelled the running job.
     pub fn stopped(&mut self, kind: JobKind) {
         self.status = Status::Idle;
-        self.log(format!("[model-test] stopped the {} process", kind.label()));
+        self.log(format!(
+            "[model-test] stopped the {} run (cancelled)",
+            kind.label()
+        ));
     }
 
-    /// The failure message for an exit that was not a success: the kind, the
-    /// code, the stderr tail and the command that produced it.
-    pub fn describe_failure(&self, kind: JobKind, code: Option<i32>) -> String {
-        let mut reason = match code {
-            Some(code) => format!("{} failed with exit code {code}", kind.label()),
-            None => format!("{} was terminated", kind.label()),
-        };
-        if !self.stderr_tail.is_empty() {
-            let tail: Vec<&str> = self.stderr_tail.iter().map(String::as_str).collect();
-            reason.push_str(&format!("; stderr: {}", tail.join(" / ")));
-        }
-        if !self.last_command.is_empty() {
-            reason.push_str(&format!("; command: {}", self.last_command));
-        }
-        reason
+    /// The call of the current (or last) job, for the footer.
+    pub fn last_command(&self) -> &str {
+        &self.last_command
     }
 }
 
@@ -631,180 +472,35 @@ impl Default for ModelTestState {
     }
 }
 
-/// One line, shortened to [`STDERR_LINE_LIMIT`] characters.
-fn clip(line: &str) -> String {
-    if line.chars().count() <= STDERR_LINE_LIMIT {
-        return line.to_owned();
-    }
-    let mut clipped: String = line.chars().take(STDERR_LINE_LIMIT).collect();
-    clipped.push('…');
-    clipped
-}
-
-/// What the supervisor thread reports back to the window.
+/// What the background task reports back to the window.
 #[derive(Debug)]
 enum Event {
-    /// One line of the child's stdout or stderr.
-    Line { stream: Stream, line: String },
-    /// The child ended, or could not be waited for.
-    Finished { outcome: Result<ExitStatus, String> },
+    /// One progress line from `models_core`.
+    Line(String),
+    /// The job ended. `accuracy` is the percentage to show under `Done`;
+    /// `cancelled` says whether `Stop` (or window teardown) asked for it.
+    Finished {
+        job_id: u64,
+        kind: JobKind,
+        accuracy: Result<Option<f32>, String>,
+        cancelled: bool,
+    },
 }
 
-/// A spawned child, shared between the window (`Stop`, `Drop`) and the
-/// supervisor thread (which reaps it).
+/// A running background job, shared between the window (`Stop`, `Drop`) and the
+/// async task (which checks the token).
 struct Running {
     kind: JobKind,
-    command_line: String,
-    child: Arc<Mutex<Option<Child>>>,
-}
-
-/// The mutex is only ever held for a `try_wait` or a `kill`; a poisoned lock
-/// still holds a valid child handle, so recover instead of unwrapping.
-fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-/// Reads `pipe` line by line on its own thread and forwards every line to the
-/// window.
-///
-/// `stdout` and `stderr` have different types (`ChildStdout` / `ChildStderr`),
-/// so the body is generic over the pipe and shared; the thread ends when the
-/// pipe reaches EOF, which is when the child has exited and closed it.
-fn spawn_reader<R>(
-    pipe: R,
-    stream: Stream,
-    events: mpsc::UnboundedSender<Event>,
-) -> std::thread::JoinHandle<()>
-where
-    R: std::io::Read + Send + 'static,
-{
-    std::thread::spawn(move || {
-        let reader = BufReader::new(pipe);
-        for line in reader.lines() {
-            match line {
-                Ok(line) => {
-                    if events.unbounded_send(Event::Line { stream, line }).is_err() {
-                        // The window is gone; nobody is reading.
-                        return;
-                    }
-                }
-                Err(error) => {
-                    let _ = events.unbounded_send(Event::Line {
-                        stream,
-                        line: format!("<{} read error: {error}>", stream.label()),
-                    });
-                    return;
-                }
-            }
-        }
-    })
-}
-
-/// Spawns `plan` and starts its reader and supervisor threads.
-///
-/// The child is created on the calling (UI) thread — `spawn` is a single process
-/// creation — and every read, every wait and the exit-status poll happen on
-/// threads. The returned [`Running`] shares the child handle so `Stop` can kill
-/// it without waiting for it.
-fn spawn_job(plan: JobPlan, events: mpsc::UnboundedSender<Event>) -> Result<Running, String> {
-    let command_line = plan.command_line();
-    let mut command = Command::new(&plan.program);
-    command
-        .args(&plan.args)
-        .current_dir(&plan.cwd)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        // `--offline` is on the build command line already; the variable covers
-        // a cargo that decides to resolve anything else.
-        .env("CARGO_NET_OFFLINE", "true")
-        // `crates/models` has its own `target/`; a `CARGO_TARGET_DIR` inherited
-        // from Zed's own build would put `models.exe` somewhere else.
-        .env_remove("CARGO_TARGET_DIR");
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt as _;
-        command.creation_flags(CREATE_NO_WINDOW);
-    }
-
-    let mut child = command
-        .spawn()
-        .map_err(|error| format!("could not run `{command_line}`: {error}"))?;
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-    let child = Arc::new(Mutex::new(Some(child)));
-
-    let mut readers = Vec::new();
-    if let Some(stdout) = stdout {
-        readers.push(spawn_reader(stdout, Stream::Stdout, events.clone()));
-    }
-    if let Some(stderr) = stderr {
-        readers.push(spawn_reader(stderr, Stream::Stderr, events.clone()));
-    }
-
-    let supervisor = child.clone();
-    let kind = plan.kind;
-    let supervisor_kind = kind.clone();
-    std::thread::spawn(move || {
-        let outcome = loop {
-            let polled = {
-                let mut guard = lock(&supervisor);
-                match guard.as_mut() {
-                    Some(child) => child.try_wait(),
-                    // Only this thread takes the handle, so this is unreachable;
-                    // reporting it is still better than polling forever.
-                    None => break Err("the child handle is gone".to_owned()),
-                }
-            };
-            match polled {
-                Ok(Some(status)) => {
-                    // `try_wait` already collected and reaped it; dropping the
-                    // handle now closes the last one this process holds.
-                    let _ = lock(&supervisor).take();
-                    break Ok(status);
-                }
-                Ok(None) => std::thread::sleep(EXIT_POLL_INTERVAL),
-                Err(error) => {
-                    let _ = lock(&supervisor).take();
-                    break Err(format!(
-                        "could not wait for the {} process: {error}",
-                        supervisor_kind.label()
-                    ));
-                }
-            }
-        };
-        // Both pipes reach EOF once the process is gone; joining here keeps the
-        // exit status *after* the last line, so `Done` never overtakes output.
-        for reader in readers {
-            let _ = reader.join();
-        }
-        let _ = events.unbounded_send(Event::Finished { outcome });
-    });
-
-    Ok(Running {
-        kind,
-        command_line,
-        child,
-    })
-}
-
-/// Kills the child behind `child`, if it is still there.
-fn kill_child(child: &Arc<Mutex<Option<Child>>>) -> std::io::Result<()> {
-    match lock(child).as_mut() {
-        Some(child) => child.kill(),
-        None => Ok(()),
-    }
+    cancel: Arc<AtomicBool>,
 }
 
 /// The window's root view.
 pub struct ModelTestView {
     state: ModelTestState,
     running: Option<Running>,
-    /// When the current job is the auto-build of a missing `models.exe`, the job
-    /// to start once the build succeeds.
-    pending_after_build: Option<JobKind>,
+    /// Incremented whenever a job starts or is abandoned; a [`Event::Finished`]
+    /// with an older id is stale and ignored.
+    job_id: u64,
     scroll: ScrollHandle,
 }
 
@@ -844,7 +540,6 @@ impl ModelTestView {
                 cx.update(|cx| {
                     if let Some(view) = weak.upgrade() {
                         view.update(cx, |view, cx| match kind {
-                            JobKind::Build => view.build(cx),
                             JobKind::Train => view.train(cx),
                             JobKind::Test => view.test(cx),
                             JobKind::Cluster { algo } => view.cluster(&algo, cx),
@@ -858,87 +553,110 @@ impl ModelTestView {
         Self {
             state: ModelTestState::new(epochs, DEFAULT_SEED),
             running: None,
-            pending_after_build: None,
+            job_id: 0,
             scroll: ScrollHandle::new(),
         }
-    }
-
-    fn build(&mut self, cx: &mut Context<Self>) {
-        if !self.state.buttons().build {
-            return;
-        }
-        self.start_job(JobKind::Build, None, cx);
     }
 
     fn train(&mut self, cx: &mut Context<Self>) {
         if !self.state.buttons().train {
             return;
         }
-        if models_exe().is_file() {
-            self.start_job(JobKind::Train, None, cx);
-        } else {
-            self.start_job(JobKind::Build, Some(JobKind::Train), cx);
-        }
+        self.start_job(JobKind::Train, cx);
     }
 
     fn test(&mut self, cx: &mut Context<Self>) {
         if !self.state.buttons().test {
             return;
         }
-        if models_exe().is_file() {
-            self.start_job(JobKind::Test, None, cx);
-        } else {
-            self.start_job(JobKind::Build, Some(JobKind::Test), cx);
-        }
+        self.start_job(JobKind::Test, cx);
     }
 
-    /// One of the cluster buttons: `algo` is a `models cluster --algo` value.
+    /// One of the cluster buttons: `algo` is a `run_cluster` value.
     fn cluster(&mut self, algo: &str, cx: &mut Context<Self>) {
         if !self.state.buttons().cluster {
             return;
         }
-        let kind = JobKind::Cluster {
-            algo: algo.to_owned(),
-        };
-        if models_exe().is_file() {
-            self.start_job(kind, None, cx);
-        } else {
-            self.start_job(JobKind::Build, Some(kind), cx);
-        }
+        self.start_job(
+            JobKind::Cluster {
+                algo: algo.to_owned(),
+            },
+            cx,
+        );
     }
 
-    /// Spawns `kind`; `then` is the job to run if this is an auto-build.
-    fn start_job(&mut self, kind: JobKind, then: Option<JobKind>, cx: &mut Context<Self>) {
-        // Defensive: one child at a time, whatever the buttons said.
-        if let Some(running) = self.running.take() {
-            let _ = kill_child(&running.child);
+    /// Starts `kind` on a background executor.
+    ///
+    /// Any previous task is cancelled first (defensive: the buttons are disabled
+    /// while busy), then the cancellable call is moved off the UI thread. The
+    /// window drains progress on GPUI's executor.
+    fn start_job(&mut self, kind: JobKind, cx: &mut Context<Self>) {
+        if let Some(previous) = self.running.take() {
+            previous.cancel.store(true, Ordering::SeqCst);
         }
+        self.job_id = self.job_id.wrapping_add(1);
+        let job_id = self.job_id;
 
-        if then.is_some() {
-            self.state.log(format!(
-                "[model-test] {} does not exist yet; building it first",
-                models_exe().display()
-            ));
-        }
+        let epochs = self.state.epochs;
+        let seed = self.state.seed;
+        let description = kind.description(epochs, seed);
+        self.state.begin_job(kind.clone(), &description);
 
-        let plan = plan_for(kind.clone(), self.state.epochs, self.state.seed);
-        let command_line = plan.command_line();
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.running = Some(Running {
+            kind: kind.clone(),
+            cancel: cancel.clone(),
+        });
+
         let (events, mut events_rx) = mpsc::unbounded::<Event>();
-        match spawn_job(plan, events) {
-            Ok(running) => {
-                self.state.begin_job(kind, &command_line);
-                self.pending_after_build = then;
-                self.running = Some(running);
-            }
-            Err(reason) => {
-                self.state.failed(reason);
-                cx.notify();
-                return;
-            }
-        }
+        let line_events = events.clone();
+        let checkpoint = checkpoint_path();
+        let task_kind = kind.clone();
+        cx.background_spawn(async move {
+            let mut progress = |line: &str| {
+                let _ = line_events.unbounded_send(Event::Line(line.to_owned()));
+            };
+            let result: Result<Option<f32>, String> = match &task_kind {
+                JobKind::Train => models_core::train(
+                    &models_core::TrainArgs::new(
+                        epochs,
+                        DEFAULT_BATCH_SIZE,
+                        seed,
+                        DEFAULT_LEARNING_RATE,
+                        checkpoint,
+                    ),
+                    &mut progress,
+                    &cancel,
+                )
+                .map(|summary| Some(summary.final_accuracy * 100.0))
+                .map_err(|error| error.message().to_owned()),
+                JobKind::Test => models_core::evaluate(
+                    &models_core::TestArgs::new(seed, checkpoint),
+                    &mut progress,
+                )
+                .map(|eval| Some(eval.accuracy * 100.0))
+                .map_err(|error| error.message().to_owned()),
+                JobKind::Cluster { algo } => models_core::run_cluster(
+                    Some(algo.as_str()),
+                    DEFAULT_CLUSTER_POINTS,
+                    DEFAULT_CLUSTER_CLUSTERS,
+                    seed,
+                    &mut progress,
+                    &cancel,
+                )
+                .map(|_| None)
+                .map_err(|error| error.message().to_owned()),
+            };
+            let cancelled = cancel.load(Ordering::Relaxed);
+            let _ = events.unbounded_send(Event::Finished {
+                job_id,
+                kind: task_kind,
+                accuracy: result,
+                cancelled,
+            });
+        })
+        .detach();
 
-        // The threads report on an unbounded channel; the window drains it on
-        // GPUI's executor, so no pipe and no `wait` is ever polled here.
         cx.spawn(async move |weak, cx| {
             while let Some(event) = events_rx.next().await {
                 let applied = cx.update(|cx| {
@@ -965,14 +683,11 @@ impl ModelTestView {
         let Some(running) = self.running.take() else {
             return;
         };
-        self.pending_after_build = None;
-
-        if let Err(error) = kill_child(&running.child) {
-            let reason = format!("could not stop `{}`: {error}", running.command_line);
-            self.state.failed(reason);
-            cx.notify();
-            return;
-        }
+        // The training loop checks this before every batch/epoch; a cluster run
+        // checks it between algorithms. Bumping the id makes its eventual
+        // `Finished` stale, so it cannot overwrite the `Idle` below.
+        running.cancel.store(true, Ordering::SeqCst);
+        self.job_id = self.job_id.wrapping_add(1);
         self.state.stopped(running.kind);
         cx.notify();
     }
@@ -1003,46 +718,36 @@ impl ModelTestView {
 
     fn apply(&mut self, event: Event, cx: &mut Context<Self>) {
         match event {
-            Event::Line { stream, line } => self.state.observe_line(stream, &line),
-            Event::Finished { outcome } => {
-                self.finish(outcome, cx);
-                // `finish` may already have notified for the next job.
-                self.scroll.scroll_to_bottom();
-                return;
-            }
-        }
-        self.scroll.scroll_to_bottom();
-        cx.notify();
-    }
-
-    /// The child is gone: move the status on, and chain the auto-build's job.
-    fn finish(&mut self, outcome: Result<ExitStatus, String>, cx: &mut Context<Self>) {
-        let Some(running) = self.running.take() else {
-            // A `Stop` already took the handle; the exit it asked for is
-            // reported there, not here.
-            return;
-        };
-        let next = self.pending_after_build.take();
-
-        match outcome {
-            Ok(status) if status.success() => {
-                if running.kind == JobKind::Build {
-                    if let Some(next) = next {
-                        self.state.log(format!(
-                            "[model-test] build done; starting {}",
-                            next.label()
-                        ));
-                        self.start_job(next, None, cx);
-                        return;
+            Event::Line(line) => self.state.observe_line(&line),
+            Event::Finished {
+                job_id,
+                kind,
+                accuracy,
+                cancelled,
+            } => {
+                // A `Stop` (or a newer job) already moved the window on; the
+                // task's result is no longer interesting.
+                if job_id != self.job_id {
+                    return;
+                }
+                self.running = None;
+                if cancelled {
+                    self.state.stopped(kind);
+                } else {
+                    match accuracy {
+                        Ok(acc) => {
+                            // The progress lines already reported the accuracy;
+                            // keep the structured value as a fallback for the
+                            // `Done` badge without logging a duplicate line.
+                            if let Some(acc) = acc {
+                                self.state.last_acc = Some(acc);
+                            }
+                            self.state.succeeded(kind);
+                        }
+                        Err(reason) => self.state.failed(reason),
                     }
                 }
-                self.state.succeeded(running.kind);
             }
-            Ok(status) => {
-                let reason = self.state.describe_failure(running.kind, status.code());
-                self.state.failed(reason);
-            }
-            Err(reason) => self.state.failed(reason),
         }
         self.scroll.scroll_to_bottom();
         cx.notify();
@@ -1052,7 +757,7 @@ impl ModelTestView {
 impl Drop for ModelTestView {
     fn drop(&mut self) {
         if let Some(running) = self.running.take() {
-            let _ = kill_child(&running.child);
+            running.cancel.store(true, Ordering::SeqCst);
         }
     }
 }
@@ -1064,10 +769,10 @@ impl Render for ModelTestView {
         let status_color = status.color();
         let summary = SharedString::from(status.summary());
         let detail = status.detail().map(SharedString::from);
-        let command = if self.state.last_command.is_empty() {
+        let command = if self.state.last_command().is_empty() {
             None
         } else {
-            Some(SharedString::from(self.state.last_command.clone()))
+            Some(SharedString::from(self.state.last_command().to_owned()))
         };
         let epochs = self.state.epochs;
         let busy = status.is_busy();
@@ -1105,8 +810,7 @@ impl Render for ModelTestView {
 
         // The eight clustering buttons. `DBSCAN` is the linfa implementation and
         // `smartcore` is smartcore's K-Means; the smartcore DBSCAN variant is
-        // still reachable through `All` and `models cluster --algo
-        // smartcore-dbscan`.
+        // still reachable through `All` and the `ZED_MODELTEST_ALGO` hook.
         let cluster_buttons: Vec<gpui::AnyElement> = [
             ("model-test-cluster-kmeans", "K-Means", "kmeans"),
             ("model-test-cluster-linfa-kmeans", "linfa KMeans", "linfa-kmeans"),
@@ -1147,8 +851,9 @@ impl Render for ModelTestView {
             )
             .child(
                 Label::new(
-                    command
-                        .unwrap_or_else(|| SharedString::from("no command has run yet".to_owned())),
+                    command.unwrap_or_else(|| {
+                        SharedString::from("no models_core call has run yet".to_owned())
+                    }),
                 )
                 .size(LabelSize::XSmall)
                 .color(Color::Hidden),
@@ -1158,12 +863,6 @@ impl Render for ModelTestView {
                     .gap_2()
                     .flex_wrap()
                     .items_center()
-                    .child(
-                        Button::new("model-test-build", "Build")
-                            .style(ButtonStyle::Outlined)
-                            .disabled(!buttons.build)
-                            .on_click(cx.listener(|this, _, _, cx| this.build(cx))),
-                    )
                     .child(
                         Button::new("model-test-train", "Train")
                             .style(ButtonStyle::Tinted(TintColor::Accent))
@@ -1240,11 +939,9 @@ impl Render for ModelTestView {
             )
             .child(
                 Label::new(SharedString::from(format!(
-                    "Spawns {} with {} as the working directory; Zed does not link \
-                     Burn or the clustering crates. Checkpoint: {}. Closing the window \
-                     stops a running job.",
-                    models_exe().display(),
-                    models_dir().display(),
+                    "Calls models_core::train/evaluate/run_cluster in this process on a \
+                     background executor; Zed links Burn through models_core. Checkpoint: {}. \
+                     Closing the window cancels a running job.",
                     checkpoint_path().display()
                 )))
                 .size(LabelSize::XSmall)
@@ -1356,31 +1053,23 @@ mod tests {
         assert_eq!(state.status.summary(), "Idle");
         assert!(!state.status.is_busy());
 
-        state.begin_job(JobKind::Build, "cargo build --offline");
-        assert_eq!(state.status, Status::Building);
-        assert_eq!(state.status.summary(), "Building");
+        state.begin_job(JobKind::Train, "models_core::train(epochs=3, seed=42)");
+        assert_eq!(state.status, Status::Training);
+        assert_eq!(state.status.summary(), "Training");
         assert!(state.status.is_busy());
         assert_eq!(state.status.color(), Color::Warning);
 
-        state.succeeded(JobKind::Build);
-        assert_eq!(state.status, Status::Idle);
-
-        state.begin_job(JobKind::Train, "models train --epochs 3 --seed 42");
-        assert_eq!(state.status, Status::Training);
-        state.observe_line(
-            Stream::Stdout,
-            "epoch 1/3 | train loss 1.0986 | test accuracy 25.00% | 0.2s",
-        );
-        state.observe_line(Stream::Stdout, "final test accuracy: 87.50%");
+        state.observe_line("epoch 1/3 | train loss 1.0986 | test accuracy 25.00% | 0.2s");
+        state.observe_line("final test accuracy: 87.50%");
         state.succeeded(JobKind::Train);
         assert_eq!(state.status, Status::Done { acc: Some(87.5) });
         assert_eq!(state.status.summary(), "Done");
         assert_eq!(state.status.detail().as_deref(), Some("accuracy 87.50%"));
         assert_eq!(state.status.color(), Color::Success);
 
-        state.begin_job(JobKind::Test, "models test --seed 42");
+        state.begin_job(JobKind::Test, "models_core::evaluate(seed=42)");
         assert_eq!(state.status, Status::Testing);
-        state.failed("test failed with exit code 1; stderr: checkpoint missing");
+        state.failed("test failed: checkpoint missing");
         assert!(matches!(state.status, Status::Failed { .. }));
         assert_eq!(state.status.color(), Color::Error);
         assert!(!state.status.is_busy());
@@ -1389,7 +1078,7 @@ mod tests {
             JobKind::Cluster {
                 algo: "linfa-dbscan".to_owned(),
             },
-            "models.exe cluster --algo linfa-dbscan --points 600 --clusters 3 --seed 42",
+            "models_core::run_cluster(algo=linfa-dbscan, seed=42)",
         );
         assert_eq!(state.status, Status::Testing);
         state.succeeded(JobKind::Cluster {
@@ -1398,7 +1087,7 @@ mod tests {
         assert_eq!(state.status, Status::Done { acc: None });
         assert_eq!(state.status.detail().as_deref(), Some("finished"));
 
-        state.begin_job(JobKind::Test, "models test --seed 42");
+        state.begin_job(JobKind::Test, "models_core::evaluate(seed=42)");
         state.stopped(JobKind::Test);
         assert_eq!(state.status, Status::Idle);
 
@@ -1407,13 +1096,7 @@ mod tests {
         assert!(
             lines
                 .iter()
-                .any(|line| line.contains("build in") && line.contains("cargo build"))
-        );
-        assert!(lines.iter().any(|line| line.contains("build succeeded")));
-        assert!(
-            lines
-                .iter()
-                .any(|line| line.contains("train in") && line.contains("--epochs 3"))
+                .any(|line| line.contains("train in process") && line.contains("epochs=3"))
         );
         assert!(lines.iter().any(|line| line.contains("epoch 1/3")));
         assert!(
@@ -1429,13 +1112,13 @@ mod tests {
         assert!(
             lines
                 .iter()
-                .any(|line| line.contains("cluster in") && line.contains("linfa-dbscan"))
+                .any(|line| line.contains("cluster in process") && line.contains("linfa-dbscan"))
         );
         assert!(lines.iter().any(|line| line.contains("cluster done")));
         assert!(
             lines
                 .iter()
-                .any(|line| line.contains("stopped the test process"))
+                .any(|line| line.contains("stopped the test run"))
         );
     }
 
@@ -1460,21 +1143,25 @@ mod tests {
     }
 
     #[test]
-    fn a_failure_message_quotes_the_command_and_the_stderr_tail() {
+    fn a_failure_is_logged_and_shown() {
         let mut state = ModelTestState::new(3, 42);
-        state.begin_job(JobKind::Test, "models.exe test --seed 42");
-        for line in ["one", "two", "three", "four"] {
-            state.observe_line(Stream::Stderr, line);
-        }
-        let reason = state.describe_failure(JobKind::Test, Some(1));
-        assert!(reason.starts_with("test failed with exit code 1"));
-        // Only the newest three lines survive, and the oldest is dropped.
-        assert!(reason.contains("stderr: two / three / four"));
-        assert!(!reason.contains("stderr: one"));
-        assert!(reason.contains("command: models.exe test --seed 42"));
-
-        let terminated = state.describe_failure(JobKind::Test, None);
-        assert!(terminated.starts_with("test was terminated"));
+        state.begin_job(JobKind::Test, "models_core::evaluate(seed=42)");
+        state.failed("checkpoint missing; run `models train` first");
+        assert!(matches!(state.status, Status::Failed { .. }));
+        assert_eq!(
+            state.status.detail().as_deref(),
+            Some("checkpoint missing; run `models train` first")
+        );
+        let lines: Vec<&str> = state.log.lines().collect();
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.contains("failed: checkpoint missing"))
+        );
+        assert_eq!(
+            state.last_command(),
+            "models_core::evaluate(seed=42)"
+        );
     }
 
     #[test]
@@ -1483,7 +1170,6 @@ mod tests {
         assert_eq!(
             idle,
             Buttons {
-                build: true,
                 train: true,
                 test: true,
                 cluster: true,
@@ -1493,15 +1179,15 @@ mod tests {
             }
         );
 
-        for busy in [Status::Building, Status::Training, Status::Testing] {
+        for busy in [Status::Training, Status::Testing] {
             let buttons = buttons_for(&busy, false);
-            assert!(!buttons.build && !buttons.train && !buttons.test && !buttons.cluster);
+            assert!(!buttons.train && !buttons.test && !buttons.cluster);
             assert!(buttons.stop);
             assert!(buttons.clear_log && buttons.copy_log);
         }
 
         let done = buttons_for(&Status::Done { acc: Some(90.0) }, true);
-        assert!(done.build && done.train && done.test && done.cluster && !done.stop);
+        assert!(done.train && done.test && done.cluster && !done.stop);
         assert!(!done.clear_log && !done.copy_log);
 
         let failed = buttons_for(
@@ -1510,94 +1196,41 @@ mod tests {
             },
             false,
         );
-        assert!(failed.build && failed.train && failed.test && failed.cluster && !failed.stop);
+        assert!(failed.train && failed.test && failed.cluster && !failed.stop);
         assert!(failed.clear_log && failed.copy_log);
     }
 
     #[test]
     fn the_paths_are_derived_from_the_manifest_dir() {
         assert!(repo_root().is_absolute());
-        assert!(models_dir().ends_with(Path::new("crates").join("models")));
-        assert_eq!(models_dir(), repo_root().join("crates").join("models"));
-        assert!(models_exe().starts_with(models_dir()));
-        assert!(
-            models_exe().ends_with(
-                Path::new("target")
-                    .join("debug")
-                    .join(format!("models{}", std::env::consts::EXE_SUFFIX))
-            )
+        assert_eq!(
+            checkpoint_path(),
+            repo_root()
+                .join("crates")
+                .join("models")
+                .join("artifacts")
+                .join("model.bpk")
         );
         assert!(checkpoint_path().ends_with(Path::new("artifacts").join("model.bpk")));
     }
 
     #[test]
-    fn the_commands_run_where_the_crate_expects_them() {
-        let train = plan_for(JobKind::Train, 2, 42);
-        assert_eq!(train.cwd, models_dir());
-        assert_eq!(train.program, models_exe().display().to_string());
-        assert_eq!(
-            train.args,
-            vec!["train", "--epochs", "2", "--seed", "42"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        );
-        assert_eq!(
-            train.command_line(),
-            format!(
-                "{} train --epochs 2 --seed 42",
-                quote(&models_exe().display().to_string())
-            )
-        );
+    fn the_jobs_describe_the_in_process_calls() {
+        let train = JobKind::Train.description(2, 42);
+        assert!(train.contains("models_core::train(epochs=2"));
+        assert!(train.contains("seed=42"));
+        assert!(train.contains("model.bpk"));
 
-        let test = plan_for(JobKind::Test, 2, 42);
-        assert_eq!(test.cwd, models_dir());
-        assert_eq!(
-            test.args,
-            vec!["test", "--seed", "42"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        );
+        let test = JobKind::Test.description(2, 42);
+        assert!(test.contains("models_core::evaluate(seed=42"));
 
-        let build = plan_for(JobKind::Build, 2, 42);
-        assert_eq!(build.program, "cargo");
-        assert_eq!(build.cwd, models_dir());
-        assert_eq!(build.args[0], "build");
-        assert_eq!(build.args[1], "--offline");
-        assert_eq!(build.args[2], "--manifest-path");
-        assert_eq!(
-            build.args[3],
-            models_dir().join("Cargo.toml").display().to_string()
-        );
-
-        let cluster = plan_for(
-            JobKind::Cluster {
-                algo: "linfa-dbscan".to_owned(),
-            },
-            2,
-            42,
-        );
-        assert_eq!(cluster.program, models_exe().display().to_string());
-        assert_eq!(cluster.cwd, models_dir());
-        assert_eq!(
-            cluster.args,
-            vec![
-                "cluster",
-                "--algo",
-                "linfa-dbscan",
-                "--points",
-                "600",
-                "--clusters",
-                "3",
-                "--seed",
-                "42",
-            ]
-            .into_iter()
-            .map(str::to_owned)
-            .collect::<Vec<_>>()
-        );
-        assert!(cluster.command_line().contains("cluster --algo linfa-dbscan"));
+        let cluster = JobKind::Cluster {
+            algo: "linfa-dbscan".to_owned(),
+        }
+        .description(2, 42);
+        assert!(cluster.contains("models_core::run_cluster(algo=linfa-dbscan"));
+        assert!(cluster.contains("points=600"));
+        assert!(cluster.contains("clusters=3"));
     }
 
     #[test]

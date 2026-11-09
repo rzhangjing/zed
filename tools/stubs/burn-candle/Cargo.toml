@@ -1,0 +1,18 @@
+[package]
+name = "burn-candle"
+version = "0.22.1"
+edition = "2021"
+publish = false
+description = "Empty stub for the Burn Candle backend (replaces crates.io burn-candle)."
+
+# Mirrors upstream burn-candle's feature names; every one is a no-op here since
+# the stub has no dependency on Candle and is never compiled.
+[features]
+default = ["std"]
+std = []
+tracing = []
+doc = []
+
+[lib]
+name = "burn_candle"
+path = "src/lib.rs"

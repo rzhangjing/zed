@@ -1,11 +1,14 @@
 //! CLI entry point: `models train` / `models test` / `models cluster`.
+//!
+//! The heavy lifting is in `models_core` (a root-workspace member), which the
+//! Model Test window calls in-process as well; this binary only parses flags and
+//! forwards to it.
 
 use std::error::Error;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use models::cluster::{self, Algo};
-use models::train::{self, DEFAULT_CHECKPOINT};
+use models::{TestArgs, TrainArgs};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -37,7 +40,7 @@ enum Command {
         #[arg(long, default_value_t = 3e-3)]
         learning_rate: f64,
         /// Where to write the checkpoint.
-        #[arg(long, default_value = DEFAULT_CHECKPOINT)]
+        #[arg(long, default_value = models::train::DEFAULT_CHECKPOINT)]
         checkpoint: PathBuf,
     },
     /// Load a checkpoint and print test accuracy and the confusion matrix.
@@ -46,7 +49,7 @@ enum Command {
         #[arg(long, default_value_t = 42)]
         seed: u64,
         /// Checkpoint to load.
-        #[arg(long, default_value = DEFAULT_CHECKPOINT)]
+        #[arg(long, default_value = models::train::DEFAULT_CHECKPOINT)]
         checkpoint: PathBuf,
     },
     /// Run the pure-Rust clustering demos on one deterministic point cloud.
@@ -82,15 +85,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             seed,
             learning_rate,
             checkpoint,
-        } => train::train(&train::TrainArgs {
-            epochs,
-            batch_size,
-            seed,
-            learning_rate,
-            checkpoint,
-        }),
+        } => {
+            models::run_train(&TrainArgs {
+                epochs,
+                batch_size,
+                seed,
+                learning_rate,
+                checkpoint,
+            })?;
+            Ok(())
+        }
         Command::Test { seed, checkpoint } => {
-            train::test(&train::TestArgs { seed, checkpoint })
+            models::run_evaluate(&TestArgs { seed, checkpoint })?;
+            Ok(())
         }
         Command::Cluster {
             algo,
@@ -98,23 +105,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             clusters,
             seed,
         } => {
-            if algo.eq_ignore_ascii_case("all") {
-                println!("{}", cluster::run_all(points, clusters, seed));
-                Ok(())
-            } else {
-                let algo = Algo::parse(&algo).ok_or_else(|| {
-                    std::io::Error::other(format!(
-                        "unknown clustering algorithm `{algo}`; expected one of \
-                         kmeans, linfa-kmeans, linfa-dbscan, linfa-optics, linfa-gmm, \
-                         smartcore-kmeans, smartcore-dbscan, hdbscan, all"
-                    ))
-                })?;
-                println!(
-                    "{}",
-                    cluster::run(algo, points, clusters, seed).map_err(std::io::Error::other)?
-                );
-                Ok(())
-            }
+            let requested = (!algo.eq_ignore_ascii_case("all")).then_some(algo.as_str());
+            let summary = models::run_cluster_cli(requested, points, clusters, seed)?;
+            println!("{}", summary.rendered);
+            Ok(())
         }
     }
 }
