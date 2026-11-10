@@ -20,6 +20,9 @@ use std::time::{Duration, Instant};
 
 use rustgis_zed::{BgraFrame, Frame, MapEngine, Quality};
 
+#[cfg(target_os = "windows")]
+use rustgis_zed::gpu::GpuMap;
+
 /// Runs per measurement; the median is reported.
 const RUNS: usize = 5;
 /// The window's frame size.
@@ -109,7 +112,90 @@ fn main() {
         "[rustgis] bench preview bytes at divisor 2: {} KiB",
         (WIDTH as usize / 2) * (HEIGHT as usize / 2) * 4 / 1024
     );
+
+    bench_gpu();
 }
+
+/// The GPU path, measured offscreen (scene build + upload + 4× MSAA draw + read-back): the
+/// window itself presents without the read-back, so these are upper bounds on its frame cost.
+#[cfg(target_os = "windows")]
+fn bench_gpu() {
+    let instance = wgpu30::Instance::new(wgpu30::InstanceDescriptor {
+        backends: wgpu30::Backends::all(),
+        flags: wgpu30::InstanceFlags::default(),
+        backend_options: wgpu30::BackendOptions::default(),
+        memory_budget_thresholds: wgpu30::MemoryBudgetThresholds::default(),
+        display: None,
+    });
+    let Some(adapter) = pollster::block_on(instance.request_adapter(&wgpu30::RequestAdapterOptions {
+        power_preference: wgpu30::PowerPreference::HighPerformance,
+        compatible_surface: None,
+        force_fallback_adapter: false,
+        apply_limit_buckets: false,
+    }))
+    .ok()
+    else {
+        println!("[rustgis] bench gpu: no adapter, skipped");
+        return;
+    };
+    let Ok((device, queue)) = pollster::block_on(adapter.request_device(&wgpu30::DeviceDescriptor {
+        label: Some("rustgis_frame_timing"),
+        required_features: wgpu30::Features::empty(),
+        required_limits: wgpu30::Limits::downlevel_defaults()
+            .using_resolution(adapter.limits())
+            .using_alignment(adapter.limits()),
+        memory_hints: wgpu30::MemoryHints::MemoryUsage,
+        trace: wgpu30::Trace::Off,
+        experimental_features: wgpu30::ExperimentalFeatures::disabled(),
+    })) else {
+        println!("[rustgis] bench gpu: no device, skipped");
+        return;
+    };
+    println!("[rustgis] bench gpu adapter: {}", adapter.get_info().name);
+
+    let mut engine = MapEngine::new();
+    let mut scratch = rustgis_map::Map::new("bench");
+    let mut map = GpuMap::new(&device, &queue, wgpu30::TextureFormat::Rgba8Unorm, (1500, 928));
+    // Warm-up: fonts, geometry caches and the scene's pipelines.
+    if let Some(frame) = engine.gpu_scene(WIDTH, HEIGHT - 58, 1.25) {
+        map.prepare(&device, &queue, &mut scratch, &frame.view, &frame.scene, 1.25);
+        let _ = map.render(&device, &queue);
+    }
+
+    bench("gpu scene build 1200x742 @125% (GPU device pixels 1500x928)", || {
+        nudge(&mut engine);
+        engine
+            .gpu_scene(WIDTH, HEIGHT - 58, 1.25)
+            .map_or(0, |frame| frame.scene.cmds.len())
+    });
+    bench("gpu prepare+draw+read-back 1500x928 (no present)", || {
+        let Some(frame) = engine.gpu_scene(WIDTH, HEIGHT - 58, 1.25) else {
+            return 0;
+        };
+        if !map.prepare(&device, &queue, &mut scratch, &frame.view, &frame.scene, 1.25) {
+            return 0;
+        }
+        map.render(&device, &queue).len()
+    });
+    bench("gpu scene build 1200x742 @100% (1200x742)", || {
+        nudge(&mut engine);
+        engine
+            .gpu_scene(WIDTH, HEIGHT - 58, 1.0)
+            .map_or(0, |frame| frame.scene.cmds.len())
+    });
+    bench("gpu prepare+draw+read-back 1200x742 (no present)", || {
+        let Some(frame) = engine.gpu_scene(WIDTH, HEIGHT - 58, 1.0) else {
+            return 0;
+        };
+        if !map.prepare(&device, &queue, &mut scratch, &frame.view, &frame.scene, 1.0) {
+            return 0;
+        }
+        map.render(&device, &queue).len()
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn bench_gpu() {}
 
 /// Pan by a hair so the frame cache misses: measurements below are render costs, not copies.
 fn nudge(engine: &mut MapEngine) {

@@ -97,6 +97,19 @@ pub enum EngineCommand {
     },
     /// Turn label drawing on or off, then draw a full frame.
     SetLabels { on: bool, width: u32, height: u32 },
+    /// Attach the map's native child window (`crate::win`): the engine creates a wgpu surface
+    /// there and draws every later frame with the GPU, at `dpi` device pixels per logical point.
+    /// Answers with [`EngineEvent::GpuReady`] or [`EngineEvent::GpuFailed`].
+    AttachGpu {
+        hwnd: isize,
+        width: u32,
+        height: u32,
+        dpi: f32,
+    },
+    /// The window's device-pixel ratio or size changed; the next frame uses the new values.
+    SetDpi { width: u32, height: u32, dpi: f32 },
+    /// Drop the surface and GPU device (the child window is going away).
+    DetachGpu,
     /// Stop the thread.
     Shutdown,
 }
@@ -140,6 +153,21 @@ pub enum EngineEvent {
     },
     /// The command failed; the map is unchanged.
     Failed { command: String, error: String },
+    /// The GPU map is up: the adapter that draws it and its surface's physical size.
+    GpuReady {
+        adapter: String,
+        width: u32,
+        height: u32,
+    },
+    /// The GPU map could not start or stopped; the host shows CPU frames instead.
+    GpuFailed { error: String },
+    /// The GPU presented a frame: `width`×`height` physical pixels in `elapsed`.
+    Presented {
+        width: u32,
+        height: u32,
+        quality: Quality,
+        elapsed: Duration,
+    },
     /// The engine is up (sent once, first).
     Ready,
 }
@@ -180,6 +208,17 @@ impl EngineHandle {
     /// Wait for the next event, up to `timeout`. `None` on a timeout or a stopped thread.
     pub fn recv_timeout(&self, timeout: Duration) -> Option<EngineEvent> {
         self.events.recv_timeout(timeout).ok()
+    }
+
+    /// Stop the engine thread and wait for it: the session, the GPU device and the map's surface
+    /// are dropped before this returns, so the host may then destroy the map window.
+    pub fn shutdown(&mut self) {
+        let _ = self.commands.try_send(EngineCommand::Shutdown);
+        let (_closed, placeholder) = std::sync::mpsc::channel();
+        drop(std::mem::replace(&mut self.events, placeholder));
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
     }
 }
 
@@ -227,10 +266,78 @@ fn run_engine(commands: Receiver<EngineCommand>, events: SyncSender<EngineEvent>
     let mut size = engine.size();
     // Started sharp and halved only when a frame misses its budget (a debug build).
     let mut preview_divisor = PREVIEW_DIVISOR_MIN;
+    // Physical pixels per logical point: 1.25 at 125 % scaling. The CPU path draws at 1; the GPU
+    // path draws the window at device resolution.
+    let mut dpi = 1.0f32;
+    // The map's own surface, when the host attached a window for it (Windows).
+    #[cfg(target_os = "windows")]
+    let mut gpu: Option<crate::present::GpuPresenter> = None;
+    #[cfg(not(target_os = "windows"))]
+    let mut gpu: Option<()> = None;
     while let Ok(command) = commands.recv() {
         let started = Instant::now();
         let quality = match command {
             EngineCommand::Shutdown => break,
+            EngineCommand::DetachGpu => {
+                #[cfg(target_os = "windows")]
+                {
+                    gpu = None;
+                    log::info!("[rustgis] GPU map detached");
+                }
+                continue;
+            }
+            EngineCommand::AttachGpu {
+                hwnd,
+                width,
+                height,
+                dpi: scale,
+            } => {
+                dpi = scale;
+                size = (width, height);
+                #[cfg(target_os = "windows")]
+                {
+                    match crate::present::GpuPresenter::new(hwnd, ((width as f32 * scale) as u32, (height as f32 * scale) as u32)) {
+                        Ok(presenter) => {
+                            let (w, h) = presenter.size();
+                            log::info!("[rustgis] GPU map attached: {} {}x{}", presenter.adapter(), w, h);
+                            if events
+                                .send(EngineEvent::GpuReady {
+                                    adapter: presenter.adapter().to_string(),
+                                    width: w,
+                                    height: h,
+                                })
+                                .is_err()
+                            {
+                                return;
+                            }
+                            gpu = Some(presenter);
+                        }
+                        Err(error) => {
+                            log::error!("[rustgis] GPU map unavailable: {error}");
+                            if events.send(EngineEvent::GpuFailed { error }).is_err() {
+                                return;
+                            }
+                        }
+                    }
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let _ = hwnd;
+                    let _ = events.send(EngineEvent::GpuFailed {
+                        error: "the GPU map window is Windows-only".to_string(),
+                    });
+                }
+                continue;
+            }
+            EngineCommand::SetDpi {
+                width,
+                height,
+                dpi: scale,
+            } => {
+                dpi = scale;
+                size = (width, height);
+                Quality::Full
+            }
             EngineCommand::Render {
                 width,
                 height,
@@ -312,6 +419,129 @@ fn run_engine(commands: Receiver<EngineCommand>, events: SyncSender<EngineEvent>
         let notices = engine.take_notices();
         let camera = engine.camera_status();
         let layers = engine.layer_count();
+
+        // ---- the GPU path: draw into the map window's swap chain, no read-back ----
+        #[cfg(target_os = "windows")]
+        if gpu.is_some() {
+            // A gesture over a scene that still covers the view re-projects its vertices in the
+            // vertex shader (`SceneBuffers::set_camera`): no re-tessellation, no new uploads.
+            if quality.is_preview() {
+                let view = engine.view(width, height, dpi);
+                let presenter = gpu.as_mut().expect("the GPU presenter was checked just above");
+                presenter.clear_labels();
+                match presenter.present_reusing(&view, dpi) {
+                    Ok(true) => {
+                        let elapsed = started.elapsed();
+                        let (pw, ph) = presenter.size();
+                        log::info!(
+                            "[rustgis] gpu {pw}x{ph} {quality:?} in {:.1} ms (camera re-projection)",
+                            elapsed.as_secs_f64() * 1000.0
+                        );
+                        if events
+                            .send(EngineEvent::Presented {
+                                width: pw,
+                                height: ph,
+                                quality,
+                                elapsed,
+                            })
+                            .is_err()
+                            || events
+                                .send(EngineEvent::Status {
+                                    camera,
+                                    layers,
+                                    notices,
+                                })
+                                .is_err()
+                        {
+                            break;
+                        }
+                        continue;
+                    }
+                    Ok(false) => {}
+                    Err(error) => {
+                        log::error!("[rustgis] GPU present failed: {error}");
+                        gpu = None;
+                        let _ = events.send(EngineEvent::GpuFailed { error });
+                        let _ = events.send(EngineEvent::Status {
+                            camera,
+                            layers,
+                            notices,
+                        });
+                        continue;
+                    }
+                }
+            }
+            match engine.gpu_scene(width, height, dpi) {
+                Some(frame) => {
+                    // Labels are part of the CPU-only text layer; a gesture skips it (stale
+                    // labels would freeze on a moving map) and the settle uploads the new one.
+                    let labels = if quality.is_preview() {
+                        None
+                    } else {
+                        crate::labels::rasterize(&frame.scene.labels, width, height, dpi)
+                    };
+                    let presenter = gpu.as_mut().expect("the GPU presenter was checked just above");
+                    if let Some((lw, lh, rgba)) = &labels {
+                        presenter.set_labels(rgba, *lw, *lh);
+                    } else if quality.is_preview() {
+                        presenter.clear_labels();
+                    }
+                    let presented = presenter.present(engine.map_mut(), &frame.view, &frame.scene, dpi);
+                    match presented {
+                        Ok(()) => {
+                            let elapsed = started.elapsed();
+                            let (pw, ph) = presenter.size();
+                            log::info!(
+                                "[rustgis] gpu {pw}x{ph} {quality:?} in {:.1} ms ({} label layer)",
+                                elapsed.as_secs_f64() * 1000.0,
+                                if labels.is_some() { "with" } else { "no" }
+                            );
+                            if events
+                                .send(EngineEvent::Presented {
+                                    width: pw,
+                                    height: ph,
+                                    quality,
+                                    elapsed,
+                                })
+                                .is_err()
+                                || events
+                                    .send(EngineEvent::Status {
+                                        camera,
+                                        layers,
+                                        notices,
+                                    })
+                                    .is_err()
+                            {
+                                break;
+                            }
+                            continue;
+                        }
+                        Err(error) => {
+                            log::error!("[rustgis] GPU present failed: {error}");
+                            gpu = None;
+                            if events.send(EngineEvent::GpuFailed { error }).is_err() {
+                                break;
+                            }
+                        }
+                    }
+                }
+                None => {
+                    // The globe, a tilted picture or an effect-heavy frame: this frame needs the
+                    // CPU renderer. Fall back for good, so the host can show its image again.
+                    log::warn!("[rustgis] this view needs the CPU renderer; leaving the GPU path");
+                    gpu = None;
+                    if events
+                        .send(EngineEvent::GpuFailed {
+                            error: "this view needs the CPU renderer".to_string(),
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
         match engine.render_bgra_quality(width, height, quality) {
             Ok(frame) => {
                 let elapsed = started.elapsed();
@@ -415,6 +645,9 @@ mod tests {
                     panic!("{command} failed: {error}")
                 }
                 Some(EngineEvent::Ready) => {}
+                Some(EngineEvent::GpuReady { .. })
+                | Some(EngineEvent::GpuFailed { .. })
+                | Some(EngineEvent::Presented { .. }) => {}
                 None => panic!("the engine thread stopped without drawing"),
             }
         }

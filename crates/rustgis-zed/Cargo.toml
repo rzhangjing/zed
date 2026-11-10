@@ -47,3 +47,31 @@ log = "0.4"
 # Frames become `image::RgbaImage`/PNG for hosts (and for the headless proof) that do not want to
 # know about `tiny-skia` at all.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+
+# The GPU path (see `src/gpu`): RustGIS's own wgpu, 30 — the version the upstream `mapgpu` was
+# written for. Zed's gpui stays on wgpu 29 and is not touched: the two versions coexist in the
+# lockfile (no `links` conflict). `default-features = false` keeps the WebGPU/GL stacks out; the
+# native backends below are exactly what a Windows/Linux/macOS surface needs.
+wgpu30 = { package = "wgpu", version = "30", default-features = false, features = [
+    "std",
+    "wgsl",
+    "dx12",
+    "metal",
+    "vulkan",
+] }
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.4"
+# The label text layer: the same font rasteriser rustgis-render uses (`ab_glyph`), drawing the
+# placed labels over the GPU frame.
+ab_glyph = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# The map's own child window with a wgpu surface (`src/win.rs`): the same `windows` crate and
+# features as the rest of Zed.
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+raw-window-handle = { workspace = true }
+

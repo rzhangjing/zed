@@ -13,6 +13,35 @@
 //! thread (`rustgis_zed::spawn_engine`) and this window only sends it [`EngineCommand`]s and polls
 //! [`EngineEvent`]s every 16 ms; **no `Session` call ever runs on the UI thread**.
 //!
+//! ## GPU path (the one this window uses on Windows)
+//!
+//! The map is drawn by RustGIS's own GPU backend (`rustgis_zed::gpu::GpuMap`, the port of its
+//! `mapgpu`), presenting into a **native child window** of this Zed window that carries its own
+//! wgpu 30 surface. The child is `WS_EX_TRANSPARENT` and answers `WM_NCHITTEST` with
+//! `HTTRANSPARENT`, so gpui keeps every mouse and keyboard event; the child only covers the map
+//! area, and this window keeps the frame, buttons and status line around it.
+//!
+//! Each frame is drawn at **device pixels** (`area × scale factor`): at 125 % scaling the
+//! 1200×742 map area is a 1500×928 GPU frame, so vector edges are sharp at any window size —
+//! unlike the CPU path's half-resolution preview stretched over the window. The GPU never reads
+//! pixels back: `GpuMap::present` blits the resolved 4× MSAA frame into the swap chain.
+//!
+//! Labels are a CPU-rasterised text layer (`rustgis_zed::labels`, the same fonts and sizes as
+//! the CPU renderer) uploaded as a texture and composited over the map in the same pass. It is
+//! refreshed when the map settles; while a gesture moves the map the layer is dropped (labels
+//! placed for the old camera would freeze in place).
+//!
+//! If no wgpu adapter can present into the child window (or the view needs the CPU renderer —
+//! the globe, a tilted picture), the window falls back to the CPU path below and says
+//! `cpu fallback` in the status line.
+//!
+//! ## CPU fallback
+//!
+//! A full frame is expensive in an unoptimised build, so while a pointer gesture is in progress
+//! the CPU path draws [`Quality::Preview`] frames (half canvas, labels off, no antialiasing) and
+//! settles to a [`Quality::Full`] frame once the gesture stops. The GPU path ignores the
+//! divisor: it always draws the full device-resolution frame.
+//!
 //! Input events are much faster than frames, so they are folded, never queued:
 //!
 //! * every mouse move adds to `pending_pan` (and wheel notches multiply `pending_zoom`); no
@@ -20,11 +49,9 @@
 //! * the 16 ms poll loop sends **one** [`EngineCommand::Interact`] at most every 33 ms (≈30 fps),
 //!   and only when no earlier frame is still in flight — so the engine queue holds at most one
 //!   gesture, and a fast drag can never leave a trail of stale views;
-//! * a gesture draws a [`Quality::Preview`] frame (half canvas, labels off, no antialiasing); the
-//!   worker halves that canvas once if a preview misses 33 ms (a debug build), and sharpens it
-//!   again on a fast machine;
 //! * 150 ms after the last gesture (or on mouse-up, after a short grace) the window sends one
-//!   [`EngineCommand::Settle`], which draws the full-quality frame with labels.
+//!   [`EngineCommand::Settle`], which draws the full-quality frame (and, on the GPU path, its
+//!   label layer).
 //!
 //! ## Input
 //!
@@ -64,6 +91,8 @@ use rustgis_zed::{CameraStatus, EngineCommand, EngineEvent, EngineFrame, EngineH
 pub const ENV_OPEN: &str = "ZED_RUSTGIS_OPEN";
 /// `ZED_RUSTGIS_LOAD` — a GeoJSON file to add as a layer once the window is up.
 pub const ENV_LOAD: &str = "ZED_RUSTGIS_LOAD";
+/// `ZED_RUSTGIS_CPU=1` — draw with the CPU renderer instead of the GPU window (for comparing).
+pub const ENV_CPU: &str = "ZED_RUSTGIS_CPU";
 
 /// The window opens at the client-area size the adapter's sample project is designed for.
 const WINDOW_WIDTH: f32 = 1200.0;
@@ -131,12 +160,33 @@ pub struct RustGisView {
     last_frame: Option<(Quality, Duration, u32, u32)>,
     /// Whether the event-draining task has been started (once per view, not once per paint).
     polling_started: bool,
+    /// The map's native child window: the GPU surface's drawing area (Windows only).
+    #[cfg(target_os = "windows")]
+    map_window: Option<rustgis_zed::win::MapChildWindow>,
+    /// Whether the child window's GPU surface is up. `false` once attached and failed, so the
+    /// window shows the CPU image path instead.
+    gpu: bool,
+    /// A GPU window was created but no surface could be made: never retry (a driver failure would
+    /// repeat every frame).
+    gpu_failed: bool,
+    /// The scale factor last sent to the engine (the child window's physical size follows it).
+    dpi: f32,
+    /// The child window's physical size, so `SetWindowPos` runs only when it changes.
+    child_size: Option<(u32, u32)>,
+    /// The map window's last screen position (the Zed window may move without a layout pass).
+    child_pos: Option<(i32, i32)>,
+    /// The Zed window's HWND, for placing the map window over its client area.
+    parent_hwnd: isize,
     focus_handle: FocusHandle,
 }
 
 impl RustGisView {
     fn new(cx: &mut Context<Self>) -> Self {
         let engine = spawn_engine();
+        let force_cpu = std::env::var(ENV_CPU).is_ok_and(|value| value != "0");
+        if force_cpu {
+            log::info!("[rustgis] {ENV_CPU} is set: drawing with the CPU renderer");
+        }
         // The first frame is asked for by the poll loop once `render` has told it the real map
         // area (the viewport minus the status bar), so no frame is drawn at a size that would
         // have to be thrown away.
@@ -168,6 +218,14 @@ impl RustGisView {
             idle_deadline: None,
             last_frame: None,
             polling_started: false,
+            #[cfg(target_os = "windows")]
+            map_window: None,
+            gpu: false,
+            gpu_failed: force_cpu,
+            dpi: 1.0,
+            child_size: None,
+            child_pos: None,
+            parent_hwnd: 0,
             focus_handle: cx.focus_handle(),
         }
     }
@@ -234,6 +292,8 @@ impl RustGisView {
     /// Drain what the engine thread has sent and schedule the next frame. Called from the poll
     /// task, never from `Render`.
     fn poll(&mut self, cx: &mut Context<Self>) {
+        // The map window is a popup in screen coordinates: follow the host if it moved.
+        self.reposition_gpu_window();
         let mut changed = false;
         let mut newest: Option<EngineFrame> = None;
         let mut status: Option<(CameraStatus, usize, Vec<rustgis_zed::Notice>)> = None;
@@ -249,6 +309,50 @@ impl RustGisView {
                 EngineEvent::Frame(frame) => {
                     newest = Some(frame);
                     terminal = true;
+                }
+                EngineEvent::GpuReady {
+                    adapter,
+                    width,
+                    height,
+                } => {
+                    self.gpu = true;
+                    self.gpu_failed = false;
+                    self.image = None;
+                    self.image_quality = None;
+                    // The attach command is done; ask for the first frame at the map area.
+                    self.requested = None;
+                    self.child_size = Some((width, height));
+                    log::info!("[rustgis] GPU map is up: {adapter} {width}x{height}");
+                    self.message = Some(SharedString::from(format!("gpu: {adapter}")));
+                    terminal = true;
+                    changed = true;
+                }
+                EngineEvent::GpuFailed { error } => {
+                    log::error!("[rustgis] GPU map unavailable, using the CPU path: {error}");
+                    self.gpu = false;
+                    self.gpu_failed = true;
+                    self.image = None;
+                    self.image_quality = None;
+                    self.requested = None;
+                    #[cfg(target_os = "windows")]
+                    {
+                        self.map_window = None;
+                        self.child_size = None;
+                    }
+                    self.message = Some(SharedString::from(format!("cpu fallback: {error}")));
+                    terminal = true;
+                    changed = true;
+                }
+                EngineEvent::Presented {
+                    width,
+                    height,
+                    quality,
+                    elapsed,
+                } => {
+                    self.gpu = true;
+                    self.last_frame = Some((quality, elapsed, width, height));
+                    terminal = true;
+                    changed = true;
                 }
                 EngineEvent::Status {
                     camera,
@@ -302,7 +406,10 @@ impl RustGisView {
             && self.requested != Some(area)
             && !self.in_flight
         {
-            let quality = if self.image.is_some() {
+            let quality = if self.gpu {
+                // The GPU draws the window at device resolution every frame: no preview canvas.
+                Quality::Full
+            } else if self.image.is_some() {
                 Quality::PREVIEW
             } else {
                 Quality::Full
@@ -367,10 +474,18 @@ impl RustGisView {
 
         // 4. Idle: settle to a full-quality frame with labels.
         let has_gesture = self.pending_pan != (0.0, 0.0) || self.pending_zoom.is_some();
+        // The GPU path's last frame is a gesture frame without its label layer, so it must settle
+        // too — `image_quality` only tracks CPU frames.
+        let showing_preview = if self.gpu {
+            self.last_frame
+                .is_some_and(|(quality, _, _, _)| quality.is_preview())
+        } else {
+            self.image_quality.is_some_and(Quality::is_preview)
+        };
         if !has_gesture
             && !self.pending_world
             && !self.in_flight
-            && self.image_quality.is_some_and(Quality::is_preview)
+            && showing_preview
             && self.idle_deadline.is_some_and(|deadline| now >= deadline)
         {
             if let Some(area) = self.want
@@ -394,6 +509,109 @@ impl RustGisView {
         }
     }
 
+    /// Keep the GPU map's window on the map area, at the window's device resolution, and tell
+    /// the engine the scale factor. The first call creates the window and attaches the surface;
+    /// a failure is remembered so the CPU path is not retried every frame.
+    #[cfg(target_os = "windows")]
+    fn sync_gpu_window(&mut self, window: &mut Window, area: (u32, u32)) {
+        let dpi = window.scale_factor().max(0.1);
+        if (dpi - self.dpi).abs() > 1e-3 {
+            self.dpi = dpi;
+            let _ = self.engine.send(EngineCommand::SetDpi {
+                width: area.0,
+                height: area.1,
+                dpi,
+            });
+        }
+        if self.gpu_failed {
+            return;
+        }
+        let physical = (
+            (area.0 as f32 * dpi).round().max(1.0) as i32,
+            (area.1 as f32 * dpi).round().max(1.0) as i32,
+        );
+        let Some(parent) = parent_hwnd(window) else {
+            log::warn!("[rustgis] the window has no HWND; the map stays on the CPU path");
+            self.gpu_failed = true;
+            return;
+        };
+        self.parent_hwnd = parent;
+        let Some((origin_x, origin_y)) = rustgis_zed::win::client_origin(parent) else {
+            return;
+        };
+        if let Some(child) = &self.map_window {
+            let size_changed = self.child_size != Some((physical.0 as u32, physical.1 as u32));
+            let moved = self.child_pos != Some((origin_x, origin_y));
+            if size_changed || moved {
+                if let Err(error) = child.set_bounds(origin_x, origin_y, physical.0, physical.1) {
+                    log::warn!("[rustgis] {error}");
+                } else {
+                    self.child_size = Some((physical.0 as u32, physical.1 as u32));
+                    self.child_pos = Some((origin_x, origin_y));
+                }
+            }
+            return;
+        }
+        match rustgis_zed::win::MapChildWindow::create(parent, origin_x, origin_y, physical.0, physical.1) {
+            Ok(child) => {
+                let hwnd = child.hwnd();
+                self.map_window = Some(child);
+                self.child_size = Some((physical.0 as u32, physical.1 as u32));
+                self.child_pos = Some((origin_x, origin_y));
+                if let Err(error) = self.engine.send(EngineCommand::AttachGpu {
+                    hwnd,
+                    width: area.0,
+                    height: area.1,
+                    dpi,
+                }) {
+                    // The engine is still drawing: destroy this window and make another when it
+                    // can take the attach. Any other error means the GPU path is not available.
+                    log::warn!("[rustgis] could not attach the GPU map window: {error}");
+                    self.map_window = None;
+                    self.child_size = None;
+                    self.child_pos = None;
+                    if !error.contains("busy") {
+                        self.gpu_failed = true;
+                    }
+                }
+            }
+            Err(error) => {
+                log::error!("[rustgis] {error}; the map stays on the CPU path");
+                self.gpu_failed = true;
+            }
+        }
+    }
+
+    /// Follow the Zed window while it moves without a layout pass (a title-bar drag): the map
+    /// window is a popup in screen coordinates, so it must be moved explicitly.
+    #[cfg(target_os = "windows")]
+    fn reposition_gpu_window(&mut self) {
+        if self.gpu_failed || self.parent_hwnd == 0 {
+            return;
+        }
+        let (Some(child), Some((width, height))) = (&self.map_window, self.child_size) else {
+            return;
+        };
+        let Some((origin_x, origin_y)) = rustgis_zed::win::client_origin(self.parent_hwnd) else {
+            return;
+        };
+        if self.child_pos == Some((origin_x, origin_y)) {
+            return;
+        }
+        if child
+            .set_bounds(origin_x, origin_y, width as i32, height as i32)
+            .is_ok()
+        {
+            self.child_pos = Some((origin_x, origin_y));
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn sync_gpu_window(&mut self, _window: &mut Window, _area: (u32, u32)) {}
+
+    #[cfg(not(target_os = "windows"))]
+    fn reposition_gpu_window(&mut self) {}
+
     /// "lat, lon  scale  N layers" plus the frame that is on screen.
     fn status_text(&self) -> SharedString {
         match &self.camera {
@@ -407,12 +625,16 @@ impl RustGisView {
         }
     }
 
-    /// "preview 600×400 · 24 ms" — the measured frame, so a slow frame is visible, not guessed.
+    /// "gpu 1500×928 · 12 ms" — the drawn frame, so a slow frame is visible, not guessed.
     fn frame_text(&self) -> Option<SharedString> {
         self.last_frame.map(|(quality, elapsed, width, height)| {
             SharedString::from(format!(
                 "{} {}×{} · {:.0} ms",
-                if quality.is_preview() {
+                if self.gpu {
+                    "gpu"
+                } else if self.gpu_failed {
+                    "cpu fallback"
+                } else if quality.is_preview() {
                     "preview"
                 } else {
                     "full"
@@ -426,7 +648,11 @@ impl RustGisView {
 
     fn hint_text(&self) -> &'static str {
         if self.drag_from.is_some() {
-            "dragging · preview"
+            if self.gpu {
+                "dragging · gpu"
+            } else {
+                "dragging · preview"
+            }
         } else {
             "drag to pan · wheel to zoom · +/− zoom · arrows pan"
         }
@@ -436,6 +662,18 @@ impl RustGisView {
 impl Focusable for RustGisView {
     fn focus_handle(&self, _cx: &App) -> FocusHandle {
         self.focus_handle.clone()
+    }
+}
+
+impl Drop for RustGisView {
+    fn drop(&mut self) {
+        // Stop the engine (dropping its GPU surface) before the child window it presents into is
+        // destroyed; `Drop` for `map_window` runs after this body.
+        self.engine.shutdown();
+        #[cfg(target_os = "windows")]
+        {
+            self.map_window = None;
+        }
     }
 }
 
@@ -503,9 +741,11 @@ impl Render for RustGisView {
             map_height.round() as u32,
         );
         self.want = Some(area);
+        self.sync_gpu_window(window, area);
         let compact = fit_width < 760.0;
 
         let image = self.image.clone();
+        let gpu = self.gpu;
         let status = self.status_text();
         let frame_text = self.frame_text();
         let message = self.message.clone();
@@ -560,22 +800,28 @@ impl Render for RustGisView {
                     .relative()
                     .overflow_hidden()
                     .bg(cx.theme().colors().editor_background)
-                    .child(match image {
-                        Some(image) => img(ImageSource::Render(image))
-                            // Normal flow, sized to the map area: an absolute image paints over
-                            // the status overlay below it, whichever order the two are added in.
-                            .w(px(area.0 as f32))
-                            .h(px(area.1 as f32))
-                            .object_fit(ObjectFit::Fill)
-                            .into_any_element(),
-                        None => div()
-                            .size_full()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(cx.theme().colors().text_muted)
-                            .child("RustGIS — drawing the sample project…")
-                            .into_any_element(),
+                    .child(if gpu {
+                        // The map is a native child window above this element; it just keeps the
+                        // layout (and the mouse handlers) where the map is.
+                        div().size_full().into_any_element()
+                    } else {
+                        match image {
+                            Some(image) => img(ImageSource::Render(image))
+                                // Normal flow, sized to the map area: an absolute image paints over
+                                // the status overlay below it, whichever order the two are added in.
+                                .w(px(area.0 as f32))
+                                .h(px(area.1 as f32))
+                                .object_fit(ObjectFit::Fill)
+                                .into_any_element(),
+                            None => div()
+                                .size_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .text_color(cx.theme().colors().text_muted)
+                                .child("RustGIS — drawing the sample project…")
+                                .into_any_element(),
+                        }
                     })
                     .on_mouse_down(
                         MouseButton::Left,
@@ -869,6 +1115,17 @@ fn native_client_size(window: &Window) -> Option<(Size<Pixels>, Option<Size<Pixe
 #[cfg(not(target_os = "windows"))]
 fn native_client_size(_window: &Window) -> Option<(Size<Pixels>, Option<Size<Pixels>>)> {
     None
+}
+
+/// The host window's HWND, the parent of the map's child window.
+#[cfg(target_os = "windows")]
+fn parent_hwnd(window: &Window) -> Option<isize> {
+    // The trait method, not gpui's own `Window::window_handle` (which returns a Zed-level handle).
+    let handle = raw_window_handle::HasWindowHandle::window_handle(window).ok()?;
+    let raw_window_handle::RawWindowHandle::Win32(win32) = handle.as_raw() else {
+        return None;
+    };
+    Some(win32.hwnd.get())
 }
 
 /// Fold a wheel notch into the zoom already waiting for the next frame: one factor for every

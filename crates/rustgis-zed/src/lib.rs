@@ -253,6 +253,12 @@ impl BgraFrame {
     }
 }
 
+/// A GPU scene the renderer built for one view: what [`gpu::GpuMap`] uploads and draws.
+pub struct GpuFrame {
+    pub view: View,
+    pub scene: rustgis_render::gpu_scene::GpuScene,
+}
+
 /// The inputs a frame is a function of: a cache hit can hand back the same pixels.
 #[derive(Clone, PartialEq)]
 struct RenderKey {
@@ -522,6 +528,46 @@ impl MapEngine {
         rustgis_render::render_png(self.session.map_mut(), &view)
     }
 
+    /// The GPU scene for `width`×`height` logical points at `dpi` device pixels per point: what
+    /// [`gpu::GpuMap`] draws into the map window's surface.
+    ///
+    /// `None` when this view must be drawn by the CPU renderer (the globe, tilted pictures, the
+    /// effect-heavy frames `Backend::Gpu` declines): the caller falls back for that frame.
+    pub fn gpu_scene(&mut self, width: u32, height: u32, dpi: f32) -> Option<GpuFrame> {
+        self.resize(width, height);
+        let view = self.view(width, height, dpi);
+        // `set_labels(false)` silences labels for the frame only: `label_display` is saved state.
+        let labels = self.labels;
+        let map = self.session.map_mut();
+        let paused = map.label_display.paused;
+        if !labels {
+            map.label_display.paused = true;
+        }
+        let output = rustgis_render::render_backend(map, &view, rustgis_render::Backend::Gpu);
+        map.label_display.paused = paused;
+        match output {
+            Some(rustgis_render::RenderOutput::Gpu(scene)) => Some(GpuFrame { view, scene }),
+            _ => None,
+        }
+    }
+
+    /// The view a frame at `width`×`height` logical points, `dpi` device pixels per point, shows.
+    pub(crate) fn view(&self, width: u32, height: u32, dpi: f32) -> View {
+        let dpi = if dpi.is_finite() && dpi > 0.0 { dpi.clamp(0.1, 8.0) } else { 1.0 };
+        View {
+            width: f64::from(width.clamp(1, MAX_SIDE)),
+            height: f64::from(height.clamp(1, MAX_SIDE)),
+            pixels_per_point: f64::from(dpi),
+            camera: self.session.map().camera,
+            sky: false,
+        }
+    }
+
+    /// The active map, for the GPU presenter (`GpuMap::prepare` keeps it for tile placement).
+    pub(crate) fn map_mut(&mut self) -> &mut rustgis_map::Map {
+        self.session.map_mut()
+    }
+
     /// Move the map by a screen offset, as dragging it does (`Camera::pan_px`). Pure camera: no
     /// `Session::run`, no undo snapshot.
     pub fn pan(&mut self, dx_px: f64, dy_px: f64) {
@@ -717,6 +763,20 @@ pub mod capabilities;
 
 /// Running the engine on its own thread, for hosts whose UI thread must never block.
 pub mod worker;
+
+/// The map's label text layer (rasterised placed labels over the GPU frame).
+pub mod labels;
+
+/// GPU rendering of the map (the map's own wgpu surface; see `gpu::GpuMap`).
+pub mod gpu;
+
+/// The map's native child window, for hosts where a wgpu surface is a window surface.
+#[cfg(target_os = "windows")]
+pub mod win;
+
+/// The map's wgpu surface on that child window (no read-back: the GPU presents the frame).
+#[cfg(target_os = "windows")]
+pub mod present;
 
 pub use capabilities::Capability;
 pub use worker::{EngineCommand, EngineEvent, EngineFrame, EngineHandle, spawn_engine};

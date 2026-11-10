@@ -120,6 +120,60 @@ The other per-frame costs, checked rather than assumed:
   engine is busy" instead of growing, and the event channel blocks the worker if the host stops
   reading.
 
+## The GPU path (Windows)
+
+The map is drawn by RustGIS's own GPU backend, not by the CPU renderer: `src/gpu/` is a port of
+RustGIS 0.6.0's `crates/ui-egui/src/mapgpu.rs` + `mapgpu.wgsl` (Apache-2.0, attribution in the
+file headers) with the egui callback replaced by `GpuMap`. It keeps **RustGIS's wgpu 30**: the
+root workspace's `wgpu = "29.0.4"` (gpui's) is untouched, and `crates/rustgis-zed` depends on
+`wgpu30 = { package = "wgpu", version = "30" }`, so `cargo tree -d` shows wgpu 29.0.4 + 30.0.1 and
+naga 29 + 30 side by side, with no `links` conflict.
+
+How it is put on screen (`src/win.rs`, `src/present.rs`):
+
+* gpui has no custom wgpu surface on Windows, and it presents through DirectComposition, whose
+  visuals sit above HWND children — so the map lives in an **owned `WS_POPUP` window** over the
+  map area (`WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW`), not a child window. It is
+  created, moved (it follows the Zed window in the 16 ms poll) and destroyed on the UI thread.
+* `WM_NCHITTEST` answers `HTTRANSPARENT`, so every click, drag, wheel and key event still goes to
+  the Zed window: gpui's pan/zoom/button keyboard handling is unchanged.
+* The engine thread creates an instance, surface, device and queue on that HWND and presents
+  every frame; **nothing is read back**. `GpuMap` draws the scene into an offscreen 4× MSAA
+  `Rgba8Unorm` target and blits the resolve into the swap chain (`Bgra8Unorm`, non-sRGB, so the
+  premultiplied bytes tiny-skia would write pass through unconverted).
+* Frames are **device pixels**: a 1200×742 logical map area at 125 % scaling is drawn at
+  1500×928, so vector edges and text are native to the display instead of a stretched bitmap.
+* A gesture re-projects the uploaded scene in the vertex shader (`GpuMap::prepare_reusing` →
+  `SceneBuffers::set_camera`) while it stays within the scene's reach: no re-tessellation and no
+  uploads. A frame that needs new geometry (a long pan, a big zoom, a layer change) rebuilds the
+  scene with `Backend::Gpu`.
+* Labels are placed by the same `rustgis_render` pass as the CPU path; `src/labels.rs` rasterises
+  them at device resolution with the renderer's own font files (`rustgis_render::fonts::ui_fonts`)
+  into a premultiplied RGBA texture, composited over the map in the same pass. The layer is
+  refreshed on the settle after a gesture (and dropped during the gesture, so stale labels never
+  freeze over a moving map). Turned/curved labels and icons are not drawn yet (they stay on the
+  CPU path).
+* **Fallback**: if no adapter can present into the window, or the view needs the CPU renderer
+  (the globe, tilted pictures, effect-heavy frames), the engine reports `GpuFailed`, the window
+  drops the map window and shows CPU frames again, with `cpu fallback` in the status line.
+
+`ZED_RUSTGIS_CPU=1` forces the CPU path, for side-by-side comparison with the GPU window.
+
+Measured on this machine (AMD Radeon 780M, 125 % DPI, map area 1200×742 logical = 1500×928
+device pixels; `examples/frame_timing.rs` plus the window's `[rustgis] gpu …` lines):
+
+| measurement | debug (`cargo build -p zed`) | release |
+|---|---:|---:|
+| scene build (`Backend::Gpu`, 1200×742 @125 %) | — | 11.5 ms |
+| prepare + 4× MSAA draw + read-back, 1500×928 (no present; upper bound) | — | 29.1 ms |
+| drag frame, camera re-projection, 1500×928 | **17–31 ms** | not measured |
+| settle frame with the label layer, 1500×928 | **109–161 ms** | not measured |
+
+The read-back column is an upper bound on a presented frame (the window never copies pixels
+back). The drag frames are what the status line showed: `gpu 1500×928 · 17 ms`. The settle cost
+is dominated by the CPU label rasterisation in a debug build; `--release` numbers for it are not
+measured yet.
+
 ## Building
 
 ```powershell
@@ -176,14 +230,15 @@ target\debug\zed.exe
 
 Use a separate profile (`--user-data-dir`) so the check never touches a real Zed instance. Every
 frame logs one `[rustgis]` line with its size, quality and milliseconds; a gesture shows a
-`preview` line per frame and one `full` line after it settles:
+`gpu 1500x928 Preview … (camera re-projection)` line per frame and one
+`gpu 1500x928 Full … (with label layer)` after it settles. Add `ZED_RUSTGIS_CPU=1` (or
+`$env:ZED_RUSTGIS_CPU = "1"`) to compare with the CPU path.
 
 ```text
-[rustgis] layout: GPUI viewport 1200.0x800.0, client 1200x800, DWM frame 1201.6x831.2, delta 0.0x0.0
-[rustgis] 600x371 Preview { divisor: 2 } frame in 22.5 ms (preview divisor 2)
-[rustgis] UI: 600x371 Preview { divisor: 2 } in 0.2 ms (render 22.5 ms)
-...
-[rustgis] 1200x742 Full frame in 47.5 ms (preview divisor 2)
+[rustgis] map window HWND(0x…) 1500x928 at (424, 252), owned by HWND(0x…)
+[rustgis] GPU map surface: AMD Radeon 780M Graphics (Dx12), 1500x927, Bgra8Unorm, present Fifo
+[rustgis] gpu 1500x928 Preview { divisor: 2 } in 18.2 ms (camera re-projection)
+[rustgis] gpu 1500x928 Full in 161.4 ms (with label layer)
 ```
 
 On a >100% DPI display `GetWindowRect` is virtualised while DWM's extended frame is not; the
