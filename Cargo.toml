@@ -1452,6 +1452,26 @@ syn = { opt-level = 3 }
 proc-macro2 = { opt-level = 3 }
 # proc-macros end
 
+# `Help > RustGIS` (the `rustgis_zed` adapter over the copied RustGIS 0.6.0 tree). A debug-profile
+# frame of the 1200x800 sample project costs ~500 ms with these crates at the default opt-level 0:
+# the per-pixel basemap/layer work and tiny-skia's rasteriser dominate, so an interaction preview
+# cannot meet a 33 ms budget however well the window coalesces input. Optimising only the RustGIS
+# render path (and the rasteriser/tessellator it calls) keeps the rest of a debug Zed
+# unoptimised. This is build wiring, not a change to `crates/rustgis`: every file there stays
+# byte-identical to upstream (`crates/rustgis-zed/upstream.sha256`).
+rustgis-render = { opt-level = 3 }
+rustgis-map = { opt-level = 3 }
+rustgis-geom = { opt-level = 3 }
+rustgis-data = { opt-level = 3 }
+rustgis-engine = { opt-level = 3 }
+tiny-skia = { opt-level = 3 }
+tiny-skia-path = { opt-level = 3 }
+lyon = { opt-level = 3 }
+lyon_algorithms = { opt-level = 3 }
+lyon_path = { opt-level = 3 }
+lyon_tessellation = { opt-level = 3 }
+ab_glyph = { opt-level = 3 }
+
 tree-sitter = { opt-level = 3 }
 taffy = { opt-level = 3 }
 resvg = { opt-level = 3 }

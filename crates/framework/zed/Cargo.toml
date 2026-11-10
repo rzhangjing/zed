@@ -245,6 +245,9 @@ ztracing.workspace = true
 [target.'cfg(target_os = "windows")'.dependencies]
 etw_tracing.workspace = true
 windows.workspace = true
+# `zed::rustgis` reads the window's real client area (GetClientRect + DWM's extended frame
+# bounds) to keep the bottom status row inside the visible client area.
+raw-window-handle.workspace = true
 gpui = { workspace = true, features = ["profiler", "windows-manifest"] }
 
 [build-dependencies]

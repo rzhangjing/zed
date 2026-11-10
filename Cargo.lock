@@ -26485,6 +26485,7 @@ dependencies = [
  "project_panel",
  "prompt_store",
  "proto",
+ "raw-window-handle",
  "rayon",
  "recent_projects",
  "release_channel",
