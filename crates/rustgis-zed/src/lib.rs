@@ -57,10 +57,17 @@ use std::time::Instant;
 use rustgis_engine::{Session, project::Project};
 use rustgis_map::Camera;
 use rustgis_render::View;
+use serde_json::json;
 
 /// The window's default frame size, in logical pixels (`Help > RustGIS`).
 pub const DEFAULT_WIDTH: u32 = 1200;
 pub const DEFAULT_HEIGHT: u32 = 800;
+
+/// Projection the integrated viewer opens with. RustGIS itself defaults to
+/// Web Mercator (`Projection::WebMercator`); the embedded viewer uses the
+/// equirectangular (Plate Carrée) preset instead. Projects opened with
+/// [`MapEngine::from_project`] keep the projection they were saved with.
+pub const DEFAULT_PROJECTION: &str = "equirectangular";
 
 /// The largest side the renderer accepts (`View::pixel_size` clamps to the same).
 const MAX_SIDE: u32 = 16_384;
@@ -311,7 +318,22 @@ impl MapEngine {
     /// The "World Atlas" sample project: Natural Earth countries by population, lakes, rivers and
     /// cities, with the basemap, labels and camera the RustGIS app opens with.
     pub fn new() -> Self {
-        Self::from_project(rustgis_engine::sample::world_project())
+        let mut engine = Self::from_project(rustgis_engine::sample::world_project());
+        // The embedded viewer's default (see [`DEFAULT_PROJECTION`]); a saved
+        // project opened with `from_project` keeps its own projection.
+        if let Err(error) = engine.set_projection(DEFAULT_PROJECTION) {
+            log::warn!("[rustgis] default projection {DEFAULT_PROJECTION:?} not applied: {error}");
+        }
+        engine
+    }
+
+    /// Switch the map projection by code (`mercator`, `equirectangular`,
+    /// `robinson`, `EPSG:3035`, `globe`, ...); see
+    /// `rustgis_map::projection::PRESETS`.
+    pub fn set_projection(&mut self, code: &str) -> Result<(), String> {
+        self.session.run("map.projection", &json!({ "type": code }))?;
+        self.invalidate();
+        Ok(())
     }
 
     /// A session over an arbitrary project.
