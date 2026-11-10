@@ -1,0 +1,18 @@
+[package]
+name = "gen_offline_assets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Deterministic offline asset generator: imagery pyramid + heightmap-1.0 terrain fixtures readable by FileTileFetcher/FileTerrainFetcher"
+
+[[bin]]
+name = "gen_offline_assets"
+path = "src/main.rs"
+
+[dependencies]
+# PNG encoding for the imagery pyramid (deterministic, no timestamp chunk).
+image = { workspace = true }
+# Read-back verification against the offline disk fetchers landed in M3.1.
+cesium-network = { workspace = true }
+cesium-ports-driven = { workspace = true }

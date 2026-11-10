@@ -1,0 +1,7 @@
+﻿{
+  "mean_abs_err": 0.0,
+  "pass": true,
+  "psnr_db": "inf",
+  "ssim": 1.0,
+  "threshold": 45.0
+}

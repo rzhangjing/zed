@@ -1,0 +1,119 @@
+# v2_sky.toml — M5-C sky dome + single-scattering WGSL baseline capture script
+# ==============================================================================
+# Six-view capture exercising the GPU single-scattering sky dome
+# (CESIUM_ENABLE_SKYDOME=1), which replaces the pre-M5-C CPU `ClearColor` sky
+# approximation with a Hillaire-style ray march over the atmosphere shell
+# (adapters/bevy-render/src/atmosphere/sky_atmosphere.wgsl, a *rewrite* of
+# cesium-rs `Builtin/Functions/computeScattering.glsl`, 149 lines / 8329 B).
+#
+# Unlike every other v1/v2 script, the poses here are NOT baseline_v0's. The sky
+# is a function of the *sun elevation above the camera's local horizon*, so the
+# six views are chosen to land on exactly three lighting regimes instead of on
+# geographic features — that is the whole point of the capture:
+#
+#   • noon  — camera position parallel to the sun direction  (elevation = +1)
+#             → zenith blue from Rayleigh-dominant short-path scattering
+#   • dusk  — camera position perpendicular to the sun        (elevation =  0)
+#             → long optical depth → Mie forward lobe, red/orange limb
+#   • night — camera position antiparallel to the sun         (elevation = -1)
+#             → zero in-scatter, transmittance-only (stars show through)
+#
+# Each regime is shot twice, at 3.0 and 8.0 render units from the Earth centre
+# (`orbit_camera`'s legal range is [1.005, 20.0]), so altitude-dependent step
+# budget (computeScattering.glsl L64-67, the tanh camera-height weight) is
+# exercised too: PRIMARY_STEPS drops 16 → 10 and LIGHT_STEPS 4 → 3 at the surface.
+#
+# GATE / MUTUAL EXCLUSION (M5-B, docs/deviations.md#dev-015):
+#   • CESIUM_ENABLE_SKYDOME unset/OFF (default) → CesiumAtmospherePlugin is not
+#     registered at all (main.rs L513-516), AtmosphereGlowPlugin stays ON, and the
+#     sky is the CPU ClearColor path. specs/baselines/v0/*.png → PSNR=∞ (zero diff).
+#     That is the non-regression proof and it is run with baseline_v0.toml, NOT
+#     with this script: v0's eight poses are the ones that have committed PNGs.
+#   • CESIUM_ENABLE_SKYDOME=1 → glow forced OFF (feature_flags::glow_enabled()
+#     == !skydome_enabled()), dome ON, these six views. Enabling both would
+#     double-paint the limb, which is exactly what the exclusion prevents.
+#
+# FROZEN TIME BASE:
+#   FIXED_TIME=1 freezes AnimationClock at its default start,
+#   2024-01-01T00:00:00 UTC. `JulianDate::from_date_components` converts UTC→TAI
+#   (domain/time/src/julian_date.rs L248-249) and TAI-UTC was 37 s in 2024, so the
+#   epoch the render actually uses is JD 2460310.5004282407 (TAI), NOT the nominal
+#   2460310.5. `compute_sun_direction_eci` consumes its argument verbatim, so the
+#   poses below were derived from the TAI value:
+#     FROZEN_SUN_DIRECTION = [0.174508360, -0.903425268, -0.391624331]  (ECI, unit)
+#   Both the poses and that vector are pinned in Rust by
+#   `sky_baseline_poses_encode_the_three_lighting_regimes` and
+#   `frozen_sun_direction_is_the_baseline_constant` in
+#   adapters/bevy-render/src/atmosphere/sky_dome.rs — if either drifts, the test
+#   prints the corrected table and this file must be re-transcribed.
+#
+# Run with (gate ON):
+#   CESIUM_ENABLE_SKYDOME=1
+#   FIXED_TIME=1
+#   OFFLINE_IMAGERY_ROOT=specs/fixtures/offline-imagery
+#   OFFLINE_TERRAIN_ROOT=specs/fixtures/offline-terrain
+#   STRICT_OFFLINE=1
+#   CESIUM_SCREENSHOT_SCRIPT=specs/scripts/v2_sky.toml
+#   CESIUM_SCREENSHOT_DIR=specs/baselines/v2_sky
+#   CESIUM_GIT_SHA=$(git rev-parse HEAD)
+#   cargo run --release -p cesium-app
+#
+# NOTE: headless CI has no GPU/window, so these 6 PNGs are NOT captured here
+# (specs/baselines/v2_sky/ ships empty). Capture + PSNR + frame-P95 measurement
+# is deferred to the xvfb e2e runner (.github/workflows/cesiumrust-e2e.yml,
+# M11.2 ready) — see docs/deferred.md. The acceptance gate "CPU reference
+# (`compute_sky_color`) vs GPU readback" likewise degrades on headless to the
+# three-layer evidence in sky_dome.rs: an f32 mirror of the domain f64
+# closed-form (worst rel err 4.2e-6 over 361 elevations), a unit-invariance
+# proof that the ÷6378137 render-unit conversion leaves optical depth and
+# density unchanged (worst rel err 2.2e-6 / 1.3e-6), and a naga parse +
+# `Validator::new(all(), all())` type-check of the WGSL itself.
+#
+# Frame gaps (180) give async tile streaming time to settle between views;
+# the harness exits 30 frames after the last shot for GPU flush.
+
+[meta]
+name = "v2_sky"
+description = "M5-C six-view sky dome baseline (single-scattering Hillaire ray march, noon/dusk/night x 3.0/8.0 ru, CESIUM_ENABLE_SKYDOME=1, FIXED_TIME=1, offline assets)"
+
+[[shot]]
+frame = 180
+name = "sky_noon_3"
+pos = [0.523525, -2.710276, -1.174873]
+quat = [0.830360, 0.079463, 0.052540, 0.549024]
+fov_y = 60.0
+
+[[shot]]
+frame = 360
+name = "sky_dusk_3"
+pos = [0.222823, -1.153549, 2.760376]
+quat = [0.127207, 0.154130, -0.623691, 0.755694]
+fov_y = 60.0
+
+[[shot]]
+frame = 540
+name = "sky_night_3"
+pos = [-0.523525, 2.710276, 1.174873]
+quat = [-0.052540, 0.549024, 0.830360, -0.079463]
+fov_y = 60.0
+
+[[shot]]
+frame = 720
+name = "sky_noon_8"
+pos = [1.396067, -7.227402, -3.132995]
+quat = [0.830360, 0.079463, 0.052540, 0.549024]
+fov_y = 60.0
+
+[[shot]]
+frame = 900
+name = "sky_dusk_8"
+pos = [0.594195, -3.076132, 7.361002]
+quat = [0.127207, 0.154130, -0.623691, 0.755694]
+fov_y = 60.0
+
+[[shot]]
+frame = 1080
+name = "sky_night_8"
+pos = [-1.396067, 7.227402, 3.132995]
+quat = [-0.052540, 0.549024, 0.830360, -0.079463]
+fov_y = 60.0

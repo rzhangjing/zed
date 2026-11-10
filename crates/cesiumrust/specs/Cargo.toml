@@ -1,0 +1,108 @@
+[package]
+name = "cesium-specs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Integration test suite ported from CesiumJS Specs"
+
+[dependencies]
+# Math
+glam = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# All domain crates
+cesium-geospatial = { workspace = true }
+cesium-time = { workspace = true }
+cesium-camera = { workspace = true }
+cesium-event = { workspace = true }
+cesium-resource = { workspace = true }
+cesium-imagery = { workspace = true }
+cesium-datasource = { workspace = true }
+cesium-material = { workspace = true }
+cesium-atmosphere = { workspace = true }
+cesium-interaction = { workspace = true }
+cesium-shadow = { workspace = true }
+cesium-kml = { workspace = true }
+cesium-gpx = { workspace = true }
+cesium-globe = { workspace = true }
+cesium-quadtree = { workspace = true }
+cesium-animation = { workspace = true }
+cesium-scene-mode = { workspace = true }
+# 2026-09 P0 裁剪：以下十个领域 crate 已删除，对应 specs 测试文件同步移除
+# （scene_styling_implicit / effects / voxel / vector / widgets / crs /
+#  provider / primitives / performance）。
+#   cesium-scene, cesium-effects, cesium-crs, cesium-provider,
+#   cesium-primitives, cesium-implicit-tiling, cesium-vector,
+#   cesium-performance, cesium-voxel, cesium-widgets
+# 2026-09 P1 裁剪：以下四个领域 crate 亦已删除（3D Tiles 路线 + 地形链），
+# 对应 specs 测试文件同步移除：
+#   cesium-terrain, cesium-tileset, cesium-gltf, cesium-styling
+
+[dev-dependencies]
+glam = { workspace = true }
+cesium-bevy-render = { workspace = true }
+cesium-ports-driving = { workspace = true }
+# M8.3 (#66): the e2e_network skeleton references `ResourceBackend<u64>` +
+# `TileFetcher` port traits to assert dyn-compatibility of the real adapter.
+cesium-ports-driven = { workspace = true }
+bevy = { workspace = true }
+# M8.3 (#66): the e2e_network skeleton references the real network adapter
+# types (`HttpTileFetcher`, `NetworkResourceBackend`, `resource_fetch_backend_enabled`)
+# at compile time so the `--no-run` build proves the wiring exists. Runtime
+# assertions stay `#[ignore]`d until M11.1 hooks up the async harness.
+cesium-network = { workspace = true }
+# M8 e2e network test skeleton (specs/tests/e2e_network/*). Test-only; keeps
+# HTTP mocking out of the production path. Resolved offline from the local
+# registry cache (wiremock 0.6.5). See docs/deferred.md for the #[ignore]
+# gating rationale (skeleton-only until M11.1 wires the real fetcher).
+wiremock = "0.6"
+
+[lints.clippy]
+# `cesium-specs` is the integration suite ported 1:1 from the CesiumJS `Specs/`
+# JS sources. Pure-style lints there add churn without catching bugs, so they are
+# silenced for this test-only crate. Correctness lints that flag *vacuous / wrong*
+# assertions are deliberately LEFT DENIED so a test that can never fail is a hard
+# build error (see the deny list at the bottom).
+correctness = "allow"
+# — cosmetic / style, no behavioural value in ported tests —
+approx_constant = "allow"
+excessive_precision = "allow"
+field_reassign_with_default = "allow"
+needless_update = "allow"
+bool_assert_comparison = "allow"
+needless_range_loop = "allow"
+cloned_ref_to_slice_refs = "allow"
+manual_is_multiple_of = "allow"
+manual_range_contains = "allow"
+useless_vec = "allow"
+clone_on_copy = "allow"
+len_zero = "allow"
+too_many_arguments = "allow"
+same_item_push = "allow"
+doc_lazy_continuation = "allow"
+unnecessary_get_then_check = "allow"
+needless_bool = "allow"
+# — re-enable the deny-by-default correctness lints the group allow turned off —
+overly_complex_bool_expr = "deny"
+absurd_extreme_comparisons = "deny"
+assertions_on_constants = "deny"
+identity_op = "deny"
+if_same_then_else = "deny"
+int_plus_one = "deny"
+eq_op = "deny"
+
+[lints.rust]
+# Structural realities of a suite ported 1:1 from the CesiumJS JS sources — safe
+# to tolerate here, unlike the `unused_*` lints which stay enforced (and are
+# auto-pruned by `cargo clippy --fix`):
+#   * dead_code      — per-file EPSILON_* helpers and forward-ported fixtures
+#   * non_snake_case — test helpers that mirror GLSL identifiers verbatim
+#   * deprecated     — bevy `Events::get_reader` in the M8 skeleton, tracked for
+#                      the M11 async-harness rewrite
+dead_code = "allow"
+non_snake_case = "allow"
+deprecated = "allow"

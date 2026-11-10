@@ -84,6 +84,21 @@ assets.workspace = true
 audio.workspace = true
 auto_update.workspace = true
 auto_update_ui.workspace = true
+# The cesiumrust 3D globe, shown from Help > cesiumrust in a window of its own
+# (see `src/zed/cesium.rs`). The scene is cesium-app's own viewer, assembled by
+# `cesium_app::add_viewer_scene`, which is the same function that binary's
+# `main` calls: `cesium-app` has a library target for exactly this window, and
+# this crate does not re-declare the scene.
+#
+# `bevy` is named directly because the embedding drives a Bevy `App` of its own
+# — its own event loop thread, its own offscreen render target, and its own
+# input plumbing — rather than calling `App::run`. `cesium-bevy-render` is named
+# for its public headless primitives (`headless_window_plugin`,
+# `create_offscreen_target`), which is how that offscreen target is created
+# without duplicating the adapter's code.
+bevy.workspace = true
+cesium-app.workspace = true
+cesium-bevy-render.workspace = true
 breadcrumbs.workspace = true
 chrono.workspace = true
 clap.workspace = true
@@ -130,8 +145,9 @@ gpui_platform = { workspace = true, features = [
     "x11",
 ] }
 gpui_tokio.workspace = true
-# Unconditional: the RustGIS window builds its `RenderImage` from raw readback
-# bytes (`crate::zed::rustgis`), which is a production path, not a test one.
+# Unconditional: the cesiumrust window builds its `RenderImage` from raw
+# readback bytes (`crate::zed::cesium`), which is a production path, not a test
+# one.
 image.workspace = true
 spin = "0.10.0"
 itertools.workspace = true
@@ -203,8 +219,8 @@ settings_profile_selector.workspace = true
 settings_ui.workspace = true
 shellexpand.workspace = true
 sidebar.workspace = true
-# `RenderImage` is built from a `SmallVec<[image::Frame; 1]>`; the RustGIS
-# window is the place in this crate that constructs one from scratch.
+# `RenderImage` is built from a `SmallVec<[image::Frame; 1]>`; the cesiumrust
+# window is the only place in this crate that constructs one from scratch.
 smallvec.workspace = true
 smol.workspace = true
 snippet_provider.workspace = true

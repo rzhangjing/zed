@@ -1,0 +1,41 @@
+﻿{
+    "env":  {
+                "CESIUM_ENABLE_NEW_CHAINS":  "0",
+                "CESIUM_SCREENSHOT_AT_FRAME":  "180",
+                "CESIUM_SCREENSHOT":  "specs/baselines/v0/globe_default.png"
+            },
+    "camera":  {
+                   "lon":  0,
+                   "pitch":  22.9,
+                   "lat":  22.9,
+                   "heading":  0,
+                   "height":  2
+               },
+    "git_diff_sha256":  "1C7FFF5B23AE02067EDD55F076F5028645712D6A139DA84DB31C7A1C04FD5FFE",
+    "frame":  180,
+    "camera_state":  {
+                         "pos":  [
+                                     2.763183,
+                                     0.000000,
+                                     1.168255
+                                 ],
+                         "quat":  [
+                                      0.390699,
+                                      0.390699,
+                                      0.589368,
+                                      0.589368
+                                  ],
+                         "fov_y":  60.0000
+                     },
+    "git_sha":  "958b2e1e873c86391c29fcd9ca072dec3b30230c",
+    "captured_at":  "2026-09-15T01:02:18Z",
+    "name":  "globe_default",
+    "git_dirty":  true,
+    "description":  "Default camera (lon=0, lat=23, dist=3.0), no terrain/tileset. Pristine regression anchor.",
+    "file_size_bytes":  436665,
+    "gpu":  "unknown",
+    "binary":  "target/release/cesium-app.exe",
+    "notes":  "Async Bing tile loading causes minor run-to-run variance (~0.001%). Visual content is stable. Resolution reflects physical pixels (DPI-dependent; see deferred DEFER-M0-DPI).",
+    "resolution":  "1920x1080",
+    "sha256":  "7B315E4E985CB08EAE7312FE7F166F7E30C77BDAEDF73B0C87CF0479C3FBB3BF"
+}

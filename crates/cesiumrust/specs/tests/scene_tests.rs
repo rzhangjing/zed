@@ -1,0 +1,49 @@
+//! Scene 规格测试 - 参考自 Specs/Scene/
+//! 覆盖范围：Tileset、Imagery、Material、Particles、Camera、Primitives 等。
+
+mod scene {
+    pub mod imagery_spec;
+    pub mod material_spec;
+    pub mod camera_spec;
+    pub mod atmosphere_spec;
+    pub mod atmosphere_extended_spec;
+    pub mod quadtree_spec;
+    pub mod shadow_spec;
+    pub mod shadow_extended_spec;
+    pub mod camera_operations_spec;
+    pub mod camera_setview_spec;
+    pub mod camera_coords_spec;
+    pub mod camera_pick_spec;
+    pub mod camera_extended2_spec;
+    pub mod frustum_spec;
+    pub mod scene_mode_spec;
+    pub mod imagery_blending_spec;
+    pub mod camera_controller_spec;
+    pub mod quadtree_cache_spec;
+    pub mod timeline_spec;
+    pub mod resource_scheduler_spec;
+    pub mod interpolation_spec;
+    pub mod imagery_layer_collection_spec;
+    pub mod flight_morph_spec;
+    pub mod event_picking_spec;
+    pub mod fabric_material_spec;
+    pub mod gpx_parser_spec;
+    pub mod celestial_scattering_spec;
+    pub mod star_atmosphere_spec;
+    pub mod shadow_water_spec;
+    pub mod globe_surface_spec;
+    pub mod event_system_spec;
+    pub mod tween_collection_spec;
+    pub mod flight_morph_display_spec;
+    pub mod event_aggregator_spec;
+    pub mod globe_surface_extended_spec;
+    pub mod quadtree_traversal_extended_spec;
+    pub mod imagery_tile_request_spec;
+    pub mod globe_atmosphere_extended_spec;
+    pub mod morphing_camera_extended_spec;
+    pub mod quadtree_tile_adjacency_spec;
+    pub mod globe_math_spec;
+    pub mod material_system_spec;
+    pub mod camera_extended3_spec;
+    pub mod camera_controller_extended_spec;
+}

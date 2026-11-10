@@ -1,0 +1,36 @@
+# zoom_in_burst — M0.5 perf baseline trajectory
+#
+# Rapid zoom from far (height=8.0) to close (height=0.3) over 10 s, then
+# hold for 50 s. The burst phase is the stress test: the quadtree subdivides
+# aggressively, the mesh-build pipeline saturates, texture uploads hit their
+# per-frame budget, and the spawn queue backs up. The hold phase lets the
+# pipeline drain so the CSV captures both the spike AND the recovery curve.
+#
+# This trajectory is the primary before/after benchmark for M1–M4 pipeline
+# optimizations: a fix that reduces the mesh_backlog peak or shortens the
+# drain time shows up clearly here.
+#
+# Duration: 60 s.
+
+[meta]
+name = "zoom_in_burst"
+duration_s = 60.0
+description = "Fast zoom-in burst (height 8.0 to 0.3 in 10s) then hold. Stresses subdivision + upload pipeline."
+
+[[keyframe]]
+t = 0.0
+lon = 0.0
+lat = 23.0
+height = 8.0
+
+[[keyframe]]
+t = 10.0
+lon = 0.0
+lat = 23.0
+height = 0.3
+
+[[keyframe]]
+t = 60.0
+lon = 0.0
+lat = 23.0
+height = 0.3

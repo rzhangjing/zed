@@ -1,0 +1,11 @@
+[package]
+name = "cesium-gpx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+glam.workspace = true
+cesium-geospatial.workspace = true
+cesium-datasource.workspace = true

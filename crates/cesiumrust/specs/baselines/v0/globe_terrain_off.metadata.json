@@ -1,0 +1,42 @@
+﻿{
+    "env":  {
+                "CESIUM_SCREENSHOT_AT_FRAME":  "600",
+                "CESIUM_ENABLE_NEW_CHAINS":  "0",
+                "CESIUM_ENABLE_TERRAIN":  "0",
+                "CESIUM_SCREENSHOT":  "specs/baselines/v0/globe_terrain_off.png"
+            },
+    "camera":  {
+                   "lon":  0,
+                   "pitch":  22.9,
+                   "lat":  22.9,
+                   "heading":  0,
+                   "height":  2
+               },
+    "git_diff_sha256":  "1C7FFF5B23AE02067EDD55F076F5028645712D6A139DA84DB31C7A1C04FD5FFE",
+    "frame":  600,
+    "camera_state":  {
+                         "pos":  [
+                                     2.763183,
+                                     0.000000,
+                                     1.168255
+                                 ],
+                         "quat":  [
+                                      0.390699,
+                                      0.390699,
+                                      0.589368,
+                                      0.589368
+                                  ],
+                         "fov_y":  60.0000
+                     },
+    "git_sha":  "958b2e1e873c86391c29fcd9ca072dec3b30230c",
+    "captured_at":  "2026-09-15T01:02:18Z",
+    "name":  "globe_terrain_off",
+    "git_dirty":  true,
+    "description":  "Default camera with terrain explicitly disabled (same as default in current config).",
+    "file_size_bytes":  613664,
+    "gpu":  "unknown",
+    "binary":  "target/release/cesium-app.exe",
+    "notes":  "Async Bing tile loading causes minor run-to-run variance (~0.001%). Visual content is stable. Resolution reflects physical pixels (DPI-dependent; see deferred DEFER-M0-DPI).",
+    "resolution":  "1920x1080",
+    "sha256":  "6E119E58DB8344DA95D78B5DF0A534182F56D2045A54941C96A81795F470F25E"
+}

@@ -1,0 +1,18 @@
+[package]
+name = "cesium-plot"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Framework-free plotting core (see plan `cesium-plot_标绘系统总体设计`).
+# The pure model / geometry / operations / visibility / IO live here; the Bevy
+# bridge lives in `adapters/plot-bevy`. No `bevy` dependency — keeps the scene
+# document headless-testable and reusable.
+[dependencies]
+glam.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+earcut.workspace = true
+cesium-geospatial.workspace = true

@@ -1,0 +1,35 @@
+[package]
+name = "cesium-pipeline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+cesium-ports-driven.workspace = true
+cesium-geospatial.workspace = true
+thiserror.workspace = true
+ureq.workspace = true
+
+# Optional async backend. `blocking` feature pulls tokio in *transitively* —
+# tokio is NEVER the pipeline main runtime (std threads + mpsc channels are).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"], optional = true }
+
+# M1.6 contract/stress tests (integration tests in `tests/`). Explicit version
+# pinned here (leaf crate) to avoid touching the root workspace manifest.
+# M8.5 scheduler-throughput bench uses criterion (leaf manifest only; root
+# Cargo.toml untouched; criterion 0.5 resolves offline — mirrors domain/styling).
+[dev-dependencies]
+proptest = "1"
+criterion = "0.5"
+
+[features]
+default = ["ureq-backend"]
+ureq-backend = []
+reqwest-backend = ["dep:reqwest"]
+
+# M8.5 — scheduler end-to-end throughput bench (gate 门⑤). harness=false so the
+# custom main() can emit the before/after/delta 三件套 before running criterion.
+[[bench]]
+name = "scheduler_throughput"
+harness = false

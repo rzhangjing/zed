@@ -1,0 +1,17 @@
+[package]
+name = "cesium-plot-bevy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Bevy bridge for the plotting overlay (see plan `cesium-plot_标绘系统总体设计`).
+# Owns the ECS side: bridge resources (`PlotViewCtx` / `PlotInputCapture`), the
+# view-sync / reprojection / picking / interaction systems and the overlay
+# render layer. Consumes the framework-free `cesium-plot` core for the document,
+# geometry and visibility maths. Registered only on the windowed branch of the
+# app, so the headless offscreen baseline stays byte-exact.
+[dependencies]
+bevy.workspace = true
+glam.workspace = true
+cesium-plot.workspace = true

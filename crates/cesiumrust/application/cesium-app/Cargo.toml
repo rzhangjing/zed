@@ -1,0 +1,53 @@
+[package]
+name = "cesium-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+bevy.workspace = true
+glam.workspace = true
+cesium-geospatial.workspace = true
+cesium-camera.workspace = true
+cesium-interaction.workspace = true
+cesium-ports-driven.workspace = true
+cesium-bevy-render.workspace = true
+cesium-plot-bevy.workspace = true
+cesium-pipeline.workspace = true
+cesium-material.workspace = true
+cesium-atmosphere.workspace = true
+# 2026-09 P0 裁剪：`cesium-effects`（M6 Wave A 的领域值对象：
+# ClippingPlaneCollection / ImageBasedLighting / IblMaterial /
+# EquirectangularPanorama）与 `cesium-scene-mode`（app 侧零消费者；
+# 2D/3D 形变仍由 `cesium-bevy-render` 的 camera 模块提供）已移除。
+#
+# 同一轮还移除了四个在 `cesium-app` 全包（src + examples + tests）
+# 中**零引用**的依赖（逐一 grep 取证）：
+#   • cesium-time          — 0 次；时间只经 `cesium_bevy_render` 的
+#                            `AnimationClock` / `cesium-animation` 触达
+#   • cesium-event         — 0 次（事件分发走 Bevy 自身的 Event）
+#   • cesium-resource      — 0 次
+#   • cesium-ports-driving — 0 次（driving 端口尚无消费者）
+# 保留 `cesium-ports-driven`（`offline_check.rs` / `globe_pipeline.rs`
+# 用 `TerrainProvider`/`TileFetcher`/`BudgetPolicy`）。
+ureq.workspace = true
+image.workspace = true
+cesium-network.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+# M11.4 (#83): `tests/e2e_render.rs` drives the built `cesium-app` binary in
+# headless offscreen mode and asserts on the captured PNG. These are TEST-ONLY
+# dependencies — no production dependency of `cesium-app` or `cesium-bevy-render`
+# is altered, and the golden startup path is untouched.
+#   • assert_cmd — spawn the binary with a scoped env + timeout, assert exit code.
+#   • tempfile   — isolated per-test output dir (auto-cleaned).
+#   • pixel_diff — PSNR/SSIM comparison for the determinism (same view twice) and
+#                  view-distinctness (different poses differ) pixel取证.
+# `image` is already a production dependency, so integration tests can use it too.
+assert_cmd = "2"
+tempfile = "3"
+pixel_diff = { path = "../../tools/pixel_diff" }
