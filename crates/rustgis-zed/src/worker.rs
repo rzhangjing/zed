@@ -428,14 +428,22 @@ fn run_engine(commands: Receiver<EngineCommand>, events: SyncSender<EngineEvent>
             if quality.is_preview() {
                 let view = engine.view(width, height, dpi);
                 let presenter = gpu.as_mut().expect("the GPU presenter was checked just above");
-                presenter.clear_labels();
+                // The label layer is kept and moved with the map (a quad transform from the
+                // camera it was placed for), never drawn again mid-gesture: its text stays sharp
+                // at its own size and the frame costs no text layout. A camera that turned (or a
+                // layer of another size) cannot be moved by one quad; then it is dropped until
+                // the settle draws it for the new camera.
+                if !presenter.has_labels() || !presenter.move_labels(&view, dpi) {
+                    presenter.clear_labels();
+                }
                 match presenter.present_reusing(&view, dpi) {
                     Ok(true) => {
                         let elapsed = started.elapsed();
                         let (pw, ph) = presenter.size();
                         log::info!(
-                            "[rustgis] gpu {pw}x{ph} {quality:?} in {:.1} ms (camera re-projection)",
-                            elapsed.as_secs_f64() * 1000.0
+                            "[rustgis] gpu {pw}x{ph} {quality:?} in {:.1} ms (camera re-projection, {} label layer)",
+                            elapsed.as_secs_f64() * 1000.0,
+                            if presenter.has_labels() { "moved" } else { "no" }
                         );
                         if events
                             .send(EngineEvent::Presented {
@@ -473,18 +481,26 @@ fn run_engine(commands: Receiver<EngineCommand>, events: SyncSender<EngineEvent>
             }
             match engine.gpu_scene(width, height, dpi) {
                 Some(frame) => {
-                    // Labels are part of the CPU-only text layer; a gesture skips it (stale
-                    // labels would freeze on a moving map) and the settle uploads the new one.
-                    let labels = if quality.is_preview() {
-                        None
-                    } else {
-                        crate::labels::rasterize(&frame.scene.labels, width, height, dpi)
-                    };
                     let presenter = gpu.as_mut().expect("the GPU presenter was checked just above");
-                    if let Some((lw, lh, rgba)) = &labels {
-                        presenter.set_labels(rgba, *lw, *lh);
-                    } else if quality.is_preview() {
-                        presenter.clear_labels();
+                    // A settled frame's labels are placed for this camera: the layer is drawn
+                    // again, sharp, over the whole frame. A gesture frame keeps the layer the
+                    // preview branch above moved (its text is not laid out again).
+                    let mut labels = None;
+                    if !quality.is_preview() {
+                        if !presenter.keep_labels(&frame.view, dpi) {
+                            let drawn = Instant::now();
+                            let (unplaced, placed) = (&frame.scene.unplaced, &frame.scene.labels);
+                            labels = crate::labels::rasterize(unplaced, placed, width, height, dpi);
+                            log::info!(
+                                "[rustgis] label layer: {} labels in {:.1} ms",
+                                unplaced.len() + placed.len(),
+                                drawn.elapsed().as_secs_f64() * 1000.0
+                            );
+                            match &labels {
+                                Some((lw, lh, rgba)) => presenter.set_labels(rgba, *lw, *lh, frame.view.camera),
+                                None => presenter.clear_labels(),
+                            }
+                        }
                     }
                     let presented = presenter.present(engine.map_mut(), &frame.view, &frame.scene, dpi);
                     match presented {
@@ -494,7 +510,7 @@ fn run_engine(commands: Receiver<EngineCommand>, events: SyncSender<EngineEvent>
                             log::info!(
                                 "[rustgis] gpu {pw}x{ph} {quality:?} in {:.1} ms ({} label layer)",
                                 elapsed.as_secs_f64() * 1000.0,
-                                if labels.is_some() { "with" } else { "no" }
+                                if labels.is_some() { "with" } else if presenter.has_labels() { "kept" } else { "no" }
                             );
                             if events
                                 .send(EngineEvent::Presented {

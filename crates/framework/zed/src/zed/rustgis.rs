@@ -26,10 +26,13 @@
 //! unlike the CPU path's half-resolution preview stretched over the window. The GPU never reads
 //! pixels back: `GpuMap::present` blits the resolved 4× MSAA frame into the swap chain.
 //!
-//! Labels are a CPU-rasterised text layer (`rustgis_zed::labels`, the same fonts and sizes as
-//! the CPU renderer) uploaded as a texture and composited over the map in the same pass. It is
-//! refreshed when the map settles; while a gesture moves the map the layer is dropped (labels
-//! placed for the old camera would freeze in place).
+//! Labels are a CPU-rasterised text layer (`rustgis_zed::labels`, ported from the renderer's own
+//! text code, so its fonts, sizes, halos, backgrounds, callouts and turned/curved labels match an
+//! export's) uploaded as one texture and composited over the map in the same pass. It is drawn
+//! when the map settles. While a gesture moves the map the layer is **kept and moved with it**: the
+//! texture is drawn into a rectangle that the camera's pan and zoom (the layer's `label_camera`
+//! against the frame's) put it in, so labels follow the map without laying text out again; a
+//! settled frame replaces the layer with one drawn for the new camera.
 //!
 //! If no wgpu adapter can present into the child window (or the view needs the CPU renderer —
 //! the globe, a tilted picture), the window falls back to the CPU path below and says
@@ -474,8 +477,9 @@ impl RustGisView {
 
         // 4. Idle: settle to a full-quality frame with labels.
         let has_gesture = self.pending_pan != (0.0, 0.0) || self.pending_zoom.is_some();
-        // The GPU path's last frame is a gesture frame without its label layer, so it must settle
-        // too — `image_quality` only tracks CPU frames.
+        // The GPU path's last frame is a gesture frame whose label layer was only moved with the
+        // map (its text is placed for the camera before the gesture), so it must settle too —
+        // `image_quality` only tracks CPU frames.
         let showing_preview = if self.gpu {
             self.last_frame
                 .is_some_and(|(quality, _, _, _)| quality.is_preview())

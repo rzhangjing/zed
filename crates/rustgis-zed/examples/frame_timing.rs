@@ -192,6 +192,40 @@ fn bench_gpu() {
         }
         map.render(&device, &queue).len()
     });
+
+    // The label layer: what a settle costs to draw (the text raster), what a gesture frame costs
+    // for it (a uniform write, no text at all), and what drawing the layer over the map adds.
+    let Some(frame) = engine.gpu_scene(WIDTH, HEIGHT - 58, 1.25) else {
+        println!("[rustgis] bench labels: no GPU scene, skipped");
+        return;
+    };
+    let (unplaced, placed) = (&frame.scene.unplaced, &frame.scene.labels);
+    println!("[rustgis] bench labels: {} placed, {} unplaced", placed.len(), unplaced.len());
+    bench("labels: rasterize 1500x928 @125% (the settle's text)", || {
+        rustgis_zed::labels::rasterize(unplaced, placed, WIDTH, HEIGHT - 58, 1.25).map_or(0, |(_, _, rgba)| rgba.len())
+    });
+    bench("labels: rasterize 1200x742 @100%", || {
+        rustgis_zed::labels::rasterize(unplaced, placed, WIDTH, HEIGHT - 58, 1.0).map_or(0, |(_, _, rgba)| rgba.len())
+    });
+    let Some((lw, lh, rgba)) = rustgis_zed::labels::rasterize(unplaced, placed, WIDTH, HEIGHT - 58, 1.25) else {
+        println!("[rustgis] bench labels: nothing to draw, skipped");
+        return;
+    };
+    map.set_overlay(&device, &queue, lw, lh, &rgba);
+    bench("labels: move the layer's quad (what a gesture frame adds)", || {
+        map.set_overlay_rect(&queue, [12.0, -8.0, lw as f32 + 12.0, lh as f32 - 8.0]);
+        0
+    });
+    bench("gpu prepare+draw+read-back 1500x928 with the label layer", || {
+        let Some(frame) = engine.gpu_scene(WIDTH, HEIGHT - 58, 1.25) else {
+            return 0;
+        };
+        if !map.prepare(&device, &queue, &mut scratch, &frame.view, &frame.scene, 1.25) {
+            return 0;
+        }
+        map.render(&device, &queue).len()
+    });
+    map.clear_overlay();
 }
 
 #[cfg(not(target_os = "windows"))]

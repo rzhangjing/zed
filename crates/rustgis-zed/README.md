@@ -147,12 +147,23 @@ How it is put on screen (`src/win.rs`, `src/present.rs`):
   `SceneBuffers::set_camera`) while it stays within the scene's reach: no re-tessellation and no
   uploads. A frame that needs new geometry (a long pan, a big zoom, a layer change) rebuilds the
   scene with `Backend::Gpu`.
-* Labels are placed by the same `rustgis_render` pass as the CPU path; `src/labels.rs` rasterises
-  them at device resolution with the renderer's own font files (`rustgis_render::fonts::ui_fonts`)
-  into a premultiplied RGBA texture, composited over the map in the same pass. The layer is
-  refreshed on the settle after a gesture (and dropped during the gesture, so stale labels never
-  freeze over a moving map). Turned/curved labels and icons are not drawn yet (they stay on the
-  CPU path).
+* Labels are placed by the same `rustgis_render` pass as the CPU path, and `src/labels.rs`
+  **rasterises them with a port of the renderer's own text code** (`render/src/text.rs`: the same
+  font files, shaping, CJK fallback, halos, backgrounds, callouts and turned/curved labels), so a
+  settled GPU frame's labels are an export's labels — the parity tests hold them to `mean <
+  1.5/255` and 0 structural outliers against `rustgis_render::render_placed`, and measure
+  **0.02/255** at 100 %, 125 % and a turned camera. The layer is one premultiplied RGBA texture
+  composited over the map in the same pass.
+* A gesture **keeps that layer and moves it with the map**: `GpuPresenter::move_labels` maps the
+  raster's own camera (`label_camera`) to the frame's (a uniform scale and a translation —
+  `labels::layer_rect`), and the pass draws the texture into that rectangle instead of the whole
+  frame (`vs_labels` in `mapgpu.wgsl`). No text is laid out mid-gesture (the rectangle's uniform
+  write measures 0.00 ms), the labels stay sharp at their own size through a pan, and they scale
+  with the map through a zoom until the settle draws them again for the new camera. A camera that
+  *turned* between the two frames (or a resize, or a zoom past 5×/0.2×) cannot be expressed by one
+  quad: the layer is dropped for those frames and the settle redraws it.
+* Icons are **not** drawn by this layer: a label's icon is already in the base frame upstream
+  (`render_frame` draws it into the pixel accumulation before a GPU scene is built).
 * **Fallback**: if no adapter can present into the window, or the view needs the CPU renderer
   (the globe, tilted pictures, effect-heavy frames), the engine reports `GpuFailed`, the window
   drops the map window and shows CPU frames again, with `cpu fallback` in the status line.
@@ -164,15 +175,20 @@ device pixels; `examples/frame_timing.rs` plus the window's `[rustgis] gpu …` 
 
 | measurement | debug (`cargo build -p zed`) | release |
 |---|---:|---:|
-| scene build (`Backend::Gpu`, 1200×742 @125 %) | — | 11.5 ms |
+| scene build (`Backend::Gpu`, 1200×742 @125 %) | — | 11.9 ms |
 | prepare + 4× MSAA draw + read-back, 1500×928 (no present; upper bound) | — | 29.1 ms |
 | drag frame, camera re-projection, 1500×928 | **17–31 ms** | not measured |
 | settle frame with the label layer, 1500×928 | **109–161 ms** | not measured |
+| label layer: rasterise 95 labels, 1500×928 @125 % | 85–89 ms | **14.0 ms** |
+| label layer: rasterise 95 labels, 1200×742 @100 % | — | **11.2 ms** |
+| label layer: move its quad (what a gesture frame adds) | 0.00 ms | **0.00 ms** |
+| prepare + draw + read-back with the layer drawn, 1500×928 | — | 28.1 ms |
 
 The read-back column is an upper bound on a presented frame (the window never copies pixels
 back). The drag frames are what the status line showed: `gpu 1500×928 · 17 ms`. The settle cost
-is dominated by the CPU label rasterisation in a debug build; `--release` numbers for it are not
-measured yet.
+is dominated by the CPU label rasterisation in a debug build (`label layer: 95 labels in 86 ms`;
+14 ms in `--release`). With the layer composited in the scene pass the frame is not measurably
+slower than without it (28.1 ms vs 29.1 ms: inside the run-to-run noise).
 
 ## Building
 
@@ -230,15 +246,17 @@ target\debug\zed.exe
 
 Use a separate profile (`--user-data-dir`) so the check never touches a real Zed instance. Every
 frame logs one `[rustgis]` line with its size, quality and milliseconds; a gesture shows a
-`gpu 1500x928 Preview … (camera re-projection)` line per frame and one
-`gpu 1500x928 Full … (with label layer)` after it settles. Add `ZED_RUSTGIS_CPU=1` (or
-`$env:ZED_RUSTGIS_CPU = "1"`) to compare with the CPU path.
+`gpu 1500x928 Preview … (camera re-projection, moved label layer)` line per frame, the settle
+afterwards a `label layer: N labels in X ms` line and `gpu 1500x928 Full … (with label layer)`.
+(Zed writes these to its log — `%LOCALAPPDATA%\Zed\logs\Zed.log` — not to stderr.) Add
+`ZED_RUSTGIS_CPU=1` (or `$env:ZED_RUSTGIS_CPU = "1"`) to compare with the CPU path.
 
 ```text
 [rustgis] map window HWND(0x…) 1500x928 at (424, 252), owned by HWND(0x…)
 [rustgis] GPU map surface: AMD Radeon 780M Graphics (Dx12), 1500x927, Bgra8Unorm, present Fifo
-[rustgis] gpu 1500x928 Preview { divisor: 2 } in 18.2 ms (camera re-projection)
-[rustgis] gpu 1500x928 Full in 161.4 ms (with label layer)
+[rustgis] gpu 1500x928 Preview { divisor: 2 } in 18.2 ms (camera re-projection, moved label layer)
+[rustgis] label layer: 75 labels in 57.0 ms
+[rustgis] gpu 1500x928 Full in 131.4 ms (with label layer)
 ```
 
 On a >100% DPI display `GetWindowRect` is virtualised while DWM's extended frame is not; the

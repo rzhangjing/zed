@@ -269,6 +269,47 @@ fn a_frame_is_drawn_at_device_pixels() {
     assert_eq!(gpu.render(&device, &queue).len(), 1500 * 1000 * 4);
 }
 
+/// The label layer covers the frame where it was drawn; a gesture moves that one texture's quad
+/// instead of rasterising the labels again, so what was drawn at the layer's corner moves with it.
+#[test]
+fn a_label_layer_moves_with_a_gesture() {
+    let _serial = one_at_a_time();
+    let Some((device, queue)) = headless_device() else { return };
+    let mut map = rustgis_map::Map::new("Map");
+    let camera = Camera { center: Coord::new(0.0, 0.0), res: 1.0, bearing: 0.0, pitch: 0.0 };
+    let view = rustgis_render::View { width: 8.0, height: 8.0, pixels_per_point: 1.0, camera, sky: false };
+    let mut gpu = GpuMap::new(&device, &queue, wgpu::TextureFormat::Rgba8Unorm, (8, 8));
+    let mut scene = tiny_scene();
+    scene.cmds.clear();
+    assert!(gpu.prepare(&device, &queue, &mut map, &view, &scene, 1.0));
+
+    // A 2×2 green patch at the layer's top-left corner, on an otherwise clear layer.
+    let mut layer = vec![0u8; 8 * 8 * 4];
+    for y in 0..2 {
+        for x in 0..2 {
+            let i = (y * 8 + x) * 4;
+            layer[i..i + 4].copy_from_slice(&[0, 200, 0, 255]);
+        }
+    }
+    gpu.set_overlay(&device, &queue, 8, 8, &layer);
+    let at = |px: &[u8], x: usize, y: usize| {
+        let i = (y * 8 + x) * 4;
+        [px[i], px[i + 1], px[i + 2], px[i + 3]]
+    };
+    let settled = gpu.render(&device, &queue);
+    assert_eq!((at(&settled, 0, 0), at(&settled, 7, 7)), ([0, 200, 0, 255], [0, 0, 0, 255]), "the layer is where it was drawn");
+
+    // Moved 4 px right and down (a pan): the same texture, drawn into another rectangle.
+    gpu.set_overlay_rect(&queue, [4.0, 4.0, 12.0, 12.0]);
+    let moved = gpu.render(&device, &queue);
+    assert_eq!(at(&moved, 4, 4), [0, 200, 0, 255], "the layer's corner moved with the quad");
+    assert_eq!(at(&moved, 0, 0), [0, 0, 0, 255], "and vacated where it was");
+
+    // Dropped: the frame is the map alone.
+    gpu.clear_overlay();
+    assert_eq!(at(&gpu.render(&device, &queue), 4, 4), [0, 0, 0, 255], "no layer after clear_overlay");
+}
+
 // ---- CPU vs GPU pixel parity on the world sample ----
 
 fn world_view() -> rustgis_render::View {

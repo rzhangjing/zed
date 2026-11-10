@@ -271,6 +271,26 @@ fn fs_blit(in: ImgOut) -> @location(0) vec4f {
     return color;
 }
 
+// The placed-label layer: one texture, drawn into a rectangle of the map that moves (and
+// scales) with the camera while a gesture runs. `label_quad` is that rectangle in clip space,
+// `[left, top, right, bottom]` (top is +y, the clip's up); the whole texture fills it, so the
+// labels follow the map without being rasterized again.
+@group(1) @binding(0) var<uniform> label_quad: vec4f;
+
+@vertex
+fn vs_labels(@builtin(vertex_index) vi: u32) -> ImgOut {
+    var corner = array<vec2f, 6>(
+        vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0),
+        vec2f(0.0, 0.0), vec2f(1.0, 1.0), vec2f(0.0, 1.0),
+    );
+    let c = corner[vi];
+    var out: ImgOut;
+    out.clip = vec4f(mix(label_quad.x, label_quad.z, c.x), mix(label_quad.y, label_quad.w, c.y), 0.0, 1.0);
+    // Pixmap row 0 is the top of the rectangle, and the texture's v=0.
+    out.uv = c;
+    return out;
+}
+
 // ---- tiles (a raster tile layer: each tile its own texture, placed on the map) ----
 
 struct TileIn {

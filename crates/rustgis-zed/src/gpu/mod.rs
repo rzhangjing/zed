@@ -14,6 +14,12 @@
 //! [`GpuMap::set_overlay`] adds a premultiplied RGBA layer over the map (the placed label text,
 //! rasterised on the CPU at the same device resolution), drawn in the scene's own pass with the
 //! renderer's premultiplied-alpha blend — the "GPU map + text layer" the egui app draws too.
+//!
+//! The layer is one texture drawn into a rectangle of the map, and
+//! [`GpuMap::set_overlay_rect`] moves that rectangle: a gesture keeps the rasterised layer and
+//! only moves it with the camera (its `label_camera` re-projected), so the labels follow the map
+//! through a pan or a zoom without any text being laid out again. A settled frame draws the layer
+//! again for the new camera.
 
 mod mapgpu;
 

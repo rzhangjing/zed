@@ -10,7 +10,7 @@
 
 #![cfg(target_os = "windows")]
 
-use rustgis_map::Map;
+use rustgis_map::{Camera, Map};
 use rustgis_render::View;
 use rustgis_render::gpu_scene::GpuScene;
 
@@ -30,6 +30,11 @@ pub struct GpuPresenter {
     pub adapter: String,
     /// The surface's texture format: the map pipeline draws into it.
     pub format: wgpu::TextureFormat,
+    /// The camera the uploaded label layer was placed for: a gesture moves the layer from it to
+    /// the frame's camera, and a settle replaces both. `None` when no layer is on.
+    label_camera: Option<Camera>,
+    /// The label texture's device-pixel size, as uploaded.
+    label_size: Option<(u32, u32)>,
 }
 
 impl GpuPresenter {
@@ -105,7 +110,7 @@ impl GpuPresenter {
             info.backend,
             config.present_mode
         );
-        Ok(GpuPresenter { surface, device, queue, config, map, adapter: info.name, format })
+        Ok(GpuPresenter { surface, device, queue, config, map, adapter: info.name, format, label_camera: None, label_size: None })
     }
 
     /// The swap chain's physical size.
@@ -182,21 +187,74 @@ impl GpuPresenter {
         &self.adapter
     }
 
-    /// Upload the label text layer (premultiplied RGBA at the surface's device resolution): the
-    /// GPU pass draws it over the map.
-    pub fn set_labels(&mut self, rgba: &[u8], width: u32, height: u32) {
+    /// Upload the label text layer (premultiplied RGBA at the surface's device resolution) and
+    /// remember the camera it was placed for: the GPU pass draws it over the map.
+    pub fn set_labels(&mut self, rgba: &[u8], width: u32, height: u32, camera: Camera) {
         self.map.set_overlay(&self.device, &self.queue, width, height, rgba);
+        self.label_camera = Some(camera);
+        self.label_size = Some((width, height));
     }
 
-    /// Drop the label layer (the map is moving: labels placed for the old camera would be stale).
+    /// Whether a label layer is on.
+    pub fn has_labels(&self) -> bool {
+        self.label_camera.is_some() && self.label_size.is_some() && self.map.has_overlay()
+    }
+
+    /// Re-place the label layer for a frame drawn for `view` **without rasterising it again**: the
+    /// layer keeps the pixels it has and its quad is moved (and scaled) from the camera it was
+    /// placed for to `view`'s, so the labels follow the map through a pan or a zoom.
+    ///
+    /// `false` when the layer cannot be moved and has to be drawn again — the view's physical size
+    /// changed, the camera turned or tilted, or the zoom went too far for one quad. Nothing is
+    /// changed in that case (the caller drops the layer or rasterises it).
+    pub fn move_labels(&mut self, view: &View, dpi: f32) -> bool {
+        let (Some(placed), Some(size)) = (self.label_camera, self.label_size) else { return false };
+        let (w, h) = physical(view, dpi);
+        if (w, h) != size {
+            return false;
+        }
+        let Some(rect) = crate::labels::layer_rect(&placed, &view.camera, view.width, view.height, ppp(dpi, view)) else {
+            return false;
+        };
+        self.map.set_overlay_rect(&self.queue, rect);
+        true
+    }
+
+    /// Keep the label layer as it is for a frame drawn for `view` when it was placed for exactly
+    /// this camera and size (a settle after a settle, a resize back): the layer covers the whole
+    /// frame again, and nothing is rasterised or uploaded.
+    ///
+    /// `false` when the layer does not match `view` and has to be drawn (or dropped).
+    pub fn keep_labels(&mut self, view: &View, dpi: f32) -> bool {
+        match (self.label_camera, self.label_size) {
+            (Some(placed), Some(size)) if placed == view.camera && size == physical(view, dpi) => {
+                self.map.set_overlay_rect(&self.queue, [0.0, 0.0, size.0 as f32, size.1 as f32]);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Drop the label layer (the map is moving and the layer cannot be moved with it).
     pub fn clear_labels(&mut self) {
         self.map.clear_overlay();
+        self.label_camera = None;
+        self.label_size = None;
+    }
+}
+
+/// The device-pixel ratio a frame is drawn at: `dpi` when sane, else the view's own.
+fn ppp(dpi: f32, view: &View) -> f32 {
+    if dpi.is_finite() && dpi > 0.0 {
+        dpi.clamp(0.1, 8.0)
+    } else {
+        (view.pixels_per_point as f32).clamp(0.1, 8.0)
     }
 }
 
 /// The swap chain's physical size for `view` at `dpi`.
 fn physical(view: &View, dpi: f32) -> (u32, u32) {
-    let ppp = if dpi.is_finite() && dpi > 0.0 { dpi.clamp(0.1, 8.0) } else { 1.0 };
+    let ppp = ppp(dpi, view);
     (
         (view.width * f64::from(ppp)).round().clamp(1.0, 16_384.0) as u32,
         (view.height * f64::from(ppp)).round().clamp(1.0, 16_384.0) as u32,

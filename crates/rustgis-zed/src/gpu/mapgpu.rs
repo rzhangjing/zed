@@ -265,6 +265,8 @@ pub(crate) struct GpuMapRenderer {
     tile_square_pipeline: wgpu::RenderPipeline,
     /// Presents a resolved scene in a host target format other than `Rgba8Unorm`.
     blit_pipeline: wgpu::RenderPipeline,
+    /// Draws the placed-label layer into a rectangle of the map that a gesture moves.
+    label_pipeline: wgpu::RenderPipeline,
     cmd_layout: wgpu::BindGroupLayout,
     tile_mesh_layout: wgpu::BindGroupLayout,
     backdrop_layout: wgpu::BindGroupLayout,
@@ -530,6 +532,10 @@ impl GpuMapRenderer {
         // The blit pipeline presents the resolved scene texture in a host target format other
         // than `Rgba8Unorm` (1×: the scene's own pipelines render into the 4× MSAA target).
         let blit_pipeline = pipeline("mapgpu_blit", "vs_blit", "fs_blit", &[], &[&image_layout, &blit_layout], target_format, 1, None);
+        // The label layer is drawn where its quad says (a gesture moves the layer's rectangle),
+        // with the whole texture in it: `vs_labels` places the quad, `fs_image` samples it.
+        let label_pipeline =
+            pipeline("mapgpu_labels", "vs_labels", "fs_image", &[], &[&image_layout, &blit_layout], scene_format, samples, flat.clone());
         GpuMapRenderer {
             mesh_pipeline,
             point_pipeline,
@@ -541,6 +547,7 @@ impl GpuMapRenderer {
             tile_mesh_pipeline,
             tile_square_pipeline,
             blit_pipeline,
+            label_pipeline,
             cmd_layout,
             tile_mesh_layout,
             backdrop_layout,
@@ -949,8 +956,9 @@ fn record_scene(
     });
     paint_draws(r, draws, &mut rp);
     if let Some(overlay) = overlay {
-        rp.set_pipeline(&r.image_pipeline);
+        rp.set_pipeline(&r.label_pipeline);
         rp.set_bind_group(0, &overlay.bind, &[]);
+        rp.set_bind_group(1, &overlay.quad_bind, &[]);
         rp.draw(0..6, 0..1);
     }
 }
@@ -1546,10 +1554,30 @@ pub struct GpuMap {
 
 /// A premultiplied RGBA layer over the map (the labels), uploaded from the CPU at device
 /// resolution and drawn with the renderer's premultiplied-alpha blend.
+///
+/// It is drawn into a rectangle of the map (`quad`, in clip space): the whole frame at rest, and
+/// a moved and scaled rectangle while a gesture runs, so the labels follow the map without being
+/// rasterised again (see `GpuMap::set_overlay_rect`).
 struct Overlay {
     texture: Owned<wgpu::Texture>,
     bind: wgpu::BindGroup,
+    /// The texture's size, which is the target's at rest.
     size: [u32; 2],
+    /// The destination rectangle's clip-space `[left, top, right, bottom]`.
+    quad: Owned<wgpu::Buffer>,
+    quad_bind: wgpu::BindGroup,
+}
+
+impl Overlay {
+    /// Writes the layer's destination rectangle, in device pixels of a `size` target, as the
+    /// clip-space quad `vs_labels` draws.
+    fn set_rect(&self, queue: &wgpu::Queue, rect: [f32; 4], size: [u32; 2]) {
+        let (w, h) = (size[0].max(1) as f32, size[1].max(1) as f32);
+        let [x0, y0, x1, y1] = rect;
+        // Clip space: x right, y up; the top edge is the larger y.
+        let quad = [2.0 * x0 / w - 1.0, 1.0 - 2.0 * y0 / h, 2.0 * x1 / w - 1.0, 1.0 - 2.0 * y1 / h];
+        queue.write_buffer(&self.quad, 0, bytemuck::cast_slice(&quad));
+    }
 }
 
 impl GpuMap {
@@ -1675,22 +1703,24 @@ impl GpuMap {
         if let Some(scene) = &self.scene {
             paint_draws(&self.renderer, &scene.draws, rp);
             if let Some(overlay) = &self.overlay {
-                rp.set_pipeline(&self.renderer.image_pipeline);
+                rp.set_pipeline(&self.renderer.label_pipeline);
                 rp.set_bind_group(0, &overlay.bind, &[]);
+                rp.set_bind_group(1, &overlay.quad_bind, &[]);
                 rp.draw(0..6, 0..1);
             }
         }
     }
 
     /// Upload the label layer: premultiplied RGBA at the target's device resolution, drawn over
-    /// the map in the scene's pass. `None`-sized or mismatched data is ignored (the previous
-    /// layer stays).
+    /// the map in the scene's pass, covering the whole frame. `None`-sized or mismatched data is
+    /// ignored (the previous layer stays).
     pub fn set_overlay(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, width: u32, height: u32, rgba: &[u8]) {
         if width == 0 || height == 0 || rgba.len() != width as usize * height as usize * 4 {
             log::warn!("[rustgis] the label layer is {} bytes for {width}x{height}", rgba.len());
             return;
         }
         let size = [width, height];
+        let whole = [0.0, 0.0, width as f32, height as f32];
         if let Some(overlay) = &self.overlay
             && overlay.size == size
         {
@@ -1700,6 +1730,7 @@ impl GpuMap {
                 wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(width * 4), rows_per_image: Some(height) },
                 wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
             );
+            overlay.set_rect(queue, whole, size);
             return;
         }
         let texture = owned_texture(
@@ -1730,7 +1761,32 @@ impl GpuMap {
                 wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&self.renderer.sampler) },
             ],
         });
-        self.overlay = Some(Overlay { texture, bind, size });
+        let quad = owned_buffer(
+            device,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("mapgpu_labels_quad"),
+                contents: bytemuck::cast_slice(&[0.0f32, 0.0, 1.0, 1.0]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            },
+        );
+        let quad_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("mapgpu_labels_quad_bind"),
+            layout: &self.renderer.blit_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: quad.as_entire_binding() }],
+        });
+        let overlay = Overlay { texture, bind, size, quad, quad_bind };
+        overlay.set_rect(queue, whole, size);
+        self.overlay = Some(overlay);
+    }
+
+    /// Move the label layer: `rect` (device pixels, the layer's whole texture in it) is where it
+    /// stands in the frame being drawn. A gesture keeps the rasterised layer and only moves it
+    /// from the camera it was placed for (see `GpuMap::prepare_reusing`), so the labels follow
+    /// the map without being drawn again.
+    pub fn set_overlay_rect(&mut self, queue: &wgpu::Queue, rect: [f32; 4]) {
+        if let Some(overlay) = &self.overlay {
+            overlay.set_rect(queue, rect, overlay.size);
+        }
     }
 
     /// Drop the label layer (a gesture is moving the map: the labels would be stale).
