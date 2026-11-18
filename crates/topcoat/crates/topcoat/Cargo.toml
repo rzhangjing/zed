@@ -1,0 +1,229 @@
+[package]
+name = "topcoat"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+
+[features]
+default = [
+	"asset",
+	"compression",
+	"cookie",
+	"font",
+	"icon",
+	"router",
+	"runtime",
+	"serve",
+	"session",
+	"view",
+	"discover",
+]
+full = [
+	"alpine-ajax",
+	"anyhow",
+	"asset",
+	"compression",
+	"cookie",
+	"datastar",
+	"discover",
+	"font",
+	"font-fontsource",
+	"fs",
+	"htmx",
+	"icon",
+	"icon-iconify",
+	"mail",
+	"mail-smtp",
+	"multipart",
+	"router",
+	"runtime",
+	"serve",
+	"session",
+	"sitemap",
+	"sse",
+	"tailwind",
+	"tower",
+	"ui",
+	"view",
+	"websocket",
+]
+
+alpine-ajax = [
+	"dep:topcoat-alpine-ajax",
+]
+anyhow = [
+	"topcoat-core/anyhow",
+]
+asset = [
+	"dep:topcoat-asset",
+	"topcoat-font?/asset",
+	"topcoat-font-macro?/asset",
+]
+compression = [
+	"router",
+	"topcoat-router/compression",
+]
+cookie = [
+	"dep:topcoat-cookie",
+	"topcoat-session?/cookie",
+]
+datastar = [
+	"dep:topcoat-datastar",
+	"sse",
+]
+discover = [
+	"dep:inventory",
+	"topcoat-font?/discover",
+	"topcoat-router?/discover",
+	"topcoat-router-macro?/discover",
+	"topcoat-runtime-macro?/discover",
+]
+font = [
+	"dep:topcoat-font",
+	"dep:topcoat-font-macro",
+]
+font-fontsource = [
+	"font",
+	"topcoat-font/fontsource",
+	"topcoat-font-macro/fontsource",
+]
+fs = [
+	"router",
+	"topcoat-router/fs",
+]
+htmx = [
+	"dep:topcoat-htmx",
+]
+icon = [
+	"dep:topcoat-icon",
+	"dep:topcoat-icon-macro",
+	"view",
+]
+icon-iconify = [
+	"icon",
+	"topcoat-icon-macro/iconify",
+	"topcoat-icon/iconify-build",
+]
+mail = [
+	"dep:topcoat-mail",
+	"dep:topcoat-mail-macro",
+	"view",
+]
+mail-smtp = [
+	"mail",
+	"topcoat-mail/smtp",
+]
+multipart = [
+	"router",
+	"topcoat-router/multipart",
+]
+router = [
+	"dep:topcoat-router",
+	"dep:topcoat-router-macro",
+	"view",
+	"topcoat-asset?/router",
+	"topcoat-cookie?/router",
+	"topcoat-font?/router",
+	"topcoat-mail?/router",
+	"topcoat-runtime?/router",
+	"topcoat-session?/router",
+]
+serve = [
+	"router",
+	"dep:futures-util",
+	"dep:tokio",
+	"dep:tokio-tungstenite",
+	"topcoat-asset?/serve",
+	"topcoat-router/serve",
+]
+runtime = [
+	"dep:topcoat-runtime",
+	"dep:topcoat-runtime-macro",
+]
+session = [
+	"dep:topcoat-session",
+]
+sitemap = [
+	"router",
+	"topcoat-router/sitemap",
+]
+sse = [
+	"router",
+	"topcoat-router/sse",
+]
+tailwind = [
+	"dep:topcoat-tailwind",
+]
+tower = [
+	"router",
+	"topcoat-router/tower",
+]
+ui = [
+	"dep:topcoat-ui-registry",
+]
+view = [
+	"dep:topcoat-view",
+	"dep:topcoat-view-macro",
+	"topcoat-asset?/view",
+	"topcoat-font?/view",
+]
+websocket = [
+	"serve",
+	"topcoat-router/websocket",
+]
+
+[dependencies]
+topcoat-alpine-ajax = { workspace = true, optional = true }
+topcoat-asset = { workspace = true, optional = true }
+topcoat-cookie = { workspace = true, optional = true }
+topcoat-core.workspace = true
+topcoat-core-macro.workspace = true
+topcoat-datastar = { workspace = true, optional = true }
+topcoat-font = { workspace = true, optional = true }
+topcoat-font-macro = { workspace = true, optional = true }
+topcoat-htmx = { workspace = true, optional = true }
+topcoat-icon = { workspace = true, optional = true }
+topcoat-icon-macro = { workspace = true, optional = true }
+topcoat-mail = { workspace = true, optional = true }
+topcoat-mail-macro = { workspace = true, optional = true }
+topcoat-router = { workspace = true, optional = true }
+topcoat-router-macro = { workspace = true, optional = true }
+topcoat-runtime = { workspace = true, optional = true }
+topcoat-runtime-macro = { workspace = true, optional = true }
+topcoat-session = { workspace = true, optional = true }
+topcoat-tailwind = { workspace = true, optional = true }
+topcoat-ui-registry = { workspace = true, optional = true }
+topcoat-view = { workspace = true, optional = true }
+topcoat-view-macro = { workspace = true, optional = true }
+
+futures-util = { workspace = true, optional = true }
+inventory = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, optional = true, features = ["macros", "net", "signal"] }
+tokio-tungstenite = { workspace = true, optional = true, features = ["connect"] }
+
+[dev-dependencies]
+futures-core.workspace = true
+futures-util.workspace = true
+serde_json.workspace = true
+uuid = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+normal = ["topcoat-ui-registry"]
+# Used by a doctest in the context guide, which cargo-udeps cannot see.
+development = ["uuid"]

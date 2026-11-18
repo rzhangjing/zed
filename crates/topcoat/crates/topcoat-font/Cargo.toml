@@ -1,0 +1,69 @@
+[package]
+name = "topcoat-font"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+asset = [
+	"dep:topcoat-asset",
+]
+discover = [
+	"dep:inventory",
+]
+fontsource = []
+# Enables the `refresh` binary, which fetches data from the Fontsource API.
+fontsource-refresh = [
+	"fontsource",
+	"dep:serde",
+	"dep:serde_json",
+	"dep:ureq",
+]
+router = [
+	"dep:topcoat-router",
+]
+view = [
+	"dep:topcoat-view",
+	"dep:topcoat-view-macro",
+	"topcoat-asset?/view",
+]
+
+[dependencies]
+topcoat-core.workspace = true
+topcoat-asset = { workspace = true, optional = true }
+topcoat-router = { workspace = true, optional = true }
+topcoat-view = { workspace = true, optional = true }
+topcoat-view-macro = { workspace = true, optional = true }
+
+inventory = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+serde_json = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
+
+[build-dependencies]
+heck.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[[bin]]
+name = "refresh"
+required-features = ["fontsource-refresh"]
+
+[dev-dependencies]
+topcoat = { workspace = true, features = ["view", "asset", "font-fontsource"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+development = ["topcoat"]

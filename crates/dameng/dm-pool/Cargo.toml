@@ -1,0 +1,35 @@
+[package]
+name = "dm-pool"
+description = "达梦连接池：借还、探活、回收、后台维护与异步↔阻塞桥接"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dm-error.workspace = true
+dm-core.workspace = true
+dm-odbc.workspace = true
+dm-dpi = { workspace = true, optional = true }
+tokio.workspace = true
+tracing.workspace = true
+
+[features]
+# 默认后端是 DPI（`dm-dpi`，FFI 直连 dmdpi.dll / libdmdpi.so）：Round 41 起官方一致性
+# 套件在 DPI 上 851/851 全绿，故用它替换 ODBC 作为默认；要退回 ODBC 用
+# `--no-default-features`（或 `default-features = false`）。
+default = ["dpi"]
+# 应用层读写分离路由（`router.rs`）。启用前必须确认驱动侧未开 `RW_SEPARATE`，
+# 否则两条路由会叠加（设计方案 §13 R-02）。
+rw-split = []
+# 把默认后端从 dm_odbc::OdbcBackend 换成 dm_dpi::DpiBackend（DPI+FFI 直连）。
+dpi = ["dep:dm-dpi"]
+
+[dev-dependencies]
+# 池的集成测试（`tests/`）是**独立 crate**，看不见 `[dependencies]` 里的东西，
+# 所以测试要用到的类型必须在这里再列一遍。
+dm-core.workspace = true
+dm-error.workspace = true
+# `test-util` 给 `tokio::time::pause()`；`rt-multi-thread` 给 T4.7 的
+# 256 并发压力用例（工作区默认只有 current-thread）。
+tokio = { workspace = true, features = ["test-util", "rt-multi-thread"] }

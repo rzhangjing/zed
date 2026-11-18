@@ -1,0 +1,82 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.8.1...topcoat-ui-registry-v0.9.0) - 2026-09-24
+
+### Added
+
+- *(ui)* form field components ([#420](https://github.com/tokio-rs/topcoat/pull/420))
+- *(ui)* sidebar component ([#419](https://github.com/tokio-rs/topcoat/pull/419))
+- *(runtime)* better reactivity support for (Topcoat-) UI components ([#418](https://github.com/tokio-rs/topcoat/pull/418))
+- *(ui)* minor design improvements ([#417](https://github.com/tokio-rs/topcoat/pull/417))
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.6.2...topcoat-ui-registry-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+- *(ui)* slightly adapt topcoat-ui default colors ([#379](https://github.com/tokio-rs/topcoat/pull/379))
+- *(ui)* switch from feather icons to lucide in topcoat-ui ([#378](https://github.com/tokio-rs/topcoat/pull/378))
+- *(core)* add pretty printing impls for all `syn` types, remove `prettyplease` ([#372](https://github.com/tokio-rs/topcoat/pull/372))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.5.0...topcoat-ui-registry-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(ui)* add 17 new topcoat-ui components ([#341](https://github.com/tokio-rs/topcoat/pull/341))
+
+### Other
+
+- *(view)* add promoted str optimization to avoid allocations ([#330](https://github.com/tokio-rs/topcoat/pull/330))
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.4.0...topcoat-ui-registry-v0.5.0) - 2026-07-27
+
+### Added
+
+- [**breaking**] improve boolean attribute behavior and docs ([#179](https://github.com/tokio-rs/topcoat/pull/179))
+
+### Fixed
+
+- topcoat formatter breaking at signal syntax ([#172](https://github.com/tokio-rs/topcoat/pull/172))
+
+## [0.4.0](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.3.1...topcoat-ui-registry-v0.4.0) - 2026-07-22
+
+### Fixed
+
+- ignore non-compiling Topcoat UI doctest examples ([#162](https://github.com/tokio-rs/topcoat/pull/162))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.1.3...topcoat-ui-registry-v0.2.0) - 2026-07-19
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.0.4](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.0.3...topcoat-ui-registry-v0.0.4) - 2026-07-15
+
+### Fixed
+
+- build
+- build
+
+## [0.0.2](https://github.com/tokio-rs/topcoat/compare/topcoat-ui-registry-v0.0.1...topcoat-ui-registry-v0.0.2) - 2026-07-14
+
+### Other
+
+- fix UI registry docs.rs build failure ([#97](https://github.com/tokio-rs/topcoat/pull/97))
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-ui-registry-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

@@ -1,0 +1,33 @@
+import type { Context } from "../expression/context";
+import { dehydrate } from "../expression/dehydrate";
+import { invalidatePrefetches } from "../render/prefetch";
+import { Future } from "./future";
+
+export class Procedure<A extends unknown[] = unknown[], R = unknown> {
+	constructor(
+		private readonly cx: Context,
+		/** The request URL for procedure calls, with route groups removed. */
+		private readonly path: string,
+	) {}
+
+	call(...args: A): Future<R> {
+		return new Future(async () => {
+			const response = await fetch(this.path, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(args.map(dehydrate)),
+			}).finally(invalidatePrefetches);
+			if (!response.ok) {
+				throw new Error(
+					`Procedure call failed: ${response.status} ${response.statusText}`,
+				);
+			}
+
+			return this.cx.hydrate(await response.json()) as R;
+		});
+	}
+
+	dehydrate(): { t: "Procedure"; path: string } {
+		return { t: "Procedure", path: this.path };
+	}
+}

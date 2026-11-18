@@ -1,0 +1,48 @@
+[package]
+name = "topcoat-icon"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+iconify = [
+	"dep:serde",
+]
+# Exposes the staging API (`BuildConfig`) for use from a build script.
+iconify-build = [
+	"iconify",
+	"topcoat-core/build",
+	"dep:serde_json",
+	"dep:thiserror",
+	"dep:ureq",
+]
+
+[dependencies]
+topcoat-core.workspace = true
+topcoat-view.workspace = true
+topcoat-view-macro.workspace = true
+
+serde = { workspace = true, optional = true, features = ["derive"] }
+serde_json = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
+
+[dev-dependencies]
+topcoat = { workspace = true, features = ["icon-iconify"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+development = ["topcoat"]

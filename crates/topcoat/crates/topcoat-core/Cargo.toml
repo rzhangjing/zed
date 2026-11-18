@@ -1,0 +1,42 @@
+[package]
+name = "topcoat-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+# Converts `anyhow::Error` into `topcoat::Error`.
+anyhow = ["dep:anyhow"]
+# Exposes the `cache` module for use from build scripts.
+build = []
+
+[dependencies]
+anyhow = { workspace = true, optional = true }
+anymap3.workspace = true
+base64.workspace = true
+elsa.workspace = true
+http.workspace = true
+pin-project-lite.workspace = true
+siphasher.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+topcoat.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+development = ["topcoat"]

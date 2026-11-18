@@ -1,0 +1,38 @@
+[package]
+name = "models_core"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Burn CNN + Transformer demo: training, evaluation and clustering callable in-process"
+
+[dependencies]
+# The same CPU-only Burn 0.22 feature set the standalone `crates/models` demo
+# used: core + train + dataset + autodiff + vision + store + the NdArray
+# backend. No GPU backend is compiled in.
+burn = { workspace = true, features = [
+    "std",
+    "train",
+    "dataset",
+    "autodiff",
+    "vision",
+    "store",
+    "ndarray",
+] }
+burn-ndarray.workspace = true
+# The clustering algorithms live in the root workspace's
+# `crates/fundamental/clustering` crate. `nightly-kmeans` is off by default: the
+# root workspace builds on the pinned stable toolchain. `crates/models` turns it
+# on (and sets RUSTC_BOOTSTRAP=1 in its own .cargo/config.toml), so its CLI keeps
+# all eight algorithms while the in-process root build keeps seven plus a
+# documented error row.
+clustering.workspace = true
+ndarray.workspace = true
+rand.workspace = true
+serde.workspace = true
+
+[features]
+default = []
+# Mirrors `clustering/nightly-kmeans`. Only the separate `crates/models`
+# workspace enables it, because that workspace opts into RUSTC_BOOTSTRAP.
+nightly-kmeans = ["clustering/nightly-kmeans"]

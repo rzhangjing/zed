@@ -1,0 +1,35 @@
+[package]
+name = "dm-odbc"
+description = "达梦 ODBC 后端：连接、语句、参数绑定、结果集、诊断、LOB"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dm-error.workspace = true
+dm-core.workspace = true
+odbc-api.workspace = true
+# 裸 ODBC 常量与少数 `odbc-api` 未暴露的调用（如 `SQLGetDiagField`）。版本由
+# `odbc-api` 保证一致——它就是 `pub use odbc_sys as sys`，两者同源。
+odbc-sys.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+bytes.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+# L3 真机集成测试（`tests/integration/`）是**独立 crate**，只能看见本 crate 的
+# `[dev-dependencies]`，看不见 `[dependencies]`——所以这里要把测试用到的类型
+# （`DmValue`/`DmConfig`/`DmError`/`Backend`）再列一遍，否则 `tests/` 里根本
+# 写不出参数与断言。这不是重复依赖：同一版本、同一份源码。
+dm-core.workspace = true
+dm-error.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+# CT-10（`narrow` 未开启的回归测试）在 `tests/integration/charset.rs` 里直接断言
+# `SqlChar` 的宽度；注意该目标整组 `#[ignore]`（要 `DM_TEST_DSN`），所以这条断言
+# 属**真机套件**，不在离线门禁里。
+odbc-api.workspace = true
+# 错误码目录的 `insta` 快照（`tests/integration/catalog.rs`）。
+insta.workspace = true

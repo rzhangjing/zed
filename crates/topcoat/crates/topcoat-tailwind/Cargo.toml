@@ -1,0 +1,35 @@
+[package]
+name = "topcoat-tailwind"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["build"]
+build = ["dep:topcoat-core", "dep:sha2", "dep:thiserror", "dep:ureq"]
+
+[dependencies]
+topcoat-core = { workspace = true, optional = true, features = ["build"] }
+
+sha2 = { workspace = true, optional = true }
+thiserror = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
+
+[dev-dependencies]
+topcoat = { workspace = true, features = ["tailwind"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+development = ["topcoat"]

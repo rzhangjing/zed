@@ -1,0 +1,30 @@
+[package]
+name = "dm-migrate"
+description = "达梦迁移执行入口：脚本执行与版本记录表"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dm-error.workspace = true
+dm-core.workspace = true
+# `dm-pool` 是 [`crate::Migrator`] 持有池的类型（`Arc<DmPool<B>>`），
+# `dm-odbc` 只用来给 `Migrator<B = OdbcBackend>` 的**默认后端参数**命名——
+# 与 `dm-pool`/`dm-query` 各自 `pub struct …<B: Backend = OdbcBackend>` 的既有
+# 约定保持一致（依赖方向仍是 §5.3 允许的 `dm-odbc ← dm-pool ← dm-query`，
+# 本 crate 没有新增任何跨层依赖）。
+dm-odbc.workspace = true
+dm-pool = { workspace = true, default-features = false }
+dm-query = { workspace = true, default-features = false, features = ["chrono", "decimal"] }
+tracing.workspace = true
+
+[features]
+# 默认后端是 DPI（与 `dm-pool` 的同名 feature 联动）；退回 ODBC 用
+# `--no-default-features`。
+default = ["dpi"]
+dpi = ["dm-pool/dpi", "dm-query/dpi"]
+
+[dev-dependencies]
+# 真机用例是独立 crate，`#[tokio::test]` 与建池都要在这里声明（同 `dm-query`）。
+tokio.workspace = true

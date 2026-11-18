@@ -1,0 +1,121 @@
+[package]
+name = "topcoat-router"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+compression = [
+	"dep:tower",
+	"dep:tower-http",
+]
+discover = [
+	"dep:inventory",
+]
+fs = [
+	"dep:httpdate",
+	"dep:mime_guess",
+	"dep:tokio",
+	"dep:tokio-util",
+	"tokio/fs",
+	"tokio/io-util",
+]
+multipart = [
+	"dep:multer",
+]
+sitemap = [
+	"dep:time",
+]
+serve = [
+	"dep:hyper",
+	"dep:hyper-util",
+	"dep:tokio",
+	"tokio/macros",
+	"tokio/net",
+	"tokio/rt",
+	"tokio/sync",
+	"tokio/time",
+]
+sse = [
+	"dep:tokio",
+	"tokio/time",
+]
+tower = [
+	"dep:tower",
+	"dep:tokio",
+	"tokio/macros",
+	"tokio/sync",
+]
+websocket = [
+	"serve",
+	"dep:futures-sink",
+	"dep:tokio-tungstenite",
+]
+
+[dependencies]
+topcoat-core.workspace = true
+topcoat-view = { workspace = true, features = ["http"] }
+
+bytes.workspace = true
+form_urlencoded.workspace = true
+futures-core.workspace = true
+futures-sink = { workspace = true, optional = true }
+futures-util.workspace = true
+heck.workspace = true
+http.workspace = true
+http-body.workspace = true
+http-body-util.workspace = true
+httpdate = { workspace = true, optional = true }
+hyper = { workspace = true, optional = true, features = ["server", "http1", "http2"] }
+hyper-util = { workspace = true, optional = true, features = ["server-auto", "tokio"] }
+matchit.workspace = true
+mime_guess = { workspace = true, optional = true }
+percent-encoding.workspace = true
+inventory = { workspace = true, optional = true }
+ipnet.workspace = true
+multer = { workspace = true, optional = true }
+pin-project-lite.workspace = true
+ref-cast.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_path_to_error.workspace = true
+serde_urlencoded.workspace = true
+time = { workspace = true, optional = true, features = ["formatting"] }
+tokio = { workspace = true, optional = true }
+tokio-util = { workspace = true, optional = true, features = ["io"] }
+tokio-tungstenite = { workspace = true, optional = true, features = ["handshake"] }
+tower = { workspace = true, optional = true, features = ["util"] }
+tower-http = { workspace = true, optional = true, features = [
+	"compression-br",
+	"compression-gzip",
+] }
+
+[dev-dependencies]
+topcoat = { workspace = true, features = ["compression", "fs", "router", "sitemap", "sse", "tower", "websocket"] }
+futures-util = { workspace = true, features = ["sink"] }
+tokio = { workspace = true, features = ["io-util", "macros", "rt", "test-util", "time"] }
+tokio-tungstenite = { workspace = true, features = ["connect"] }
+tower = { workspace = true, features = ["buffer", "limit", "timeout", "util"] }
+tower-http = { workspace = true, features = [
+	"compression-gzip",
+	"cors",
+	"set-header",
+	"timeout",
+	"trace",
+] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+development = ["topcoat"]

@@ -1,0 +1,26 @@
+[package]
+name = "ew_gis"
+version = "0.1.0"
+edition = "2024"
+description = "EW GIS stage 2: native wgpu 2D map + WGS84 quadtree LOD globe"
+publish = false
+
+[dependencies]
+wgpu.workspace = true
+winit.workspace = true
+glam.workspace = true
+image.workspace = true
+pollster.workspace = true
+ureq.workspace = true
+lru.workspace = true
+thiserror.workspace = true
+log.workspace = true
+bytemuck.workspace = true
+env_logger = "0.11"
+crossbeam-channel = "0.5"
+shapefile = "0.6"
+geojson = "0.24"
+# MVT vector tiles: only the `mvt` module (prost-decoded tile protobuf and the
+# command-stream reader) is needed, so the default GeoJSON/WKT/SVG converters
+# stay out of the build.
+geozero = { version = "0.15", default-features = false, features = ["with-mvt"] }

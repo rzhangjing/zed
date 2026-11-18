@@ -1,0 +1,391 @@
+use std::{
+    future::Future,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
+use topcoat::context::{Cx, memoize};
+
+#[tokio::test]
+async fn sync_memoized_function_runs_body_once_per_key_per_request() {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[memoize]
+    fn add(cx: &Cx, x: i32, y: i32) -> i32 {
+        let _ = cx;
+        CALLS.fetch_add(1, Ordering::SeqCst);
+        x + y
+    }
+
+    let cx = Cx::default();
+
+    let a = add(&cx, 1, 2);
+    let b = add(&cx, 1, 2);
+    let c = add(&cx, 1, 3);
+
+    assert_eq!(*a, 3);
+    assert_eq!(*b, 3);
+    assert_eq!(*c, 4);
+    assert_eq!(CALLS.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test]
+async fn sync_memoized_function_cache_does_not_cross_requests() {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[memoize]
+    fn add(cx: &Cx, x: i32, y: i32) -> i32 {
+        let _ = cx;
+        CALLS.fetch_add(1, Ordering::SeqCst);
+        x + y
+    }
+
+    let cx1 = Cx::default();
+    let cx2 = Cx::default();
+
+    add(&cx1, 7, 7);
+    add(&cx2, 7, 7);
+
+    assert_eq!(CALLS.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test]
+async fn async_memoized_function_runs_body_once_per_key_per_request() {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[memoize]
+    async fn fetch(cx: &Cx, slug: &str) -> String {
+        let _ = cx;
+        CALLS.fetch_add(1, Ordering::SeqCst);
+        format!("post:{slug}")
+    }
+
+    let cx = Cx::default();
+
+    let a = fetch(&cx, "hello").await;
+    let b = fetch(&cx, "hello").await;
+    let c = fetch(&cx, "world").await;
+
+    assert_eq!(a, "post:hello");
+    assert_eq!(b, "post:hello");
+    assert_eq!(c, "post:world");
+    assert_eq!(CALLS.load(Ordering::SeqCst), 2);
+}
+
+/// A memoized function with a borrowed argument must be callable from a
+/// future that is required to be `Send`, as router handler futures are.
+/// This is a compile-time regression test: a higher-ranked bound on the
+/// memoize cache's closure once made this fail the `Send` check with
+/// "implementation of `AsyncFnOnce` is not general enough".
+#[tokio::test]
+async fn async_memoized_function_with_borrowed_argument_works_in_send_future() {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[memoize]
+    async fn lookup(cx: &Cx, slug: &str) -> String {
+        let _ = cx;
+        CALLS.fetch_add(1, Ordering::SeqCst);
+        slug.to_owned()
+    }
+
+    fn require_send<F: Future + Send>(future: F) -> F {
+        future
+    }
+
+    let cx = Cx::default();
+
+    let value = require_send(async {
+        let slug = String::from("hello");
+        lookup(&cx, slug.as_str()).await.clone()
+    })
+    .await;
+
+    assert_eq!(value, "hello");
+    assert_eq!(CALLS.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn async_memoized_function_returns_stable_reference() {
+    #[memoize]
+    async fn fetch(cx: &Cx, slug: &str) -> String {
+        let _ = cx;
+        format!("post:{slug}")
+    }
+
+    let cx = Cx::default();
+
+    let first: &String = fetch(&cx, "same").await;
+    let second: &String = fetch(&cx, "same").await;
+
+    assert!(std::ptr::eq(first.as_ptr(), second.as_ptr()));
+}
+
+#[tokio::test]
+async fn memoized_option_return_is_borrowed_ergonomically_with_as_ref() {
+    static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[memoize(as_ref)]
+    fn maybe(cx: &Cx, is_some: bool) -> Option<i32> {
+        let _ = cx;
+        CALLS.fetch_add(1, Ordering::SeqCst);
+        if is_some { Some(42) } else { None }
+    }
+
+    let cx = Cx::default();
+
+    let some_value: Option<&i32> = maybe(&cx, true);
+    let none_value: Option<&i32> = maybe(&cx, false);
+
+    assert_eq!(some_value, Some(&42));
+    assert_eq!(none_value, None);
+
+    maybe(&cx, true);
+    assert_eq!(CALLS.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test]
+async fn memoized_result_return_is_borrowed_ergonomically_with_as_ref() {
+    #[memoize(as_ref)]
+    fn fallible(cx: &Cx, fail: bool) -> Result<i32, String> {
+        let _ = cx;
+        if fail { Err("nope".to_owned()) } else { Ok(42) }
+    }
+
+    let cx = Cx::default();
+
+    let ok_value: Result<&i32, &String> = fallible(&cx, false);
+    let err_value: Result<&i32, &String> = fallible(&cx, true);
+
+    assert_eq!(ok_value, Ok(&42));
+    assert_eq!(err_value, Err(&"nope".to_owned()));
+}
+
+#[deny(unused_imports)]
+mod cx_import_used_only_by_memoized_signature {
+    use topcoat::context::{Cx, memoize};
+
+    #[memoize]
+    pub fn value(cx: &Cx) -> i32 {
+        let _ = cx;
+        42
+    }
+}
+
+#[tokio::test]
+async fn memoized_signature_uses_the_written_cx_type() {
+    let cx = Cx::default();
+
+    assert_eq!(*cx_import_used_only_by_memoized_signature::value(&cx), 42);
+}
+
+#[tokio::test]
+async fn memoized_topcoat_error_propagates_with_question_mark_under_as_ref() {
+    #[derive(Debug)]
+    struct Failure;
+
+    impl std::fmt::Display for Failure {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("failure")
+        }
+    }
+
+    impl std::error::Error for Failure {}
+
+    #[memoize(as_ref)]
+    fn fallible(cx: &Cx) -> topcoat::Result<i32> {
+        let _ = cx;
+        Err(Failure.into())
+    }
+
+    fn caller(cx: &Cx) -> topcoat::Result<i32> {
+        Ok(*fallible(cx)?)
+    }
+
+    let cx = Cx::default();
+
+    assert!(caller(&cx).unwrap_err().is::<Failure>());
+}
+
+#[tokio::test]
+async fn memoized_option_return_is_a_plain_reference_by_default() {
+    #[memoize]
+    fn maybe(cx: &Cx, is_some: bool) -> Option<i32> {
+        let _ = cx;
+        if is_some { Some(42) } else { None }
+    }
+
+    let cx = Cx::default();
+
+    let value: &Option<i32> = maybe(&cx, true);
+
+    assert_eq!(value, &Some(42));
+}
+
+#[tokio::test]
+async fn separate_memoized_functions_have_independent_caches() {
+    static A_CALLS: AtomicUsize = AtomicUsize::new(0);
+    static B_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[memoize]
+    fn fn_a(cx: &Cx, x: i32) -> i32 {
+        let _ = cx;
+        A_CALLS.fetch_add(1, Ordering::SeqCst);
+        x
+    }
+
+    #[memoize]
+    fn fn_b(cx: &Cx, x: i32) -> i32 {
+        let _ = cx;
+        B_CALLS.fetch_add(1, Ordering::SeqCst);
+        x * 10
+    }
+
+    let cx = Cx::default();
+
+    assert_eq!(*fn_a(&cx, 1), 1);
+    assert_eq!(*fn_b(&cx, 1), 10);
+    assert_eq!(*fn_a(&cx, 1), 1);
+    assert_eq!(*fn_b(&cx, 1), 10);
+
+    assert_eq!(A_CALLS.load(Ordering::SeqCst), 1);
+    assert_eq!(B_CALLS.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn sync_direct_and_indirect_recursion_with_different_keys() {
+    #[memoize]
+    fn direct(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 {
+            0
+        } else {
+            1 + *direct(cx, depth - 1)
+        }
+    }
+
+    #[memoize]
+    fn a(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 { 0 } else { 1 + *b(cx, depth - 1) }
+    }
+
+    #[memoize]
+    fn b(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 { 0 } else { 1 + *c(cx, depth - 1) }
+    }
+
+    #[memoize]
+    fn c(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 { 0 } else { 1 + *a(cx, depth - 1) }
+    }
+
+    let cx = Cx::default();
+
+    assert_eq!(*direct(&cx, 5), 5);
+    assert_eq!(*a(&cx, 5), 5);
+}
+
+#[tokio::test]
+async fn async_direct_and_indirect_recursion_with_different_keys() {
+    #[memoize]
+    async fn direct(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 {
+            0
+        } else {
+            1 + *Box::pin(direct(cx, depth - 1)).await
+        }
+    }
+
+    #[memoize]
+    async fn a(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 {
+            0
+        } else {
+            1 + *b(cx, depth - 1).await
+        }
+    }
+
+    #[memoize]
+    async fn b(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 {
+            0
+        } else {
+            1 + *c(cx, depth - 1).await
+        }
+    }
+
+    #[memoize]
+    async fn c(cx: &Cx, depth: usize) -> usize {
+        if depth == 0 {
+            0
+        } else {
+            1 + *Box::pin(a(cx, depth - 1)).await
+        }
+    }
+
+    let cx = Cx::default();
+
+    assert_eq!(*direct(&cx, 5).await, 5);
+    assert_eq!(*a(&cx, 5).await, 5);
+}
+
+#[tokio::test]
+#[should_panic(expected = "recursive `#[memoize]` initialization")]
+async fn sync_direct_recursion_with_same_key_panics() {
+    #[memoize]
+    fn recursive(cx: &Cx) -> usize {
+        *recursive(cx)
+    }
+
+    recursive(&Cx::default());
+}
+
+#[tokio::test]
+#[should_panic(expected = "recursive `#[memoize]` initialization")]
+async fn sync_indirect_recursion_with_same_key_panics() {
+    #[memoize]
+    fn a(cx: &Cx) -> usize {
+        *b(cx)
+    }
+
+    #[memoize]
+    fn b(cx: &Cx) -> usize {
+        *c(cx)
+    }
+
+    #[memoize]
+    fn c(cx: &Cx) -> usize {
+        *a(cx)
+    }
+
+    a(&Cx::default());
+}
+
+#[tokio::test]
+#[should_panic(expected = "recursive `#[memoize]` initialization")]
+async fn async_direct_recursion_with_same_key_panics() {
+    #[memoize]
+    async fn recursive(cx: &Cx) -> usize {
+        *Box::pin(recursive(cx)).await
+    }
+
+    recursive(&Cx::default()).await;
+}
+
+#[tokio::test]
+#[should_panic(expected = "recursive `#[memoize]` initialization")]
+async fn async_indirect_recursion_with_same_key_panics() {
+    #[memoize]
+    async fn a(cx: &Cx) -> usize {
+        *b(cx).await
+    }
+
+    #[memoize]
+    async fn b(cx: &Cx) -> usize {
+        *c(cx).await
+    }
+
+    #[memoize]
+    async fn c(cx: &Cx) -> usize {
+        *Box::pin(a(cx)).await
+    }
+
+    a(&Cx::default()).await;
+}

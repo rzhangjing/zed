@@ -1,0 +1,16 @@
+[package]
+name = "icon"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+topcoat = { workspace = true, features = ["icon-iconify"] }
+
+[build-dependencies]
+# We cannot use `workspace = true` with `default-features = false`.
+topcoat = { path = "../../crates/topcoat/", default-features = false, features = ["icon-iconify"] }
+
+[lints]
+workspace = true

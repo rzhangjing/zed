@@ -1,0 +1,45 @@
+# 本 crate 是 **`toasty-sql` 0.11.0 的 vendored fork**（达梦方言）。
+#
+# 上游：https://github.com/tokio-rs/toasty ，tag `toasty-v0.11.0`，许可 MIT。
+# 为什么 fork、改了哪些地方：`docs/设计方案.md` §9.1/§9.8 与 `docs/toasty-fork.md`。
+# 维护要求：保持与上游**逐文件**同构，改动集中、可 diff、可 rebase（不要顺手重构）。
+#
+# 与上游 `Cargo.toml` 的差异只有三处：① 展开 workspace 继承（本仓不是它的 workspace）；
+# ② `publish = false`（内部分支，不发 crates.io）；③ 补 `license-file`/README 说明。
+[package]
+name = "toasty-sql"
+version = "0.11.0"
+description = "SQL serialization layer for Toasty database drivers（达梦 fork）"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+repository = "https://github.com/tokio-rs/toasty"
+readme = "README.md"
+documentation = "https://docs.rs/toasty-sql"
+keywords = ["orm", "database", "sql", "nosql", "async"]
+categories = ["database"]
+publish = false
+
+[lib]
+name = "toasty_sql"
+path = "src/lib.rs"
+
+[dependencies]
+toasty-core = "0.11.0"
+jiff = { version = "0.2.23", optional = true }
+rust_decimal = { version = "1.41.0", optional = true }
+bigdecimal = { version = "0.4.10", optional = true }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+[features]
+rust_decimal = ["dep:rust_decimal", "toasty-core/rust_decimal"]
+bigdecimal = ["dep:bigdecimal", "toasty-core/bigdecimal"]
+jiff = ["dep:jiff", "toasty-core/jiff"]
+net = ["toasty-core/net"]
+
+[dev-dependencies]
+expect-test = "1.5"
+
+[lints.rust]
+unsafe_code = "deny"

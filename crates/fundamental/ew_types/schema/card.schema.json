@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/ew-types/card.schema.json",
+  "title": "类型卡",
+  "description": "ew-types 工具的输出契约。null 一律表示「注释未声明」，不是「不适用」。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "kind", "path", "doc", "src"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["struct", "enum", "newtype", "alias"] },
+    "path": { "type": "string" },
+    "doc": { "type": "string" },
+    "invariants": { "type": "array", "items": { "type": "string" } },
+    "generics": { "type": "array", "items": { "type": "string" } },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "variants": { "type": "array", "items": { "$ref": "#/$defs/variant" } },
+    "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
+    "ctor": { "$ref": "#/$defs/ctor" },
+    "derives": { "type": "array", "items": { "type": "string" } },
+    "nonExhaustive": { "type": "boolean" },
+    "src": { "type": "string", "pattern": "^.+:[0-9]+$" }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "doc", "meaning", "unit", "range", "default", "nullable"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "doc": { "type": "string" },
+        "meaning": { "type": "string" },
+        "unit": { "type": ["string", "null"] },
+        "range": { "type": ["string", "null"] },
+        "precision": { "type": "string" },
+        "default": { "type": ["string", "null"] },
+        "nullable": { "type": "boolean" },
+        "note": {
+          "type": "string",
+          "description": "五段之外的自由说明，如「保持下单顺序」"
+        },
+        "missing": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["unit", "range", "default"] },
+          "description": "注释里缺失的必写段。空数组表示三段都写了。"
+        }
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "doc"],
+      "properties": {
+        "name": { "type": "string" },
+        "doc": { "type": "string" },
+        "payload": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "via"],
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "via": { "type": "string" }
+      }
+    },
+    "ctor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sig"],
+      "properties": {
+        "name": { "type": "string" },
+        "sig": { "type": "string" },
+        "checks": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

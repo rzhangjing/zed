@@ -1,0 +1,60 @@
+[package]
+name = "topcoat-asset"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+
+bundler = [
+	"topcoat-core/build",
+	"dep:mime_guess",
+	"dep:ureq",
+]
+router = [
+	"view",
+	"dep:topcoat-router",
+]
+serve = [
+	"router",
+	"dep:tokio",
+]
+view = [
+	"dep:topcoat-view",
+]
+
+[dependencies]
+topcoat-core.workspace = true
+topcoat-router = { workspace = true, optional = true }
+topcoat-view = { workspace = true, optional = true }
+
+http.workspace = true
+memchr.workspace = true
+mime_guess = { workspace = true, optional = true }
+percent-encoding.workspace = true
+serde = { workspace = true, features = ["derive"] }
+sha2.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, optional = true, features = ["fs", "rt"] }
+toml.workspace = true
+ureq = { workspace = true, optional = true }
+
+[dev-dependencies]
+topcoat = { workspace = true, features = ["asset"] }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.cargo-udeps.ignore]
+development = ["topcoat"]

@@ -1,0 +1,104 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.9.0...topcoat-runtime-grammar-v0.10.0) - 2026-10-03
+
+### Added
+
+- *(runtime)* tuple expression support ([#490](https://github.com/tokio-rs/topcoat/pull/490))
+- *(runtime)* custom record types ([#466](https://github.com/tokio-rs/topcoat/pull/466))
+
+### Fixed
+
+- non-deterministic macros ([#485](https://github.com/tokio-rs/topcoat/pull/485))
+- *(view)* rust analyzer auto completions breaking when the current rust code macro input is invalid ([#457](https://github.com/tokio-rs/topcoat/pull/457))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.8.1...topcoat-runtime-grammar-v0.9.0) - 2026-09-24
+
+### Added
+
+- *(runtime)* support streaming for shards ([#444](https://github.com/tokio-rs/topcoat/pull/444))
+- *(runtime)* make procedure and shard paths customizable ([#441](https://github.com/tokio-rs/topcoat/pull/441))
+- *(runtime)* better reactivity support for (Topcoat-) UI components ([#418](https://github.com/tokio-rs/topcoat/pull/418))
+- *(runtime)* support Vec, slices and arrays ([#416](https://github.com/tokio-rs/topcoat/pull/416))
+- *(runtime)* integer support ([#415](https://github.com/tokio-rs/topcoat/pull/415))
+- *(view)* [**breaking**] new way to specify identities (`#[key(...)]` and `cx.keyed(...)`) ([#410](https://github.com/tokio-rs/topcoat/pull/410))
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+- upgrade syn to 3.0.6 ([#428](https://github.com/tokio-rs/topcoat/pull/428))
+
+## [0.8.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.7.0...topcoat-runtime-grammar-v0.8.0) - 2026-09-09
+
+### Added
+
+- *(runtime)* [**breaking**] track signals in shards / pages ([#391](https://github.com/tokio-rs/topcoat/pull/391))
+- *(runtime)* persistent signal identity and state ([#388](https://github.com/tokio-rs/topcoat/pull/388))
+- *(runtime)* [**breaking**] replace signal custom syntax with an ordinary rust function ([#384](https://github.com/tokio-rs/topcoat/pull/384))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.6.2...topcoat-runtime-grammar-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+
+### Fixed
+
+- *(runtime)* preserve boolean procedure results ([#375](https://github.com/tokio-rs/topcoat/pull/375))
+
+## [0.6.1](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.6.0...topcoat-runtime-grammar-v0.6.1) - 2026-08-18
+
+### Fixed
+
+- *(runtime)* support await expressions in ExprBlock and ExprIf ([#352](https://github.com/tokio-rs/topcoat/pull/352))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.5.0...topcoat-runtime-grammar-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(view)* improve new arena rendering system ([#319](https://github.com/tokio-rs/topcoat/pull/319))
+- *(view)* concurrent rendering ([#317](https://github.com/tokio-rs/topcoat/pull/317))
+
+### Fixed
+
+- include docs and visibility in routes, procedures, layers ([#232](https://github.com/tokio-rs/topcoat/pull/232))
+- *(runtime)* reject invalid procedure signatures at parse time ([#230](https://github.com/tokio-rs/topcoat/pull/230))
+
+### Other
+
+- *(router)* [**breaking**] replace handler structs with traits in preparation for href ([#346](https://github.com/tokio-rs/topcoat/pull/346))
+- *(router)* rename erased constant for more readable profiler and debugger traces ([#329](https://github.com/tokio-rs/topcoat/pull/329))
+- sort imports
+- make request and response dedicated modules
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.4.0...topcoat-runtime-grammar-v0.5.0) - 2026-07-27
+
+### Added
+
+- *(router)* server-sent events ([#218](https://github.com/tokio-rs/topcoat/pull/218))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.1.3...topcoat-runtime-grammar-v0.2.0) - 2026-07-19
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.1.3](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-grammar-v0.1.2...topcoat-runtime-grammar-v0.1.3) - 2026-07-17
+
+### Fixed
+
+- shards no longer need cx =>
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-runtime-grammar-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

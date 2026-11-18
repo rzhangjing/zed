@@ -1,0 +1,4 @@
+view! {
+    let x = compute_value();
+    <p>(x)</p>
+}

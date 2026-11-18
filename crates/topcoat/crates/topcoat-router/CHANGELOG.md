@@ -1,0 +1,190 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.9.0...topcoat-router-v0.10.0) - 2026-10-03
+
+### Added
+
+- *(router)* module_param! macro ([#460](https://github.com/tokio-rs/topcoat/pull/460))
+
+### Fixed
+
+- non-deterministic macros ([#485](https://github.com/tokio-rs/topcoat/pull/485))
+- *(cli)* dev server `live!` reload ([#481](https://github.com/tokio-rs/topcoat/pull/481))
+- *(cli)* `cargo topcoat` not working ([#480](https://github.com/tokio-rs/topcoat/pull/480))
+
+### Other
+
+- restructure repository documentation ([#454](https://github.com/tokio-rs/topcoat/pull/454))
+- *(router)* use module router as the recommended example router ([#453](https://github.com/tokio-rs/topcoat/pull/453))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.8.1...topcoat-router-v0.9.0) - 2026-09-24
+
+### Added
+
+- *(runtime)* support streaming for shards ([#444](https://github.com/tokio-rs/topcoat/pull/444))
+- *(runtime)* add WebSocket connections for streaming live updates ([#443](https://github.com/tokio-rs/topcoat/pull/443))
+- *(runtime)* rewrite pages reruns without changing the URL ([#440](https://github.com/tokio-rs/topcoat/pull/440))
+- *(view)* stable region IDs across rerenders ([#427](https://github.com/tokio-rs/topcoat/pull/427))
+- *(router)* `client_ip(cx)` accessor and trusted proxies ([#425](https://github.com/tokio-rs/topcoat/pull/425))
+- *(router)* serving a file directory with `DirectoryRoute`, `.serve_dir()`, and `.public_dir()` ([#424](https://github.com/tokio-rs/topcoat/pull/424))
+- *(view)* [**breaking**] new way to specify identities (`#[key(...)]` and `cx.keyed(...)`) ([#410](https://github.com/tokio-rs/topcoat/pull/410))
+- *(core)* [**breaking**] make Error cheap to clone ([#396](https://github.com/tokio-rs/topcoat/pull/396))
+
+### Fixed
+
+- *(router)* strip prefix layer ([#397](https://github.com/tokio-rs/topcoat/pull/397))
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+- *(router)* `RouteWithLayers`, `handle_inner` ([#426](https://github.com/tokio-rs/topcoat/pull/426))
+
+## [0.8.1](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.8.0...topcoat-router-v0.8.1) - 2026-09-13
+
+### Added
+
+- *(router)* trailing slash support and automatic redirects ([#407](https://github.com/tokio-rs/topcoat/pull/407))
+- *(router)* relative module router routes  ([#406](https://github.com/tokio-rs/topcoat/pull/406))
+- *(router)* allow using SeeOther as error ([#398](https://github.com/tokio-rs/topcoat/pull/398))
+
+### Fixed
+
+- *(cookie)* cookies not being applied when responding with an error ([#408](https://github.com/tokio-rs/topcoat/pull/408))
+
+## [0.8.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.7.0...topcoat-router-v0.8.0) - 2026-09-09
+
+### Added
+
+- *(router)* TowerRoute::any
+- *(runtime)* [**breaking**] morph HTML after shard/page rerun instead of replacing it ([#392](https://github.com/tokio-rs/topcoat/pull/392))
+- *(runtime)* [**breaking**] track signals in shards / pages ([#391](https://github.com/tokio-rs/topcoat/pull/391))
+- *(runtime)* persistent signal identity and state ([#388](https://github.com/tokio-rs/topcoat/pull/388))
+
+### Fixed
+
+- *(router)* treat an empty form or query value as None for Option<T> ([#383](https://github.com/tokio-rs/topcoat/pull/383))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.6.2...topcoat-router-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+- *(router)* implement `HrefTarget` for `&T: HrefTarget` to support dyn ([#370](https://github.com/tokio-rs/topcoat/pull/370))
+- *(router)* is_current methods for Href, routes, and pages ([#362](https://github.com/tokio-rs/topcoat/pull/362))
+
+### Other
+
+- upgrade to rust 1.98 ([#367](https://github.com/tokio-rs/topcoat/pull/367))
+
+## [0.6.2](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.6.1...topcoat-router-v0.6.2) - 2026-08-18
+
+### Added
+
+- *(router)* add support for mounting a topcoat router as an axum service
+
+## [0.6.1](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.6.0...topcoat-router-v0.6.1) - 2026-08-18
+
+### Fixed
+
+- *(router)* rewrite through 'discover' routing ([#354](https://github.com/tokio-rs/topcoat/pull/354))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.5.0...topcoat-router-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(router)* use `impl AsRef<str>` for route error urls ([#351](https://github.com/tokio-rs/topcoat/pull/351))
+- *(router)* `href!` macro ([#350](https://github.com/tokio-rs/topcoat/pull/350))
+- *(router)* request rewriting ([#347](https://github.com/tokio-rs/topcoat/pull/347))
+- *(core)* [**breaking**] add scoped context using `cx.with(...)` ([#338](https://github.com/tokio-rs/topcoat/pull/338))
+- *(router)* sitemaps ([#336](https://github.com/tokio-rs/topcoat/pull/336))
+- *(core)* [**breaking**] make Cx detachable, remove CxBuilder ([#322](https://github.com/tokio-rs/topcoat/pull/322))
+- *(view)* improve new arena rendering system ([#319](https://github.com/tokio-rs/topcoat/pull/319))
+- *(router)* add matched endpoint path to request context ([#318](https://github.com/tokio-rs/topcoat/pull/318))
+- *(view)* concurrent rendering ([#317](https://github.com/tokio-rs/topcoat/pull/317))
+- *(core)* [**breaking**] specify as_ref manually on memoized functions ([#310](https://github.com/tokio-rs/topcoat/pull/310))
+- *(router)* [**breaking**] add unused layer sanity check ([#300](https://github.com/tokio-rs/topcoat/pull/300))
+- *(router)* [**breaking**] add not_found macro and no longer run layers and layouts by default on unmatched requests ([#298](https://github.com/tokio-rs/topcoat/pull/298))
+- *(router)* [**breaking**] global origin policy ([#276](https://github.com/tokio-rs/topcoat/pull/276))
+- *(router)* add a too-many-requests error with a Retry-After hint ([#267](https://github.com/tokio-rs/topcoat/pull/267))
+- *(router)* add Js and Wasm response wrappers ([#268](https://github.com/tokio-rs/topcoat/pull/268))
+- *(router)* add a service-unavailable error with a Retry-After hint ([#266](https://github.com/tokio-rs/topcoat/pull/266))
+- use #[track_caller] where appropriate ([#262](https://github.com/tokio-rs/topcoat/pull/262))
+- *(router)* [**breaking**] replace path parameter attribute macro ([#242](https://github.com/tokio-rs/topcoat/pull/242))
+- *(router)* [**breaking**] request body limits ([#233](https://github.com/tokio-rs/topcoat/pull/233))
+
+### Fixed
+
+- fix docs issues
+- *(router)* isolate request panics ([#257](https://github.com/tokio-rs/topcoat/pull/257))
+- *(router)* reject invalid route signatures at parse time ([#241](https://github.com/tokio-rs/topcoat/pull/241))
+
+### Other
+
+- *(router)* [**breaking**] replace handler structs with traits in preparation for href ([#346](https://github.com/tokio-rs/topcoat/pull/346))
+- *(router)* rename erased constant for more readable profiler and debugger traces ([#329](https://github.com/tokio-rs/topcoat/pull/329))
+- *(router)* remove PathBuf Arc pointer indirection ([#323](https://github.com/tokio-rs/topcoat/pull/323))
+- sort imports
+- make request and response dedicated modules
+- merge router service and serve into single file
+- [**breaking**] return ContentTooLargeError instead of LengthLimitError from to_bytes ([#263](https://github.com/tokio-rs/topcoat/pull/263))
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.4.0...topcoat-router-v0.5.0) - 2026-07-27
+
+### Added
+
+- *(router)* server-sent events ([#218](https://github.com/tokio-rs/topcoat/pull/218))
+- *(mail)* email prototype ([#216](https://github.com/tokio-rs/topcoat/pull/216))
+- *(router)* validate websocket handshake keys ([#215](https://github.com/tokio-rs/topcoat/pull/215))
+- websocket support ([#195](https://github.com/tokio-rs/topcoat/pull/195))
+- support wasm builds ([#191](https://github.com/tokio-rs/topcoat/pull/191))
+- support unix listeners ([#190](https://github.com/tokio-rs/topcoat/pull/190))
+- support mounting tower services as routes in the router ([#184](https://github.com/tokio-rs/topcoat/pull/184))
+- make page HTTP methods customizable ([#181](https://github.com/tokio-rs/topcoat/pull/181))
+- add support for routes that handle multiple (or all) methods ([#180](https://github.com/tokio-rs/topcoat/pull/180))
+
+### Other
+
+- clarify module router registration
+- fix outdated documentation ([#211](https://github.com/tokio-rs/topcoat/pull/211))
+- clarify module router paths and parameter handling ([#185](https://github.com/tokio-rs/topcoat/pull/185))
+- [**breaking**] dedicated router error module ([#183](https://github.com/tokio-rs/topcoat/pull/183))
+- improve router macro docs ([#178](https://github.com/tokio-rs/topcoat/pull/178))
+- improve router macro docs
+- [**breaking**] pass layouts the rendered Result<View> instead of a Slot future ([#166](https://github.com/tokio-rs/topcoat/pull/166))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.1.3...topcoat-router-v0.2.0) - 2026-07-19
+
+### Added
+
+- [**breaking**] compression ([#133](https://github.com/tokio-rs/topcoat/pull/133))
+- [**breaking**] graceful shutdown ([#132](https://github.com/tokio-rs/topcoat/pull/132))
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.1.2](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.1.1...topcoat-router-v0.1.2) - 2026-07-17
+
+### Added
+
+- status code and headers in pages and layouts ([#120](https://github.com/tokio-rs/topcoat/pull/120))
+
+## [0.0.4](https://github.com/tokio-rs/topcoat/compare/topcoat-router-v0.0.3...topcoat-router-v0.0.4) - 2026-07-15
+
+### Added
+
+- tower layers ([#103](https://github.com/tokio-rs/topcoat/pull/103))
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-router-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

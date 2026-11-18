@@ -1,0 +1,42 @@
+[package]
+name = "topcoat-ui-registry"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+# Declares this crate as a topcoat-ui component registry: `topcoat ui` reads the
+# `registry.toml` (and the theme and component sources it names) under this
+# directory, relative to the crate root. A crate is usable as a registry only if
+# it carries this key.
+[package.metadata.topcoat-ui]
+registry = "."
+
+# Stages the Lucide icon set at build time. Off by default so ordinary builds
+# and docs.rs never hit the network; enable it (CI does, via `--all-features`)
+# to compile the `#[cfg(test)]` component sources, whose `iconify_icon!`
+# references read the staged set.
+[features]
+stage-icons = ["dep:topcoat-icon"]
+# Compiles the manifest and the sources it names into the crate as `FILES`, so a
+# binary can install them without locating this crate on disk.
+embedded = ["dep:toml"]
+
+[dev-dependencies]
+topcoat = { workspace = true, features = ["icon-iconify"] }
+
+[build-dependencies]
+topcoat-icon = { workspace = true, features = ["iconify-build"], optional = true }
+toml = { workspace = true, optional = true }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

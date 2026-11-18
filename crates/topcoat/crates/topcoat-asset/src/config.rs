@@ -1,0 +1,267 @@
+// Without the `serve` feature the docs' links to the serving constructor
+// cannot resolve; they degrade to plain text instead of failing the build.
+#![cfg_attr(not(feature = "serve"), allow(rustdoc::broken_intra_doc_links))]
+
+use std::fmt;
+#[cfg(feature = "serve")]
+use std::path::PathBuf;
+
+use topcoat_core::context::{Cx, app_context};
+
+#[cfg(feature = "serve")]
+use crate::AssetBundle;
+#[cfg(feature = "serve")]
+use crate::serve::ASSET_ROUTE_PREFIX;
+use crate::{Asset, AssetCatalog, BundledAsset};
+
+/// Where the bundled assets are hosted.
+#[derive(Debug, Clone)]
+pub(crate) enum Host {
+    /// Served by the application itself under the internal asset route
+    /// prefix, reading files from this bundle directory.
+    #[cfg(feature = "serve")]
+    Serve { dir: PathBuf },
+    /// Hosted externally; asset URLs are formed against this base URL.
+    External { base_url: String },
+}
+
+/// The catalog and host used to resolve asset URLs.
+///
+/// Register it with the router's `assets` method. Use [`serve`](Self::serve)
+/// to serve files from the application or [`hosted_at`](Self::hosted_at) to
+/// resolve URLs on an external host. Passing a bundle directly as
+/// `.assets(bundle)` serves it from the application.
+///
+/// [`resolve`](Self::resolve) returns an asset's URL. Views use the same
+/// configuration when rendering [`Asset`] values.
+#[derive(Debug, Clone)]
+pub struct AssetConfig {
+    pub(crate) catalog: AssetCatalog,
+    pub(crate) host: Host,
+}
+
+impl AssetConfig {
+    /// Serves the bundle's files from the application.
+    ///
+    /// Each asset in the bundle is added as an HTTP route under the internal
+    /// asset route prefix. This is the conversion used when an [`AssetBundle`]
+    /// is registered directly, so `.assets(AssetConfig::serve(bundle))` and
+    /// `.assets(bundle)` are equivalent.
+    #[cfg(feature = "serve")]
+    #[must_use]
+    pub fn serve(bundle: AssetBundle) -> Self {
+        let AssetBundle { dir, catalog } = bundle;
+        Self {
+            catalog,
+            host: Host::Serve { dir },
+        }
+    }
+
+    /// Hosts the bundled assets externally at `base_url` instead of serving
+    /// them from the application.
+    ///
+    /// Upload the bundled files to `base_url` separately. This configuration
+    /// adds no asset routes. URLs are `{base_url}/{bundled-filename}`, with
+    /// trailing slashes removed from `base_url`. The filenames contain content
+    /// hashes, so the host can use long-lived, immutable caching.
+    ///
+    /// `assets` must convert into an [`AssetCatalog`]. For example, pass a
+    /// loaded bundle or an embedded [`Manifest`](crate::Manifest):
+    ///
+    /// ```
+    /// use topcoat::asset::{AssetConfig, Manifest};
+    ///
+    /// let manifest = Manifest::parse("version = 1\nassets = []").unwrap();
+    /// let config = AssetConfig::hosted_at("https://cdn.example.com/assets", manifest);
+    /// ```
+    #[must_use]
+    pub fn hosted_at(base_url: impl Into<String>, assets: impl Into<AssetCatalog>) -> Self {
+        let mut base_url = base_url.into();
+        while base_url.ends_with('/') {
+            base_url.pop();
+        }
+        Self {
+            catalog: assets.into(),
+            host: Host::External { base_url },
+        }
+    }
+
+    /// The catalog mapping [`AssetId`](crate::AssetId)s to their bundled
+    /// files.
+    #[must_use]
+    pub fn catalog(&self) -> &AssetCatalog {
+        &self.catalog
+    }
+
+    /// Look up the bundled file for an [`Asset`] in the catalog.
+    #[must_use]
+    pub fn get(&self, asset: Asset) -> Option<&BundledAsset> {
+        self.catalog.get(asset.id())
+    }
+
+    /// The base URL used to resolve asset URLs, without a trailing `/`.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        match &self.host {
+            #[cfg(feature = "serve")]
+            Host::Serve { .. } => ASSET_ROUTE_PREFIX,
+            Host::External { base_url } => base_url,
+        }
+    }
+
+    /// Writes the URL `asset` is hosted at, `{base_url}/{bundled-filename}`,
+    /// into `write`, percent-encoding the filename as a single path segment.
+    ///
+    /// This is how [`Asset`] values render in views; [`resolve`](Self::resolve)
+    /// returns the same URL as a `String`.
+    ///
+    /// # Errors
+    ///
+    /// Propagates errors from writing to `write`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the catalog does not contain `asset`.
+    #[track_caller]
+    pub fn fmt_url(&self, asset: Asset, write: &mut dyn fmt::Write) -> fmt::Result {
+        let Some(bundled) = self.get(asset) else {
+            panic!("failed to resolve asset {asset:?} in the asset catalog");
+        };
+        write.write_str(self.base_url())?;
+        write.write_str("/")?;
+        write!(write, "{}", bundled.encoded_name())
+    }
+
+    /// Returns the URL `asset` is hosted at, `{base_url}/{bundled-filename}`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the catalog does not contain `asset`.
+    #[must_use]
+    #[track_caller]
+    pub fn resolve(&self, asset: Asset) -> String {
+        let mut url = String::new();
+        let _ = self.fmt_url(asset, &mut url);
+        url
+    }
+}
+
+/// Converts a bundle into the configuration serving it from the application.
+#[cfg(feature = "serve")]
+impl From<AssetBundle> for AssetConfig {
+    fn from(bundle: AssetBundle) -> Self {
+        AssetConfig::serve(bundle)
+    }
+}
+
+/// Returns the [`AssetConfig`] registered as app context for this context.
+///
+/// # Panics
+///
+/// Panics if no [`AssetConfig`] was registered.
+#[must_use]
+#[track_caller]
+pub fn asset_config(cx: &Cx) -> &AssetConfig {
+    app_context(cx)
+}
+
+/// Resolves an [`Asset`] to its [`BundledAsset`] in the context's
+/// registered [`AssetConfig`].
+///
+/// # Panics
+///
+/// Panics if no [`AssetConfig`] was registered, or if its catalog does not
+/// contain the given asset.
+#[must_use]
+#[track_caller]
+pub fn bundled_asset(cx: &Cx, asset: Asset) -> &BundledAsset {
+    match asset_config(cx).get(asset) {
+        Some(asset) => asset,
+        None => panic!("failed to resolve asset {asset:?} in app context's asset config"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AssetId, AssetOptions, ENCODED_ASSET_SIZE, Manifest, RawAsset};
+
+    #[test]
+    fn hosted_at_trims_trailing_slashes() {
+        let config =
+            AssetConfig::hosted_at("https://cdn.example.com/assets///", AssetCatalog::default());
+
+        assert_eq!(config.base_url(), "https://cdn.example.com/assets");
+    }
+
+    #[test]
+    fn resolves_urls_against_the_base_url() {
+        const OPTIONS: AssetOptions = AssetOptions::NONE;
+        const ID: AssetId = AssetId::new("app", "src/lib.rs", "logo.png", &OPTIONS);
+        static ENCODED: [u8; ENCODED_ASSET_SIZE] =
+            RawAsset::encode(ID, "logo.png", "app", "/app", "src/lib.rs", &OPTIONS);
+        let asset = Asset::new(&ENCODED);
+
+        let manifest = Manifest::parse(&format!(
+            r#"
+version = 1
+
+[[assets]]
+id = {}
+file = "logo-1a2b3c4d5e6f7a8b.png"
+hash = "0"
+content_type = "image/png"
+"#,
+            ID.as_u64()
+        ))
+        .unwrap();
+
+        let config = AssetConfig::hosted_at("https://cdn.example.com/assets", manifest);
+
+        assert_eq!(
+            config.resolve(asset),
+            "https://cdn.example.com/assets/logo-1a2b3c4d5e6f7a8b.png"
+        );
+    }
+
+    #[test]
+    fn percent_encodes_hosted_filenames() {
+        use crate::{MANIFEST_VERSION, ManifestEntry};
+
+        const ID: AssetId = AssetId::new("app", "src/lib.rs", "logo.svg", &AssetOptions::NONE);
+        static ENCODED: [u8; ENCODED_ASSET_SIZE] = RawAsset::encode(
+            ID,
+            "logo.svg",
+            "app",
+            "/app",
+            "src/lib.rs",
+            &AssetOptions::NONE,
+        );
+        let asset = Asset::new(&ENCODED);
+
+        for (filename, encoded) in [
+            ("logo#dark?50%25.svg", "logo%23dark%3F50%2525.svg"),
+            ("logo dark.svg", "logo%20dark.svg"),
+            ("{logo}\\dark.svg", "%7Blogo%7D%5Cdark.svg"),
+            ("logo(1).svg", "logo%281%29.svg"),
+            ("caf\u{e9}.svg", "caf%C3%A9.svg"),
+            ("logo-dark_1.2~.svg", "logo-dark_1.2~.svg"),
+        ] {
+            let manifest = Manifest {
+                version: MANIFEST_VERSION,
+                assets: vec![ManifestEntry {
+                    id: ID,
+                    file: filename.to_owned(),
+                    hash: "0".to_owned(),
+                    content_type: "image/svg+xml".to_owned(),
+                }],
+            };
+            let config = AssetConfig::hosted_at("https://cdn.example.com/assets", manifest);
+
+            assert_eq!(
+                config.resolve(asset),
+                format!("https://cdn.example.com/assets/{encoded}")
+            );
+        }
+    }
+}

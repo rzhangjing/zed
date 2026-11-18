@@ -1,0 +1,227 @@
+[workspace]
+# The release job in ci.yml only runs for release PR merges and manual
+# dispatches, so release-plz itself does not need to check the commit.
+git_release_draft = true
+pr_draft = true
+pr_labels = ["release"]
+release_always = true
+
+# Default to NOT releasing. Each publishable crate opts in with `release = true`
+# below. This is deliberate: release-plz's release-order pass runs over *all*
+# workspace members (including the `publish = false` examples/benchmarks) and its
+# topological sort trips over the facade<->sub-crate dependencies, reporting a
+# spurious "circular dependency" error. Defaulting to `release = false` keeps the
+# non-publishable crates out of that pass. Keep the opt-in list below in sync with
+# the publishable members under `crates/`.
+release = false
+
+# One git tag and GitHub release per Topcoat version, not one per crate. Every
+# crate shares the workspace version through the `topcoat` version group, so the
+# facade crate alone opts back in below and tags plain `v{{ version }}`.
+git_tag_enable = false
+git_release_enable = false
+
+[[package]]
+name = "topcoat"
+release = true
+version_group = "topcoat"
+git_tag_enable = true
+git_tag_name = "v{{ version }}"
+git_release_enable = true
+git_release_name = "v{{ version }}"
+# The facade's changelog (and thus the release body) covers the whole
+# workspace, not just commits touching `crates/topcoat`. Keep in sync with the
+# other publishable members below.
+changelog_include = [
+    "topcoat-alpine-ajax",
+    "topcoat-asset",
+    "topcoat-cli",
+    "topcoat-cookie",
+    "topcoat-core",
+    "topcoat-core-grammar",
+    "topcoat-core-macro",
+    "topcoat-datastar",
+    "topcoat-font",
+    "topcoat-font-grammar",
+    "topcoat-font-macro",
+    "topcoat-htmx",
+    "topcoat-icon",
+    "topcoat-icon-grammar",
+    "topcoat-icon-macro",
+    "topcoat-mail",
+    "topcoat-mail-grammar",
+    "topcoat-mail-macro",
+    "topcoat-router",
+    "topcoat-router-grammar",
+    "topcoat-router-macro",
+    "topcoat-runtime",
+    "topcoat-runtime-grammar",
+    "topcoat-runtime-macro",
+    "topcoat-session",
+    "topcoat-tailwind",
+    "topcoat-ui",
+    "topcoat-ui-registry",
+    "topcoat-view",
+    "topcoat-view-grammar",
+    "topcoat-view-macro",
+]
+
+[[package]]
+name = "topcoat-alpine-ajax"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-asset"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-cli"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-cookie"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-core"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-core-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-core-macro"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-datastar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-font"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-font-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-font-macro"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-htmx"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-icon"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-icon-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-icon-macro"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-mail"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-mail-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-mail-macro"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-router"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-router-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-router-macro"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-runtime"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-runtime-coherence"
+release = false
+publish = false
+
+[[package]]
+name = "topcoat-runtime-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-runtime-macro"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-session"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-tailwind"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-ui"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-ui-registry"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-view"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-view-grammar"
+release = true
+version_group = "topcoat"
+
+[[package]]
+name = "topcoat-view-macro"
+release = true
+version_group = "topcoat"

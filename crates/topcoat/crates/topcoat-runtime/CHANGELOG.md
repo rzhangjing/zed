@@ -1,0 +1,158 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.9.0...topcoat-runtime-v0.10.0) - 2026-10-03
+
+### Added
+
+- *(runtime)* tuple expression support ([#490](https://github.com/tokio-rs/topcoat/pull/490))
+- *(runtime)* custom record types ([#466](https://github.com/tokio-rs/topcoat/pull/466))
+- *(runtime)* client-side navigation and pre-fetching ([#465](https://github.com/tokio-rs/topcoat/pull/465))
+- *(runtime)* shard improvements ([#462](https://github.com/tokio-rs/topcoat/pull/462))
+- *(runtime)* tuple support ([#458](https://github.com/tokio-rs/topcoat/pull/458))
+
+### Fixed
+
+- pre-release issues ([#491](https://github.com/tokio-rs/topcoat/pull/491))
+- non-deterministic macros ([#485](https://github.com/tokio-rs/topcoat/pull/485))
+- *(cli)* dev server `live!` reload ([#481](https://github.com/tokio-rs/topcoat/pull/481))
+- *(view)* rust analyzer auto completions breaking when the current rust code macro input is invalid ([#457](https://github.com/tokio-rs/topcoat/pull/457))
+
+### Other
+
+- restructure repository documentation ([#454](https://github.com/tokio-rs/topcoat/pull/454))
+- *(router)* use module router as the recommended example router ([#453](https://github.com/tokio-rs/topcoat/pull/453))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.8.1...topcoat-runtime-v0.9.0) - 2026-09-24
+
+### Added
+
+- *(runtime)* support websocket connection scoped to shards ([#445](https://github.com/tokio-rs/topcoat/pull/445))
+- *(runtime)* support streaming for shards ([#444](https://github.com/tokio-rs/topcoat/pull/444))
+- *(runtime)* add WebSocket connections for streaming live updates ([#443](https://github.com/tokio-rs/topcoat/pull/443))
+- *(runtime)* make procedure and shard paths customizable ([#441](https://github.com/tokio-rs/topcoat/pull/441))
+- *(runtime)* rewrite pages reruns without changing the URL ([#440](https://github.com/tokio-rs/topcoat/pull/440))
+- *(view)* stable region IDs across rerenders ([#427](https://github.com/tokio-rs/topcoat/pull/427))
+- *(cli)* stateful hot reload ([#421](https://github.com/tokio-rs/topcoat/pull/421))
+- *(runtime)* better reactivity support for (Topcoat-) UI components ([#418](https://github.com/tokio-rs/topcoat/pull/418))
+- *(runtime)* support Vec, slices and arrays ([#416](https://github.com/tokio-rs/topcoat/pull/416))
+- *(runtime)* integer support ([#415](https://github.com/tokio-rs/topcoat/pull/415))
+- *(view)* [**breaking**] new way to specify identities (`#[key(...)]` and `cx.keyed(...)`) ([#410](https://github.com/tokio-rs/topcoat/pull/410))
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+- upgrade syn to 3.0.6 ([#428](https://github.com/tokio-rs/topcoat/pull/428))
+- *(router)* `RouteWithLayers`, `handle_inner` ([#426](https://github.com/tokio-rs/topcoat/pull/426))
+- *(runtime)* get rid of maverick-js dependency ([#414](https://github.com/tokio-rs/topcoat/pull/414))
+- *(runtime)* [**breaking**] refactor browser runtime ([#413](https://github.com/tokio-rs/topcoat/pull/413))
+- *(runtime)* add Rust vs. JavaScript cross-compiler coherence tests ([#412](https://github.com/tokio-rs/topcoat/pull/412))
+
+## [0.8.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.7.0...topcoat-runtime-v0.8.0) - 2026-09-09
+
+### Added
+
+- *(runtime)* allow passing signals as shard parameters ([#393](https://github.com/tokio-rs/topcoat/pull/393))
+- *(runtime)* [**breaking**] morph HTML after shard/page rerun instead of replacing it ([#392](https://github.com/tokio-rs/topcoat/pull/392))
+- *(runtime)* [**breaking**] track signals in shards / pages ([#391](https://github.com/tokio-rs/topcoat/pull/391))
+- *(runtime)* persistent signal identity and state ([#388](https://github.com/tokio-rs/topcoat/pull/388))
+- *(runtime)* [**breaking**] replace signal custom syntax with an ordinary rust function ([#384](https://github.com/tokio-rs/topcoat/pull/384))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.6.2...topcoat-runtime-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+
+### Fixed
+
+- *(runtime)* preserve boolean procedure results ([#375](https://github.com/tokio-rs/topcoat/pull/375))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.5.0...topcoat-runtime-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(view)* improve new arena rendering system ([#319](https://github.com/tokio-rs/topcoat/pull/319))
+- *(view)* concurrent rendering ([#317](https://github.com/tokio-rs/topcoat/pull/317))
+- use #[track_caller] where appropriate ([#262](https://github.com/tokio-rs/topcoat/pull/262))
+
+### Fixed
+
+- *(runtime)* support signals outside the body ([#334](https://github.com/tokio-rs/topcoat/pull/334))
+- *(runtime)* let push_str accept an owned string surrogate ([#269](https://github.com/tokio-rs/topcoat/pull/269))
+- *(runtime)* reject non-2xx shard responses instead of rendering them ([#247](https://github.com/tokio-rs/topcoat/pull/247))
+- *(runtime)* render f64 text the way Rust's Display does ([#245](https://github.com/tokio-rs/topcoat/pull/245))
+- *(runtime)* match Rust semantics for string comparison and trim ([#244](https://github.com/tokio-rs/topcoat/pull/244))
+
+### Other
+
+- *(router)* [**breaking**] replace handler structs with traits in preparation for href ([#346](https://github.com/tokio-rs/topcoat/pull/346))
+- *(view)* add promoted str optimization to avoid allocations ([#330](https://github.com/tokio-rs/topcoat/pull/330))
+- *(router)* rename erased constant for more readable profiler and debugger traces ([#329](https://github.com/tokio-rs/topcoat/pull/329))
+- sort imports
+- make request and response dedicated modules
+- *(runtime)* note that page guards do not cover shard endpoints ([#251](https://github.com/tokio-rs/topcoat/pull/251))
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.4.0...topcoat-runtime-v0.5.0) - 2026-07-27
+
+### Added
+
+- *(router)* server-sent events ([#218](https://github.com/tokio-rs/topcoat/pull/218))
+- *(runtime)* add utility methods for signals with primitive types ([#214](https://github.com/tokio-rs/topcoat/pull/214))
+- support wasm builds ([#191](https://github.com/tokio-rs/topcoat/pull/191))
+- add support for routes that handle multiple (or all) methods ([#180](https://github.com/tokio-rs/topcoat/pull/180))
+
+### Fixed
+
+- browser hang when a text expression renders an owned string ([#201](https://github.com/tokio-rs/topcoat/pull/201))
+- remove double type assertion in DOM binding ([#171](https://github.com/tokio-rs/topcoat/pull/171))
+- return Bool surrogates from boolean event fields ([#168](https://github.com/tokio-rs/topcoat/pull/168))
+
+### Other
+
+- fix outdated documentation ([#211](https://github.com/tokio-rs/topcoat/pull/211))
+
+## [0.3.1](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.3.0...topcoat-runtime-v0.3.1) - 2026-07-20
+
+### Fixed
+
+- signal comment xss vulnerability ([#154](https://github.com/tokio-rs/topcoat/pull/154))
+
+## [0.3.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.2.0...topcoat-runtime-v0.3.0) - 2026-07-19
+
+### Fixed
+
+- handle procedure wire edge cases ([#139](https://github.com/tokio-rs/topcoat/pull/139))
+
+### Other
+
+- add runtime tests and build diff check ([#141](https://github.com/tokio-rs/topcoat/pull/141))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.1.3...topcoat-runtime-v0.2.0) - 2026-07-19
+
+### Fixed
+
+- count browser string length in UTF-8 bytes ([#126](https://github.com/tokio-rs/topcoat/pull/126))
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.1.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-v0.0.4...topcoat-runtime-v0.1.0) - 2026-07-16
+
+### Fixed
+
+- [**breaking**] whitelist runtime browser bundle ([#107](https://github.com/tokio-rs/topcoat/pull/107))
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-runtime-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

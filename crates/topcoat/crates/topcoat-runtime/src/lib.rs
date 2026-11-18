@@ -1,0 +1,45 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+mod arguments;
+mod bind_attribute;
+mod connection;
+mod event_handler;
+mod expr;
+#[doc(hidden)]
+pub mod internal;
+mod js;
+#[cfg(feature = "router")]
+mod layer;
+#[path = "link.rs"]
+mod link_;
+#[cfg(feature = "router")]
+mod procedure;
+mod router;
+#[cfg(feature = "router")]
+mod shard;
+#[cfg(feature = "router")]
+mod shard_scope;
+mod signal;
+mod surrogate;
+
+pub use arguments::*;
+pub use bind_attribute::*;
+pub use connection::*;
+pub use event_handler::*;
+pub use expr::*;
+pub use js::*;
+#[cfg(feature = "router")]
+pub use layer::*;
+pub use link_::*;
+#[cfg(feature = "router")]
+pub use procedure::*;
+pub use router::*;
+#[cfg(feature = "router")]
+pub use shard::*;
+#[cfg(feature = "router")]
+pub use shard_scope::*;
+pub use signal::*;
+pub use surrogate::*;
+use topcoat_asset::{Asset, asset};
+
+pub const SCRIPT: Asset = asset!("browser/dist/index.js", rename: "topcoat");

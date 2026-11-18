@@ -1,0 +1,118 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.9.0...topcoat-runtime-macro-v0.10.0) - 2026-10-03
+
+### Added
+
+- *(runtime)* tuple expression support ([#490](https://github.com/tokio-rs/topcoat/pull/490))
+- *(runtime)* custom record types ([#466](https://github.com/tokio-rs/topcoat/pull/466))
+- *(runtime)* shard improvements ([#462](https://github.com/tokio-rs/topcoat/pull/462))
+
+### Fixed
+
+- pre-release issues ([#491](https://github.com/tokio-rs/topcoat/pull/491))
+- non-deterministic macros ([#485](https://github.com/tokio-rs/topcoat/pull/485))
+- *(view)* rust analyzer auto completions breaking when the current rust code macro input is invalid ([#457](https://github.com/tokio-rs/topcoat/pull/457))
+
+## [0.9.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.8.1...topcoat-runtime-macro-v0.9.0) - 2026-09-24
+
+### Added
+
+- *(runtime)* support websocket connection scoped to shards ([#445](https://github.com/tokio-rs/topcoat/pull/445))
+- *(runtime)* support streaming for shards ([#444](https://github.com/tokio-rs/topcoat/pull/444))
+- *(runtime)* add WebSocket connections for streaming live updates ([#443](https://github.com/tokio-rs/topcoat/pull/443))
+- *(runtime)* make procedure and shard paths customizable ([#441](https://github.com/tokio-rs/topcoat/pull/441))
+- *(runtime)* rewrite pages reruns without changing the URL ([#440](https://github.com/tokio-rs/topcoat/pull/440))
+- *(view)* stable region IDs across rerenders ([#427](https://github.com/tokio-rs/topcoat/pull/427))
+- *(runtime)* better reactivity support for (Topcoat-) UI components ([#418](https://github.com/tokio-rs/topcoat/pull/418))
+- *(runtime)* support Vec, slices and arrays ([#416](https://github.com/tokio-rs/topcoat/pull/416))
+- *(runtime)* integer support ([#415](https://github.com/tokio-rs/topcoat/pull/415))
+- *(view)* [**breaking**] new way to specify identities (`#[key(...)]` and `cx.keyed(...)`) ([#410](https://github.com/tokio-rs/topcoat/pull/410))
+
+### Other
+
+- rewrite all docs 3 ([#439](https://github.com/tokio-rs/topcoat/pull/439))
+- rewrite all docs ([#435](https://github.com/tokio-rs/topcoat/pull/435))
+
+## [0.8.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.7.0...topcoat-runtime-macro-v0.8.0) - 2026-09-09
+
+### Added
+
+- *(runtime)* allow passing signals as shard parameters ([#393](https://github.com/tokio-rs/topcoat/pull/393))
+- *(runtime)* [**breaking**] morph HTML after shard/page rerun instead of replacing it ([#392](https://github.com/tokio-rs/topcoat/pull/392))
+- *(runtime)* [**breaking**] track signals in shards / pages ([#391](https://github.com/tokio-rs/topcoat/pull/391))
+- *(runtime)* persistent signal identity and state ([#388](https://github.com/tokio-rs/topcoat/pull/388))
+- *(runtime)* [**breaking**] replace signal custom syntax with an ordinary rust function ([#384](https://github.com/tokio-rs/topcoat/pull/384))
+
+## [0.7.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.6.2...topcoat-runtime-macro-v0.7.0) - 2026-09-04
+
+### Added
+
+- [**breaking**] streaming SSR and `live!` + `emit!` regions ([#373](https://github.com/tokio-rs/topcoat/pull/373))
+- *(core)* add pretty printing impls for all `syn` types, remove `prettyplease` ([#372](https://github.com/tokio-rs/topcoat/pull/372))
+
+### Fixed
+
+- *(runtime)* preserve boolean procedure results ([#375](https://github.com/tokio-rs/topcoat/pull/375))
+
+## [0.6.1](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.6.0...topcoat-runtime-macro-v0.6.1) - 2026-08-18
+
+### Fixed
+
+- *(runtime)* support await expressions in ExprBlock and ExprIf ([#352](https://github.com/tokio-rs/topcoat/pull/352))
+
+## [0.6.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.5.0...topcoat-runtime-macro-v0.6.0) - 2026-08-17
+
+### Added
+
+- *(view)* improve new arena rendering system ([#319](https://github.com/tokio-rs/topcoat/pull/319))
+- *(view)* concurrent rendering ([#317](https://github.com/tokio-rs/topcoat/pull/317))
+
+### Fixed
+
+- *(runtime)* let push_str accept an owned string surrogate ([#269](https://github.com/tokio-rs/topcoat/pull/269))
+- *(runtime)* render f64 text the way Rust's Display does ([#245](https://github.com/tokio-rs/topcoat/pull/245))
+- *(runtime)* match Rust semantics for string comparison and trim ([#244](https://github.com/tokio-rs/topcoat/pull/244))
+
+### Other
+
+- *(runtime)* note that page guards do not cover shard endpoints ([#251](https://github.com/tokio-rs/topcoat/pull/251))
+
+## [0.5.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.4.0...topcoat-runtime-macro-v0.5.0) - 2026-07-27
+
+### Added
+
+- *(runtime)* add utility methods for signals with primitive types ([#214](https://github.com/tokio-rs/topcoat/pull/214))
+
+### Other
+
+- fix outdated documentation ([#211](https://github.com/tokio-rs/topcoat/pull/211))
+
+## [0.2.0](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.1.3...topcoat-runtime-macro-v0.2.0) - 2026-07-19
+
+### Other
+
+- add annotations to show feature flags in docs.rs ([#127](https://github.com/tokio-rs/topcoat/pull/127))
+
+## [0.1.3](https://github.com/tokio-rs/topcoat/compare/topcoat-runtime-macro-v0.1.2...topcoat-runtime-macro-v0.1.3) - 2026-07-17
+
+### Fixed
+
+- fix udeps
+
+### Other
+
+- add reactivity guide ([#123](https://github.com/tokio-rs/topcoat/pull/123))
+
+## [0.0.1](https://github.com/tokio-rs/topcoat/releases/tag/topcoat-runtime-macro-v0.0.1) - 2026-07-14
+
+### Other
+
+- initial release

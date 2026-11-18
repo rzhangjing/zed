@@ -1,0 +1,353 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Manual re-publish of main, for when the release job failed after the
+  # release PR merged. release-plz is idempotent, so this is safe to repeat.
+  workflow_dispatch:
+
+# Cancel superseded PR runs, including release-plz's docs-version sync.
+# Give each main push its own group so newer pushes cannot discard a queued
+# release merge's CI run and publishing job.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -Dwarnings
+  RUSTDOCFLAGS: -Dwarnings
+
+jobs:
+  # Branch prefix and label match release-plz.toml. The merge must be the
+  # exact push commit checked by CI, and the PR must come from this repository.
+  release-pr-merge:
+    name: release PR merge
+    runs-on: ubuntu-latest
+    if: >-
+      github.repository == 'tokio-rs/topcoat'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/main'
+    permissions:
+      pull-requests: read
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - name: Check merged release PR
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'workflow_dispatch') {
+              core.setOutput('release', 'true');
+              core.info('Manual dispatch; publishing main.');
+              return;
+            }
+            const prs = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+              ...context.repo,
+              commit_sha: context.sha,
+              per_page: 100,
+            });
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            const release = prs.some(pr =>
+              pr.state === 'closed'
+              && pr.merged_at != null
+              && pr.merge_commit_sha === context.sha
+              && pr.base.ref === 'main'
+              && pr.base.repo.full_name === repository
+              && pr.head.repo?.full_name === repository
+              && pr.head.ref.startsWith('release-plz-')
+              && pr.labels.some(label => label.name === 'release')
+            );
+            core.setOutput('release', String(release));
+            core.info(release ? 'Release PR merge confirmed.' : 'No release PR merge; skipping publishing.');
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update stable && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features
+
+  # Compiles a few starter applications created by `topcoat new` against this
+  # checkout. Every combination compiles the framework with different features, so
+  # only a small set is covered.
+  starters:
+    name: starters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update stable && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p topcoat-cli --test starters -- --ignored
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update stable && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --component rustfmt
+      - run: cargo +nightly fmt --all -- --check
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update nightly && rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo +nightly doc --workspace --all-features --no-deps --locked
+        env:
+          RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+
+  features:
+    name: features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update stable && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-hack
+      - run: cargo fetch --locked
+      # `stage-icons` only affects the build script's network fetch, which this
+      # offline job must not trigger; it adds no lib coverage, so skip it.
+      - run: cargo hack clippy --workspace --each-feature --exclude-features stage-icons --no-dev-deps --offline -- -D warnings
+
+  wasm:
+    name: wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update stable && rustup default stable && rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p topcoat --target wasm32-unknown-unknown --no-default-features --features router,view,runtime,asset,cookie,session,discover,multipart,tower --locked
+      - run: cargo clippy -p cloudflare-worker --target wasm32-unknown-unknown --locked -- -D warnings
+
+  runtime:
+    name: runtime
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crates/topcoat-runtime/browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: crates/topcoat-runtime/browser/yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      # Rebuild the browser and coherence bundles and reject stale artifacts.
+      - run: yarn build
+      - run: git diff --exit-code -- dist/index.js dist/coherence.js
+      - run: yarn test
+
+  dev:
+    name: dev
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crates/topcoat-cli/browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: crates/topcoat-cli/browser/yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      # The CLI embeds this bundle, so reject stale artifacts.
+      - run: yarn build
+      - run: git diff --exit-code -- dist/index.js
+      - run: yarn test
+
+  udeps:
+    name: udeps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # `cargo-udeps` needs nightly for `-Z binary-dep-depinfo`. The `+nightly`
+      # override outranks the `stable` pin in `rust-toolchain.toml`, and cargo
+      # passes its own toolchain to `cargo-udeps`' child builds via `$CARGO`.
+      - run: rustup toolchain install nightly
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-udeps
+      - run: cargo +nightly udeps --workspace --all-targets --all-features --locked
+
+  # Configure every released crate on crates.io to trust tokio-rs/topcoat,
+  # workflow ci.yml, with no environment. All CI checks must pass before this
+  # job can publish crates or create tags and GitHub Releases.
+  release-plz-release:
+    name: release
+    runs-on: ubuntu-latest
+    needs: [release-pr-merge, test, starters, clippy, fmt, docs, features, wasm, runtime, dev, udeps]
+    if: >-
+      github.repository == 'tokio-rs/topcoat'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/main'
+      && needs.release-pr-merge.outputs.release == 'true'
+    permissions:
+      contents: write
+      pull-requests: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      # release-plz obtains short-lived crates.io tokens through OIDC.
+      # First publish attempt. Allowed to fail: crates.io throttles publishing
+      # to a burst of 30 new versions and then refills one publish per minute,
+      # and neither cargo nor release-plz retries the resulting HTTP 429. Once
+      # the workspace grows past ~30 crates this step can't publish them all in
+      # one go, so the loop below resumes it. The action also installs the
+      # `release-plz` binary onto PATH, which that loop reuses.
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        continue-on-error: true
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+
+      # Resume publishing across the crates.io rate limit. release-plz is
+      # idempotent (it skips versions already on crates.io and tags/releases
+      # that already exist), so we just re-run it, sleeping a little over a
+      # minute between attempts to let the token bucket refill. On the happy
+      # path the step above already published everything and the first
+      # iteration here is a cheap no-op. Non-rate-limit failures are surfaced
+      # immediately rather than retried.
+      - name: Resume release-plz through crates.io rate limits
+        shell: bash
+        env:
+          # The bare binary reads GIT_TOKEN; the action above translates
+          # GITHUB_TOKEN into --git-token instead.
+          GIT_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+        run: |
+          set -uo pipefail
+
+          max_attempts=50
+          cooldown_seconds=70   # bucket refills ~1/min; the margin avoids racing it
+          log="$(mktemp)"
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "::group::release-plz release (attempt ${attempt}/${max_attempts})"
+            release-plz release 2>&1 | tee "$log"
+            status="${PIPESTATUS[0]}"
+            echo "::endgroup::"
+
+            if [ "$status" -eq 0 ]; then
+              echo "release-plz completed; nothing left to publish."
+              exit 0
+            fi
+
+            if ! grep -qiE 'status 429|too many (requests|crates)' "$log"; then
+              echo "release-plz failed for a non-rate-limit reason; not retrying." >&2
+              exit "$status"
+            fi
+
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              echo "Hit the crates.io publish rate limit. Sleeping ${cooldown_seconds}s for the token bucket to refill, then resuming."
+              sleep "$cooldown_seconds"
+            fi
+          done
+
+          echo "Still rate-limited after ${max_attempts} attempts; giving up." >&2
+          exit 1
+
+  # Maintains a draft release PR with pending version bumps and changelog
+  # updates after successful main CI runs, including ordinary merges.
+  release-plz-pr:
+    name: release PR
+    runs-on: ubuntu-latest
+    needs: [test, starters, clippy, fmt, docs, features, wasm, runtime, dev, udeps]
+    if: >-
+      github.repository == 'tokio-rs/topcoat'
+      && github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+    permissions:
+      pull-requests: write
+      contents: write
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        id: release-plz
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+
+      # The docs pin an install version (`topcoat = { version = "X.Y.Z" }`)
+      # in a few feature guides. Source of truth is `[workspace.package].version`
+      # (the facade crate inherits it), which release-plz bumps on the PR branch.
+      # Re-applied on every run because release-plz force-pushes its branch.
+      - name: Sync docs version with release PR
+        if: ${{ steps.release-plz.outputs.prs != '' && steps.release-plz.outputs.prs != '[]' }}
+        env:
+          PRS: ${{ steps.release-plz.outputs.prs }}
+        run: |
+          set -euo pipefail
+          branch=$(jq -r '.[0].head_branch' <<<"$PRS")
+          if [ -z "$branch" ] || [ "$branch" = "null" ]; then
+            echo "No release branch detected; skipping docs update."
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch origin "$branch"
+          git checkout "$branch"
+
+          version=$(sed -n '/^\[workspace\.package\]/,/^\[/ s/^version = "\([^"]*\)".*/\1/p' \
+            Cargo.toml | head -1)
+          if [ -z "$version" ]; then
+            echo "Failed to parse [workspace.package] version from Cargo.toml" >&2
+            exit 1
+          fi
+
+          # Only touch `topcoat = { version = "..." }` snippets, leaving
+          # unrelated tool/CDN versions (Tailwind, htmx, iconify, ...) alone.
+          find docs -type f -name '*.md' -exec sed -i -E \
+            "s/(topcoat = \\{ version = \")[^\"]+(\")/\\1${version}\\2/g" {} +
+
+          if git diff --quiet; then
+            echo "Docs already on version ${version}; nothing to update."
+            exit 0
+          fi
+
+          git add docs
+          git commit -m "chore: point docs install version at ${version}"
+          git push origin "$branch"

@@ -1,0 +1,73 @@
+{
+  "parseErrors": [],
+  "summary": {
+    "error": 8,
+    "parseErrors": 0,
+    "warn": 1
+  },
+  "violations": [
+    {
+      "level": "error",
+      "message": "枚举变体缺少注释（应写何时进入）",
+      "rule": "EN-01",
+      "src": "src/bad.rs:15",
+      "target": "BadStatus::A"
+    },
+    {
+      "level": "error",
+      "message": "枚举变体缺少注释（应写何时进入）",
+      "rule": "EN-01",
+      "src": "src/bad.rs:15",
+      "target": "BadStatus::Other"
+    },
+    {
+      "level": "warn",
+      "message": "存在兜底变体，会导致未知状态被吞掉",
+      "rule": "EN-02",
+      "src": "src/bad.rs:15",
+      "target": "BadStatus::Other"
+    },
+    {
+      "level": "error",
+      "message": "类型缺少文档注释",
+      "rule": "TY-01",
+      "src": "src/bad.rs:10",
+      "target": "NoDocs"
+    },
+    {
+      "level": "error",
+      "message": "字段缺少文档注释",
+      "rule": "FD-01",
+      "src": "src/bad.rs:10",
+      "target": "NoDocs.x"
+    },
+    {
+      "level": "error",
+      "message": "字段缺少文档注释",
+      "rule": "FD-01",
+      "src": "src/bad.rs:4",
+      "target": "Sloppy.a"
+    },
+    {
+      "level": "error",
+      "message": "字段注释缺「单位」段",
+      "rule": "FD-02",
+      "src": "src/bad.rs:4",
+      "target": "Sloppy.b"
+    },
+    {
+      "level": "error",
+      "message": "字段注释缺「范围」段",
+      "rule": "FD-03",
+      "src": "src/bad.rs:4",
+      "target": "Sloppy.b"
+    },
+    {
+      "level": "error",
+      "message": "字段注释缺「默认值」段",
+      "rule": "FD-04",
+      "src": "src/bad.rs:4",
+      "target": "Sloppy.b"
+    }
+  ]
+}
