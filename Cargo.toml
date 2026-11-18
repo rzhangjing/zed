@@ -1078,6 +1078,10 @@ split-debuginfo = "unpacked"
 incremental = true
 codegen-units = 16
 debug = "limited"
+# GNU targets link DWARF into the PE, and the Windows loader rejects images with
+# `SizeOfImage >= 0x78000000` (1.875 GiB) with ERROR_BAD_EXE_FORMAT. Stripping
+# keeps the COFF symbol table, so backtraces still resolve function names.
+strip = "debuginfo"
 
 # mirror configuration for crates compiled for the build platform
 # (without this cargo will compile ~400 crates twice)
@@ -1090,6 +1094,8 @@ debug = "limited"
 [profile.dbg]
 inherits = "dev"
 debug = "full"
+# `dbg` exists to debug, so keep the DWARF that `dev` strips.
+strip = "none"
 
 [profile.dbg.build-override]
 debug = "full"

@@ -116,7 +116,12 @@ END
     let rc_path = out_dir.join("zed_resources.rc");
     std::fs::write(&rc_path, rc_content)?;
 
-    if let Ok(toolkit_path) = std::env::var("ZED_RC_TOOLKIT_PATH") {
+    // `embed-resource` only honors `RC` on MSVC targets; on `*-pc-windows-gnu`
+    // it always invokes `windres` from `PATH`, so the toolkit override is
+    // MSVC-only.
+    if cfg!(target_env = "msvc")
+        && let Ok(toolkit_path) = std::env::var("ZED_RC_TOOLKIT_PATH")
+    {
         let rc_exe = std::path::Path::new(&toolkit_path).join("rc.exe");
         unsafe {
             std::env::set_var("RC", rc_exe);

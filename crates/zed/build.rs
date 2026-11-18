@@ -86,6 +86,11 @@ fn main() {
             println!("cargo:rustc-link-arg=/stack:{}", 8 * 1024 * 1024);
             println!("cargo:rustc-link-arg=/DELAYLOAD:windowsperformancerecordercontrol");
             println!("cargo:rustc-link-lib=delayimp");
+        } else {
+            // Same 8 MiB stack as the MSVC branch above; GNU ld spells it
+            // differently. Delayed loading has no equivalent here, so
+            // `windowsperformancerecordercontrol` is linked eagerly instead.
+            println!("cargo:rustc-link-arg=-Wl,--stack,{}", 8 * 1024 * 1024);
         }
 
         if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {
