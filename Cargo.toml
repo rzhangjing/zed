@@ -1,4 +1,4 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = [
     "crates/acp_thread",
@@ -276,6 +276,21 @@ members = [
     "tooling/xtask",
 ]
 default-members = ["crates/zed"]
+
+# The crates merged in from `zed_my` keep workspace roots of their own:
+# `crates/admin` and `crates/topcoat` inherit topcoat's package/dependency
+# tables, and the dameng, fundamental and octos trees each have a root that
+# carries the dependency table their crates were written against. `crates/zed`
+# reaches them as path dependencies. Excluding these directories keeps cargo
+# from adopting them into this workspace, which would make every
+# `workspace = true` key in their manifests resolve against this file instead.
+exclude = [
+    "crates/admin",
+    "crates/topcoat",
+    "crates/dameng",
+    "crates/fundamental",
+    "crates/octos",
+]
 
 [workspace.package]
 publish = false
@@ -691,7 +706,10 @@ jsonwebtoken = { version = "10.0", default-features = false }
 jupyter-protocol = "2.0.3"
 jupyter-websocket-client = "3.0.0"
 libc = "0.2"
-libsqlite3-sys = { version = "0.30.1", features = ["bundled"] }
+# One SQLite binding for the whole graph: `collab`'s sea-orm/sqlx stack and
+# `admin`'s toasty both end up here, and only one package may declare
+# `links = "sqlite3"`. `sqlx-sqlite` is patched above to agree with this.
+libsqlite3-sys = { version = "0.38.2", features = ["bundled"] }
 libwebrtc = "0.3.26"
 linkify = "0.10.0"
 livekit = { version = "0.7.32", features = ["tokio", "rustls-tls-native-roots"] }
@@ -1060,12 +1078,17 @@ webrtc-sys = { git = "https://github.com/zed-industries/livekit-rust-sdks", rev 
 khronos-egl = { git = "https://github.com/zed-industries/khronos-egl", rev = "42214b36347b108fd9630ca6254b96dde59e04fe" }
 # Includes https://github.com/rust-minidump/minidump-writer/pull/249 to fix crashes on `cmd-q` (https://github.com/zed-industries/zed/issues/57664)
 crash-context = { git = "https://github.com/rust-minidump/minidump-writer", rev = "911b04e09b79b736cc15cbe712e83e2d3f348bb9" }
+# `crates/admin` runs toasty, whose `rusqlite 0.40` needs `libsqlite3-sys 0.38`,
+# while `collab`'s sea-orm/sqlx stack pinned `sqlx-sqlite` to 0.30. Only one
+# package may declare `links = "sqlite3"`, so the vendored copy below bumps its
+# requirement instead of keeping a second SQLite binding in the graph.
+sqlx-sqlite = { path = "tooling/patches/sqlx-sqlite" }
 
 # corgi runs build.rs/proc-macros in a sandbox with no write access outside the
 # action's own OUT_DIR. Upstream `scratch` bakes its build-time OUT_DIR in via
 # `env!` and hands every crate one shared directory, which the sandbox can't
 # grant and a content-addressed build can't share. This patch reads OUT_DIR at
-# runtime, so each build script gets a private, writable dir in its own entry —
+# runtime, so each build script gets a private, writable dir in its own entry 閳?
 # where cxx-build writes its shared cxxbridge headers. Kept local rather than a
 # cxx git fork so Windows cargo builds are unaffected (a git checkout of cxx
 # needs symlink support that Windows CI lacks). webrtc-sys is self-contained, so
@@ -1079,9 +1102,12 @@ incremental = true
 codegen-units = 16
 debug = "limited"
 # GNU targets link DWARF into the PE, and the Windows loader rejects images with
-# `SizeOfImage >= 0x78000000` (1.875 GiB) with ERROR_BAD_EXE_FORMAT. Stripping
-# keeps the COFF symbol table, so backtraces still resolve function names.
-strip = "debuginfo"
+# `SizeOfImage >= 0x78000000` (1.875 GiB) with ERROR_BAD_EXE_FORMAT. The
+# stripping happens at link time (`crates/zed/build.rs` passes
+# `-Wl,--strip-debug`), not through `strip = "debuginfo"`: rustc's post-link
+# rewrite of a zed-sized PE leaves the loader executing a clobbered TLS
+# callback, and the binary dies before `main`.
+strip = "none"
 
 # mirror configuration for crates compiled for the build platform
 # (without this cargo will compile ~400 crates twice)
@@ -1225,3 +1251,5 @@ nonminimal_bool = "allow"
 # this workspace on purpose.
 [workspace.metadata.dylint]
 libraries = [{ path = "tooling/lints" }]
+
+

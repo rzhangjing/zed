@@ -69,6 +69,16 @@ actions!(
         About,
         /// Opens the documentation website.
         OpenDocs,
+        /// Opens the Dameng (达梦) connection test window.
+        OpenDameng,
+        /// Opens the topcoat admin demo, served from this process.
+        OpenAdminDemo,
+        /// Opens the Octos CLI check window.
+        OpenOctos,
+        /// Opens the EW GIS frame render test window.
+        OpenEwGis,
+        /// Opens the Burn model train/test window.
+        OpenModelTest,
         /// Views open source licenses.
         OpenLicenses,
         /// Opens the Zed status page.

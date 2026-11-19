@@ -1,8 +1,13 @@
 mod app_menus;
+pub mod admin_demo;
+pub mod dameng;
 pub mod edit_prediction_registry;
+pub mod ew_gis;
 #[cfg(target_os = "macos")]
 pub(crate) mod mac_only_instance;
 mod migrate;
+pub mod model_test;
+pub mod octos;
 #[cfg(target_os = "macos")]
 pub(crate) mod move_to_applications;
 mod open_listener;
@@ -330,7 +335,35 @@ pub fn init(cx: &mut App) {
     })
     .on_action(|_: &About, cx| {
         open_about_window(cx);
+    })
+    .on_action(|_: &zed_actions::OpenDameng, cx| {
+        dameng::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenAdminDemo, cx| {
+        admin_demo::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenOctos, cx| {
+        octos::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenEwGis, cx| {
+        ew_gis::open(cx);
+    })
+    .on_action(|_: &zed_actions::OpenModelTest, cx| {
+        model_test::open(cx);
     });
+
+    // `Help > ew-gis`: `ZED_EW_GIS_OPEN` opens the viewer at startup. A no-op
+    // otherwise.
+    ew_gis::init(cx);
+    // `Help > Model Test`: `ZED_MODELTEST_OPEN` opens (and `ZED_MODELTEST_RUN`
+    // runs) the window at startup. A no-op otherwise.
+    model_test::init(cx);
+    // `Help > Admin Demo`: `ZED_ADMIN_DEMO_OPEN` opens the window at startup. A
+    // no-op otherwise.
+    admin_demo::init(cx);
+    // `Help > Dameng`: `ZED_DAMENG_OPEN` opens the window at startup. A no-op
+    // otherwise.
+    dameng::init(cx);
 }
 
 fn bind_on_window_closed(cx: &mut App) -> Option<gpui::Subscription> {

@@ -18,7 +18,6 @@ track-project-leak = ["gpui/leak-detection"]
 test-support = [
     "gpui/test-support",
     "gpui_platform/screen-capture",
-    "dep:image",
     "workspace/test-support",
     "project/test-support",
     "editor/test-support",
@@ -32,7 +31,6 @@ visual-tests = [
     "gpui/test-support",
     "gpui_platform/screen-capture",
     "gpui_platform/test-support",
-    "dep:image",
     "dep:tempfile",
     "dep:action_log",
     "dep:agent_servers",
@@ -68,6 +66,23 @@ acp_thread.workspace = true
 acp_tools.workspace = true
 action_log = { workspace = true, optional = true }
 activity_indicator.workspace = true
+# The crates merged in from `zed_my` behind the `Help` menu smoke tests
+# (`src/zed/help_tests.rs`). `crates/admin` is deliberately not a dependency:
+# it links toasty's SQLite stack, whose `libsqlite3-sys` (`links = "sqlite3"`)
+# cannot coexist with the one `collab`'s sea-orm/sqlx pulls in, so the Admin
+# Demo test runs `admin` as a child process instead.
+# The topcoat admin demo, run in-process from `Help > Admin Demo`
+# (`src/zed/admin_demo.rs`). `crates/admin` is its own workspace root.
+admin = { path = "../admin" }
+dm-core = { path = "../dameng/dm-core" }
+dm-dpi = { path = "../dameng/dm-dpi" }
+dm-error = { path = "../dameng/dm-error" }
+dm-odbc = { path = "../dameng/dm-odbc" }
+dm-pool = { path = "../dameng/dm-pool" }
+dm-query = { path = "../dameng/dm-query" }
+ew_gis = { path = "../fundamental/ew_gis" }
+models_core = { path = "../fundamental/models_core" }
+tokio = { workspace = true, features = ["rt-multi-thread", "net", "time"] }
 agent-client-protocol.workspace = true
 agent.workspace = true
 agent_servers = { workspace = true, optional = true }
@@ -130,7 +145,9 @@ gpui_platform = { workspace = true, features = [
 ] }
 gpui_tokio.workspace = true
 hang_telemetry.workspace = true
-image = { workspace = true, optional = true }
+# Required (not optional): the EW GIS window (`src/zed/ew_gis.rs`) turns each
+# readback frame into a `RenderImage` through `image::Frame`.
+image.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 semver.workspace = true
@@ -198,12 +215,17 @@ settings_profile_selector.workspace = true
 settings_ui.workspace = true
 shellexpand.workspace = true
 sidebar.workspace = true
+# `RenderImage::new` takes a `SmallVec<[Frame; 1]>`; the EW GIS window is the
+# only place in this crate that builds one from scratch.
+smallvec.workspace = true
 smol.workspace = true
 snippet_provider.workspace = true
 snippets_ui.workspace = true
 svg_preview.workspace = true
 sysinfo.workspace = true
 tab_switcher.workspace = true
+# `task::SpawnInTerminal` is what the Octos menu item hands the terminal panel.
+task.workspace = true
 tasks_ui.workspace = true
 telemetry.workspace = true
 telemetry_events.workspace = true
@@ -218,6 +240,8 @@ title_bar.workspace = true
 toolchain_selector.workspace = true
 tracing.workspace = true
 ui.workspace = true
+# The Dameng test window's text fields (`src/zed/dameng.rs`).
+ui_input.workspace = true
 ui_prompt.workspace = true
 url.workspace = true
 urlencoding.workspace = true

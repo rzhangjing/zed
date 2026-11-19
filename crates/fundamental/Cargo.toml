@@ -1,0 +1,45 @@
+[workspace]
+resolver = "2"
+members = [
+    "clustering",
+    "models_core",
+    "ew_ordpack",
+    "ew_ordpack/ew_ordpack_derive",
+    "ew_operate_record",
+    "ew_types",
+    "ew_gis",
+]
+
+[workspace.package]
+publish = false
+edition = "2024"
+version = "2.0.3-rc.13"
+rust-version = "1.85.0"
+authors = ["octos team"]
+license = "Apache-2.0"
+repository = "https://github.com/octos-org/octos"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "allow" }
+
+[workspace.dependencies]
+burn = { version = "0.22", default-features = false }
+burn-ndarray = "0.22"
+bytemuck = { version = "1", features = ["derive"] }
+clustering = { path = "clustering" }
+glam = { version = "0.32", features = ["serde"] }
+hdbscan = "0.12.0"
+image = { version = "0.25.1", default-features = false, features = ["bmp", "dds", "exr", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "rayon", "tga", "tiff", "webp"] }
+kmeans = "2.0.2"
+linfa-clustering = "0.8.1"
+log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
+lru = "0.16"
+ndarray = "0.16"
+pollster = "0.4.0"
+rand = "0.9"
+serde = { version = "1.0.221", features = ["derive", "rc"] }
+smartcore = "0.7.0"
+thiserror = "2.0.12"
+ureq = "2"
+wgpu = "29.0.4"
+winit = "0.30.13"

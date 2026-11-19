@@ -1,0 +1,154 @@
+[workspace]
+resolver = "2"
+members = [
+    "octos-core",
+    "octos-diagnostics",
+    "octos-research",
+    "octos-memory",
+    "octos-llm",
+    "octos-agent",
+    "octos-bus",
+    "octos-workflows",
+    "octos-server",
+    "octos-store",
+    "octos-services",
+    "octos-cli",
+    "app-skills/news",
+    "app-skills/deep-search",
+    "app-skills/deep-crawl",
+    "app-skills/send-email",
+    "app-skills/account-manager",
+    "app-skills/time",
+    "app-skills/weather",
+    "app-skills/smart-home",
+    "app-skills/wechat-bridge",
+    "app-skills/skill-evolve",
+    "app-skills/harness-starter-generic",
+    "app-skills/harness-starter-report",
+    "app-skills/harness-starter-audio",
+    "app-skills/harness-starter-coding",
+    "platform-skills/voice",
+    "octos-dora-mcp",
+    "octos-pipeline",
+    "octos-plugin",
+    "octos-sandbox",
+    "octos-swarm",
+    "octos-fleet",
+    "octos-fleet-worker",
+    "octos-embed-llama",
+    "octos-ffi",
+    "octos-uniffi",
+    "octos-wasm",
+    "octos-pyo3",
+]
+
+[workspace.package]
+publish = false
+edition = "2024"
+version = "2.0.3-rc.13"
+rust-version = "1.85.0"
+authors = ["octos team"]
+license = "Apache-2.0"
+repository = "https://github.com/octos-org/octos"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "allow" }
+
+[workspace.dependencies]
+aes = "0.8"
+agent-client-protocol = { version = "=2.0.0", features = ["unstable"] }
+argon2 = "0.5"
+async-imap = { version = "0.11", default-features = false, features = ["runtime-tokio"] }
+async-trait = "0.1"
+axum = { version = "0.8", features = ["multipart", "ws"] }
+base64 = "0.22"
+bincode = "1"
+cbc = { version = "0.1", features = ["alloc"] }
+chacha20poly1305 = "0.10"
+chromiumoxide = "0.9"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+clap = { version = "4.4", features = ["derive", "wrap_help"] }
+clap_complete = { version = "4.4" }
+color-eyre = "0.6"
+colored = "2"
+cron = "0.15"
+eyre = "0.6"
+flate2 = "1"
+fs2 = "0.4"
+futures = "0.3.32"
+gix = { version = "0.79", default-features = false, features = ["max-performance-safe", "revision", "blob-diff"] }
+glob = "0.3"
+globset = "0.4"
+hnsw_rs = "0.3"
+hound = "3"
+htmd = "0.5"
+iana-time-zone = "0.1"
+ignore = "0.4.22"
+image = { version = "0.25.1", default-features = false, features = ["bmp", "dds", "exr", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "rayon", "tga", "tiff", "webp"] }
+jsonwebtoken = "9"
+keyring = { version = "3", default-features = false }
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+libc = "0.2"
+lru = "0.16"
+mailparse = "0.16"
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
+octos-agent = { path = "octos-agent" }
+octos-bus = { path = "octos-bus" }
+octos-core = { path = "octos-core" }
+octos-diagnostics = { path = "octos-diagnostics" }
+octos-embed-llama = { path = "octos-embed-llama" }
+octos-fleet = { path = "octos-fleet" }
+octos-fleet-worker = { path = "octos-fleet-worker" }
+octos-llm = { path = "octos-llm" }
+octos-memory = { path = "octos-memory" }
+octos-plugin = { path = "octos-plugin" }
+octos-research = { path = "octos-research" }
+octos-services = { path = "octos-services" }
+octos-store = { path = "octos-store" }
+octos-swarm = { path = "octos-swarm" }
+octos-workflows = { path = "octos-workflows" }
+open = "5.0.0"
+pdf-extract = "0.9"
+qrcode = { version = "0.14", default-features = false }
+redb = "2"
+regex = "1.5"
+rpassword = "7"
+rusqlite = { version = "0.40.1", features = ["bundled", "fallible_uint"] }
+rust-embed = { version = "8.11", features = ["include-exclude"] }
+rustix = { version = "1.1", features = ["fs"] }
+rustls = { version = "0.23.26", features = ["std", "tls12", "ring"] }
+rustls-native-certs = "0.8"
+rustyline = "15"
+secrecy = { version = "0.10", features = ["serde"] }
+semver = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0.221", features = ["derive", "rc"] }
+serde_json = { version = "1.0.144", features = ["preserve_order", "raw_value"] }
+serde_yml = "0.0.12"
+serenity = { version = "0.12", default-features = false, features = ["rustls_backend", "gateway", "client", "http", "model"] }
+sha2 = "0.10"
+similar = "2"
+subtle = "2"
+symphonia = { version = "0.5", default-features = false, features = ["mp3"] }
+tar = "0.4"
+teloxide = { version = "0.17", default-features = false, features = ["rustls"] }
+tempfile = "3.20.0"
+tokio = { version = "1", features = ["full"] }
+tokio-rustls = { version = "0.26", default-features = false }
+tokio-test = "0.4"
+tokio-tungstenite = { version = "0.26", default-features = false, features = ["connect", "rustls-tls-native-roots"] }
+toml = "0.8"
+tower = { version = "0.5", features = ["util"] }
+tracing = "0.1.40"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter", rev = "43623ec9bf0eaaf7113285c46e8a09018f181b18" }
+tree-sitter-javascript = "0.23"
+tree-sitter-python = "0.25"
+tree-sitter-rust = "0.24.2"
+tree-sitter-typescript = { git = "https://github.com/zed-industries/tree-sitter-typescript", rev = "e2c53597d6a5d9cf7bbe8dccde576fe1e46c5899" }
+url = "2.2"
+uuid = { version = "1.1.2", features = ["v4", "v5", "v7", "serde"] }
+wiremock = "0.6"
+zip = "2"

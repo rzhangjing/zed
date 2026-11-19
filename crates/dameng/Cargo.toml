@@ -1,0 +1,45 @@
+[workspace]
+resolver = "2"
+members = [
+    "dm-error",
+    "dm-core",
+    "dm-macros",
+    "dm-odbc",
+    "dm-dpi",
+    "dm-pool",
+    "dm-query",
+]
+
+[workspace.package]
+publish = false
+edition = "2024"
+version = "2.0.3-rc.13"
+rust-version = "1.85.0"
+authors = ["octos team"]
+license = "Apache-2.0"
+repository = "https://github.com/octos-org/octos"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "allow" }
+
+[workspace.dependencies]
+bytes = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+dm-core = { path = "dm-core" }
+dm-dpi = { path = "dm-dpi" }
+dm-error = { path = "dm-error" }
+dm-macros = { path = "dm-macros" }
+dm-odbc = { path = "dm-odbc" }
+dm-pool = { path = "dm-pool", default-features = false }
+futures-core = "0.3"
+insta = "1"
+odbc-api = { version = "29.2", default-features = false, features = ["odbc_version_3_80", "wide"] }
+odbc-sys = "0.31"
+proc-macro2 = "1.0.93"
+proptest = { git = "https://github.com/proptest-rs/proptest", rev = "3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b", features = ["attr-macro"] }
+quote = "1.0.9"
+rust_decimal = "1"
+syn = { version = "2.0.101", features = ["full", "extra-traits", "visit-mut"] }
+thiserror = "2.0.12"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1.40"

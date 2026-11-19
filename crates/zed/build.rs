@@ -91,6 +91,15 @@ fn main() {
             // differently. Delayed loading has no equivalent here, so
             // `windowsperformancerecordercontrol` is linked eagerly instead.
             println!("cargo:rustc-link-arg=-Wl,--stack,{}", 8 * 1024 * 1024);
+
+            // The Windows loader rejects images with `SizeOfImage >= 0x78000000`
+            // (1.875 GiB), and GNU links this profile's DWARF into the PE. Strip
+            // it at link time: `strip = "debuginfo"` post-processes the finished
+            // image, and on an image this size that rewrite breaks the binary
+            // (it faults in the loader's TLS callback before `main`). The COFF
+            // symbol table survives `--strip-debug`, so backtraces still resolve
+            // function names.
+            println!("cargo:rustc-link-arg=-Wl,--strip-debug");
         }
 
         if cfg!(target_arch = "x86_64") || cfg!(target_arch = "aarch64") {
